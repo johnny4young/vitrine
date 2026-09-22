@@ -1,6 +1,66 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Delete Preset?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar preajuste?"
+          }
+        }
+      }
+    },
+    "Delete Preset": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar preajuste"
+          }
+        }
+      }
+    },
+    "Delete Theme?": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar tema?"
+          }
+        }
+      }
+    },
+    "Delete Theme": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar tema"
+          }
+        }
+      }
+    },
+    "Delete “%@”? This cannot be undone. Your current style will not change.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar «%@»? Esta acción no se puede deshacer. Tu estilo actual no cambiará."
+          }
+        }
+      }
+    },
+    "Delete “%@”? This cannot be undone. If this is your default theme, One Dark will replace it. Other style settings and open editor snapshots will not change.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Eliminar «%@»? Esta acción no se puede deshacer. Si es tu tema predeterminado, se sustituirá por One Dark. Los demás ajustes de estilo y las capturas abiertas en el editor no cambiarán."
+          }
+        }
+      }
+    },
     "Annotation Tool" : {
       "comment" : "Edit-menu submenu containing annotation tool choices and shortcuts.",
       "localizations" : {

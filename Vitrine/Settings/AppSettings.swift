@@ -462,6 +462,15 @@ final class AppSettings {
         Log.settings.info("Adopted an editor window's configuration as the app default")
     }
 
+    /// Commits an explicitly confirmed library deletion. Only a deleted active
+    /// default needs replacement; unrelated styles and editor sessions remain intact.
+    @discardableResult
+    func deleteCustomTheme(id: String, from themes: CustomThemeStore) -> Bool {
+        guard themes.delete(id: id) else { return false }
+        if config.theme.id == id { config.theme = .oneDark }
+        return true
+    }
+
     /// Sets the default theme (used by the "Theme" submenu).
     func selectTheme(_ theme: Theme) { config.theme = theme }
 
