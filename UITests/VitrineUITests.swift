@@ -92,11 +92,26 @@ final class VitrineUITests: XCTestCase {
         right.press(
             forDuration: 0.1,
             thenDragTo: right.withOffset(CGVector(dx: size.width - window.frame.width, dy: 0)))
-        let bottom = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1))
-            .withOffset(CGVector(dx: 0, dy: -1))
-        bottom.press(
-            forDuration: 0.1,
-            thenDragTo: bottom.withOffset(CGVector(dx: 0, dy: size.height - window.frame.height)))
+        func dragVerticalEdge(top: Bool, by delta: CGFloat) {
+            let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: top ? 0 : 1))
+                .withOffset(CGVector(dx: 0, dy: top ? 1 : -1))
+            edge.press(
+                forDuration: 0.1,
+                thenDragTo: edge.withOffset(CGVector(dx: 0, dy: delta)))
+        }
+        let heightDelta = size.height - window.frame.height
+        if heightDelta < 0 {
+            // The Dock can intercept the bottom edge on compact displays.
+            dragVerticalEdge(top: true, by: -heightDelta)
+        } else if heightDelta > 0, let screen = NSScreen.main {
+            // A previous top-edge shrink can restore this window lower on screen.
+            // Expand into the available space above before using the space below.
+            let visibleTop = screen.frame.maxY - screen.visibleFrame.maxY
+            let growthAbove = min(heightDelta, max(0, window.frame.minY - visibleTop))
+            if growthAbove > 0 { dragVerticalEdge(top: true, by: -growthAbove) }
+            let remaining = size.height - window.frame.height
+            if remaining > 0 { dragVerticalEdge(top: false, by: remaining) }
+        }
         XCTAssertEqual(window.frame.width, size.width, accuracy: 2)
         XCTAssertEqual(window.frame.height, size.height, accuracy: 2)
     }
