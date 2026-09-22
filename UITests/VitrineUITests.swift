@@ -89,11 +89,13 @@ final class VitrineUITests: XCTestCase {
             right.press(
                 forDuration: 0.1,
                 thenDragTo: right.withOffset(CGVector(dx: 960 - window.frame.width, dy: 0)))
-            let bottom = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 1))
-                .withOffset(CGVector(dx: 0, dy: -1))
-            bottom.press(
+            // On compact hosted displays the Dock intercepts the bottom edge.
+            // Shrink from the visible top edge instead, keeping the same size gate.
+            let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
+                .withOffset(CGVector(dx: 0, dy: 1))
+            top.press(
                 forDuration: 0.1,
-                thenDragTo: bottom.withOffset(CGVector(dx: 0, dy: 600 - window.frame.height)))
+                thenDragTo: top.withOffset(CGVector(dx: 0, dy: window.frame.height - 600)))
             XCTAssertLessThanOrEqual(window.frame.width, 980)
             XCTAssertLessThanOrEqual(window.frame.height, 620)
             copy.click()
