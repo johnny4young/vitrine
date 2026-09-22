@@ -18,7 +18,8 @@ private enum EditorToolbarDensity: Equatable {
 
     var usesCompactCopyButton: Bool { self != .full }
     var collapsesSecondaryActions: Bool { self == .compact }
-    var spacing: CGFloat { self == .compact ? 10 : 14 }
+    // The compact row must not raise the live window minimum past 960 points.
+    var spacing: CGFloat { self == .compact ? 6 : 14 }
 }
 
 /// The editor's glass toolbar and the export/copy actions behind it.
@@ -64,7 +65,7 @@ extension EditorView {
                     }
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: density == .compact ? 0 : 8)
 
                 // The annotation tool palette lives in the title bar, so marks
                 // are drawn with the cursor like a dedicated screenshot tool. Picking a
@@ -93,7 +94,7 @@ extension EditorView {
                     if newTool != .select { selectedAnnotationID = nil }
                 }
 
-                Spacer(minLength: 8)
+                Spacer(minLength: density == .compact ? 0 : 8)
 
                 if density.collapsesSecondaryActions {
                     copyOptionsMenu
