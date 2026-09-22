@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Select the terminal domain tests in the Address Sanitizer lane and verify that
+  every expected sanitizer suite actually executes passing tests. Empty, omitted,
+  skipped or failed selections now fail instead of accepting build-only success.
+  Sanitizers remain weekly/manual, non-required early-warning checks.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each
