@@ -23,10 +23,16 @@ user pastes license key
      is cleared only after a conclusive provider verdict and only if the record still matches
 ```
 
-Honor/convenience model, not anti-fork DRM (the code is open source). The signature only stops a
-hand-edited token and lets the CLI trust the app's activation offline. A build compiled **from
-source** has no injected private key, so it cannot mint a token and stays free — which is why the
-public repo never grants PRO by itself.
+This is an **honor/convenience model**, not proof of purchase enforced by a trusted server.
+The signing key ships in the distributed app and can be extracted. A signature detects casual
+payload edits and lets the unmodified app and CLI agree offline; it cannot distinguish the
+app from another signer using that same extracted key. Tokens are not bound to hardware and
+have no automatic refund revocation. Keychain storage and file permissions are local access
+controls, not copy prevention or DRM. We intentionally retain this model without a signing
+backend, obfuscation, or a client-key migration.
+
+An unmodified build compiled **from source** without the injected key cannot mint a token and
+stays free. This is the default build configuration, not a restriction on modifying open source.
 
 ## Prerequisites
 
@@ -81,7 +87,10 @@ repo. Tip: keep it in your login Keychain and export it in the build step, e.g.
    the 2026 launch period and a planned **$25** regular price; the public checkout must agree
    before either claim changes.
 2. Enable **license keys** for the product. Set the **activation limit** (e.g. 3 machines per
-   license) — the app sends an `instance_name` (the Mac's name) so a buyer can see/manage seats.
+   license). New activations send the generic `instance_name` **Vitrine**, never the Mac's
+   hostname or user-defined computer name. Existing provider instances are not renamed or
+   reactivated; their stored instance ids remain the basis for release. Generic seat names
+   may look identical in the purchase portal.
 3. No API key is embedded in the app: activation uses only the buyer's license key against the
    public `…/v1/licenses/activate` endpoint, which `LemonSqueezyValidator` already calls.
 4. Production activation accepts only the pinned Vitrine store/product, an active status, a
@@ -154,18 +163,39 @@ portal or support. A clean Mac still activates again; automatic cross-device Res
 refund revocation, and background provider validation are not implemented. Do not claim those
 flows as tested or supported.
 
+### Concurrency and partial persistence
+
+Only one activation request per app entitlement coordinator can be in flight. A second request
+is refused before contacting the provider, including while the first awaits its response.
+A recoverable seat record also prevents consuming another seat until cleanup completes.
+
+Local persistence is ordered, not an atomic transaction across Keychain and the filesystem:
+
+- If the seat record cannot be written and read back, no new token or CLI mirror is written.
+  The provider may already have allocated the seat; use the purchase portal or support if no
+  recovery record could be retained.
+- If the token write fails, the seat record remains available for explicit deactivation.
+- If the CLI mirror fails, the app attempts to remove the new token and retains the seat record.
+  If that cleanup also fails, app and CLI state can differ; do not report the activation as
+  successfully completed. Settings can retry deactivation with the retained record.
+
+No failure path silently starts a replacement activation or deletes a different seat record.
+Tests use ephemeral signing keys, in-memory stores, controlled continuations, and temporary
+files. They do not certify production Keychain permissions or the published provider journey.
+
 ## Security notes
 
 - The private key is **in the distributed binary** (embedded-key activation model). For the honor model that is
   acceptable — a determined user can extract it, the same way they could fork the open-source app.
-  It is not a DRM boundary; it is a convenience + an offline-trust mechanism for the CLI.
+  It is not a DRM boundary or exclusive proof that a purchase was validated by the official app.
 - The signed token is stored device-only in the Keychain (`kSecAttrAccessibleAfterFirstUnlock…
-  ThisDeviceOnly`) and mirrored to a `0600` file. Neither is anti-copy; both raise seat-sharing
-  above trivial.
+  ThisDeviceOnly`) and mirrored to a `0600` file. These control local access, not copying or
+  replay on another machine; the signed payload has no hardware binding.
 - The raw license key and provider instance id are stored in a separate device-only Keychain
   item. They are never mirrored to the CLI file, defaults, diagnostics, logs, screenshots, or QA
-  records. The app sends them only to Lemon Squeezy's HTTPS deactivation endpoint after an
-  explicit destructive confirmation.
+  records. The app sends the license key to Lemon Squeezy's HTTPS activation endpoint on explicit
+  activation, together with the generic instance name. It sends the stored key and instance id
+  to the HTTPS deactivation endpoint only after explicit destructive confirmation.
 - Rotating the keypair invalidates every issued token (they were signed by the old private key):
   only do it deliberately, and re-issue.
 

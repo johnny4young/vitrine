@@ -36,6 +36,9 @@ final class Entitlements {
 
         /// Invalidates older suspended license operations when a newer user action begins.
         private var licenseOperationGeneration = 0
+
+        /// Actor reentrancy must not allocate a second remote seat while the first awaits.
+        private var licenseActivationInFlight = false
     #endif
 
     /// Seeds `isPro` from the provider's cached flag — instant and offline, so the first
@@ -125,7 +128,7 @@ final class Entitlements {
         }
 
         /// Activates a Lemon Squeezy license key on the direct-download build (
-        /// embedded-key activation model), returning whether PRO is unlocked afterward.
+        /// embedded-key activation model), returning whether this activation persisted successfully.
         ///
         /// Validates the key once online via `LicenseActivationService`, which on success mints
         /// a locally-signed token; that token is handed to the `LicenseKeyProvider`, which
@@ -145,21 +148,25 @@ final class Entitlements {
             licenseKey: String,
             using service: LicenseActivationService
         ) async -> Bool {
-            guard let licenseProvider = provider as? LicenseKeyProvider,
+            guard !licenseActivationInFlight,
+                let licenseProvider = provider as? LicenseKeyProvider,
                 licenseProvider.activationRecordForDeactivation == nil
-            else { return isPro }
+            else { return false }
+            licenseActivationInFlight = true
+            defer { licenseActivationInFlight = false }
 
             licenseOperationGeneration += 1
             let generation = licenseOperationGeneration
             let outcome = await service.activate(licenseKey: licenseKey)
-            guard generation == licenseOperationGeneration else { return isPro }
+            guard generation == licenseOperationGeneration else { return false }
+            var persisted = false
             if case .activated(let signedToken, let record) = outcome {
-                _ = licenseProvider.setActivation(
+                persisted = licenseProvider.setActivation(
                     signedToken: signedToken,
                     record: record)
             }
             await refresh()
-            return isPro
+            return persisted && isPro
         }
 
         /// Releases this machine's direct-download seat and clears entitlement state only

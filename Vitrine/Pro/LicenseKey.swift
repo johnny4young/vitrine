@@ -8,10 +8,10 @@ import Security
 /// public key.
 ///
 /// This is an honor/convenience model, not anti-fork DRM. The signature lets the
-/// CLI trust the app's activation without re-contacting Lemon Squeezy and rejects a
-/// hand-edited token; it is not a defense against a determined forker (the code is open
-/// source). In the embedded-key activation model (`docs/ACTIVATION.md`), the app signs the token **locally** at
-/// activation with a private key injected only into the official release build
+/// CLI agree with the app offline and rejects a hand-edited token, but the shipped signer
+/// is extractable. It cannot exclusively attest a purchase or prevent copied-token replay.
+/// In the embedded-key activation model (`docs/ACTIVATION.md`), the app signs the token
+/// **locally** at activation with a private key injected only into the official release build
 /// (`LicenseSigningKey.embedded`). A build compiled from source has no such key, so it cannot
 /// mint a token and stays free — the public half lives in source for offline verification.
 struct LicenseToken: Codable, Equatable {
@@ -27,8 +27,8 @@ struct LicenseToken: Codable, Equatable {
 /// Shared by the app and the CLI so both reach the same verdict from the same token bytes.
 struct LicenseVerifier {
     /// The signing public key, or `nil` when an embedded representation is malformed. This
-    /// value is safe to ship in source; only the matching private key is secret and injected
-    /// into the official direct-download build.
+    /// value is safe to ship in source. The matching private key is not committed but is
+    /// extractable from the official direct-download build; this is an honor model.
     let publicKey: Curve25519.Signing.PublicKey?
 
     init(publicKey: Curve25519.Signing.PublicKey) {
@@ -375,8 +375,8 @@ extension JSONDecoder {
             guard store.write(signedToken), storedValidToken?.licenseID == record.licenseID
             else { return false }
             guard cliTokenFile.write(signedToken) else {
-                // Keep the record for remote seat recovery, but never leave app and CLI
-                // entitlement state disagreeing after a newly activated seat.
+                // Keep the record for remote seat recovery and attempt to relock the app.
+                // Cleanup can also fail; return failure even if a valid token survives.
                 _ = store.write(nil)
                 return false
             }
