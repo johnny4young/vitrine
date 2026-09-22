@@ -19,14 +19,15 @@ final class VitrineUITests: XCTestCase {
                 defer { app.terminate() }
                 let window = element("editor-window", in: app)
                 assertExists(window, in: app, timeout: 8)
-                placeVisualEditorOnPrimaryDisplay(window)
+                placeVisualEditorOnPrimaryDisplay(in: app)
                 // Hosted displays can be narrower than 1280. Record the actual
                 // viewport; only a qualifying display proves the 1280×800 case.
                 for size in [
                     CGSize(width: min(1280, visible.width), height: min(800, visible.height)),
                     CGSize(width: 960, height: 600),
                 ] {
-                    resizeVisualEditor(window, to: size)
+                    resizeVisualEditor(in: app, to: size)
+                    let resizedWindow = element("editor-window", in: app)
                     for identifier in [
                         "editor-toolbar", "editor-preview-stage", "editor-inspector",
                     ] {
@@ -38,15 +39,15 @@ final class VitrineUITests: XCTestCase {
                         XCTAssertFalse(controls.isEmpty)
                         for control in controls {
                             XCTAssertTrue(
-                                window.frame.insetBy(dx: -1, dy: -1).contains(control.frame),
+                                resizedWindow.frame.insetBy(dx: -1, dy: -1).contains(control.frame),
                                 identifier)
                         }
                     }
                     assertHittable(
                         "copy-button", in: app, "The primary action must remain reachable")
-                    let attachment = XCTAttachment(screenshot: window.screenshot())
+                    let attachment = XCTAttachment(screenshot: resizedWindow.screenshot())
                     attachment.name =
-                        "chrome-\(language)-\(dark ? "dark" : "light")-\(Int(window.frame.width))x\(Int(window.frame.height))"
+                        "chrome-\(language)-\(dark ? "dark" : "light")-\(Int(resizedWindow.frame.width))x\(Int(resizedWindow.frame.height))"
                     attachment.lifetime = .keepAlways
                     add(attachment)
                 }
@@ -110,16 +111,17 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
         let window = element("editor-window", in: app)
         assertExists(window, in: app, timeout: 8)
-        placeVisualEditorOnPrimaryDisplay(window)
-        resizeVisualEditor(window, to: CGSize(width: 960, height: 600))
+        placeVisualEditorOnPrimaryDisplay(in: app)
+        resizeVisualEditor(in: app, to: CGSize(width: 960, height: 600))
 
         let expanded = CGSize(width: visible.width, height: 600)
-        let growth = expanded.width - window.frame.width
+        let growth = expanded.width - element("editor-window", in: app).frame.width
         try XCTSkipUnless(growth > 2, "This display cannot expand beyond the compact viewport")
         // Reproduce the hosted constraint with real window movement. Native dragging
         // can shift the final position, so converge on the space invariant rather
         // than assuming the requested title-bar delta was exact.
         for _ in 0..<3 {
+            let window = element("editor-window", in: app)
             let available = visible.maxX - window.frame.maxX
             if available >= 0 && available < growth { break }
             let title = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
@@ -128,15 +130,17 @@ final class VitrineUITests: XCTestCase {
                 forDuration: 0.1,
                 thenDragTo: title.withOffset(CGVector(dx: available - growth / 2, dy: 0)))
         }
-        XCTAssertLessThanOrEqual(window.frame.maxX, visible.maxX)
-        XCTAssertLessThan(visible.maxX - window.frame.maxX, growth)
-        resizeVisualEditor(window, to: expanded)
-        XCTAssertGreaterThanOrEqual(window.frame.minX, visible.minX - 2)
-        XCTAssertLessThanOrEqual(window.frame.maxX, visible.maxX + 2)
+        let positioned = element("editor-window", in: app)
+        XCTAssertLessThanOrEqual(positioned.frame.maxX, visible.maxX)
+        XCTAssertLessThan(visible.maxX - positioned.frame.maxX, growth)
+        resizeVisualEditor(in: app, to: expanded)
+        let resized = element("editor-window", in: app)
+        XCTAssertGreaterThanOrEqual(resized.frame.minX, visible.minX - 2)
+        XCTAssertLessThanOrEqual(resized.frame.maxX, visible.maxX + 2)
     }
 
     @MainActor
-    private func placeVisualEditorOnPrimaryDisplay(_ window: XCUIElement) {
+    private func placeVisualEditorOnPrimaryDisplay(in app: XCUIApplication) {
         guard let screen = NSScreen.screens.first else {
             XCTFail("A primary display is required for the visual viewport journey")
             return
@@ -148,6 +152,7 @@ final class VitrineUITests: XCTestCase {
             y: screen.frame.maxY - screen.visibleFrame.maxY,
             width: screen.visibleFrame.width, height: screen.visibleFrame.height)
         for _ in 0..<3 {
+            let window = element("editor-window", in: app)
             let frame = window.frame
             if visible.insetBy(dx: -2, dy: -2).contains(frame) { return }
             let target = CGPoint(
@@ -161,13 +166,14 @@ final class VitrineUITests: XCTestCase {
                     CGVector(dx: target.x - frame.minX, dy: target.y - frame.minY)))
         }
         XCTAssertTrue(
-            visible.insetBy(dx: -2, dy: -2).contains(window.frame),
+            visible.insetBy(dx: -2, dy: -2).contains(element("editor-window", in: app).frame),
             "The visual fixture must be on the display whose bounds it exercises")
     }
 
     @MainActor
-    private func resizeVisualEditor(_ window: XCUIElement, to size: CGSize) {
+    private func resizeVisualEditor(in app: XCUIApplication, to size: CGSize) {
         func dragHorizontalEdge(left: Bool, by delta: CGFloat) {
+            let window = element("editor-window", in: app)
             let edge = window.coordinate(withNormalizedOffset: CGVector(dx: left ? 0 : 1, dy: 0.5))
                 .withOffset(CGVector(dx: left ? 1 : -1, dy: 0))
             edge.press(
@@ -181,6 +187,7 @@ final class VitrineUITests: XCTestCase {
         // Settle the gesture, then recompute from the actual frame; a partial left
         // expansion must not fall back to a right edge that already touches the screen.
         for _ in 0..<4 {
+            let window = element("editor-window", in: app)
             let delta = size.width - window.frame.width
             if abs(delta) <= 2 { break }
             if delta < 0 {
@@ -195,6 +202,7 @@ final class VitrineUITests: XCTestCase {
             }
         }
         func dragVerticalEdge(top: Bool, by delta: CGFloat) {
+            let window = element("editor-window", in: app)
             let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: top ? 0 : 1))
                 .withOffset(CGVector(dx: 0, dy: top ? 1 : -1))
             edge.press(
@@ -203,6 +211,7 @@ final class VitrineUITests: XCTestCase {
                 withVelocity: .slow, thenHoldForDuration: 0.2)
         }
         for _ in 0..<4 {
+            let window = element("editor-window", in: app)
             let delta = size.height - window.frame.height
             if abs(delta) <= 2 { break }
             if delta < 0 {
@@ -218,8 +227,9 @@ final class VitrineUITests: XCTestCase {
                 }
             }
         }
-        XCTAssertEqual(window.frame.width, size.width, accuracy: 2)
-        XCTAssertEqual(window.frame.height, size.height, accuracy: 2)
+        let resized = element("editor-window", in: app)
+        XCTAssertEqual(resized.frame.width, size.width, accuracy: 2)
+        XCTAssertEqual(resized.frame.height, size.height, accuracy: 2)
     }
 
     @MainActor
