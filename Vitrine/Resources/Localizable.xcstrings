@@ -2974,13 +2974,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Press the global hotkey from any app to capture whatever code is on your clipboard as an image. Set or change the hotkey below, or in Settings ▸ General."
+            "value" : "The global hotkey is optional and works across apps when enabled. Set, change, or clear it below or in Settings ▸ General. The menu-bar action always remains available."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Presiona el atajo global desde cualquier app para capturar como imagen el código que tengas en el portapapeles. Configura o cambia el atajo abajo, o en Ajustes ▸ General."
+            "value" : "El atajo global es opcional y funciona en todas las apps al activarlo. Asígnalo, cámbialo o bórralo aquí o en Ajustes ▸ General. La acción de la barra de menús siempre está disponible."
           }
         }
       }
@@ -3046,13 +3046,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vitrine is private by design: your code never leaves your Mac. There is no account and no network access, and rendering needs no screen-recording or Accessibility permission."
+            "value" : "Code rendering stays on your Mac and needs no account, Screen Recording, or Accessibility-control permission. The direct-download build uses the network only for requested web content, updates, or license activation; the App Store build has no network-client entitlement."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vitrine es privado por diseño: tu código nunca sale de tu Mac. No hay cuenta ni acceso a la red, y la generación no necesita permiso de grabación de pantalla ni de Accesibilidad."
+            "value" : "El código se procesa en tu Mac sin cuenta ni permisos de grabación de pantalla o control de Accesibilidad. La versión de descarga directa usa la red solo para contenido web solicitado, actualizaciones o activación; la de App Store no tiene permiso de cliente de red."
           }
         }
       }
@@ -3082,13 +3082,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy code anywhere, press the hotkey, and Vitrine renders it with your current style. The image is placed on your clipboard automatically — paste it straight into a doc, chat, or pull request."
+            "value" : "Copy code anywhere, choose New Capture from Clipboard from the menu bar (or use your enabled hotkey), and Vitrine renders it with your current style. A successful copy places the image on your clipboard; a failed copy reports an error."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia código en cualquier parte, presiona el atajo y Vitrine lo genera con tu estilo actual. La imagen se coloca en el portapapeles automáticamente; pégala directamente en un documento, chat o pull request."
+            "value" : "Copia código en cualquier parte y elige Nueva captura desde el portapapeles en la barra de menús (o usa tu atajo activado). Vitrine lo procesa con tu estilo actual. Si la copia funciona, la imagen queda en el portapapeles; si falla, se informa el error."
           }
         }
       }

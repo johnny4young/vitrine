@@ -95,8 +95,10 @@ Accessibility scraping remain rejected.
 ## CLI (`vitrine`) — command-line renderer
 
 The CLI is a separate first-party executable (`VitrineCLI`, a `tool` that links the
-`VitrineCLICore` library), **not** a sandboxed `.app`. It renders **code only** and is the
-scriptable path itself.
+`VitrineCLICore` library), **not** a sandboxed `.app`. Its inputs are local code,
+terminal content, and supported local images; it does not capture webpages. A
+free `render --edit` operation only hands content to the editor. Output rendering
+and other general automation remain separately PRO-gated.
 
 | Entitlement / permission | Reason | User-facing behavior | Required? | Test / review check | App Store impact |
 | --- | --- | --- | --- | --- | --- |
@@ -105,18 +107,18 @@ scriptable path itself.
 | Screen Recording | — **not used.** | None. | **Absent** | `ScreenCaptureDecisionTests` scans the shipped roots (`Vitrine`, `VitrineCLI`) for capture APIs and finds none. | N/A. |
 
 The CLI needs no entitlements, no network, no Screen Recording, and no Accessibility. It
-reads a file or stdin you point it at and writes an image where you ask.
+reads a file or stdin you point it at; rendering commands write or copy an image,
+while the free handoff opens the content in the editor without producing an image.
 
 ## Distribution channels — App Store vs. direct download
 
-The **same** app target ships through both channels, and the App Store-relevant
-entitlement set is identical; only the signing/notarization, the auto-update mechanism, and
-the review posture differ. The **one** deliberate capability difference is the auto-update
-channel: the direct-download DMG bundles Sparkle and signs with a superset entitlements file
-that adds outbound network + Sparkle's XPC exceptions, while the App Store build excludes
-Sparkle entirely and stays network-free (see the Auto-update row). Outside of that,
-there is no "App Store build" that secretly drops a capability or "direct build" that secretly
-adds one.
+The **same** app target ships through both channels, but the entitlement sets
+are intentionally different. The direct-download DMG signs with a superset
+that adds outbound network access and Sparkle's XPC exceptions; the App Store
+build uses the minimal set and stays network-free. This also changes the
+availability of requested webpage capture, remote image import, direct license
+activation, and the bundled CLI. The table below is the public capability
+boundary; see [`CAPABILITIES.md`](CAPABILITIES.md) for the Free/PRO contract.
 
 | Capability | Direct-download build (signed + notarized DMG) | App Store build |
 | --- | --- | --- |
@@ -125,6 +127,9 @@ adds one.
 | Clipboard | `NSPasteboardUsageDescription` present. | Same; a clear reason satisfies review. |
 | Network (local rendering) | Present for Sparkle updates and explicit remote inputs (`com.apple.security.network.client`, in `Vitrine.DirectDownload.entitlements`); the core render path remains local. | **Absent**; normal editing, import, and export remain network-free. |
 | Network (web capture) | Available; URL capture is gated by `NetworkCapability`, strict URL validation, and a first-use disclosure. | Unavailable in the current channel because its entitlement set is intentionally network-free. |
+| Remote image import | User-requested download uses the direct channel's network entitlement and bounded decoding; local image import remains available offline. | No remote download; local image import remains available. |
+| License provider | User-initiated activation contacts the pinned provider, then validates the stored signed token offline under the documented honor model. | StoreKit purchase and Restore; no direct-license activation. |
+| Bundled CLI | Included with the direct DMG and exposed on `PATH` by Homebrew; it has no webpage/network transport. | Not distributed in the App Store bundle. |
 | Auto-update | **Sparkle.** Bundled and gated by `VITRINE_DIRECT_DOWNLOAD`; uses a signed EdDSA appcast and enables the framework-contained Installer Launcher with `SUEnableInstallerLauncherService`. The sandbox needs network + `com.apple.security.temporary-exception.mach-lookup.global-name` (`…-spks`/`…-spki`) entitlements in `Vitrine.DirectDownload.entitlements`. The optional Downloader service stays off because the app already has `network.client`. No analytics (`SUEnableSystemProfiling = NO`). | **Excluded.** The App Store provides updates; a third-party updater is disallowed. The build removes `VITRINE_DIRECT_DOWNLOAD` and strips the Sparkle framework, so no Sparkle, no network entitlement, no update UI. |
 | Screen Recording | **Absent** by product design. | **Absent** by product design; Vitrine imports images instead of capturing other apps. |
 | Privacy label | Manifest declares no tracking / no collected data. | **Data Not Collected**, kept in sync with `PrivacyInfo.xcprivacy`. |

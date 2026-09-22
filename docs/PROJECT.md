@@ -12,9 +12,16 @@ of the published repository.
 
 ## Product position
 
-Vitrine competes with browser-based code-image tools by removing the browser and
-keeping the workflow close to the clipboard, menu bar, editor, command line, and
-macOS automation surfaces. The differentiators are:
+Vitrine keeps the workflow close to the clipboard, menu bar, editor, command
+line, and macOS automation surfaces. It does not need to claim that every
+alternative is browser-only or online: [Ray.so](https://github.com/raycast/ray-so)
+is an open-source web code-image tool, [Carbon](https://github.com/carbon-app/carbon)
+documents offline PWA use, and the
+[Codeshot App Store listing](https://apps.apple.com/us/app/codeshot/id1541665460)
+describes a native Mac/iPhone app with Shortcuts and an MCP server. These
+primary-source observations were checked in September 2026; capabilities and
+prices can change. They establish workflow alternatives, not a feature ranking
+or evidence that Vitrine is faster. Vitrine's intended strengths are:
 
 - native macOS interaction and startup behavior;
 - deterministic, reusable rendering across the app, CLI, Shortcuts, Services, and
@@ -27,6 +34,10 @@ macOS automation surfaces. The differentiators are:
 The product is intentionally not a general-purpose screen recorder, a cloud-first
 design suite, or a cross-platform shell. See [`SCREEN-CAPTURE.md`](SCREEN-CAPTURE.md)
 for the decision to avoid arbitrary display and window capture.
+
+The [capability reference](CAPABILITIES.md) states the Free/PRO and
+distribution-channel contract in one place. A new user can follow the
+[synthetic first-capture tutorial](FIRST-CAPTURE.md) without buying PRO.
 
 ## Technology
 
