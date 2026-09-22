@@ -82,3 +82,17 @@ the dependency is patched regardless. No public vulnerability exception is requi
 `.github/workflows/deploy-site.yml` builds this package and deploys `dist/` to the
 `vitrine-web` Cloudflare Pages project. Deployments run when `site/` changes, when a
 GitHub release is published, or through a manual workflow dispatch.
+
+### Visual accessibility checks
+
+The preview filename follows the selected snippet foreground, independently of the
+page appearance. Script regression tests exercise each theme and language and check
+normal-text contrast; this DOM double does not prove browser layout.
+
+Before integrating visual changes, inspect EN/ES home and CLI in a real browser at
+390 px and 1280×800, with JavaScript enabled and disabled. Check that CLI examples
+stay within the page while long code remains locally scrollable, preview filenames
+remain readable in every theme/page-appearance combination, and keyboard focus is
+visible. With Reduce Motion enabled, anchor navigation must not smooth-scroll and
+swatch hover must not translate. Keep screenshots and measured computed styles with
+the exact commit under review; automated source checks are not a screen-reader audit.
