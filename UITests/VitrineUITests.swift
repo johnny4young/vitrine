@@ -137,12 +137,21 @@ final class VitrineUITests: XCTestCase {
                 let window = element("editor-window", in: app)
                 assertExists(window, in: app, timeout: 8)
                 if compact {
-                    // Exercise the actual resize path rather than a test-only toolbar override.
-                    let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
-                        .withOffset(CGVector(dx: -1, dy: 0))
-                    edge.press(
-                        forDuration: 0.1,
-                        thenDragTo: edge.withOffset(CGVector(dx: 960 - window.frame.width, dy: 0)))
+                    // A restored editor can span the display. Shrink from the left
+                    // rather than starting a drag at the physical right screen edge;
+                    // recompute after each live resize instead of assuming its delta.
+                    for _ in 0..<3 {
+                        let excess = window.frame.width - 960
+                        if excess <= 2 { break }
+                        let edge = window.coordinate(
+                            withNormalizedOffset: CGVector(dx: 0, dy: 0.5)
+                        ).withOffset(CGVector(dx: 1, dy: 0))
+                        edge.press(
+                            forDuration: 0.1,
+                            thenDragTo: edge.withOffset(CGVector(dx: excess, dy: 0)),
+                            withVelocity: .slow, thenHoldForDuration: 0.2)
+                    }
+                    XCTAssertLessThanOrEqual(window.frame.width, 1_000)
                     assertHittable(
                         "editor-actions-menu", in: app, "Resizing must expose the compact toolbar")
                 }
