@@ -603,7 +603,7 @@ than the original ANSI stream. An unredacted share link retains the original str
 Manual blur annotations change appearance only: use explicit line redaction or
 `--redact-secrets` when the source must not accompany an export.
 
-**Confidential clipboard exports:** enable **Settings → Output → Clipboard → Mark
+**Confidential clipboard exports:** enable **Settings → Export → Clipboard → Mark
 clipboard exports as confidential**, or pass `--copy --conceal-clipboard` to the CLI.
 Vitrine's export actions then add the cooperative `org.nspasteboard.ConcealedType`
 marker. Supporting clipboard managers can hide or exclude that content; other apps

@@ -1648,29 +1648,36 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testClipboardPrivacyIsOptInAndPersists() {
         continueAfterFailure = false
-        let app = launch(arguments: VitrineLaunchArguments.settings)
-        defer { app.terminate() }
-        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
-        element("settings-nav-output", in: app).click()
-        let toggle = element("conceal-clipboard-toggle", in: app)
-        assertExists(toggle, in: app, timeout: 3)
-        XCTAssertEqual(toggle.value as? Int, 0)
-        toggle.click()
-        XCTAssertEqual(toggle.value as? Int, 1)
-        app.terminate()
-        app.launch()
-        app.activate()
-        assertExists(element("settings-nav-output", in: app), in: app, timeout: 8)
-        element("settings-nav-output", in: app).click()
-        assertExists(toggle, in: app, timeout: 3)
-        XCTAssertEqual(toggle.value as? Int, 1)
-        toggle.click()
-        XCTAssertEqual(toggle.value as? Int, 0)
-        let attachment = XCTAttachment(
-            screenshot: element("settings-output-pane", in: app).screenshot())
-        attachment.name = "confidential-clipboard-preference"
-        attachment.lifetime = .keepAlways
-        add(attachment)
+        for language in ["en", "es"] {
+            for appearance in ["light", "dark"] {
+                let app = launch(
+                    arguments: VitrineLaunchArguments.settings + [
+                        "--appearance-\(appearance)", "-AppleLanguages", "(\(language))",
+                    ])
+                defer { app.terminate() }
+                assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+                element("settings-nav-output", in: app).click()
+                let toggle = element("conceal-clipboard-toggle", in: app)
+                assertExists(toggle, in: app, timeout: 3)
+                XCTAssertEqual(toggle.value as? Int, 0)
+                toggle.click()
+                XCTAssertEqual(toggle.value as? Int, 1)
+                app.terminate()
+                app.launch()
+                app.activate()
+                assertExists(element("settings-nav-output", in: app), in: app, timeout: 8)
+                element("settings-nav-output", in: app).click()
+                assertExists(toggle, in: app, timeout: 3)
+                XCTAssertEqual(toggle.value as? Int, 1)
+                toggle.click()
+                XCTAssertEqual(toggle.value as? Int, 0)
+                let attachment = XCTAttachment(
+                    screenshot: element("settings-output-pane", in: app).screenshot())
+                attachment.name = "confidential-clipboard-\(language)-\(appearance)"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+            }
+        }
     }
 
     @MainActor
