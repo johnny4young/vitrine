@@ -4,7 +4,7 @@ import OSLog
 import VitrineDomain
 import VitrineRendering
 
-/// Renders a `SnapshotRenderRequest` into image data or an `NSImage` through the
+/// Renders a `SnapshotRenderRequest` into encoded data or a `CGImage` through the
 /// **unchanged** app render path, for every automation surface (App Intents and the
 /// Services menu).
 ///
@@ -111,16 +111,5 @@ enum SnapshotRenderService {
             Log.export.error("Automation render produced no image")
             throw RenderError.renderFailure(error)
         }
-    }
-
-    /// Renders `request` to an `NSImage` — a convenience over `renderCGImage` for
-    /// callers that want an image object. Throws the same errors as `renderData`.
-    static func renderImage(
-        _ request: SnapshotRenderRequest,
-        themeResolver: (String) -> Theme = Theme.theme(withID:)
-    ) throws -> NSImage {
-        let cgImage = try renderCGImage(request, themeResolver: themeResolver)
-        return NSImage(
-            cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
     }
 }

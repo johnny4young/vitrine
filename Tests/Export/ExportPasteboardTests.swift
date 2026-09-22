@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import ImageIO
 import Testing
 import VitrineRendering
 
@@ -25,5 +26,28 @@ struct SourceTextClipboardTests {
         #expect(ExportManager.copySourceToPasteboard(source, to: pasteboard))
         #expect(pasteboard.string(forType: .string) == source)
         #expect(pasteboard.data(forType: .png) == nil)
+    }
+}
+
+@MainActor
+@Suite("Export · PNG clipboard", .serialized)
+struct PNGClipboardTests {
+    @Test("The typed PNG writer replaces stale text and preserves raster dimensions")
+    func copyRenderedPNG() throws {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("VitrinePNGCopyTests-\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        #expect(pasteboard.setString("old source", forType: .string))
+        let image = try ExportManager.renderCGImageChecked(
+            ExportTestFixtures.sampleConfig(), scale: 1)
+
+        #expect(ExportManager.copyPNGToPasteboardOutcome(image, to: pasteboard) == .copied)
+        #expect(pasteboard.string(forType: .string) == nil)
+        let data = try #require(pasteboard.data(forType: .png))
+        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
+        let source = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+        let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        #expect(decoded.width == image.width)
+        #expect(decoded.height == image.height)
     }
 }

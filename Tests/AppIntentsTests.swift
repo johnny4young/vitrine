@@ -311,7 +311,7 @@ struct SnapshotRenderServiceTests {
             try SnapshotRenderService.renderData(request)
         }
         #expect(throws: SnapshotRenderService.RenderError.emptyCode) {
-            try SnapshotRenderService.renderImage(request)
+            try SnapshotRenderService.renderCGImage(request)
         }
     }
 
@@ -331,10 +331,10 @@ struct SnapshotRenderServiceTests {
         #expect(SnapshotRenderService.RenderError.tooLarge.description.contains("Reduce"))
     }
 
-    @Test func renderImageProducesANonEmptyImage() throws {
+    @Test func renderCGImageProducesANonEmptyRaster() throws {
         let request = SnapshotRenderRequest(code: "print(1)", language: .python)
-        let image = try SnapshotRenderService.renderImage(request)
-        #expect(image.size.width > 0 && image.size.height > 0)
+        let image = try SnapshotRenderService.renderCGImage(request)
+        #expect(image.width > 0 && image.height > 0)
     }
 
     @Test func openGraphPresetRendersExactPinnedPixels() throws {

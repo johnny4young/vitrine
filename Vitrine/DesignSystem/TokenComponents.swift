@@ -243,29 +243,6 @@ struct TokenTextField: View {
     }
 }
 
-/// A keyboard-glyph chip (`.kbd-chip`): the hotkey shown as typed glyphs in a
-/// small bordered capsule-cornered tag.
-struct KeyChip: View {
-    /// The literal glyph string (e.g. `"⇧⌘S"`); locale-neutral, shown verbatim.
-    let glyphs: String
-
-    var body: some View {
-        Text(verbatim: glyphs)
-            .font(.system(size: VitrineTokens.FontSize.subhead, design: .monospaced))
-            .foregroundStyle(VitrineTokens.Text.primary)
-            .padding(.vertical, 4)
-            .padding(.horizontal, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(VitrineTokens.Chrome.keyChip)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
-            )
-    }
-}
-
 /// A horizontally scrolling chip strip (`.hscroll`): 7 pt gaps, hidden scroller, and a
 /// 26 pt fade-out on the trailing edge hinting at more.
 ///

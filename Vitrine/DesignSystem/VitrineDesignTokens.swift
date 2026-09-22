@@ -220,11 +220,6 @@ enum VitrineTokens {
             light: Color(hex: "#1A1B22").opacity(0.06),
             dark: Color(hex: "#FFFFFF").opacity(0.06)
         ).color
-        /// `.kbd-chip` — keyboard-glyph chip fill.
-        static let keyChip = Brand.BrandColor(
-            light: Color(hex: "#1A1B22").opacity(0.06),
-            dark: Color(hex: "#FFFFFF").opacity(0.07)
-        ).color
         /// `.dfield` — bordered inline text-field fill.
         static let fieldFill = Brand.BrandColor(
             light: Color(hex: "#1A1B22").opacity(0.04),

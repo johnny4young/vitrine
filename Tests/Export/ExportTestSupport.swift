@@ -1,4 +1,3 @@
-import CoreGraphics
 import VitrineRendering
 
 @testable import Vitrine
@@ -16,8 +15,4 @@ enum ExportTestFixtures {
         mutate(&config)
         return config
     }
-
-    /// The simple-template card size (the 1200×630 social aspect the vector template
-    /// serializes against).
-    static let cardSize = CGSize(width: 1200, height: 630)
 }
