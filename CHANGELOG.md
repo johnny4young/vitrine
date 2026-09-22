@@ -22,7 +22,8 @@ can never drift.
 
 - Controlled WebKit integration tests exercise redirects, private subresources,
   localhost opt-in, cancellation, timeouts, capture limits, and session removal.
-  Dedicated result validation rejects missing or skipped scenarios.
+  Dedicated result validation rejects missing or skipped scenarios. Fixture startup
+  avoids reverse DNS, publishes readiness atomically, and retains failure logs.
 
 ## [1.2.3] - 2026-09-16
 

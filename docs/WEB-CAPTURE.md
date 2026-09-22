@@ -43,6 +43,10 @@ fixture, waits for its port, runs the selected suite, verifies **every expected
 passed test** in the xcresult, and stops its own server even on failure. An empty
 selection, missing scenario, skipped test, or failing test is not success.
 `make web-capture-check` tests those fail-closed receipt rules without Xcode.
+The fixture binds numeric loopback without reverse DNS and publishes its port
+atomically. `fixture.log` retains startup output even if readiness fails. The
+dedicated lane also runs four fixture regressions covering DNS independence, real
+local HTTP, child failure diagnostics, and fail-closed readiness timeout.
 
 Some ad-hoc sandboxed test hosts cannot launch WebKit child processes. For local
 diagnosis only, the existing coverage-lane signing overrides can be requested:

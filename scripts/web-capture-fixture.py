@@ -4,6 +4,7 @@
 import argparse
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from socketserver import TCPServer
 from pathlib import Path
 from threading import Event, Lock
 from urllib.parse import urlsplit
@@ -11,6 +12,13 @@ from urllib.parse import urlsplit
 
 class FixtureServer(ThreadingHTTPServer):
     daemon_threads = True
+
+    def server_bind(self):
+        # HTTPServer performs reverse DNS even for numeric loopback. This fixture
+        # has a fixed local identity and must not depend on a resolver.
+        TCPServer.server_bind(self)
+        self.server_name = "localhost"
+        self.server_port = self.server_address[1]
 
     def __init__(self):
         super().__init__(("127.0.0.1", 0), Handler)
@@ -111,6 +119,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port-file", type=Path, required=True)
     args = parser.parse_args()
+    print("Binding loopback fixture", flush=True)
     with FixtureServer() as server:
-        args.port_file.write_text(str(server.server_port))
+        pending = args.port_file.with_suffix(".pending")
+        pending.write_text(str(server.server_port))
+        pending.replace(args.port_file)
+        print(f"Loopback fixture ready on port {server.server_port}", flush=True)
         server.serve_forever()

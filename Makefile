@@ -425,5 +425,6 @@ web-capture-check:
 	python3 scripts/test-web-capture.py --self-test
 
 test-web-capture: project web-capture-check
+	python3 scripts/web-capture-fixture-test.py
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/test-web-capture.py \
 		--output "$(WEB_CAPTURE_OUTPUT)" $(WEB_CAPTURE_HOST_FLAGS)

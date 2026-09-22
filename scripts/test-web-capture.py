@@ -3,6 +3,7 @@
 
 import argparse
 import copy
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -82,22 +83,41 @@ def self_test():
     print(f"Controlled WebKit receipt guard: {len(bad)} fail-closed cases passed")
 
 
+@contextmanager
+def loopback_fixture(output, *, script=None, startup_timeout=10):
+    port_file = output / "port"
+    log_path = output / "fixture.log"
+    script = script or ROOT / "scripts/web-capture-fixture.py"
+    with log_path.open("w") as log:
+        log.write("Starting isolated loopback fixture\n")
+        log.flush()
+        fixture = subprocess.Popen([
+            sys.executable, "-u", str(script), "--port-file", str(port_file),
+        ], cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
+        try:
+            deadline = time.monotonic() + startup_timeout
+            while not port_file.exists():
+                status = fixture.poll()
+                if status is not None or time.monotonic() >= deadline:
+                    reason = f"exit {status}" if status is not None else "readiness timeout"
+                    raise RuntimeError(f"Loopback fixture failed to start ({reason}); see {log_path}")
+                time.sleep(0.02)
+            port = int(port_file.read_text())
+            if not 0 < port < 65536:
+                raise ValueError("Invalid fixture port")
+            yield port
+        finally:
+            fixture.terminate()
+            try:
+                fixture.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                fixture.kill()
+                fixture.wait()
+
+
 def run(output, diagnostic_host):
     output.mkdir(parents=True, exist_ok=False)
-    port_file = output / "port"
-    fixture = subprocess.Popen([
-        sys.executable, str(ROOT / "scripts/web-capture-fixture.py"),
-        "--port-file", str(port_file),
-    ], cwd=ROOT)
-    try:
-        deadline = time.monotonic() + 10
-        while not port_file.exists():
-            if fixture.poll() is not None or time.monotonic() >= deadline:
-                raise RuntimeError("Loopback fixture failed to start")
-            time.sleep(0.02)
-        port = int(port_file.read_text())
-        if not 0 < port < 65536:
-            raise ValueError("Invalid fixture port")
+    with loopback_fixture(output) as port:
         bundle = output / "tests.xcresult"
         command = [
             "xcodebuild", "-project", "Vitrine.xcodeproj", "-scheme", "Vitrine",
@@ -125,13 +145,6 @@ def run(output, diagnostic_host):
         print(f"Verified {len(EXPECTED)} real controlled WebKit tests: {output}")
         if diagnostic_host:
             print("Diagnostic test host only; not production sandbox qualification.")
-    finally:
-        fixture.terminate()
-        try:
-            fixture.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            fixture.kill()
-            fixture.wait()
 
 
 def main():
