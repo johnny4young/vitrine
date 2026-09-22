@@ -38,8 +38,12 @@ struct SecretScannerCorpusTests {
         #expect(
             SecretScanner.secretLines(in: "password = EnvironmentPasswordProvider(\"\(secret)\")")
                 == [1])
+        // This generated punctuation-only fixture is never used for authentication.
+        // Even a short quoted argument must prevent the constructor exemption.
+        let shortLiteral = String(repeating: "!", count: 4)
         #expect(
-            SecretScanner.secretLines(in: "password = EnvironmentPasswordProvider(\"p@ss\")") == [1]
+            SecretScanner.secretLines(
+                in: "password = EnvironmentPasswordProvider(\"\(shortLiteral)\")") == [1]
         )
         let provider = "gh" + "p_" + String(repeating: "x", count: 36)
         #expect(
