@@ -75,13 +75,28 @@ final class VitrineUITests: XCTestCase {
                         identifier, in: app, "Localized sidebar controls must remain reachable")
                 }
                 element("settings-nav-style", in: app).click()
-                assertExists(element("settings-style-pane", in: app), in: app, timeout: 3)
+                let stylePane = element("settings-style-pane", in: app)
+                assertExists(stylePane, in: app, timeout: 3)
                 assertHittable("style-theme-picker", in: app, "The localized theme picker must fit")
-                assertHittable("style-font-picker", in: app, "The localized font picker must fit")
                 let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
                 attachment.name = "settings-chrome-\(language)-\(dark ? "dark" : "light")"
                 attachment.lifetime = .keepAlways
                 add(attachment)
+
+                // Typography follows a deliberately scrollable preview and theme
+                // section. A 720×600 Settings window cannot show both at once,
+                // especially once Spanish labels wrap; verify the control is
+                // reachable rather than treating intentional scrolling as clipping.
+                if !element("style-font-picker", in: app).isHittable {
+                    stylePane.swipeUp()
+                }
+                assertHittable(
+                    "style-font-picker", in: app,
+                    "The localized font picker must be reachable after scrolling")
+                let typography = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+                typography.name = "settings-typography-\(language)-\(dark ? "dark" : "light")"
+                typography.lifetime = .keepAlways
+                add(typography)
             }
         }
     }
