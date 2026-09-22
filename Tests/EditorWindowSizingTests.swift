@@ -19,14 +19,13 @@ struct EditorWindowSizingTests {
             feedback: .noOp, presentation: .noOp)
     }
 
-    /// An editor-shaped window that is never ordered on screen.
+    /// The production editor's title-bar configuration, without ordering on screen.
     private static func makeWindow(hosting content: NSViewController) -> NSWindow {
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1_180, height: 680),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-            backing: .buffered, defer: false)
+        let window = TitleBarAlignedWindow(contentViewController: content)
+        window.styleMask = [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView]
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
-        window.contentViewController = content
         window.setContentSize(NSSize(width: 1_180, height: 680))
         return window
     }
@@ -64,6 +63,54 @@ struct EditorWindowSizingTests {
         )
         #expect(minimumFrame.width <= 960, "Measured minimum frame: \(minimumFrame)")
         #expect(minimumFrame.height <= 600, "Measured minimum frame: \(minimumFrame)")
+    }
+
+    /// The compact limit must also hold after the real title-bar window is shown;
+    /// a detached hosting controller can report a smaller minimum than live AppKit.
+    @Test func displayedDemoEditorFitsTheCompactViewport() {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let session = Self.makeSession(environment, index: 45)
+        defer { session.discard() }
+        session.settings.documentCode = """
+            import SwiftUI
+
+            struct CounterView: View {
+                @State private var count = 0
+
+                var body: some View {
+                    Button("Tapped \\(count) times") { count += 1 }
+                }
+            }
+            """
+        let window = Self.makeWindow(
+            hosting: EditorWindowController.makeHostingController(
+                environment: environment, session: session))
+        defer {
+            window.close()
+            window.contentViewController = nil
+        }
+        window.orderFrontRegardless()
+        window.contentView?.layoutSubtreeIfNeeded()
+        let controller = EditorWindowController(
+            environment: environment, feedback: .noOp, presentation: .noOp)
+        controller.windowWillStartLiveResize(
+            Notification(name: NSWindow.willStartLiveResizeNotification, object: window))
+        let minimumFrame = window.frameRect(
+            forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
+        ).size
+        print("EDITOR-DISPLAYED-MINIMUM width=\(minimumFrame.width) height=\(minimumFrame.height)")
+        print("EDITOR-DISPLAYED-FRAME-MINIMUM width=\(window.minSize.width)")
+        #expect(minimumFrame.width <= 960, "Displayed minimum frame: \(minimumFrame)")
+        #expect(minimumFrame.height <= 600, "Displayed minimum frame: \(minimumFrame)")
+        #expect(window.minSize.width <= 960, "Displayed frame minimum: \(window.minSize)")
+        window.setFrame(NSRect(x: 0, y: 0, width: 960, height: 600), display: true)
+        for _ in 0..<5 {
+            window.layoutIfNeeded()
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+        }
+        print("EDITOR-DISPLAYED-RESIZE width=\(window.frame.width) height=\(window.frame.height)")
+        #expect(window.frame.width <= 962, "Displayed compact frame: \(window.frame)")
+        #expect(window.frame.height <= 602, "Displayed compact frame: \(window.frame)")
     }
 
     /// Sets a frame far below any editor minimum in code, gives layout a few passes to
