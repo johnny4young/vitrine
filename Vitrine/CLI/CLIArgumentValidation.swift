@@ -220,7 +220,7 @@ extension CLIArgumentParser {
         if gitDiffSource != nil, imageInputPath != nil {
             throw CLIError.incompatibleOptions("Cannot combine a Git diff source with --image.")
         }
-        if gitDiffSource != nil, diffDecorations == nil {
+        if gitDiffSource != nil, !openInEditor, diffDecorations == nil {
             diffDecorations = true
         }
         try CLIArgumentSchema.validateAvailability(

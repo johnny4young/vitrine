@@ -62,10 +62,7 @@ struct Capture: Codable, Identifiable, Equatable {
     /// the source must discard them rather than drawing stale highlights or annotations
     /// over unrelated code.
     func applying(to base: SnapshotConfig) -> SnapshotConfig {
-        var config = base
-        config.clearContentMarks()
-        config.code = code
-        config.language = language
+        var config = base.replacingContent(with: code, language: language)
         config.theme = theme
         return config
     }

@@ -12,6 +12,14 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- New text captures, editor handoffs, and Shortcuts clear the previous document's
+  annotations, redactions, highlights, foreground image, and terminal width while keeping
+  reusable style. Shared snapshot links still restore their own annotations.
+- `render --edit` is a free editor-only handoff, consistent with Open Code in Editor.
+  Image rendering, output files, clipboard exports, and sidecars keep their existing gates.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

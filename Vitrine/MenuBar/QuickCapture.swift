@@ -100,12 +100,8 @@ enum QuickCapture {
         // language by extension; plain text is returned unchanged.
         let interpreted = LanguageDetector.interpret(text)
 
-        var config = settings.config
-        // A quick capture is new content: drop content-bound marks (annotations,
-        // highlighted lines) carried over from the previous capture's code.
-        config.clearContentMarks()
-        config.code = interpreted.code
-        config.language = interpreted.language
+        var config = settings.config.replacingContent(
+            with: interpreted.code, language: interpreted.language)
         var plan = renderPlan(
             for: config, settings: settings, destinationPreset: destinationPreset)
         config = plan.config
@@ -183,7 +179,7 @@ enum QuickCapture {
     }
 
     private static func copyAndSave(
-        _ plan: RenderPlan, settings: AppSettings
+        _ plan: RenderPlan, settings: AppSettings, pasteboard: NSPasteboard = .general
     ) -> ExportAttempt {
         let profile = settings.export.colorProfile
         // The shared raster feeds the clipboard copy and bitmap file saves; a PDF
@@ -216,7 +212,7 @@ enum QuickCapture {
                 switch RichPasteboard.copyOutcome(
                     cgImage: cgImage, config: plan.config,
                     includeRichText: settings.export.richClipboard,
-                    includePlainText: settings.export.textSidecar)
+                    includePlainText: settings.export.textSidecar, to: pasteboard)
                 {
                 case .copied:
                     didCopy = true
@@ -226,7 +222,7 @@ enum QuickCapture {
                     deferredRenderFailure = error
                 }
             } else {
-                switch ExportManager.copyPNGToPasteboardOutcome(cgImage) {
+                switch ExportManager.copyPNGToPasteboardOutcome(cgImage, to: pasteboard) {
                 case .copied:
                     didCopy = true
                 case .failed:
@@ -334,11 +330,10 @@ enum QuickCapture {
         _ text: String,
         language: Language = .plaintext,
         settings: AppSettings,
-        recents: RecentsStore = .shared
+        recents: RecentsStore = .shared,
+        pasteboard: NSPasteboard = .general
     ) -> Result {
-        var config = settings.config
-        config.code = text
-        config.language = language
+        var config = settings.config.replacingContent(with: text, language: language)
         settings.noteLanguageUsed(language)
         // Apply the PRO brand-kit watermark to the rendered image.
         config.watermark = settings.exportWatermark
@@ -346,7 +341,7 @@ enum QuickCapture {
         // Render once and reuse the raster for both the copy and the save.
         var plan = renderPlan(for: config, settings: settings, destinationPreset: nil)
         plan.config = config
-        let attempt = copyAndSave(plan, settings: settings)
+        let attempt = copyAndSave(plan, settings: settings, pasteboard: pasteboard)
         let didCopy: Bool
         let didSave: Bool
         switch attempt {

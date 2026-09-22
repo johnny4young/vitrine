@@ -83,7 +83,7 @@ struct CLIEntitlementTests: CLITestSupport {
         #expect(CLIError.proRequired.exitCode == 1)
     }
 
-    @Test func onlyTheConstrainedTerminalCaptureCommandBypassesPro() throws {
+    @Test func commandDefaultsKeepGeneralAutomationPro() throws {
         let free = try CLIArguments.parse([
             "terminal-capture", "capture.log", "--terminal-width", "120",
             "--filename", "vitrine · main", "--title", "$ make test", "--copy",
@@ -100,7 +100,9 @@ struct CLIEntitlementTests: CLITestSupport {
     @Test func freeTerminalCaptureNeverEvaluatesTheProUnlockCheck() throws {
         var checkCount = 0
 
-        try CLIEntitlement.authorize(.terminalCapture) {
+        try CLIEntitlement.authorize(
+            CLIOptions(command: .terminalCapture, inputPath: "capture.log", outputPath: "")
+        ) {
             checkCount += 1
             return false
         }
@@ -112,7 +114,9 @@ struct CLIEntitlementTests: CLITestSupport {
     func everyAdvancedCommandRequiresProAndChecksOnlyOnce(_ command: CLIOptions.Command) throws {
         var lockedCheckCount = 0
         #expect(throws: CLIError.proRequired) {
-            try CLIEntitlement.authorize(command) {
+            try CLIEntitlement.authorize(
+                CLIOptions(command: command, inputPath: "input", outputPath: "output")
+            ) {
                 lockedCheckCount += 1
                 return false
             }
@@ -120,18 +124,70 @@ struct CLIEntitlementTests: CLITestSupport {
         #expect(lockedCheckCount == 1)
 
         var unlockedCheckCount = 0
-        try CLIEntitlement.authorize(command) {
+        try CLIEntitlement.authorize(
+            CLIOptions(command: command, inputPath: "input", outputPath: "output")
+        ) {
             unlockedCheckCount += 1
             return true
         }
         #expect(unlockedCheckCount == 1)
     }
 
+    @Test(arguments: [
+        ["render", "input.swift", "--edit"],
+        ["render", "--stdin", "--edit"],
+        ["render", "--git-staged", "--edit"],
+        ["render", "--git-diff", "HEAD~1..HEAD", "--edit"],
+        ["terminal-capture", "capture.log", "--edit"],
+    ])
+    func editorHandoffNeverEvaluatesPro(_ arguments: [String]) throws {
+        let options = try CLIArguments.parse(arguments)
+        var checks = 0
+        try CLIEntitlement.authorize(options) {
+            checks += 1
+            return false
+        }
+        #expect(checks == 0)
+    }
+
+    @Test(arguments: [
+        ["--copy"], ["--out", "image.png"], ["--text-sidecar"],
+        ["--markdown-sidecar"], ["--html-sidecar"],
+    ])
+    func handoffCannotAuthorizeAnOutput(_ flags: [String]) {
+        #expect(throws: (any Error).self) {
+            try CLIArguments.parse(["render", "input.swift", "--edit"] + flags)
+        }
+    }
+
+    @Test(arguments: [
+        ["render", "input.swift", "--copy"],
+        ["render", "input.swift", "--out", "image.png"],
+        ["multi-size", "input.swift", "--out", "images"],
+        ["batch", "inputs", "--out", "images"],
+    ])
+    func outputOperationsRemainLocked(_ arguments: [String]) throws {
+        let options = try CLIArguments.parse(arguments)
+        #expect(throws: CLIError.proRequired) {
+            try CLIEntitlement.authorize(options) { false }
+        }
+    }
+
+    @Test(arguments: ["--diff-bands", "--no-diff-bands"])
+    func explicitGitRenderStylesStillRejectHandoff(_ flag: String) {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --edit with render-only style options.")
+        ) {
+            try CLIArguments.parse(["render", "--git-staged", "--edit", flag])
+        }
+    }
+
     @Test func executableAuthorizesBeforeInitializingAppKit() throws {
         let source = try String(
             contentsOf: repoFile("VitrineCLI", "CLICommandLine.swift"), encoding: .utf8)
         let authorization = try #require(
-            source.range(of: "try CLIEntitlement.authorize(options.command)"))
+            source.range(of: "try CLIEntitlement.authorize(options)"))
         let appInitialization = try #require(source.range(of: "NSApplication.shared"))
 
         #expect(authorization.lowerBound < appInitialization.lowerBound)

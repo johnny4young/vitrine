@@ -174,6 +174,17 @@ public struct SnapshotConfig: Equatable {
         return replacingRedactedLines(in: code)
     }
 
+    /// Starts a new text document using this document's reusable style. Restoring a
+    /// shared document must instead apply its own marks and content unchanged.
+    public func replacingContent(with text: String, language: Language? = nil) -> SnapshotConfig {
+        var document = self
+        document.clearContentMarks()
+        document.terminalColumns = nil
+        document.code = text
+        if let language { document.language = language }
+        return document
+    }
+
     /// Clears the marks tied to *this specific content* — free-form annotations
     /// (arrows / text / blur), highlighted/redacted line ranges, and any beautified
     /// foreground image — so loading new content (paste, drop, quick capture) starts

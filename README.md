@@ -311,7 +311,7 @@ Shortcuts and App Intents.
 - ⚡ **Shortcuts / App Intents** *(PRO)* — render a code image or open the editor from Shortcuts and Spotlight.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
 - 🌍 **Localized** in English and Spanish (String Catalog), with pseudolocale and RTL layout tests.
-- 🖥️ **Command-line tools** — basic `vgrab <command>` terminal capture is free. The general `vitrine render input.swift --out image.png`, multi-size, batch, and `vpane` automation surfaces are direct-download PRO, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
+- 🖥️ **Command-line tools** — basic `vgrab <command>` terminal capture and `vitrine render --edit` editor handoff are free. The general `vitrine render input.swift --out image.png`, multi-size, batch, and `vpane` image-output automation surfaces are direct-download PRO, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
 - 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark (now with a scannable **QR link chip** and a **signature footer bar** placement), multi-size one-pass export, carousel export, and the automation surfaces above; core capture and editing stay free.
 - 🔒 Sandboxed local rendering — your code **never leaves your Mac** when Vitrine renders code. URL capture is the explicit exception because the requested page must be fetched.
 

@@ -1210,6 +1210,31 @@ struct Theme: Identifiable, Hashable {
 }
 ```
 
+## New text versus restored documents
+
+`SnapshotConfig.replacingContent(with:language:)` starts a new text document over an
+existing style. It drops annotations, highlighted/redacted rows, foreground images,
+and invocation-only terminal width. A missing language hint preserves the caller's
+language; adapters that promise detection resolve it before replacement. CLI handoff,
+Open Code in Editor, quick capture (including URL-as-text recovery), loaded files, and
+recent captures use this boundary. File append remains distinct and keeps existing marks.
+
+A shared snapshot is already a complete document: its decoder applies its own validated
+annotations and style, and `loadIntoPrimary` does not clear them. That window operation
+stops live-file watching and loads exactly the supplied document. It must not become an
+implicit new-content sanitizer.
+
+| Entry | Free/PRO contract | Channel |
+| --- | --- | --- |
+| Editor text ingress / Open Code in Editor | Free handoff; no export performed | Direct download and App Store |
+| `render --edit`, `vpane -e` | Free handoff; no image, output file, sidecar, or general clipboard write | Direct-download CLI |
+| `terminal-capture` / basic `vgrab` | Existing constrained free terminal copy or handoff | Direct-download CLI |
+| General CLI render/copy/save, multi-size, batch | PRO; authorized before input reads | Direct-download CLI |
+| Render Code Image intent / macOS image Service | PRO automation | Direct download and App Store |
+
+The CLI has no StoreKit bridge. Parser validation rejects handoff/output combinations
+before operation-based authorization, so `--edit` cannot turn a PRO output into a free one.
+
 ## UI/UX decisions
 
 - **Native components:** SwiftUI/AppKit Picker, Slider, Toggle — they look native because they are.

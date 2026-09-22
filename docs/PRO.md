@@ -122,10 +122,14 @@ In-process surfaces gate on their injected `environment.entitlements.isUnlocked(
 before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
 forces terminal language, requires clipboard copy or editor handoff, and accepts only terminal
 width plus filename/title context. The parser rejects every general style, output, sidecar, and
-automation flag on that command. `render`, `multi-size`, and `batch` remain PRO; `CLICommandLine`
-calls `CLIEntitlement.isProUnlocked()` for those commands before dispatch, so the unchanged
-`CLIRenderer` operations stay ungated and fully testable. `vpane` deliberately uses general
-`render` and remains PRO. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
+automation flag on that command. `render --edit` is also free: it only hands text to the
+editor, matching the free Open Code in Editor intent. It cannot copy, save an image, emit
+sidecars, or accept render-only style options. Closing the editor does not create an export.
+`render` image output, `multi-size`, and `batch` remain PRO. `CLICommandLine` authorizes the
+validated operation before AppKit initialization or input reads; free handoffs never inspect
+the activation token. `CLIRenderer` stays independently testable. `vpane` uses `render`, so its
+image output requires PRO while `vpane -e` only opens the editor and is free.
+`vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
 `--recursive` opts into nested folders while preserving their relative output paths, and
 `--fail-on-skipped` turns any skipped file into a non-zero automation exit after the
 readable files are rendered. `--skipped-report <json>` can be paired with either mode
