@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Confirm named theme and preset deletions with Cancel as the safe default. Deleting
+  the active default theme explicitly falls back to One Dark without changing other
+  style settings or open editor snapshots.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

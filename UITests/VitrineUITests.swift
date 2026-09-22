@@ -635,6 +635,107 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testLibraryPresetDeletionRequiresNamedConfirmationAndPersists() {
+        for language in ["en", "es"] {
+            continueAfterFailure = false
+            let app = launch(
+                arguments: VitrineLaunchArguments.settings + [
+                    "-AppleLanguages", "(\(language))", "-AppleLocale",
+                    language == "es" ? "es_ES" : "en_US",
+                ])
+            defer { app.terminate() }
+            let settings = SettingsRobot(testCase: self, app: app)
+            assertExists(settings.generalPane, in: app, timeout: 8)
+            settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+            element("save-style-preset-button", in: app).click()
+            let name = app.windows.firstMatch.sheets.textFields.firstMatch
+            assertExists(name, in: app, timeout: 3)
+            name.click()
+            name.typeKey("a", modifierFlags: .command)
+            name.typeText("Deletion example")
+            app.windows.firstMatch.sheets.buttons[language == "es" ? "Guardar" : "Save"].click()
+            element("apply-style-preset-button", in: app).click()
+            element("delete-style-preset-button", in: app).click()
+            let sheet = app.windows.firstMatch.sheets.firstMatch
+            XCTAssertTrue(sheet.waitForExistence(timeout: 3))
+            XCTAssertTrue(
+                sheet.staticTexts.matching(
+                    NSPredicate(
+                        format: "value CONTAINS %@ OR label CONTAINS %@", "Deletion example",
+                        "Deletion example")
+                ).firstMatch.exists)
+            // Return is deliberately the safe choice, not implicit deletion.
+            app.typeKey(.return, modifierFlags: [])
+            XCTAssertEqual(
+                element("style-preset-picker", in: app).value as? String, "Deletion example")
+            element("delete-style-preset-button", in: app).click()
+            app.typeKey(.escape, modifierFlags: [])
+            XCTAssertEqual(
+                element("style-preset-picker", in: app).value as? String, "Deletion example")
+            element("delete-style-preset-button", in: app).click()
+            app.windows.firstMatch.sheets.buttons[
+                language == "es" ? "Eliminar preajuste" : "Delete Preset"
+            ].click()
+            XCTAssertFalse(element("delete-style-preset-button", in: app).isEnabled)
+            app.terminate()
+            app.launch()
+            app.activate()
+            assertExists(app.windows.firstMatch, in: app, timeout: 8)
+            settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+            element("style-preset-picker", in: app).click()
+            XCTAssertFalse(app.menuItems["Deletion example"].exists)
+            app.typeKey(.escape, modifierFlags: [])
+        }
+    }
+
+    @MainActor
+    func testLibraryThemeDeletionCancelsThenReplacesActiveDefaultOnRelaunch() {
+        for language in ["en", "es"] {
+            continueAfterFailure = false
+            let app = launch(
+                arguments: VitrineLaunchArguments.settings + [
+                    "-AppleLanguages", "(\(language))", "-AppleLocale",
+                    language == "es" ? "es_ES" : "en_US",
+                ])
+            defer { app.terminate() }
+            let settings = SettingsRobot(testCase: self, app: app)
+            assertExists(settings.generalPane, in: app, timeout: 8)
+            settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+            element("new-custom-theme-button", in: app).click()
+            let name = element("custom-theme-name-field", in: app)
+            assertExists(name, in: app, timeout: 3)
+            name.click()
+            name.typeKey("a", modifierFlags: .command)
+            name.typeText("Theme deletion example")
+            app.windows.firstMatch.sheets.buttons[language == "es" ? "Guardar" : "Save"].click()
+            element("delete-custom-theme-button", in: app).click()
+            let sheet = app.windows.firstMatch.sheets.firstMatch
+            XCTAssertTrue(sheet.waitForExistence(timeout: 3))
+            XCTAssertTrue(
+                sheet.staticTexts.matching(
+                    NSPredicate(
+                        format: "value CONTAINS %@ OR label CONTAINS %@", "Theme deletion example",
+                        "Theme deletion example")
+                ).firstMatch.exists)
+            sheet.buttons[language == "es" ? "Cancelar" : "Cancel"].click()
+            XCTAssertEqual(
+                element("custom-theme-picker", in: app).value as? String, "Theme deletion example")
+            element("delete-custom-theme-button", in: app).click()
+            app.windows.firstMatch.sheets.buttons[
+                language == "es" ? "Eliminar tema" : "Delete Theme"
+            ].click()
+            app.terminate()
+            app.launch()
+            app.activate()
+            assertExists(app.windows.firstMatch, in: app, timeout: 8)
+            settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+            XCTAssertFalse(element("custom-theme-picker", in: app).exists)
+            settings.open(navigation: "settings-nav-style", pane: "settings-style-pane")
+            XCTAssertTrue(app.buttons["One Dark"].isSelected)
+        }
+    }
+
+    @MainActor
     func testStylePaneShowsFreeBrandKitDragHandle() {
         continueAfterFailure = false
         let app = launch(
