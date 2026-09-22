@@ -291,8 +291,11 @@ private struct AnnotationHandle: View {
                 .gesture(moveGesture)
         } else {
             base
-                .onTapGesture { onSelect() }
-                .gesture(moveGesture)
+                // A short move and a click are mutually exclusive, not competing
+                // recognizers. Give a real drag first chance, then let a click select.
+                .gesture(
+                    moveGesture.exclusively(before: TapGesture().onEnded { onSelect() })
+                )
         }
     }
 
