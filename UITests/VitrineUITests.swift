@@ -462,6 +462,77 @@ final class VitrineUITests: XCTestCase {
         ).click()
     }
 
+    /// Real pointer and keyboard routing complements the pure canvas geometry tests.
+    /// A fixed-size destination scales the same overlay without a second zoom transform.
+    @MainActor
+    func testAnnotationDrawingSelectionResizeAndKeyboardNudge() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        for fixedCanvas in [false, true] {
+            let app = launch(arguments: VitrineLaunchArguments.editor)
+            defer { app.terminate() }
+            assertExists(element("editor-window", in: app), in: app, timeout: 8)
+            if fixedCanvas {
+                element("inspector-disclosure-output", in: app).click()
+                let destinations = element("editor-destination-preset-picker", in: app)
+                assertExists(destinations, in: app)
+                destinations.buttons["OG"].click()
+            }
+            revealToolbarAction(
+                "annotation-tool-arrow", from: "annotation-tool-picker", in: app
+            ).click()
+            // SwiftUI forwards the stage identifier to both the code and status text.
+            // Target the synthetic demo's rendered code, not the status capsule.
+            let stage = app.staticTexts.matching(
+                NSPredicate(
+                    format: "identifier == %@ AND value BEGINSWITH %@",
+                    "editor-preview-stage", "import SwiftUI")
+            ).element
+            assertExists(stage, in: app)
+            let center = stage.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            let delete = app.buttons["Delete annotation"]
+            center.click()
+            XCTAssertFalse(delete.exists, "A click must not create a zero-size arrow")
+            let start = center.withOffset(CGVector(dx: -30, dy: -20))
+            let end = center.withOffset(CGVector(dx: 30, dy: 20))
+            start.press(
+                forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.15)
+            assertExists(delete, in: app)
+            revealToolbarAction(
+                "annotation-tool-select", from: "annotation-tool-picker", in: app
+            ).click()
+            center.withOffset(CGVector(dx: -30, dy: 35)).click()
+            XCTAssertTrue(delete.waitForNonExistence(timeout: 3), "Empty canvas clears selection")
+            center.click()
+            assertExists(delete, in: app)
+
+            let beforeMove = delete.frame
+            let movedCenter = center.withOffset(CGVector(dx: 15, dy: 0))
+            center.press(
+                forDuration: 0.1, thenDragTo: movedCenter, withVelocity: .slow,
+                thenHoldForDuration: 0.15)
+            XCTAssertEqual(delete.frame.minX - beforeMove.minX, 15, accuracy: 3)
+            let beforeResize = delete.frame
+            let movedEnd = end.withOffset(CGVector(dx: 15, dy: 0))
+            movedEnd.press(
+                forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
+                withVelocity: .slow, thenHoldForDuration: 0.15)
+            XCTAssertEqual(delete.frame.minX - beforeResize.minX, 15, accuracy: 3)
+            let beforeKey = delete.frame
+            app.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [.shift])
+            XCTAssertGreaterThan(
+                delete.frame.minX, beforeKey.minX, "The focused mark receives arrow keys")
+            let attachment = XCTAttachment(
+                screenshot: element("editor-window", in: app).screenshot())
+            attachment.name = fixedCanvas ? "annotation-fixed-canvas" : "annotation-natural-canvas"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            delete.click()
+            XCTAssertTrue(delete.waitForNonExistence(timeout: 3))
+            app.terminate()
+        }
+    }
+
     /// Selection-only actions must be present but disabled until a mark is selected.
     /// The same gate keeps their keyboard shortcuts from firing while code has focus.
     @MainActor

@@ -181,8 +181,10 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
 
     /// Formats an already-resolved editor. Keeping the AppKit lookup at the command
     /// boundary lets the asynchronous edit contract be exercised without relying on
-    /// process-global key-window state in the test host.
-    func formatCode(in textView: NSTextView, language: Language) {
+    /// process-global key-window state in the test host. Returns the asynchronous operation
+    /// when one was started; callers may await it even after a later command cancels it.
+    @discardableResult
+    func formatCode(in textView: NSTextView, language: Language) -> Task<Void, Never>? {
         let original = textView.string
         let byteCount = original.utf8.count
         formatTask?.cancel()
@@ -192,7 +194,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         guard byteCount <= Self.maxInteractiveFormatBytes else {
             feedback(
                 Notifier.failure(String(localized: "Code is too large to format interactively")))
-            return
+            return nil
         }
 
         if byteCount > Self.asyncFormatThresholdBytes {
@@ -211,11 +213,12 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
                 else { return }
                 Self.applyFormattedCode(tidied, original: original, to: textView)
             }
-            return
+            return formatTask
         }
 
         let tidied = CodeFormatter.tidy(original, language: language)
         Self.applyFormattedCode(tidied, original: original, to: textView)
+        return nil
     }
 
     /// Applies an already-computed format result through the text view's native edit

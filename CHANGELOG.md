@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Exercise terminal state with a bounded, reproducible command corpus, including
+  sanitizer execution, and verify annotation drawing, selection, movement, resize
+  and keyboard routing on natural and fixed-size canvases. Await actual debounce
+  and formatting completion instead of arbitrary test delays.
+
 ### Fixed
 
 - Select the terminal domain tests in the Address Sanitizer lane and verify that
