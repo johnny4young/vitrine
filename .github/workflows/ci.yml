@@ -58,6 +58,9 @@ jobs:
       - name: Check strict golden execution guard
         run: make golden-check
 
+      - name: Check disjoint test lane execution
+        run: make test-lanes-check
+
       - name: Check strict screenshot-tour contract
         run: make screenshot-tour-check
 
@@ -256,8 +259,8 @@ jobs:
       - name: Build (universal Release)
         run: make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult"
 
-      - name: Build UI tests
-        run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
+      # The dedicated UI job compiles and executes this target on each platform.
+      # Keep Debug and universal Release gates here without compiling UI twice.
 
       - name: Test with code coverage (Swift Testing)
         run: |
@@ -266,7 +269,7 @@ jobs:
             change_base="${GITHUB_SHA}^"
           fi
           git rev-parse --verify "${change_base}^{commit}" >/dev/null
-          make test-coverage \
+          make test-ci-coverage \
             COVERAGE_PLATFORM="${{ matrix.coverage }}" \
             COVERAGE_BASE_REF="$change_base" \
             RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
@@ -296,8 +299,8 @@ jobs:
           path: |
             ${{ runner.temp }}/build.xcresult
             ${{ runner.temp }}/build-release.xcresult
-            ${{ runner.temp }}/build-ui-tests.xcresult
             ${{ runner.temp }}/test.xcresult
+            ${{ runner.temp }}/test.xcresult.lane.json
           if-no-files-found: ignore
 
       # Launch-gallery design-QA artifacts. The unit suite already renders
@@ -341,7 +344,17 @@ jobs:
       - name: Performance budget
         run: |
           set -o pipefail
-          make perf 2>&1 | tee perf.log
+          make perf RESULT_BUNDLE="${RUNNER_TEMP}/perf.xcresult" 2>&1 | tee perf.log
+      - name: Upload performance test evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: performance-tests-${{ matrix.artifact }}
+          path: |
+            ${{ runner.temp }}/perf.xcresult
+            ${{ runner.temp }}/perf.xcresult.lane.json
+          if-no-files-found: error
+
         # Promote any `PERF WARN` lines the run logged into GitHub annotations.
         # `if: always()` so warnings still surface even when the hard ceiling
         # tripped and the step above failed.

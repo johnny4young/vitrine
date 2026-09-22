@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Run heavy visual and timing suites once in their dedicated CI lanes, with
+  nonempty execution receipts, while keeping local full-suite commands complete.
+  UI tests compile in the job that executes them rather than in both platform jobs.
+  Universal Release, coverage floors and strict visual qualification are unchanged.
+
 ### Fixed
 
 - Require qualified visual comparisons for every export scenario and the social

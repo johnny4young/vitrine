@@ -59,6 +59,25 @@ review-friendly PNGs to `build/screenshot-tour/`.
 > `make` auto-detects full Xcode via `DEVELOPER_DIR` even when `xcode-select` points at
 > the Command Line Tools.
 
+## CI test lanes
+
+`make test` and `make test-coverage` remain complete local suite runs. CI uses
+`make test-ci-coverage` to omit only the suites that it executes separately through
+`make perf` and `make test-goldens`. `scripts/check-test-lanes.py` owns both selections
+and verifies actual result-bundle inventories: all five coverage bundles need passing
+tests, dedicated suites cannot overlap coverage, and every dedicated suite must pass.
+Existing opt-in generator skips remain explicit in coverage; dedicated lanes cannot
+qualify with skipped or empty suites. Both opt-in fixture recorders live outside
+the comparison suites; `make record-goldens` still selects both explicitly. Receipts
+are saved beside the `.xcresult`.
+
+Timing runs explicitly disable coverage instrumentation. Golden runs retain the
+qualified strict comparison on Tahoe and explicitly labeled smoke on Sequoia. No
+coverage threshold, compatibility platform, Release or security gate is removed.
+The UI job's `xcodebuild test` compiles its target before execution, so the other
+build job does not repeat a compile-only UI pass. CoreText/AppKit suites stay serial;
+this change does not infer that framework work is safe to parallelize.
+
 ## Conventions
 
 See [AGENTS.md](AGENTS.md). In short:
