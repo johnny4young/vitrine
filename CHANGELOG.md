@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Avoid flagging constructor calls such as `WordPieceTokenizer()` and
+  `NSSecureTextField()` as secret values, without exempting quoted literals or
+  provider tokens inside their arguments. Bound generic assignment scanning on
+  adversarial long identifiers and verify that megabyte-line tails are not skipped.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each
