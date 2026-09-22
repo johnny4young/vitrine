@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Register the macOS Services provider at application startup, using the same live
+  settings and PRO entitlement as the app. The advertised code-image service keeps
+  its PNG return contract and Free/PRO policy.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

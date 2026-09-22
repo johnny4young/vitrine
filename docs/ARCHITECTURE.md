@@ -661,6 +661,10 @@ recording, or Accessibility, and the actions write nothing to disk on their own.
 
 **Composition boundary.** The Services provider retains the `AppEnvironment` supplied
 when it is constructed, so its PRO gate and exported style resolve from the same graph.
+`AppDelegate.applicationDidFinishLaunching` installs that provider after starting
+entitlement updates, once the graph is ready to handle incoming requests. A hosted
+regression checks the actual registered provider after launch; external cold/warm
+Services invocation remains a separate integration check, not a direct method call.
 App Intents are constructed by the system rather than by an app-owned controller; each
 `perform()` adapter therefore binds once to `AppEnvironment.shared` and uses that graph
 for entitlement checks, Brand Kit watermarking, saved language history, and editor

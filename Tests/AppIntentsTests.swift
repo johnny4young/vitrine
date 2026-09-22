@@ -447,6 +447,11 @@ struct AutomationCompositionTests {
 @MainActor
 @Suite("Services registration")
 struct ServiceRegistrationTests {
+    @Test func launchRegistersTheProviderWithTheLiveEnvironment() throws {
+        let provider = try #require(NSApp.servicesProvider as? CodeImageService)
+        #expect(provider.environment === AppEnvironment.shared)
+    }
+
     @Test func acceptsPlainTextAndReturnsImageTypes() {
         // The service takes a text selection and returns an image, matching the
         // NSSendTypes/NSReturnTypes declared in the Info.plist.
