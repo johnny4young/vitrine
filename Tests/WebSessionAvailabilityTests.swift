@@ -83,4 +83,22 @@ struct WebSessionAvailabilityTests {
         #expect(types.contains(WKWebsiteDataTypeServiceWorkerRegistrations))
         #expect(types == WKWebsiteDataStore.allWebsiteDataTypes())
     }
+
+    @Test(.timeLimit(.minutes(1)))
+    func clearingAnEmptySessionReturnsNoHostsAndNotifiesObservers() async {
+        // The ordinary sandboxed lane verifies the empty-state command contract.
+        // Populated cookies, storage, and cached responses are qualified by the
+        // controlled WebKit lane, whose host can launch the network process.
+        let store = WKWebsiteDataStore.nonPersistent()
+        #expect((await WebSessionStore.signedInHosts(in: store)).isEmpty)
+        await confirmation("Session observers refresh exactly once even when no sites are stored") {
+            confirmed in
+            let observer = NotificationCenter.default.addObserver(
+                forName: WebSessionStore.didChange, object: nil, queue: nil
+            ) { _ in confirmed() }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            #expect((await WebSessionStore.clearSessions(in: store)).isEmpty)
+            #expect((await WebSessionStore.signedInHosts(in: store)).isEmpty)
+        }
+    }
 }

@@ -165,13 +165,21 @@ struct WebCaptureIntegrationTests {
     @Test func pendingLoadHonorsItsTimeout() async throws {
         let key = UUID().uuidString
         var request = try config("hold/\(key)")
-        request.safetyCaps.maxTimeout = .seconds(1)
+        // A cold WebKit process on the hosted Sequoia runner can consume a one-second
+        // budget before dispatching any request. Keep the real-load assertion and use
+        // the same startup allowance as the cancellation journey, not a blind sleep.
+        // The unit waiter tests independently cover short timer expiration.
+        request.safetyCaps.maxTimeout = .seconds(5)
+        let started = ContinuousClock.now
         do {
             _ = try await URLSnapshotEngine(websiteDataStore: isolatedStore()).snapshot(of: request)
             Issue.record("Unreleased capture unexpectedly produced an image")
         } catch let error as WebSnapshotError {
             #expect(error == .timedOut)
         }
+        let elapsed = started.duration(to: .now)
+        #expect(elapsed >= request.safetyCaps.maxTimeout)
+        #expect(elapsed < .seconds(10))
         #expect(try await events().contains { $0["path"] == "/hold/\(key)" })
         let session = URLSession(configuration: .ephemeral)
         defer { session.invalidateAndCancel() }
