@@ -260,7 +260,7 @@ struct StoreKitProviderTests {
         }
     }
 
-    #if DEBUG && !VITRINE_DIRECT_DOWNLOAD
+    #if DEBUG
         @Test func managedStoreFixtureRequiresExplicitIsolation() async throws {
             #expect(ManagedStoreUITestFixture.makeEntitlements(environment: [:]) == nil)
             #expect(

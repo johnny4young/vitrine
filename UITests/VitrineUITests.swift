@@ -104,6 +104,16 @@ final class VitrineUITests: XCTestCase {
 
     @MainActor
     func testExportControlsAnnounceProRequirementsAndKeepAnEscapePath() throws {
+        try verifyExportProRequirements(compact: false)
+    }
+
+    @MainActor
+    func testCompactExportControlsAnnounceProRequirementsAndKeepAnEscapePath() throws {
+        try verifyExportProRequirements(compact: true)
+    }
+
+    @MainActor
+    private func verifyExportProRequirements(compact: Bool) throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
         for language in ["en", "es"] {
@@ -124,12 +134,35 @@ final class VitrineUITests: XCTestCase {
                         language == "es" ? "es_ES" : "en_US",
                     ], environment: environment)
                 defer { app.terminate() }
-                let sizes = element("export-sizes-button", in: app)
-                assertExists(sizes, in: app, timeout: 8)
+                let window = element("editor-window", in: app)
+                assertExists(window, in: app, timeout: 8)
+                if compact {
+                    // Exercise the actual resize path rather than a test-only toolbar override.
+                    let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+                        .withOffset(CGVector(dx: -1, dy: 0))
+                    edge.press(
+                        forDuration: 0.1,
+                        thenDragTo: edge.withOffset(CGVector(dx: 960 - window.frame.width, dy: 0)))
+                    assertHittable(
+                        "editor-actions-menu", in: app, "Resizing must expose the compact toolbar")
+                }
+                let sizes = revealToolbarAction(
+                    "export-sizes-button", from: "editor-actions-menu", in: app)
                 let lockedValue = language == "es" ? "Requiere PRO" : "Requires PRO"
-                for identifier in ["export-sizes-button", "export-carousel-button"] {
-                    let button = element(identifier, in: app)
-                    XCTAssertEqual(button.value as? String ?? "", unlocked ? "" : lockedValue)
+                let titles =
+                    language == "es"
+                    ? ["Exportar tamaños", "Exportar carrusel"]
+                    : ["Export sizes", "Export carousel"]
+                for (index, identifier) in ["export-sizes-button", "export-carousel-button"]
+                    .enumerated()
+                {
+                    let button = hittableElement(identifier, in: app)
+                    if button.elementType == .menuItem {
+                        XCTAssertEqual(
+                            button.title, titles[index] + (unlocked ? "" : " — " + lockedValue))
+                    } else {
+                        XCTAssertEqual(button.value as? String ?? "", unlocked ? "" : lockedValue)
+                    }
                 }
                 if !unlocked {
                     sizes.click()
@@ -137,7 +170,10 @@ final class VitrineUITests: XCTestCase {
                     app.typeKey(.escape, modifierFlags: [])
                     XCTAssertTrue(
                         element("pro-paywall-sheet", in: app).waitForNonExistence(timeout: 3))
-                    XCTAssertTrue(sizes.isEnabled)
+                    XCTAssertTrue(
+                        revealToolbarAction(
+                            "export-sizes-button", from: "editor-actions-menu", in: app
+                        ).isEnabled)
                 }
             }
         }

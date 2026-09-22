@@ -5353,6 +5353,16 @@
         }
       }
     },
+    "Export carousel — Requires PRO" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar carrusel — Requiere PRO"
+          }
+        }
+      }
+    },
     "Export carousel" : {
       "comment" : "Carousel export sheet title and toolbar accessibility label.",
       "localizations" : {
@@ -8399,6 +8409,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Rellena el pie con tu Brand Kit"
+          }
+        }
+      }
+    },
+    "Export sizes — Requires PRO" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar tamaños — Requiere PRO"
           }
         }
       }

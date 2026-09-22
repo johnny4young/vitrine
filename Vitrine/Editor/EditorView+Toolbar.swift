@@ -191,13 +191,19 @@ extension EditorView {
             .accessibilityIdentifier("pin-snapshot-button")
 
             Button(action: presentMultiSizeExport) {
-                Label("Export sizes", systemImage: "square.grid.2x2")
+                Label(
+                    entitlements.isUnlocked(.multiSizeExport)
+                        ? "Export sizes" : "Export sizes — Requires PRO",
+                    systemImage: "square.grid.2x2")
             }
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("export-sizes-button")
 
             Button(action: presentCarouselExport) {
-                Label("Export carousel", systemImage: "rectangle.stack")
+                Label(
+                    entitlements.isUnlocked(.carouselExport)
+                        ? "Export carousel" : "Export carousel — Requires PRO",
+                    systemImage: "rectangle.stack")
             }
             .disabled(!settings.hasRenderableContent || settings.style.usesImageContent)
             .accessibilityIdentifier("export-carousel-button")

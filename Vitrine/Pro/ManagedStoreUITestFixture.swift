@@ -1,8 +1,10 @@
-#if DEBUG && !VITRINE_DIRECT_DOWNLOAD
+#if DEBUG
     import Foundation
 
     /// An opt-in, isolated StoreKit UI graph. No App Store account, receipt, transaction,
     /// credential, or network is touched. The price is synthetic test data, not an offer.
+    /// Both Debug channels compile this graph for provider tests; only the Store
+    /// channel's app entry point can select it through the environment.
     enum ManagedStoreUITestFixture {
         static let environmentKey = "VITRINE_MANAGED_STORE_UI_TEST"
 
