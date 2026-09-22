@@ -3,9 +3,9 @@
     "architecture" : "arm64",
     "osBuild" : "25G83",
     "osVersion" : "26.6.2",
-    "sdkBuild" : "26A425",
+    "sdkBuild" : "25F70",
     "swiftVersion" : "6.2",
-    "xcodeBuild" : "27A266a"
+    "xcodeBuild" : "17F113"
   },
   "scenarios" : {
     "default-theme" : {
