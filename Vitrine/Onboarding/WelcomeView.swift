@@ -7,7 +7,7 @@ import VitrineRendering
 /// The first-run quick-start.
 ///
 /// A single compact, skippable window that teaches the core loop — *copy code →
-/// press the hotkey → paste the image* — lets the user pick a starting style,
+/// trigger a capture → paste the image* — lets the user pick a starting style,
 /// optionally record a hotkey and enable launch-at-login, and run a **sample
 /// capture that needs no clipboard content**. It is shown at most once per defaults
 /// suite (`AppSettings.hasSeenWelcome`); a clear "Get started" / "Skip" dismisses
@@ -31,6 +31,7 @@ struct WelcomeView: View {
     /// pane) so the toggle reflects the system registration without binding through
     /// `AppSettings`. It is offered, never forced.
     @State private var launchAtLogin = LaunchAtLogin.isEnabled
+    @State private var captureShortcut = KeyboardShortcuts.getShortcut(for: .quickCapture)
 
     /// The sample capture's outcome, surfaced inline so the user sees that the loop
     /// worked without leaving the window. `nil` until the user runs it.
@@ -159,19 +160,20 @@ struct WelcomeView: View {
     }
 
     /// The three-step core loop as numbered glass tiles, so the user learns
-    /// "copy code → press hotkey → paste image" at a glance.
+    /// "copy code → trigger a capture → paste image" at a glance.
     private var stepRow: some View {
         HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
             stepTile(
                 index: 1, symbol: "doc.on.clipboard", title: "Copy code", caption: "from anywhere")
-            stepTile(index: 2, symbol: "command", title: "Press the hotkey", caption: hotkeyCaption)
+            stepTile(
+                index: 2, symbol: "command", title: "Trigger a capture", caption: hotkeyCaption)
             stepTile(
                 index: 3, symbol: "photo.on.rectangle", title: "Paste the image",
                 caption: "into your doc")
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("How it works: copy code, press the hotkey, paste the image.")
+        .accessibilityLabel("How it works: copy code, trigger a capture, paste the image.")
     }
 
     /// One numbered step tile: a mono index in the corner, a gradient icon
@@ -343,26 +345,33 @@ struct WelcomeView: View {
     /// Optional setup: a hotkey recorder and launch-at-login. Both are offered, not
     /// forced — the user can dismiss the quick-start without setting either.
     private var setupControls: some View {
-        HStack(spacing: VitrineTokens.Spacing.md) {
-            HStack(spacing: VitrineTokens.Spacing.xs) {
-                Text("Global hotkey:")
-                    .font(.system(size: VitrineTokens.FontSize.body))
-                    .foregroundStyle(VitrineTokens.Text.primary)
-                KeyboardShortcuts.Recorder(for: .quickCapture)
-                    .accessibilityLabel("Global hotkey")
-                    .accessibilityIdentifier("welcome-hotkey-recorder")
-            }
-
-            Spacer(minLength: 0)
-
-            Toggle("Launch Vitrine at login", isOn: $launchAtLogin)
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .font(.system(size: VitrineTokens.FontSize.body))
-                .accessibilityIdentifier("welcome-launch-at-login-toggle")
-                .onChange(of: launchAtLogin) { _, newValue in
-                    LaunchAtLogin.setEnabled(newValue)
+        VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
+            HStack(spacing: VitrineTokens.Spacing.md) {
+                HStack(spacing: VitrineTokens.Spacing.xs) {
+                    Text("Global hotkey:")
+                        .font(.system(size: VitrineTokens.FontSize.body))
+                        .foregroundStyle(VitrineTokens.Text.primary)
+                    KeyboardShortcuts.Recorder(for: .quickCapture) { captureShortcut = $0 }
+                        .accessibilityLabel("Global hotkey")
+                        .accessibilityIdentifier("welcome-hotkey-recorder")
                 }
+
+                Spacer(minLength: 0)
+
+                Toggle("Launch Vitrine at login", isOn: $launchAtLogin)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .accessibilityIdentifier("welcome-launch-at-login-toggle")
+                    .onChange(of: launchAtLogin) { _, newValue in
+                        LaunchAtLogin.setEnabled(newValue)
+                    }
+            }
+            Text("shortcut.scope.help")
+                .font(.system(size: VitrineTokens.FontSize.subhead))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("welcome-hotkey-scope")
         }
         .padding(.vertical, VitrineTokens.Spacing.xs)
     }
@@ -388,10 +397,10 @@ struct WelcomeView: View {
     /// (so it is shown verbatim, not looked up) while the fallback prose is localized
     /// through the String Catalog.
     private var hotkeyCaption: LocalizedStringKey {
-        if let shortcut = KeyboardShortcuts.getShortcut(for: .quickCapture) {
+        if let shortcut = captureShortcut {
             return "\(shortcut.description)"
         }
-        return "set one below"
+        return "use the menu bar"
     }
 
     // MARK: - Actions

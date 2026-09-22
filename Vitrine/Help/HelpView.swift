@@ -141,6 +141,10 @@ struct HelpView: View {
             Text("Set your hotkey")
                 .font(.system(size: VitrineTokens.FontSize.headline, weight: .semibold))
                 .foregroundStyle(VitrineTokens.Text.primary)
+            Text("shortcut.scope.help")
+                .font(.system(size: VitrineTokens.FontSize.subhead))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             HStack {
                 KeyboardShortcuts.Recorder("Global hotkey:", name: .quickCapture)
                     .accessibilityIdentifier("help-hotkey-recorder")

@@ -264,7 +264,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Pay the syntax highlighter's one-time cold start now, off the render path, so
-        // a user whose first interaction is a ⇧⌘S quick capture doesn't eat the
+        // a user whose first interaction is a quick capture doesn't eat the
         // JavaScriptCore + theme-CSS warm-up inside the "instant" gesture. Low priority
         // so it never contends with the menu bar coming up or a hotkey already firing.
         Task(priority: .utility) { HighlightManager.shared.prewarm() }

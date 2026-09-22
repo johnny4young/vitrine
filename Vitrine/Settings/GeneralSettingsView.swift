@@ -33,9 +33,10 @@ struct GeneralSettingsView: View {
     var body: some View {
         SettingsPaneScroll {
             TokenGroup(title: Text("Capture")) {
-                TokenRow(label: Text("Global hotkey")) {
+                TokenRow(label: Text("Global hotkey"), caption: Text("shortcut.scope.help")) {
                     KeyboardShortcuts.Recorder(for: .quickCapture)
                         .accessibilityLabel("Global hotkey")
+                        .accessibilityIdentifier("settings-hotkey-recorder")
                 }
                 TokenRow(label: Text("Hotkey runs")) {
                     TokenSegmentedPicker(

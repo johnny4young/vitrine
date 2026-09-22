@@ -12,6 +12,11 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Global capture shortcuts are opt-in for new installations. Existing assignments and
+  explicit disables are preserved; onboarding explains their system-wide scope.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

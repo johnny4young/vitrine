@@ -190,12 +190,12 @@ struct MenuBarContent: View {
 
             if recents.captures.isEmpty {
                 // Teach the core loop here — this panel is the first surface many users
-                // open before any capture exists. The hotkey chip above shows
-                // exactly which keys "the capture hotkey" means.
+                // open before any capture exists. The menu action works even when
+                // the user has not opted in to a global shortcut.
                 VStack(alignment: .leading, spacing: 2) {
                     Text("No recent captures")
                         .foregroundStyle(VitrineTokens.Text.secondary)
-                    Text("Copy some code and press the capture hotkey.")
+                    Text("Copy some code and choose New Capture from the menu bar.")
                         .foregroundStyle(VitrineTokens.Text.tertiary)
                 }
                 .font(.system(size: VitrineTokens.FontSize.caption))
