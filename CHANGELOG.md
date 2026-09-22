@@ -12,6 +12,15 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Remove unused export presenters, clipboard and automation wrappers, shell-path
+  helpers, and visual tokens. Keep the active typed-outcome, rendering, and
+  user-granted shell-installation paths and their behavioral tests.
+- Remove the unconnected SVG background serializer and its implementation-only
+  tests. PNG, PDF, HEIC, and AVIF remain the export formats; no shipped export
+  capability is removed.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

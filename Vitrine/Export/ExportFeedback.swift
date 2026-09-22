@@ -59,22 +59,4 @@ enum ExportFeedback {
     static func presentCopy(_ copied: Bool) {
         CaptureHUDController.shared.present(copyOutcome(copied))
     }
-
-    /// Presents the source-copy outcome without describing plain text as an image.
-    static func presentSourceCopy(_ copied: Bool) {
-        CaptureHUDController.shared.present(sourceCopyOutcome(copied))
-    }
-
-    /// Presents the save outcome. A cancelled panel is deliberately silent — the
-    /// user changed their mind; there is nothing to confirm or apologize for.
-    static func presentSave(_ outcome: ExportManager.SaveOutcome) {
-        guard let feedback = saveOutcome(outcome) else { return }
-        CaptureHUDController.shared.present(feedback)
-    }
-
-    /// Presents a share failure. Success needs no HUD — the share sheet itself
-    /// is the feedback.
-    static func presentShareFailure() {
-        CaptureHUDController.shared.present(shareFailure)
-    }
 }

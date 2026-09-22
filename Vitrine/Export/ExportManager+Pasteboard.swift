@@ -81,19 +81,8 @@ extension ExportManager {
         return copyPNGToPasteboardOutcome(cgImage, to: pasteboard)
     }
 
-    /// Writes a PNG of an already-rendered `cgImage` to the pasteboard (the general
-    /// one in production; tests pass a scratch pasteboard so parallel suites can't
-    /// clobber each other on the real clipboard) — the shared primitive behind the
-    /// config-based copy above and editors that hold a rendered asset. Returns success.
-    @discardableResult
-    static func copyPNGToPasteboard(
-        _ cgImage: CGImage, to pasteboard: NSPasteboard = .general
-    ) -> Bool {
-        copyPNGToPasteboardOutcome(cgImage, to: pasteboard) == .copied
-    }
-
-    /// Checked variant for callers that already own the raster. A PNG encoder
-    /// failure remains distinct from a pasteboard write failure.
+    /// Writes an already-rendered raster as PNG. Tests pass a scratch pasteboard
+    /// instead of the general clipboard. Encoding and write failures stay distinct.
     @discardableResult
     static func copyPNGToPasteboardOutcome(
         _ cgImage: CGImage, to pasteboard: NSPasteboard = .general
