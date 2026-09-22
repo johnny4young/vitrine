@@ -1,6 +1,108 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Copy some code and choose New Capture from the menu bar." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy some code and choose New Capture from the menu bar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia código y elige Nueva captura en la barra de menús."
+          }
+        }
+      }
+    },
+    "Captures you make appear here as previews. Copy some code and choose New Capture from the menu bar to get started." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captures you make appear here as previews. Copy some code and choose New Capture from the menu bar to get started."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus capturas aparecen aquí como vistas previas. Para empezar, copia código y elige Nueva captura en la barra de menús."
+          }
+        }
+      }
+    },
+    "How it works: copy code, trigger a capture, paste the image." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How it works: copy code, trigger a capture, paste the image."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo funciona: copia código, inicia una captura y pega la imagen."
+          }
+        }
+      }
+    },
+    "shortcut.scope.help" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional. Works across all apps. Choose a shortcut to enable it; clear the recorder to disable it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opcional. Funciona en todas las apps. Asigna un atajo para activarlo; bórralo del control para desactivarlo."
+          }
+        }
+      }
+    },
+    "Trigger a capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger a capture"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia una captura"
+          }
+        }
+      }
+    },
+    "use the menu bar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "use the menu bar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "usa la barra de menús"
+          }
+        }
+      }
+    },
     "Annotation Tool" : {
       "comment" : "Edit-menu submenu containing annotation tool choices and shortcuts.",
       "localizations" : {

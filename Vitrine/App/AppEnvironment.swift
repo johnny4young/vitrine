@@ -41,6 +41,7 @@ final class AppEnvironment {
         entitlements: Entitlements? = nil
     ) {
         self.defaults = defaults
+        GlobalShortcutMigration.prepare(in: defaults)
         self.entitlements = entitlements ?? Entitlements.makeDefault()
         brandKit = BrandKitStore(defaults: defaults)
         appSettings = AppSettings(

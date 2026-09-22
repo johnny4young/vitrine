@@ -63,7 +63,7 @@ optional [**PRO**](#vitrine-pro) tier for people who publish professionally.
 ## The flow you'll actually use
 
 1. **Copy** what you want to share — a snippet of code, terminal output, or a URL.
-2. **Trigger Vitrine** — global hotkey (`⇧⌘S`) or the menu-bar icon.
+2. **Trigger Vitrine** — the menu-bar icon, or a global hotkey you choose in Settings.
 3. **Vitrine detects the content type** and picks the renderer:
    - **Code** → format + syntax highlight → a beautiful image, using the theme and
      style you preset in **Settings** (no questions asked).
@@ -190,9 +190,9 @@ and render it locally in WebKit.
 
 ### Capture
 
-Lives in the menu bar (`LSUIElement`, no Dock icon) and opens from anywhere with a
-global hotkey (`⇧⌘S`). It reads the clipboard, detects **code, terminal output, or a
-URL**, and picks the matching workflow — one-step Quick mode for code using your saved
+Lives in the menu bar (`LSUIElement`, no Dock icon) and opens from anywhere with an
+optional global hotkey (configure it in Settings → General). It reads the clipboard,
+detects **code, terminal output, or a URL**, and picks the matching workflow — one-step Quick mode for code using your saved
 style, or the editor when you want to fine-tune. Pasted HTML opens the dedicated Web
 Snapshot editor.
 
@@ -285,7 +285,7 @@ Shortcuts and App Intents.
 <summary>Everything, in detail</summary>
 
 - 🍫 Native **menu-bar app** (`NSStatusItem`, `LSUIElement` — no Dock icon, no app switcher).
-- ⌨️ Configurable **global hotkey** (`⇧⌘S`) via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
+- ⌨️ Configurable **global hotkey**, opt-in for new installations, via [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts).
 - 🌈 **Syntax highlighting** for 33 shipped syntax languages via [Highlightr](https://github.com/raspu/Highlightr) (Highlight.js), plus Terminal and Plain Text modes. Use `vitrine list languages --json` to inspect the catalog shipped by your build.
 - 🖥️ **Terminal output → image** — paste or drop colored terminal output (`git`, test runners, build logs) and Vitrine renders the ANSI/SGR styling (16 / 256 / truecolor, bold · italic · underline · strikethrough · inverse, plus OSC 8 hyperlinks); the palette follows your theme. The basic **`vgrab` shell helper is free**: it captures a command's output with its color intact and adds a compact project, current Git branch when available, and command header so the image keeps its context when shared (`--no-context` restores an output-only capture). It also supports **full-screen TUIs** (`htop`, `vim`, `lazygit`), whose final screen Vitrine reconstructs with a cell-buffer emulator — wide CJK and emoji included. `vpane` and general CLI automation remain PRO, and dropping an **asciinema** recording (`.cast`) replays it into the same renderer. → [`docs/TERMINAL.md`](docs/TERMINAL.md).
 - 🖼️ **Beautify any image** — drop, paste, or quick-capture any screenshot (not just code) and render it on the same backgrounds, padding, and shadow, optionally wrapped in a macOS-window, browser, or MacBook / iPhone device frame. The frame chrome auto-tints to the image's top-edge color so it blends in (Light/Dark are manual overrides). Browser and device frames are PRO.
