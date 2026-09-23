@@ -176,35 +176,8 @@ import VitrineRendering
             }
             if arguments.contains("--open-editor") {
                 EditorWindowController.shared.show()
+                applyRequestedEditorViewportForUITesting()
                 didOpenWindow = true
-            }
-            // Deterministic visual QA viewport. XCUITest pointer drags at a
-            // 1024-point display edge can stop short of a window size that
-            // AppKit itself supports, so the test sets the real window frame
-            // before inspecting its controls. This entire handler is Debug-only.
-            if arguments.contains("--open-editor"),
-                let requested = ProcessInfo.processInfo.environment[
-                    "VITRINE_UI_TEST_EDITOR_VIEWPORT"
-                ]
-            {
-                let parts = requested.split(separator: "x", omittingEmptySubsequences: false)
-                if parts.count == 2,
-                    let width = Int(parts[0]), let height = Int(parts[1]),
-                    let window = NSApp.windows.first(where: {
-                        $0.identifier == EditorWindowIdentity.primary.restorationIdentifier
-                    }),
-                    let visible = (window.screen ?? NSScreen.main)?.visibleFrame,
-                    CGFloat(width) >= window.minSize.width,
-                    CGFloat(height) >= window.minSize.height,
-                    CGFloat(width) <= visible.width, CGFloat(height) <= visible.height
-                {
-                    window.setFrame(
-                        NSRect(
-                            x: visible.midX - CGFloat(width) / 2,
-                            y: visible.midY - CGFloat(height) / 2,
-                            width: CGFloat(width), height: CGFloat(height)),
-                        display: true)
-                }
             }
             if arguments.contains("--open-command-palette") {
                 // The editor reads this same argument in its own `.task` and opens the
@@ -358,6 +331,33 @@ import VitrineRendering
             }
 
             return didOpenWindow
+        }
+
+        /// Sets a real compact frame for UI fixtures. A content minimum that rejects
+        /// it still fails the test's resulting-size assertion. Debug builds only.
+        private func applyRequestedEditorViewportForUITesting() {
+            guard
+                let requested = ProcessInfo.processInfo.environment[
+                    "VITRINE_UI_TEST_EDITOR_VIEWPORT"
+                ]
+            else { return }
+            let parts = requested.split(separator: "x", omittingEmptySubsequences: false)
+            guard parts.count == 2,
+                let width = Int(parts[0]), let height = Int(parts[1]),
+                let window = NSApp.windows.first(where: {
+                    $0.identifier == EditorWindowIdentity.primary.restorationIdentifier
+                }),
+                let visible = (window.screen ?? NSScreen.main)?.visibleFrame,
+                CGFloat(width) >= window.minSize.width,
+                CGFloat(height) >= window.minSize.height,
+                CGFloat(width) <= visible.width, CGFloat(height) <= visible.height
+            else { return }
+            window.setFrame(
+                NSRect(
+                    x: visible.midX - CGFloat(width) / 2,
+                    y: visible.midY - CGFloat(height) / 2,
+                    width: CGFloat(width), height: CGFloat(height)),
+                display: true)
         }
 
         private func configuredMemoryIterationCount(
