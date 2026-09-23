@@ -697,8 +697,8 @@ explicit, and understandable after the image leaves the Mac.
 - **Capture pages that are behind a login.** Turn on "Use my logged-in session" and the
   Web Snapshot window offers to sign you in to the site first, in a real browser window;
   the capture that follows sees the signed-in page. The session belongs to Vitrine alone
-  — nothing is read from Safari or Chrome — and Settings lists the sites you are signed
-  in to, with one button to sign out of all of them.
+  — nothing is read from Safari or Chrome — and Settings lists sites with saved WebKit
+  data, with one button to clear it. This does not revoke server-side sessions.
 
 ### Fixed
 

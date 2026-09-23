@@ -225,7 +225,7 @@ enum ReleaseNotes {
                 "Capture pages behind a login: turn on \"Use my logged-in session\", "
                     + "sign in to the site in a real browser window, and the capture sees "
                     + "the signed-in page. The session is Vitrine's own — nothing is read "
-                    + "from Safari or Chrome — and Settings can sign out of every site.",
+                    + "from Safari or Chrome — and Settings can clear its saved website data.",
                 "The menu-bar icon can no longer disappear and take the app with it: "
                     + "Vitrine now owns its status item, so a hidden icon never again "
                     + "quits the app at launch with no way back.",

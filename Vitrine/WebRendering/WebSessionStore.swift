@@ -24,12 +24,12 @@ enum WebSessionStore {
     /// These are site labels, not a complete hostname inventory or proof of login.
     /// Lets the UI show stored sites rather than asking users to trust
     /// an opaque switch — and lets "clear" show what it is about to remove.
-    static func signedInHosts(in store: WKWebsiteDataStore = .default()) async -> [String] {
+    static func storedSiteLabels(in store: WKWebsiteDataStore = .default()) async -> [String] {
         let records = await store.dataRecords(ofTypes: sessionDataTypes)
         return records.map(\.displayName).sorted()
     }
 
-    /// Removes every stored session, returning the hosts that were cleared.
+    /// Removes every saved website-data record, returning its site labels.
     ///
     /// Includes cached private responses and service worker registrations. This cannot
     /// revoke server-side sessions or remove data in another application.

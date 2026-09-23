@@ -265,13 +265,13 @@
         }
       }
     },
-    "Sign Out of All" : {
-      "comment" : "Button that clears every stored web session.",
+    "Clear All Web Data" : {
+      "comment" : "Button that clears all website data stored by Vitrine without claiming to revoke server-side sessions.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cerrar todas las sesiones"
+            "value" : "Borrar todos los datos web"
           }
         }
       }
@@ -287,13 +287,24 @@
         }
       }
     },
-    "Signed-in sites" : {
-      "comment" : "Label listing the sites Vitrine holds a web session for.",
+    "Sites with saved data" : {
+      "comment" : "Label listing WebKit site labels with stored data, not proof of an active login.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sitios con sesión iniciada"
+            "value" : "Sitios con datos guardados"
+          }
+        }
+      }
+    },
+    "Removes website data saved by Vitrine; it does not end server-side sessions." : {
+      "comment" : "Accessibility hint for clearing Vitrine's own WebKit data without promising server-side logout.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borra los datos web guardados por Vitrine; no cierra las sesiones en el servidor del sitio."
           }
         }
       }

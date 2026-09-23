@@ -96,7 +96,7 @@ struct WebCaptureControls: View {
 
     /// WebKit site labels with saved data, not proof of an active login. Read from
     /// the store rather than duplicating its inventory in preferences.
-    @State private var signedInHosts: [String] = []
+    @State private var sitesWithSavedData: [String] = []
     @State private var sessionRevision = 0
     @State private var isClearingSessions = false
 
@@ -115,7 +115,7 @@ struct WebCaptureControls: View {
                 waitRow
                 if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
                 loggedInSessionRow
-                signedInSitesRow
+                savedSitesRow
                 loopbackCaptureRow
             }
         } else {
@@ -123,7 +123,7 @@ struct WebCaptureControls: View {
             waitRow
             if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
             loggedInSessionRow
-            signedInSitesRow
+            savedSitesRow
             loopbackCaptureRow
         }
     }
@@ -170,9 +170,9 @@ struct WebCaptureControls: View {
         // is hidden while the list is empty, so it could never populate itself. This row
         // is always present in both layouts.
         .task(id: sessionRevision) {
-            let sites = await WebSessionStore.signedInHosts()
+            let sites = await WebSessionStore.storedSiteLabels()
             guard !Task.isCancelled else { return }
-            signedInHosts = sites
+            sitesWithSavedData = sites
         }
         .onReceive(NotificationCenter.default.publisher(for: WebSessionStore.didChange)) { _ in
             sessionRevision += 1
@@ -189,13 +189,13 @@ struct WebCaptureControls: View {
     /// A feature that keeps cookies on disk has to offer the way back out, and it has to
     /// say what it holds: the row names the sites rather than asking the user to trust an
     /// opaque "clear" button. Shown only while there is something to clear.
-    @ViewBuilder private var signedInSitesRow: some View {
-        if !signedInHosts.isEmpty {
+    @ViewBuilder private var savedSitesRow: some View {
+        if !sitesWithSavedData.isEmpty {
             TokenRow(
-                label: Text("Signed-in sites"),
-                caption: Text(verbatim: signedInHosts.joined(separator: ", "))
+                label: Text("Sites with saved data"),
+                caption: Text(verbatim: sitesWithSavedData.joined(separator: ", "))
             ) {
-                Button("Sign Out of All") {
+                Button("Clear All Web Data") {
                     isClearingSessions = true
                     // A live sign-in page could immediately recreate its data.
                     WebSessionWindowController.shared.close()
@@ -205,6 +205,9 @@ struct WebCaptureControls: View {
                     }
                 }
                 .disabled(isClearingSessions)
+                .accessibilityHint(
+                    "Removes website data saved by Vitrine; it does not end server-side sessions."
+                )
                 .accessibilityIdentifier("web-clear-sessions-button")
             }
         }

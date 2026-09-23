@@ -69,8 +69,7 @@ struct WebSessionAvailabilityTests {
         #expect(WebSessionAvailability.siteLabel(for: "not a url") == nil)
     }
 
-    /// Clearing must take the storage a site keeps a login alive in, not cookies alone,
-    /// or "sign out" would leave the user signed in.
+    /// Clearing must remove storage that can retain private content, not cookies alone.
     @Test func clearingCoversEveryRecordTypeASessionLivesIn() {
         let types = WebSessionStore.sessionDataTypes
         #expect(types.contains(WKWebsiteDataTypeCookies))
@@ -85,12 +84,12 @@ struct WebSessionAvailabilityTests {
     }
 
     @Test(.timeLimit(.minutes(1)))
-    func clearingAnEmptySessionReturnsNoHostsAndNotifiesObservers() async {
+    func clearingAnEmptyStoreReturnsNoSiteLabelsAndNotifiesObservers() async {
         // The ordinary sandboxed lane verifies the empty-state command contract.
         // Populated cookies, storage, and cached responses are qualified by the
         // controlled WebKit lane, whose host can launch the network process.
         let store = WKWebsiteDataStore.nonPersistent()
-        #expect((await WebSessionStore.signedInHosts(in: store)).isEmpty)
+        #expect((await WebSessionStore.storedSiteLabels(in: store)).isEmpty)
         await confirmation("Session observers refresh exactly once even when no sites are stored") {
             confirmed in
             let observer = NotificationCenter.default.addObserver(
@@ -98,7 +97,7 @@ struct WebSessionAvailabilityTests {
             ) { _ in confirmed() }
             defer { NotificationCenter.default.removeObserver(observer) }
             #expect((await WebSessionStore.clearSessions(in: store)).isEmpty)
-            #expect((await WebSessionStore.signedInHosts(in: store)).isEmpty)
+            #expect((await WebSessionStore.storedSiteLabels(in: store)).isEmpty)
         }
     }
 }

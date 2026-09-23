@@ -372,8 +372,8 @@ Vitrine is private by design, and that promise does not soften as the product gr
   and other subresources. This is URL-level filtering rather than DNS resolver isolation,
   so public-host DNS rebinding remains a documented residual risk. The web view uses a
   non-persistent data store by default (no cookies or website data persist across captures
-  unless you opt in). Pages can set temporary cookies during one capture. **Sign Out
-  of All** closes the sign-in window and clears Vitrine’s saved website data, including
+  unless you opt in). Pages can set temporary cookies during one capture. **Clear All
+  Web Data** closes the sign-in window and clears Vitrine’s saved website data, including
   cached responses and service workers. This does not revoke server-side sessions or
   erase another browser’s data. See [web capture validation](docs/WEB-CAPTURE.md).
 - **PRO activation contacts only the license provider, once.** On the direct-download build,

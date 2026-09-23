@@ -280,13 +280,13 @@ struct WebCaptureIntegrationTests {
         #expect((await store.httpCookieStore.allCookies()).contains { $0.name == "fixture" })
         let nextCapture = URLSnapshotEngine().dataStore(for: .nonPersistent)
         #expect((await nextCapture.httpCookieStore.allCookies()).isEmpty)
-        #expect(!(await WebSessionStore.signedInHosts(in: store)).isEmpty)
+        #expect(!(await WebSessionStore.storedSiteLabels(in: store)).isEmpty)
         await WebSessionStore.clearSessions(in: store)
         let retained = try await view.callAsyncJavaScript(
             "return await caches.has('fixture-private');",
             arguments: [:], in: nil, contentWorld: .page)
         #expect(retained as? Bool == false)
-        #expect((await WebSessionStore.signedInHosts(in: store)).isEmpty)
+        #expect((await WebSessionStore.storedSiteLabels(in: store)).isEmpty)
         await store.removeData(
             ofTypes: WKWebsiteDataStore.allWebsiteDataTypes(), modifiedSince: .distantPast)
     }

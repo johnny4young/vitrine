@@ -16,7 +16,7 @@ cookie-free. Retaining website data across captures requires explicit opt-in.
 Settings displays WebKit's site labels for saved website data. These labels are
 not an exhaustive hostname inventory or proof that a login is still valid. The
 inventory refreshes after closing sign-in, clearing data, or returning to Vitrine.
-**Sign Out of All** closes the sign-in window and removes all WebKit website data
+**Clear All Web Data** closes the sign-in window and removes all WebKit website data
 in Vitrine's store, including cookies, local storage, cached responses, and service
 worker registrations. New activity may create new data. It does not revoke a
 server-side session, delete backups, or change another application's storage.
