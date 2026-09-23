@@ -7,6 +7,7 @@ from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
+import plistlib
 import subprocess
 import sys
 import time
@@ -24,6 +25,7 @@ EXPECTED = {
     "clearingSessionsRemovesCachedPrivateResponses()",
 }
 PREFIX = "WebCaptureIntegrationTests/"
+DIRECT_ENTITLEMENTS = "Vitrine/Resources/Vitrine.DirectDownload.entitlements"
 
 
 def validate(payload):
@@ -58,6 +60,34 @@ def receipts(bundle):
     return payload
 
 
+def validate_direct_sandbox(settings, entitlements):
+    if settings.get("CODE_SIGN_ENTITLEMENTS") != DIRECT_ENTITLEMENTS:
+        raise ValueError("Controlled WebKit host did not use Direct Download entitlements")
+    for key in ("com.apple.security.app-sandbox", "com.apple.security.network.client"):
+        if entitlements.get(key) is not True:
+            raise ValueError(f"Controlled WebKit host lacks signed entitlement: {key}")
+
+
+def direct_sandbox_receipt():
+    result = subprocess.run([
+        "xcodebuild", "-project", "Vitrine.xcodeproj", "-scheme", "Vitrine",
+        "-configuration", "Debug", "-destination", "platform=macOS",
+        "-showBuildSettings", "-json",
+    ], cwd=ROOT, check=True, capture_output=True, text=True)
+    targets = [item for item in json.loads(result.stdout) if item["target"] == "Vitrine"]
+    if len(targets) != 1:
+        raise ValueError("Cannot identify the controlled WebKit app host")
+    settings = targets[0]["buildSettings"]
+    app = Path(settings["TARGET_BUILD_DIR"]) / settings["WRAPPER_NAME"]
+    signed = subprocess.run([
+        "codesign", "-d", "--entitlements", ":-", str(app),
+    ], check=True, capture_output=True)
+    entitlements = plistlib.loads(signed.stdout)
+    validate_direct_sandbox(settings, entitlements)
+    return {key: entitlements[key] for key in (
+        "com.apple.security.app-sandbox", "com.apple.security.network.client")}
+
+
 def self_test():
     good = {"testNodes": [{"children": [
         {"nodeIdentifier": PREFIX + name, "nodeType": "Test Case", "result": "Passed"}
@@ -81,6 +111,20 @@ def self_test():
         except ValueError:
             continue
         raise AssertionError("Accepted invalid WebKit test receipts")
+    settings = {"CODE_SIGN_ENTITLEMENTS": DIRECT_ENTITLEMENTS}
+    grants = {"com.apple.security.app-sandbox": True,
+              "com.apple.security.network.client": True}
+    validate_direct_sandbox(settings, grants)
+    for invalid_settings, invalid_grants in [
+        ({}, grants),
+        (settings, {**grants, "com.apple.security.app-sandbox": False}),
+        (settings, {**grants, "com.apple.security.network.client": False}),
+    ]:
+        try:
+            validate_direct_sandbox(invalid_settings, invalid_grants)
+        except ValueError:
+            continue
+        raise AssertionError("Accepted an incorrectly signed WebKit host")
     print(f"Controlled WebKit receipt guard: {len(bad)} fail-closed cases passed")
 
 
@@ -116,7 +160,7 @@ def loopback_fixture(output, *, script=None, startup_timeout=10):
                 fixture.wait()
 
 
-def run(output, diagnostic_host):
+def run(output, diagnostic_host, require_direct_sandbox):
     output.mkdir(parents=True, exist_ok=False)
     with loopback_fixture(output) as port:
         bundle = output / "tests.xcresult"
@@ -134,8 +178,10 @@ def run(output, diagnostic_host):
             subprocess.run(command, cwd=ROOT, stdout=log, stderr=subprocess.STDOUT,
                            check=True, timeout=900)
         payload = receipts(bundle)
+        signed_entitlements = direct_sandbox_receipt() if require_direct_sandbox else None
         report = {
             "diagnosticHost": diagnostic_host,
+            "signedEntitlements": signed_entitlements,
             "head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
             "workingTree": subprocess.check_output(["git", "status", "--short"], cwd=ROOT, text=True),
             "developerDirectory": os.environ.get("DEVELOPER_DIR"),
@@ -156,14 +202,18 @@ def main():
     mode.add_argument("--output", type=Path)
     parser.add_argument("--diagnostic-host", action="store_true",
                         help="Explicitly use an unsandboxed diagnostic test host, never a shipping build")
+    parser.add_argument("--require-direct-sandbox", action="store_true",
+                        help="Fail unless the app host is signed for the Direct Download sandbox")
     args = parser.parse_args()
+    if args.diagnostic_host and args.require_direct_sandbox:
+        parser.error("Diagnostic and Direct Download sandbox modes are mutually exclusive")
     if args.self_test:
         self_test()
     elif args.verify:
         receipts(args.verify)
         print(f"Verified {len(EXPECTED)} real controlled WebKit tests")
     else:
-        run(args.output.resolve(), args.diagnostic_host)
+        run(args.output.resolve(), args.diagnostic_host, args.require_direct_sandbox)
 
 
 if __name__ == "__main__":

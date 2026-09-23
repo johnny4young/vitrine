@@ -39,16 +39,25 @@ jobs:
         uses: ./.github/actions/setup-macos-toolchain
         with:
           summary-title: Controlled WebKit toolchain
-          summary-note: Diagnostic test host; not production sandbox or provider SSO qualification.
-      - name: Run real controlled WebKit tests and verify every receipt
+          summary-note: Diagnostic and Direct Download sandbox hosts; not provider SSO qualification.
+      - name: Run controlled WebKit tests in a diagnostic host
         run: >-
           make test-web-capture
-          WEB_CAPTURE_OUTPUT="${RUNNER_TEMP}/web-capture"
+          WEB_CAPTURE_OUTPUT="${RUNNER_TEMP}/web-capture-diagnostic"
           WEB_CAPTURE_HOST_FLAGS=--diagnostic-host
+      - name: Run controlled WebKit tests in the Direct Download sandbox
+        env:
+          VITRINE_ENTITLEMENTS_FILE: Vitrine/Resources/Vitrine.DirectDownload.entitlements
+        run: >-
+          make test-web-capture
+          WEB_CAPTURE_OUTPUT="${RUNNER_TEMP}/web-capture-direct"
+          WEB_CAPTURE_HOST_FLAGS=--require-direct-sandbox
       - name: Retain real execution evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: web-capture-${{ matrix.os }}
-          path: ${{ runner.temp }}/web-capture
+          path: |
+            ${{ runner.temp }}/web-capture-diagnostic
+            ${{ runner.temp }}/web-capture-direct
           if-no-files-found: error

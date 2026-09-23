@@ -103,7 +103,18 @@ struct URLSnapshotEngine {
             webView.stopLoading()
         }
 
-        webView.load(URLRequest(url: config.url))
+        #if DEBUG
+            if config.url.isFileURL {
+                // WebKit's sandboxed process needs an explicit read grant for the
+                // hermetic fixture; a generic file: request does not provide one.
+                webView.loadFileURL(
+                    config.url, allowingReadAccessTo: config.url.deletingLastPathComponent())
+            } else {
+                webView.load(URLRequest(url: config.url))
+            }
+        #else
+            webView.load(URLRequest(url: config.url))
+        #endif
 
         // Every wait below shares one absolute deadline. The timeout is no longer
         // only a navigation timeout; it bounds navigation, post-load settling, and
