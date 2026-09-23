@@ -82,20 +82,29 @@ final class VitrineUITests: XCTestCase {
             let cancel = element("cancel-image-processing-button", in: app)
             assertExists(copy, in: app, timeout: 8)
             let window = element("editor-window", in: app)
-            // A rounded corner can be outside the resize hit region when the
-            // window touches the hosted display edge. Resize each visible edge.
-            let right = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
-                .withOffset(CGVector(dx: -1, dy: 0))
-            right.press(
-                forDuration: 0.1,
-                thenDragTo: right.withOffset(CGVector(dx: 960 - window.frame.width, dy: 0)))
-            // On compact hosted displays the Dock intercepts the bottom edge.
-            // Shrink from the visible top edge instead, keeping the same size gate.
-            let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
-                .withOffset(CGVector(dx: 0, dy: 1))
-            top.press(
-                forDuration: 0.1,
-                thenDragTo: top.withOffset(CGVector(dx: 0, dy: window.frame.height - 600)))
+            // XCUITest can stop a resize a few points short on hosted displays.
+            // Recompute from the actual frame rather than assuming one drag reached
+            // its target; keep both handles away from a rounded corner or the Dock.
+            for _ in 0..<3 {
+                let excess = window.frame.width - 960
+                if excess <= 20 { break }
+                let right = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+                    .withOffset(CGVector(dx: -1, dy: 0))
+                right.press(
+                    forDuration: 0.1,
+                    thenDragTo: right.withOffset(CGVector(dx: -excess, dy: 0)),
+                    withVelocity: .slow, thenHoldForDuration: 0.2)
+            }
+            for _ in 0..<3 {
+                let excess = window.frame.height - 600
+                if excess <= 20 { break }
+                let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
+                    .withOffset(CGVector(dx: 0, dy: 1))
+                top.press(
+                    forDuration: 0.1,
+                    thenDragTo: top.withOffset(CGVector(dx: 0, dy: excess)),
+                    withVelocity: .slow, thenHoldForDuration: 0.2)
+            }
             XCTAssertLessThanOrEqual(window.frame.width, 980)
             XCTAssertLessThanOrEqual(window.frame.height, 620)
             copy.click()
