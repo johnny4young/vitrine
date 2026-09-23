@@ -4,12 +4,12 @@ import AppKit
 /// their singleton lifecycles to the SwiftUI editor.
 struct WebSnapshotPresentation {
     private let presentSignIn: (URL, Bool) -> Void
-    private let presentShare: (NSImage) -> Void
+    private let presentShare: @MainActor (NSImage) -> Void
     let batchExport: BatchExportPresentation
 
     init(
         presentSignIn: @escaping (URL, Bool) -> Void,
-        presentShare: @escaping (NSImage) -> Void,
+        presentShare: @escaping @MainActor (NSImage) -> Void,
         batchExport: BatchExportPresentation
     ) {
         self.presentSignIn = presentSignIn
@@ -25,29 +25,23 @@ struct WebSnapshotPresentation {
         presentShare(image)
     }
 
-    static let live = WebSnapshotPresentation(
-        presentSignIn: { url, allowsLoopback in
-            Task { @MainActor in
-                do {
-                    try await WebSessionWindowController.shared.show(
-                        url: url, allowsLoopback: allowsLoopback)
-                } catch {
-                    // The window is deliberately not opened without network isolation.
-                    let alert = NSAlert()
-                    alert.messageText = String(localized: "Could Not Open Sign-In Window")
-                    alert.informativeText = String(
-                        localized:
-                            "Vitrine could not establish safe web access. Try again later.")
-                    alert.alertStyle = .warning
-                    alert.runModal()
-                }
-            }
-        },
-        presentShare: { image in
-            guard let view = NSApp.keyWindow?.contentView else { return }
-            ShareManager.share(image, relativeTo: view)
-        },
-        batchExport: .live)
+    /// Keep the live window lookup and share action injectable so the no-window
+    /// path and the selected anchor can be checked without opening a share sheet.
+    static func makeLive(
+        requestSignIn: @escaping (URL, Bool) -> Void = WebSessionWindowController.requestSignIn,
+        keyWindow: @escaping () -> NSWindow? = { NSApp.keyWindow },
+        share: @escaping @MainActor (NSImage, NSView) -> Void = ShareManager.share
+    ) -> WebSnapshotPresentation {
+        WebSnapshotPresentation(
+            presentSignIn: requestSignIn,
+            presentShare: { image in
+                guard let view = keyWindow()?.contentView else { return }
+                share(image, view)
+            },
+            batchExport: .live)
+    }
+
+    static let live = makeLive()
 
     static let noOp = WebSnapshotPresentation(
         presentSignIn: { _, _ in },

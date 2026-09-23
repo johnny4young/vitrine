@@ -19,6 +19,24 @@ import WebKit
 final class WebSessionWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSessionWindowController()
 
+    /// Bridges the synchronous presentation action to the fail-closed async WebKit
+    /// setup. This entry point is nonisolated because the presentation port is a
+    /// plain callback; every AppKit operation still executes on the main actor.
+    nonisolated static func requestSignIn(url: URL, allowsLoopback: Bool) {
+        Task { @MainActor in
+            do {
+                try await shared.show(url: url, allowsLoopback: allowsLoopback)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = String(localized: "Could Not Open Sign-In Window")
+                alert.informativeText = String(
+                    localized: "Vitrine could not establish safe web access. Try again later.")
+                alert.alertStyle = .warning
+                alert.runModal()
+            }
+        }
+    }
+
     private let websiteDataStore: WKWebsiteDataStore
 
     /// Keep the sign-in and capture stores identical; tests inject an ephemeral store

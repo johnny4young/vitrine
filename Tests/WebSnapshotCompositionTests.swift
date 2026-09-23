@@ -110,6 +110,54 @@ struct WebSnapshotCompositionTests {
         #expect(presentation.signInRequests.last?.1 == true)
     }
 
+    @Test func noOpPresentationHasNoSignInOrExportSideEffects() throws {
+        let presentation = WebSnapshotPresentation.noOp
+        let url = try #require(URL(string: "https://example.com/login"))
+        presentation.showSignIn(for: url, allowsLoopback: false)
+        presentation.share(NSImage(size: NSSize(width: 1, height: 1)))
+        #expect(presentation.batchExport.chooseDirectory(message: "Choose a directory") == nil)
+    }
+
+    @Test func livePresentationUsesTheAvailableWindowAsShareAnchor() throws {
+        let visibleWindowsBefore = NSApp.windows.filter(\.isVisible).count
+        _ = WebSnapshotPresentation.live
+        #expect(NSApp.windows.filter(\.isVisible).count == visibleWindowsBefore)
+
+        let url = try #require(URL(string: "https://example.com/login"))
+        let image = NSImage(size: NSSize(width: 1, height: 1))
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 20, height: 20),
+            styleMask: .borderless, backing: .buffered, defer: false)
+        let anchor = NSView(frame: window.contentView?.bounds ?? .zero)
+        window.contentView = anchor
+        var requested: (URL, Bool)?
+        var shared: (NSImage, NSView)?
+        var availableWindow: NSWindow?
+        let presentation = WebSnapshotPresentation.makeLive(
+            requestSignIn: { requested = ($0, $1) },
+            keyWindow: { availableWindow },
+            share: { shared = ($0, $1) })
+
+        presentation.showSignIn(for: url, allowsLoopback: true)
+        presentation.share(image)
+        #expect(requested?.0 == url)
+        #expect(requested?.1 == true)
+        #expect(shared == nil)
+
+        availableWindow = window
+        presentation.share(image)
+        #expect(shared?.0 === image)
+        #expect(shared?.1 === anchor)
+
+        shared = nil
+        let systemAnchor = NSApp.keyWindow?.contentView
+        let defaultWindowPresentation = WebSnapshotPresentation.makeLive(
+            requestSignIn: { _, _ in },
+            share: { shared = ($0, $1) })
+        defaultWindowPresentation.share(image)
+        #expect(shared?.1 === systemAnchor)
+    }
+
     @Test func shareActionUsesTheInjectedPresentation() throws {
         let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
