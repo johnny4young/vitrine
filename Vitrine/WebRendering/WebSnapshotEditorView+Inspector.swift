@@ -62,6 +62,7 @@ extension WebSnapshotEditorView {
                     .font(.system(size: VitrineTokens.FontSize.caption))
                     .foregroundStyle(VitrineTokens.Text.tertiary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("web-snapshot-url-unavailable-note")
                 }
                 signInRow
             }

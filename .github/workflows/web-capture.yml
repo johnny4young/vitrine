@@ -1,0 +1,82 @@
+name: Controlled WebKit capture
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/web-capture.yml'
+      - '.github/actions/setup-macos-toolchain/**'
+      - 'Vitrine/WebRendering/**'
+      - 'Vitrine/Settings/InputSettingsView.swift'
+      - 'Vitrine/Settings/WebCaptureSettings.swift'
+      - 'Tests/URLRenderer/**'
+      - 'Tests/WebSessionAvailabilityTests.swift'
+      - 'UITests/VitrineUITests.swift'
+      - 'scripts/*web-capture*'
+      - 'project.yml'
+      - 'Makefile'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-capture-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  controlled:
+    name: WebKit integration · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
+        with:
+          summary-title: Controlled WebKit toolchain
+          summary-note: Diagnostic and Direct Download sandbox hosts; not provider SSO qualification.
+      - name: Run controlled WebKit tests in a diagnostic host
+        run: >-
+          make test-web-capture
+          WEB_CAPTURE_OUTPUT="${RUNNER_TEMP}/web-capture-diagnostic"
+          WEB_CAPTURE_HOST_FLAGS=--diagnostic-host
+      - name: Run controlled WebKit tests in the Direct Download sandbox
+        env:
+          VITRINE_ENTITLEMENTS_FILE: Vitrine/Resources/Vitrine.DirectDownload.entitlements
+        run: >-
+          make test-web-capture
+          WEB_CAPTURE_OUTPUT="${RUNNER_TEMP}/web-capture-direct"
+          WEB_CAPTURE_HOST_FLAGS=--require-direct-sandbox
+      - name: Verify native sign-in opt-in in the Direct Download sandbox
+        env:
+          VITRINE_ENTITLEMENTS_FILE: Vitrine/Resources/Vitrine.DirectDownload.entitlements
+        run: |
+          set -euo pipefail
+          make project
+          output="${RUNNER_TEMP}/web-signin-ui"
+          mkdir -p "$output"
+          xcodebuild -project Vitrine.xcodeproj -scheme VitrineUITests \
+            -configuration Debug -destination 'platform=macOS' \
+            VITRINE_REQUIRE_DIRECT_WEB_SESSION=1 \
+            -only-testing:VitrineUITests/VitrineUITests/testWebSignInAffordanceRequiresExplicitSessionOptIn \
+            -resultBundlePath "$output/tests.xcresult" test > "$output/xcodebuild.log" 2>&1 || {
+              tail -100 "$output/xcodebuild.log"
+              exit 1
+            }
+          python3 scripts/test-web-capture.py --verify-direct-ui "$output/tests.xcresult"
+      - name: Retain real execution evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: web-capture-${{ matrix.os }}
+          path: |
+            ${{ runner.temp }}/web-capture-diagnostic
+            ${{ runner.temp }}/web-capture-direct
+            ${{ runner.temp }}/web-signin-ui
+          if-no-files-found: error

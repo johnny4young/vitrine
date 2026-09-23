@@ -30,7 +30,6 @@ struct WebSnapshotConfigTests {
         let config = try WebSnapshotConfig(captureURL: try URLFixture.valid())
         #expect(config.dataStoreMode == .nonPersistent)
         #expect(config.dataStoreMode.persistsWebsiteData == false)
-        #expect(config.dataStoreMode.allowsCookies == false)
     }
 
     @Test func defaultsMatchTheExporterDefaults() throws {
@@ -41,23 +40,19 @@ struct WebSnapshotConfigTests {
     }
 }
 
-// MARK: - Data-store mode (cookies and website data are opt-in only)
+// MARK: - Data-store mode (retention across captures is opt-in only)
 
 @Suite("URL capture data-store mode is opt-in")
 struct URLDataStoreModeTests {
-    @Test func nonPersistentModePersistsNothingAndBlocksCookies() {
+    @Test func nonPersistentModeDoesNotRetainWebsiteData() {
         let mode = WebSnapshotConfig.DataStoreMode.nonPersistent
         #expect(mode.persistsWebsiteData == false)
-        #expect(mode.allowsCookies == false)
     }
 
-    @Test func persistentModeIsTheOnlyWayToOptIntoCookiesAndWebsiteData() {
-        // Cookies and persistent website data ride a single explicit opt-in; there
-        // is no third mode that would persist data without enabling cookies, so the
-        // "opt-in only" guarantee cannot be partially defeated.
+    @Test func persistentModeExplicitlyRetainsWebsiteData() {
+        // Both modes allow transient page cookies; only this one retains them.
         let mode = WebSnapshotConfig.DataStoreMode.persistent
         #expect(mode.persistsWebsiteData)
-        #expect(mode.allowsCookies)
     }
 
     @MainActor

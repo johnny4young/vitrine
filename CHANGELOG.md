@@ -12,6 +12,19 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Web capture sign-out now clears cached private responses and service worker data,
+  closes the sign-in window, and refreshes the stored-site inventory. Temporary
+  capture cookies are correctly documented as isolated, not disabled.
+
+### Testing
+
+- Controlled WebKit integration tests exercise redirects, private subresources,
+  localhost opt-in, cancellation, timeouts, capture limits, and session removal.
+  Dedicated result validation rejects missing or skipped scenarios. Fixture startup
+  avoids reverse DNS, publishes readiness atomically, and retains failure logs.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each
@@ -684,8 +697,8 @@ explicit, and understandable after the image leaves the Mac.
 - **Capture pages that are behind a login.** Turn on "Use my logged-in session" and the
   Web Snapshot window offers to sign you in to the site first, in a real browser window;
   the capture that follows sees the signed-in page. The session belongs to Vitrine alone
-  — nothing is read from Safari or Chrome — and Settings lists the sites you are signed
-  in to, with one button to sign out of all of them.
+  — nothing is read from Safari or Chrome — and Settings lists sites with saved WebKit
+  data, with one button to clear it. This does not revoke server-side sessions.
 
 ### Fixed
 

@@ -567,6 +567,9 @@ schemes:
       #   - VITRINE_RECORD_SOCIAL_CARD → social-card golden recorder
       #   - VITRINE_RECORD_COMPARISON_BOARD → comparison-board evidence recorder
       environmentVariables:
+        - variable: VITRINE_WEB_FIXTURE_PORT
+          value: $(VITRINE_WEB_FIXTURE_PORT)
+          isEnabled: true
         - variable: VITRINE_RECORD_GOLDENS
           value: $(VITRINE_RECORD_GOLDENS)
           isEnabled: true
@@ -650,4 +653,7 @@ schemes:
       environmentVariables:
         - variable: VITRINE_SCREENSHOT_DIR
           value: $(VITRINE_SCREENSHOT_DIR)
+          isEnabled: true
+        - variable: VITRINE_REQUIRE_DIRECT_WEB_SESSION
+          value: $(VITRINE_REQUIRE_DIRECT_WEB_SESSION)
           isEnabled: true
