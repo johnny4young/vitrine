@@ -787,6 +787,54 @@ final class VitrineUITests: XCTestCase {
     // MARK: - Web Snapshot
 
     @MainActor
+    func testWebSignInAffordanceRequiresExplicitSessionOptIn() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.webSnapshot)
+        defer { app.terminate() }
+
+        assertExists(element("web-snapshot-window", in: app), in: app, timeout: 8)
+        let urlField = app.textFields["web-snapshot-url-field"]
+        assertExists(urlField, in: app, timeout: 3)
+        urlField.click()
+        // Entering a URL must not load it. This test never captures or opens the
+        // sign-in window, so it needs neither a website nor credentials.
+        urlField.typeText("https://example.com")
+
+        let unavailable = element("web-snapshot-url-unavailable-note", in: app)
+        let hint = element("web-snapshot-sign-in-hint", in: app)
+        let signIn = element("web-snapshot-sign-in-button", in: app)
+        let requiresDirect =
+            ProcessInfo.processInfo.environment["VITRINE_REQUIRE_DIRECT_WEB_SESSION"] == "1"
+        if !requiresDirect {
+            // The ordinary UI suite uses App Store-compatible entitlements. It must
+            // not offer sign-in merely because the Debug binary was compiled with
+            // VITRINE_DIRECT_DOWNLOAD; runtime capability is the signed entitlement.
+            assertExists(unavailable, in: app, timeout: 3)
+            XCTAssertFalse(hint.exists)
+            XCTAssertFalse(signIn.exists)
+            return
+        }
+
+        XCTAssertFalse(unavailable.exists, "The signed Direct lane lost network capability")
+        assertExists(hint, in: app, timeout: 3)
+        XCTAssertFalse(signIn.exists, "The default-off session must not offer sign-in")
+
+        hittableElement("web-advanced-disclosure", in: app).click()
+        let toggle = element("web-logged-in-session-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 0, "Persistent sessions must default to off")
+
+        toggle.click()
+        assertExists(signIn, in: app, timeout: 3)
+        XCTAssertTrue(signIn.label.contains("example.com"))
+        XCTAssertFalse(hint.exists)
+
+        toggle.click()
+        assertExists(hint, in: app, timeout: 3)
+        XCTAssertFalse(signIn.exists, "Turning off persistence must withdraw sign-in")
+    }
+
+    @MainActor
     func testWebSnapshotRendersAndCopiesMultipleLocalHTMLViewports() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general

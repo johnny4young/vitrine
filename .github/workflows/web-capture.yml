@@ -10,6 +10,7 @@ on:
       - 'Vitrine/Settings/WebCaptureSettings.swift'
       - 'Tests/URLRenderer/**'
       - 'Tests/WebSessionAvailabilityTests.swift'
+      - 'UITests/VitrineUITests.swift'
       - 'scripts/*web-capture*'
       - 'project.yml'
       - 'Makefile'
@@ -52,6 +53,23 @@ jobs:
           make test-web-capture
           WEB_CAPTURE_OUTPUT="${RUNNER_TEMP}/web-capture-direct"
           WEB_CAPTURE_HOST_FLAGS=--require-direct-sandbox
+      - name: Verify native sign-in opt-in in the Direct Download sandbox
+        env:
+          VITRINE_ENTITLEMENTS_FILE: Vitrine/Resources/Vitrine.DirectDownload.entitlements
+        run: |
+          set -euo pipefail
+          make project
+          output="${RUNNER_TEMP}/web-signin-ui"
+          mkdir -p "$output"
+          xcodebuild -project Vitrine.xcodeproj -scheme VitrineUITests \
+            -configuration Debug -destination 'platform=macOS' \
+            VITRINE_REQUIRE_DIRECT_WEB_SESSION=1 \
+            -only-testing:VitrineUITests/VitrineUITests/testWebSignInAffordanceRequiresExplicitSessionOptIn \
+            -resultBundlePath "$output/tests.xcresult" test > "$output/xcodebuild.log" 2>&1 || {
+              tail -100 "$output/xcodebuild.log"
+              exit 1
+            }
+          python3 scripts/test-web-capture.py --verify-direct-ui "$output/tests.xcresult"
       - name: Retain real execution evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -60,4 +78,5 @@ jobs:
           path: |
             ${{ runner.temp }}/web-capture-diagnostic
             ${{ runner.temp }}/web-capture-direct
+            ${{ runner.temp }}/web-signin-ui
           if-no-files-found: error

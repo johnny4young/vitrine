@@ -654,3 +654,6 @@ schemes:
         - variable: VITRINE_SCREENSHOT_DIR
           value: $(VITRINE_SCREENSHOT_DIR)
           isEnabled: true
+        - variable: VITRINE_REQUIRE_DIRECT_WEB_SESSION
+          value: $(VITRINE_REQUIRE_DIRECT_WEB_SESSION)
+          isEnabled: true

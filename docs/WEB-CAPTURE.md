@@ -36,7 +36,14 @@ make test-web-capture WEB_CAPTURE_OUTPUT=/tmp/vitrine-web-capture-evidence
 
 The dedicated pull-request workflow runs the same diagnostic lane on macOS 15 and
 26 at the exact submitted head and retains its receipts and result bundle. It does
-not turn a diagnostic pass into sandbox or provider qualification.
+not turn a diagnostic pass into sandbox or provider qualification. It also runs a
+separate native Web Snapshot UI journey with the signed Direct Download entitlement:
+without loading a URL or entering credentials, the journey verifies the default-off
+sign-in hint, a site-named sign-in action after opt-in, and withdrawal after opt-out.
+Its fail-closed xcresult receipt requires the one selected UI case to pass, not skip.
+The ordinary network-free UI lane instead verifies that URL capture and sign-in stay
+unavailable even when the Debug binary carries the Direct compilation condition.
+Neither lane substitutes for real VoiceOver or a live identity-provider login.
 
 The output directory must not already exist. The runner starts an owned loopback
 fixture, waits for its port, runs the selected suite, verifies **every expected

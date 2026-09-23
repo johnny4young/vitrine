@@ -26,6 +26,7 @@ EXPECTED = {
 }
 PREFIX = "WebCaptureIntegrationTests/"
 DIRECT_ENTITLEMENTS = "Vitrine/Resources/Vitrine.DirectDownload.entitlements"
+DIRECT_UI_CASE = "VitrineUITests/testWebSignInAffordanceRequiresExplicitSessionOptIn()"
 
 
 def validate(payload):
@@ -50,14 +51,49 @@ def validate(payload):
     return found
 
 
-def receipts(bundle):
+def test_results(bundle):
     result = subprocess.run([
         "xcrun", "xcresulttool", "get", "test-results", "tests", "--path", str(bundle),
         "--compact",
     ], check=True, capture_output=True, text=True)
-    payload = json.loads(result.stdout)
+    return json.loads(result.stdout)
+
+
+def receipts(bundle):
+    payload = test_results(bundle)
     validate(payload)
     return payload
+
+
+def validate_direct_ui(payload):
+    found = []
+
+    def visit(node):
+        if node.get("nodeType") == "Test Case":
+            found.append((node.get("nodeIdentifier"), node.get("result")))
+        for child in node.get("children", []):
+            visit(child)
+
+    for node in payload.get("testNodes", []):
+        visit(node)
+    if found != [(DIRECT_UI_CASE, "Passed")]:
+        raise ValueError(f"Signed Direct UI case missing, skipped, failed, or duplicated: {found}")
+
+
+def verify_direct_ui(bundle):
+    payload = test_results(bundle)
+    validate_direct_ui(payload)
+    signed_entitlements = direct_sandbox_receipt()
+    report = {
+        "head": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "workingTree": subprocess.check_output(
+            ["git", "status", "--short"], cwd=ROOT, text=True),
+        "signedEntitlements": signed_entitlements,
+        "tests": payload,
+    }
+    (bundle.parent / "receipt.json").write_text(json.dumps(report, indent=2) + "\n")
+    print(f"Verified signed Direct sign-in UI case: {bundle}")
 
 
 def validate_direct_sandbox(settings, entitlements):
@@ -111,6 +147,21 @@ def self_test():
         except ValueError:
             continue
         raise AssertionError("Accepted invalid WebKit test receipts")
+    ui_good = {"testNodes": [{"children": [
+        {"nodeIdentifier": DIRECT_UI_CASE, "nodeType": "Test Case", "result": "Passed"}
+    ]}]}
+    validate_direct_ui(ui_good)
+    ui_bad = [copy.deepcopy(ui_good), copy.deepcopy(ui_good), copy.deepcopy(ui_good)]
+    ui_bad[0]["testNodes"][0]["children"].clear()
+    ui_bad[1]["testNodes"][0]["children"][0]["result"] = "Skipped"
+    ui_bad[2]["testNodes"][0]["children"].append(
+        copy.deepcopy(ui_bad[2]["testNodes"][0]["children"][0]))
+    for payload in ui_bad:
+        try:
+            validate_direct_ui(payload)
+        except ValueError:
+            continue
+        raise AssertionError("Accepted a missing, skipped, or duplicate signed Direct UI case")
     settings = {"CODE_SIGN_ENTITLEMENTS": DIRECT_ENTITLEMENTS}
     grants = {"com.apple.security.app-sandbox": True,
               "com.apple.security.network.client": True}
@@ -125,7 +176,9 @@ def self_test():
         except ValueError:
             continue
         raise AssertionError("Accepted an incorrectly signed WebKit host")
-    print(f"Controlled WebKit receipt guard: {len(bad)} fail-closed cases passed")
+    print(
+        f"Controlled WebKit receipt guard: {len(bad)} capture and "
+        f"{len(ui_bad)} signed UI fail-closed cases passed")
 
 
 @contextmanager
@@ -199,6 +252,7 @@ def main():
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--self-test", action="store_true")
     mode.add_argument("--verify", type=Path)
+    mode.add_argument("--verify-direct-ui", type=Path)
     mode.add_argument("--output", type=Path)
     parser.add_argument("--diagnostic-host", action="store_true",
                         help="Explicitly use an unsandboxed diagnostic test host, never a shipping build")
@@ -212,6 +266,8 @@ def main():
     elif args.verify:
         receipts(args.verify)
         print(f"Verified {len(EXPECTED)} real controlled WebKit tests")
+    elif args.verify_direct_ui:
+        verify_direct_ui(args.verify_direct_ui)
     else:
         run(args.output.resolve(), args.diagnostic_host, args.require_direct_sandbox)
 
