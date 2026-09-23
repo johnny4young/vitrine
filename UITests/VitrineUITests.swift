@@ -74,7 +74,10 @@ final class VitrineUITests: XCTestCase {
                     language == "es" ? "es_ES" : "en_US",
                     appearance == "Dark" ? "--appearance-dark" : "--appearance-light",
                 ],
-                environment: ["VITRINE_MANAGED_IMAGE_UI_TEST": "pending"])
+                environment: [
+                    "VITRINE_MANAGED_IMAGE_UI_TEST": "pending",
+                    "VITRINE_UI_TEST_EDITOR_VIEWPORT": "960x600",
+                ])
             defer { app.terminate() }
             let copy = element("copy-image-text-button", in: app)
             let redact = element("redact-image-secrets-button", in: app)
@@ -82,29 +85,8 @@ final class VitrineUITests: XCTestCase {
             let cancel = element("cancel-image-processing-button", in: app)
             assertExists(copy, in: app, timeout: 8)
             let window = element("editor-window", in: app)
-            // XCUITest can stop a resize a few points short on hosted displays.
-            // Recompute from the actual frame rather than assuming one drag reached
-            // its target; keep both handles away from a rounded corner or the Dock.
-            for _ in 0..<3 {
-                let excess = window.frame.width - 960
-                if excess <= 20 { break }
-                let right = window.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
-                    .withOffset(CGVector(dx: -1, dy: 0))
-                right.press(
-                    forDuration: 0.1,
-                    thenDragTo: right.withOffset(CGVector(dx: -excess, dy: 0)),
-                    withVelocity: .slow, thenHoldForDuration: 0.2)
-            }
-            for _ in 0..<3 {
-                let excess = window.frame.height - 600
-                if excess <= 20 { break }
-                let top = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
-                    .withOffset(CGVector(dx: 0, dy: 1))
-                top.press(
-                    forDuration: 0.1,
-                    thenDragTo: top.withOffset(CGVector(dx: 0, dy: excess)),
-                    withVelocity: .slow, thenHoldForDuration: 0.2)
-            }
+            // The Debug launch hook requests a real compact AppKit frame; assert the
+            // resulting size so the test fails if the editor's minimum grows too large.
             XCTAssertLessThanOrEqual(window.frame.width, 980)
             XCTAssertLessThanOrEqual(window.frame.height, 620)
             copy.click()

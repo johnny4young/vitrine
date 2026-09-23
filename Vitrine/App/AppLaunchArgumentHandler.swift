@@ -196,6 +196,31 @@ import VitrineRendering
                     settings.config.foregroundImage = reference
                 }
                 EditorWindowController.shared.show()
+                // A real compact frame is more deterministic than dragging a hosted
+                // window edge with XCUITest. The size assertion remains in the UI test,
+                // so a content minimum that rejects this viewport still fails the test.
+                if let requested = ProcessInfo.processInfo.environment[
+                    "VITRINE_UI_TEST_EDITOR_VIEWPORT"
+                ] {
+                    let parts = requested.split(separator: "x", omittingEmptySubsequences: false)
+                    if parts.count == 2,
+                        let width = Int(parts[0]), let height = Int(parts[1]),
+                        let window = NSApp.windows.first(where: {
+                            $0.identifier == EditorWindowIdentity.primary.restorationIdentifier
+                        }),
+                        let visible = (window.screen ?? NSScreen.main)?.visibleFrame,
+                        CGFloat(width) >= window.minSize.width,
+                        CGFloat(height) >= window.minSize.height,
+                        CGFloat(width) <= visible.width, CGFloat(height) <= visible.height
+                    {
+                        window.setFrame(
+                            NSRect(
+                                x: visible.midX - CGFloat(width) / 2,
+                                y: visible.midY - CGFloat(height) / 2,
+                                width: CGFloat(width), height: CGFloat(height)),
+                            display: true)
+                    }
+                }
                 didOpenWindow = true
             }
             if arguments.contains("--open-settings") {

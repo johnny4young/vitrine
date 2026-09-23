@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 import Testing
+import VitrineDomain
+import VitrineRendering
 
 @testable import Vitrine
 
@@ -130,5 +132,45 @@ struct EditorWindowSizingTests {
         #expect(
             Self.minimumConstraints(of: window).map(\.constant).sorted()
                 == [measured.height, measured.width].sorted())
+    }
+
+    @Test func imageModeFitsTheCompactEditorWindow() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let session = Self.makeSession(environment, index: 44)
+        defer { session.discard() }
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vitrine-image-sizing-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BackgroundImageStore(directory: directory)
+        let icon = try #require(NSApp.applicationIconImage.tiffRepresentation)
+        session.settings.config.foregroundImage = try store.importImage(
+            data: icon, preferredExtension: "tiff")
+
+        let hosting = NSHostingController(
+            rootView: EditorView(environment: environment)
+                .environment(session.settings)
+                .environment(session)
+                .environment(\.foregroundImageStore, store))
+        hosting.sizingOptions = []
+        let window = Self.makeWindow(
+            hosting: hosting)
+        defer { window.contentViewController = nil }
+        EditorWindowController.pinMinimumContentSize(of: window)
+        for _ in 0..<5 {
+            window.layoutIfNeeded()
+            RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+        }
+        let controller = EditorWindowController(
+            environment: environment, feedback: .noOp, presentation: .noOp)
+        controller.windowWillStartLiveResize(
+            Notification(name: NSWindow.willStartLiveResizeNotification, object: window))
+        let minimum = window.contentMinSize
+        let frame = Self.contentSizeAfterShrinking(window)
+        #expect(minimum.width <= 980)
+        #expect(minimum.height <= 620)
+        #expect(frame.width <= 980)
+        #expect(frame.height <= 620)
+        #expect(window.frame.width <= 980)
+        #expect(window.frame.height <= 620)
     }
 }
