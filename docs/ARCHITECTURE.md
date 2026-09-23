@@ -1174,10 +1174,12 @@ has returned to its baseline and completed three bounded main-run-loop/autorelea
 drains. The local harness requires an exact ordered sample sequence and completion count,
 then preserves every sample, full and post-warm-up slopes, `leaks` roots, memgraph, and
 environment provenance. Image, editor-window, local-HTML WebKit, and large-document
-journeys support 20/50/100 profiles. Comparisons require the same clean commit, journey,
-iteration count, macOS, architecture, and Xcode. Slopes and allocation paths are diagnostic
-signals rather than ownership verdicts; WebKit samples cover the Vitrine host process, not
-separate WebContent processes.
+journeys support 20/50/100 profiles. Comparisons require clean exact commits, the same
+journey, iteration count, macOS, architecture, and Xcode; a changed commit is recorded,
+not rejected, so before/after code changes can be compared. Slopes and allocation paths
+are diagnostic signals rather than ownership verdicts. The local-HTML WebKit journey does
+not open an editor window and covers the Vitrine host process, not separate WebContent
+processes or interactive window lifetimes.
 
 `SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
 the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that
