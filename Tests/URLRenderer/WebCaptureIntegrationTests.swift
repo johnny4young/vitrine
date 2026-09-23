@@ -67,7 +67,7 @@ struct WebCaptureIntegrationTests {
         let key = UUID().uuidString
         let store = try isolatedStore()
         let signInWindow = WebSessionWindowController(websiteDataStore: store)
-        signInWindow.show(url: try url("sso-start/\(key)"))
+        try await signInWindow.show(url: url("sso-start/\(key)"), allowsLoopback: true)
         defer { signInWindow.close() }
         #expect(signInWindow.isPresented)
         let window = try #require(
@@ -131,6 +131,73 @@ struct WebCaptureIntegrationTests {
         // Production uses the same default store in both windows; the injected
         // nonpersistent store keeps this synthetic session out of the user's profile.
         #expect(URLSnapshotEngine().dataStore(for: .persistent) === WKWebsiteDataStore.default())
+    }
+
+    @Test func signInWindowRejectsPrivateRedirect() async throws {
+        let key = UUID().uuidString
+        let signInWindow = WebSessionWindowController(websiteDataStore: try isolatedStore())
+        try await signInWindow.show(url: url("private-redirect/\(key)"), allowsLoopback: true)
+        defer { signInWindow.close() }
+        let window = try #require(
+            NSApp.windows.first {
+                $0.accessibilityIdentifier() == "web-sign-in-window" && $0.isVisible
+            })
+        let webView = try #require(window.contentView as? WKWebView)
+
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while !(try await events()).contains(where: {
+            $0["path"] == "/private-redirect/\(key)"
+        }) {
+            try #require(ContinuousClock.now < deadline, "The sign-in entry request never arrived")
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        while webView.isLoading {
+            try #require(ContinuousClock.now < deadline, "The redirect never settled")
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(
+            try await !events().contains {
+                $0["path"] == "/blocked/\(key)"
+            }, "The sign-in window followed a redirect into a private host")
+    }
+
+    @Test func signInWindowBlocksPrivateSubresources() async throws {
+        let key = UUID().uuidString
+        let signInWindow = WebSessionWindowController(websiteDataStore: try isolatedStore())
+        try await signInWindow.show(url: url("resources/\(key)"), allowsLoopback: true)
+        defer { signInWindow.close() }
+        let window = try #require(
+            NSApp.windows.first {
+                $0.accessibilityIdentifier() == "web-sign-in-window" && $0.isVisible
+            })
+        let webView = try #require(window.contentView as? WKWebView)
+
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while !(try await events()).contains(where: {
+            $0["path"] == "/image/\(key)" && $0["host"]?.hasPrefix("127.0.0.1:") == true
+        }) {
+            try #require(ContinuousClock.now < deadline, "The public control image never loaded")
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        while webView.isLoading {
+            try #require(ContinuousClock.now < deadline, "The sign-in page never settled")
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(
+            try await !events().contains {
+                $0["path"]?.hasSuffix(key) == true
+                    && $0["host"]?.hasPrefix("10.0.0.1:") == true
+            }, "The sign-in window requested a private subresource")
+    }
+
+    @Test func signInWindowRequiresLoopbackOptIn() async throws {
+        let key = UUID().uuidString
+        let signInWindow = WebSessionWindowController(websiteDataStore: try isolatedStore())
+        await #expect(throws: URLValidationError.privateLocalhost) {
+            try await signInWindow.show(url: url("page/\(key)"), allowsLoopback: false)
+        }
+        #expect(!signInWindow.isPresented)
+        #expect(try await !events().contains { $0["path"] == "/page/\(key)" })
     }
 
     @Test func privateRedirectFailsBeforeReachingTheDestination() async throws {

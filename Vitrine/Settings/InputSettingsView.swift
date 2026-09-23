@@ -143,6 +143,9 @@ struct WebCaptureControls: View {
             .toggleStyle(.switch)
             .labelsHidden()
             .accessibilityIdentifier("web-allow-loopback-toggle")
+            .onChange(of: settings.webCapture.allowsLoopbackCapture) { _, allowed in
+                if !allowed { WebSessionWindowController.shared.close() }
+            }
         }
     }
 
@@ -165,6 +168,9 @@ struct WebCaptureControls: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .accessibilityIdentifier("web-logged-in-session-toggle")
+                .onChange(of: settings.webCapture.usesLoggedInSession) { _, enabled in
+                    if !enabled { WebSessionWindowController.shared.close() }
+                }
         }
         // Read the stored sessions here rather than on the row that lists them: that row
         // is hidden while the list is empty, so it could never populate itself. This row

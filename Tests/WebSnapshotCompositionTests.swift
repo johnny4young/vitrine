@@ -20,7 +20,7 @@ struct WebSnapshotCompositionTests {
     }
 
     private final class PresentationSpy {
-        var signInURLs: [URL] = []
+        var signInRequests: [(URL, Bool)] = []
         var sharedImages: [NSImage] = []
         var selectedDirectory: URL?
         var selectionMessages: [String] = []
@@ -28,8 +28,8 @@ struct WebSnapshotCompositionTests {
 
         var presentation: WebSnapshotPresentation {
             WebSnapshotPresentation(
-                presentSignIn: { [weak self] url in
-                    self?.signInURLs.append(url)
+                presentSignIn: { [weak self] url, allowsLoopback in
+                    self?.signInRequests.append((url, allowsLoopback))
                 },
                 presentShare: { [weak self] image in
                     self?.sharedImages.append(image)
@@ -64,7 +64,7 @@ struct WebSnapshotCompositionTests {
         let expectedDirectory = URL(fileURLWithPath: "/tmp/vitrine-web-export")
         presentation.selectedDirectory = expectedDirectory
         root.feedback(expectedFeedback)
-        root.presentation.showSignIn(for: expectedURL)
+        root.presentation.showSignIn(for: expectedURL, allowsLoopback: false)
         root.presentation.share(expectedImage)
         let selectedDirectory = root.presentation.batchExport.chooseDirectory(
             message: "Choose a directory")
@@ -75,7 +75,8 @@ struct WebSnapshotCompositionTests {
         #expect(root.environment === environment)
         #expect(root.model === model)
         #expect(display.feedback == [expectedFeedback])
-        #expect(presentation.signInURLs == [expectedURL])
+        #expect(presentation.signInRequests.map(\.0) == [expectedURL])
+        #expect(presentation.signInRequests.map(\.1) == [false])
         #expect(presentation.sharedImages.count == 1)
         #expect(presentation.sharedImages.first === expectedImage)
         #expect(selectedDirectory == expectedDirectory)
@@ -97,7 +98,16 @@ struct WebSnapshotCompositionTests {
 
         root.signInToCaptureSite()
 
-        #expect(presentation.signInURLs.map(\.absoluteString) == ["https://example.com/login"])
+        #expect(
+            presentation.signInRequests.map { $0.0.absoluteString } == ["https://example.com/login"]
+        )
+        #expect(presentation.signInRequests.map(\.1) == [false])
+
+        environment.appSettings.webCapture.allowsLoopbackCapture = true
+        model.urlText = "http://127.0.0.1:9000/login"
+        root.signInToCaptureSite()
+        #expect(presentation.signInRequests.last?.0.absoluteString == model.urlText)
+        #expect(presentation.signInRequests.last?.1 == true)
     }
 
     @Test func shareActionUsesTheInjectedPresentation() throws {

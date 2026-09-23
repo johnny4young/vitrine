@@ -6,8 +6,11 @@ Web capture uses local WebKit, not a remote rendering service. The first-use
 network disclosure and direct-download network capability gate remain in place.
 Authentication is opt-in and the interactive sign-in window uses Vitrine's own
 persistent store; it does not borrow another browser's cookies. Interactive sign-in
-keeps normal cross-site navigation for SSO. Captures recheck navigation destinations
-and install the existing private-host content rules before loading any page.
+keeps normal cross-site navigation for SSO. Both capture and sign-in recheck
+navigation destinations and install the existing private-host content rules before
+loading any page. If the rules cannot compile, the sign-in window does not load.
+Turning off saved sessions or localhost access closes an open sign-in window and
+invalidates any pending opening; it does not erase stored website data.
 
 A fresh nonpersistent store is created for each capture by default. A page may set
 and send temporary cookies during that capture; nonpersistent does **not** mean
@@ -74,6 +77,8 @@ The suite covers:
 
 - Real relative redirects and exact snapshot dimensions.
 - A private redirect refused before its target is requested.
+- The visible sign-in window refusing the same private redirect and private
+  subresources, and rejecting an initial loopback URL without explicit opt-in.
 - Private image, CSS, JavaScript, and frame requests blocked, with an unfiltered
   positive control proving that each fake private destination is reachable.
 - Loopback subresources refused by default and requested only with explicit opt-in.

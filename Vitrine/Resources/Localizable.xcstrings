@@ -254,6 +254,28 @@
         }
       }
     },
+    "Could Not Open Sign-In Window" : {
+      "comment" : "Alert title when safe WebKit network rules cannot be established for sign-in.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo abrir la ventana de inicio de sesión"
+          }
+        }
+      }
+    },
+    "Vitrine could not establish safe web access. Try again later." : {
+      "comment" : "Alert detail when the sign-in window refuses to load without private-host protection.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo establecer un acceso web seguro. Inténtalo de nuevo más tarde."
+          }
+        }
+      }
+    },
     "Sign In for Web Capture" : {
       "comment" : "Title of the window where the user signs in to a site before capturing it.",
       "localizations" : {

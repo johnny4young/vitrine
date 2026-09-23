@@ -16,6 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
     "controlledRedirectProducesARealImage()",
     "crossHostSignInSessionIsAvailableToTheNextCapture()",
+    "signInWindowRejectsPrivateRedirect()",
+    "signInWindowBlocksPrivateSubresources()",
+    "signInWindowRequiresLoopbackOptIn()",
     "privateRedirectFailsBeforeReachingTheDestination()",
     "privateResourcesAreBlockedWithAReachablePositiveControl()",
     "cancellationStopsAnActuallyPendingLoad()",
