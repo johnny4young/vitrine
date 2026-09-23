@@ -339,6 +339,10 @@ extension XCTestCase {
         attachment.name = "Hittability diagnostics"
         attachment.lifetime = .keepAlways
         add(attachment)
+        let screenAttachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        screenAttachment.name = "Hittability failure screen"
+        screenAttachment.lifetime = .keepAlways
+        add(screenAttachment)
         XCTFail(message, file: file, line: line)
     }
 }

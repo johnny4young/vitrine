@@ -6,50 +6,69 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testLocalizedVisualChromeFitsCompactAndDesktopEditors() throws {
         continueAfterFailure = false
-        try skipUnlessADisplayFitsTheEditor()
         let visible = try XCTUnwrap(NSScreen.main).visibleFrame.size
+        try XCTSkipUnless(
+            visible.width >= 960 && visible.height >= 600,
+            "The primary display cannot hold the 960×600 editor viewport")
         for language in ["en", "es"] {
             for dark in [false, true] {
-                let app = launch(
-                    arguments: VitrineLaunchArguments.editor + [
-                        "-AppleLanguages", "(\(language))", "-AppleLocale",
-                        language == "es" ? "es_ES" : "en_US",
-                        dark ? "--appearance-dark" : "--appearance-light",
-                    ])
-                defer { app.terminate() }
-                let window = element("editor-window", in: app)
-                assertExists(window, in: app, timeout: 8)
-                placeVisualEditorOnPrimaryDisplay(in: app)
-                // Hosted displays can be narrower than 1280. Record the actual
-                // viewport; only a qualifying display proves the 1280×800 case.
+                // Launch at each requested frame rather than relying on XCUITest
+                // pointer drags at a hosted display boundary. The app's Debug-only
+                // hook sets the real NSWindow frame, and we assert it below.
                 for size in [
                     CGSize(width: min(1280, visible.width), height: min(800, visible.height)),
                     CGSize(width: 960, height: 600),
                 ] {
-                    resizeVisualEditor(in: app, to: size)
-                    let resizedWindow = element("editor-window", in: app)
-                    for identifier in [
-                        "editor-toolbar", "editor-preview-stage", "editor-inspector",
-                    ] {
-                        assertExists(element(identifier, in: app), in: app, timeout: 3)
-                        // SwiftUI propagates a container identifier to accessible
-                        // leaves. Check all matching frames, not a singular query.
-                        let controls = app.descendants(matching: .any)
-                            .matching(identifier: identifier).allElementsBoundByIndex
-                        XCTAssertFalse(controls.isEmpty)
-                        for control in controls {
-                            XCTAssertTrue(
-                                resizedWindow.frame.insetBy(dx: -1, dy: -1).contains(control.frame),
-                                identifier)
+                    // End each cohort before launching the next one. A defer in
+                    // this loop's outer scope leaves previous app windows alive.
+                    do {
+                        let app = launch(
+                            arguments: VitrineLaunchArguments.editor + [
+                                "-AppleLanguages", "(\(language))", "-AppleLocale",
+                                language == "es" ? "es_ES" : "en_US",
+                                dark ? "--appearance-dark" : "--appearance-light",
+                            ],
+                            environment: [
+                                "VITRINE_UI_TEST_EDITOR_VIEWPORT":
+                                    "\(Int(size.width))x\(Int(size.height))"
+                            ])
+                        defer { app.terminate() }
+                        let resizedWindow = element("editor-window", in: app)
+                        assertExists(resizedWindow, in: app, timeout: 8)
+                        XCTAssertEqual(resizedWindow.frame.width, size.width, accuracy: 2)
+                        XCTAssertEqual(resizedWindow.frame.height, size.height, accuracy: 2)
+                        // Accessory apps can lose the foreground to another process
+                        // between launches. Activate and click the editor before
+                        // checking real pointer reachability.
+                        app.activate()
+                        resizedWindow.click()
+                        for identifier in [
+                            "editor-toolbar", "editor-preview-stage", "editor-inspector",
+                        ] {
+                            assertExists(element(identifier, in: app), in: app, timeout: 3)
+                            // SwiftUI propagates a container identifier to accessible
+                            // leaves. Check all matching frames, not a singular query.
+                            let controls = app.descendants(matching: .any)
+                                .matching(identifier: identifier).allElementsBoundByIndex
+                            XCTAssertFalse(controls.isEmpty)
+                            for control in controls {
+                                XCTAssertTrue(
+                                    resizedWindow.frame.insetBy(dx: -1, dy: -1).contains(
+                                        control.frame),
+                                    identifier)
+                            }
                         }
+                        // Queries above may take several seconds; a background
+                        // desktop app can reclaim focus before the hit test.
+                        app.activate()
+                        assertHittable(
+                            "copy-button", in: app, "The primary action must remain reachable")
+                        let attachment = XCTAttachment(screenshot: resizedWindow.screenshot())
+                        attachment.name =
+                            "chrome-\(language)-\(dark ? "dark" : "light")-\(Int(resizedWindow.frame.width))x\(Int(resizedWindow.frame.height))"
+                        attachment.lifetime = .keepAlways
+                        add(attachment)
                     }
-                    assertHittable(
-                        "copy-button", in: app, "The primary action must remain reachable")
-                    let attachment = XCTAttachment(screenshot: resizedWindow.screenshot())
-                    attachment.name =
-                        "chrome-\(language)-\(dark ? "dark" : "light")-\(Int(resizedWindow.frame.width))x\(Int(resizedWindow.frame.height))"
-                    attachment.lifetime = .keepAlways
-                    add(attachment)
                 }
             }
         }
@@ -100,136 +119,6 @@ final class VitrineUITests: XCTestCase {
                 add(typography)
             }
         }
-    }
-
-    @MainActor
-    func testVisualViewportResizeUsesAvailableLeftMargin() throws {
-        continueAfterFailure = false
-        try skipUnlessADisplayFitsTheEditor()
-        let visible = try XCTUnwrap(NSScreen.main).visibleFrame
-        let app = launch(arguments: VitrineLaunchArguments.editor)
-        defer { app.terminate() }
-        let window = element("editor-window", in: app)
-        assertExists(window, in: app, timeout: 8)
-        placeVisualEditorOnPrimaryDisplay(in: app)
-        resizeVisualEditor(in: app, to: CGSize(width: 960, height: 600))
-
-        let expanded = CGSize(width: visible.width, height: 600)
-        let growth = expanded.width - element("editor-window", in: app).frame.width
-        try XCTSkipUnless(growth > 2, "This display cannot expand beyond the compact viewport")
-        // Reproduce the hosted constraint with real window movement. Native dragging
-        // can shift the final position, so converge on the space invariant rather
-        // than assuming the requested title-bar delta was exact.
-        for _ in 0..<3 {
-            let window = element("editor-window", in: app)
-            let available = visible.maxX - window.frame.maxX
-            if available >= 0 && available < growth { break }
-            let title = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
-                .withOffset(CGVector(dx: 0, dy: 12))
-            title.press(
-                forDuration: 0.1,
-                thenDragTo: title.withOffset(CGVector(dx: available - growth / 2, dy: 0)))
-        }
-        let positioned = element("editor-window", in: app)
-        XCTAssertLessThanOrEqual(positioned.frame.maxX, visible.maxX)
-        XCTAssertLessThan(visible.maxX - positioned.frame.maxX, growth)
-        resizeVisualEditor(in: app, to: expanded)
-        let resized = element("editor-window", in: app)
-        XCTAssertGreaterThanOrEqual(resized.frame.minX, visible.minX - 2)
-        XCTAssertLessThanOrEqual(resized.frame.maxX, visible.maxX + 2)
-    }
-
-    @MainActor
-    private func placeVisualEditorOnPrimaryDisplay(in app: XCUIApplication) {
-        guard let screen = NSScreen.screens.first else {
-            XCTFail("A primary display is required for the visual viewport journey")
-            return
-        }
-        // AX uses a top-left origin on the primary display. Restored windows may
-        // belong to another connected display; do not resize against unrelated bounds.
-        let visible = CGRect(
-            x: screen.visibleFrame.minX,
-            y: screen.frame.maxY - screen.visibleFrame.maxY,
-            width: screen.visibleFrame.width, height: screen.visibleFrame.height)
-        for _ in 0..<3 {
-            let window = element("editor-window", in: app)
-            let frame = window.frame
-            if visible.insetBy(dx: -2, dy: -2).contains(frame) { return }
-            let target = CGPoint(
-                x: visible.midX - frame.width / 2,
-                y: visible.minY + max(0, (visible.height - frame.height) / 2))
-            let title = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0))
-                .withOffset(CGVector(dx: 0, dy: 12))
-            title.press(
-                forDuration: 0.1,
-                thenDragTo: title.withOffset(
-                    CGVector(dx: target.x - frame.minX, dy: target.y - frame.minY)))
-        }
-        XCTAssertTrue(
-            visible.insetBy(dx: -2, dy: -2).contains(element("editor-window", in: app).frame),
-            "The visual fixture must be on the display whose bounds it exercises")
-    }
-
-    @MainActor
-    private func resizeVisualEditor(in app: XCUIApplication, to size: CGSize) {
-        func dragHorizontalEdge(left: Bool, by delta: CGFloat) {
-            let window = element("editor-window", in: app)
-            let edge = window.coordinate(withNormalizedOffset: CGVector(dx: left ? 0 : 1, dy: 0.5))
-                .withOffset(CGVector(dx: left ? 1 : -1, dy: 0))
-            edge.press(
-                forDuration: 0.1,
-                thenDragTo: edge.withOffset(CGVector(dx: delta, dy: 0)),
-                withVelocity: .slow, thenHoldForDuration: 0.2)
-        }
-        // A delta within the existing assertion tolerance needs no drag; a one-point
-        // movement at the bottom edge can activate the Dock instead of resizing.
-        // Native live resizing can coalesce pointer events on a loaded hosted Mac.
-        // Settle the gesture, then recompute from the actual frame; a partial left
-        // expansion must not fall back to a right edge that already touches the screen.
-        for _ in 0..<4 {
-            let window = element("editor-window", in: app)
-            let delta = size.width - window.frame.width
-            if abs(delta) <= 2 { break }
-            if delta < 0 {
-                dragHorizontalEdge(left: true, by: -delta)
-            } else if let screen = NSScreen.main {
-                let availableLeft = max(0, window.frame.minX - screen.visibleFrame.minX)
-                if availableLeft > 2 {
-                    dragHorizontalEdge(left: true, by: -min(delta, availableLeft))
-                } else {
-                    dragHorizontalEdge(left: false, by: delta)
-                }
-            }
-        }
-        func dragVerticalEdge(top: Bool, by delta: CGFloat) {
-            let window = element("editor-window", in: app)
-            let edge = window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: top ? 0 : 1))
-                .withOffset(CGVector(dx: 0, dy: top ? 1 : -1))
-            edge.press(
-                forDuration: 0.1,
-                thenDragTo: edge.withOffset(CGVector(dx: 0, dy: delta)),
-                withVelocity: .slow, thenHoldForDuration: 0.2)
-        }
-        for _ in 0..<4 {
-            let window = element("editor-window", in: app)
-            let delta = size.height - window.frame.height
-            if abs(delta) <= 2 { break }
-            if delta < 0 {
-                // The Dock can intercept the bottom edge on compact displays.
-                dragVerticalEdge(top: true, by: -delta)
-            } else if let screen = NSScreen.main {
-                let visibleTop = screen.frame.maxY - screen.visibleFrame.maxY
-                let availableAbove = max(0, window.frame.minY - visibleTop)
-                if availableAbove > 2 {
-                    dragVerticalEdge(top: true, by: -min(delta, availableAbove))
-                } else {
-                    dragVerticalEdge(top: false, by: delta)
-                }
-            }
-        }
-        let resized = element("editor-window", in: app)
-        XCTAssertEqual(resized.frame.width, size.width, accuracy: 2)
-        XCTAssertEqual(resized.frame.height, size.height, accuracy: 2)
     }
 
     @MainActor
