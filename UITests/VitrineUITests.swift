@@ -63,6 +63,10 @@ final class VitrineUITests: XCTestCase {
                         app.activate()
                         assertHittable(
                             "copy-button", in: app, "The primary action must remain reachable")
+                        // XCUIElement screenshots read composited screen pixels;
+                        // another desktop app can cover this accessory window
+                        // after the hit test even while the AX frame is correct.
+                        app.activate()
                         let attachment = XCTAttachment(screenshot: resizedWindow.screenshot())
                         attachment.name =
                             "chrome-\(language)-\(dark ? "dark" : "light")-\(Int(resizedWindow.frame.width))x\(Int(resizedWindow.frame.height))"
