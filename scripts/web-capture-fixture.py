@@ -3,6 +3,7 @@
 
 import argparse
 import json
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from socketserver import TCPServer
 from pathlib import Path
@@ -55,9 +56,16 @@ class Handler(BaseHTTPRequestHandler):
                 body = json.dumps(self.server.events).encode()
             self.reply(body, "application/json")
             return
-        with self.server.lock:
-            self.server.events.append({"host": host, "path": path})
         route, _, key = path.lstrip("/").partition("/")
+        event = {"host": host, "path": path}
+        if route == "sso-private":
+            # Keep only a boolean in the receipt, never a Cookie header.
+            cookies = SimpleCookie()
+            cookies.load(self.headers.get("Cookie", ""))
+            session = cookies.get("vitrine_session")
+            event["sessionSeen"] = str(session is not None and session.value == key).lower()
+        with self.server.lock:
+            self.server.events.append(event)
         if route == "release":
             with self.server.lock:
                 event = self.server.holds.setdefault(key, Event())
@@ -77,6 +85,30 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Location", target)
             self.send_header("Content-Length", "0")
             self.end_headers()
+            return
+        if route in ("sso-start", "sso-idp"):
+            target = (f"http://localhost:{self.server.server_port}/sso-idp/{key}"
+                      if route == "sso-start" else
+                      f"http://127.0.0.1:{self.server.server_port}/sso-complete/{key}")
+            self.send_response(302)
+            self.send_header("Location", target)
+            if route == "sso-idp":
+                self.send_header("Set-Cookie", f"idp_session={key}; Path=/; HttpOnly; SameSite=Lax")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        if route == "sso-complete":
+            self.reply(
+                b"<!doctype html><body>Signed in through the controlled identity provider</body>",
+                "text/html",
+                headers=[("Set-Cookie", f"vitrine_session={key}; Path=/; HttpOnly; SameSite=Lax")])
+            return
+        if route == "sso-private":
+            authorized = event["sessionSeen"] == "true"
+            self.reply(
+                b"<!doctype html><body>Private synthetic page</body>" if authorized else
+                b"<!doctype html><body>Sign in required</body>",
+                "text/html", status=200 if authorized else 401)
             return
         if route == "resources":
             private = f"http://10.0.0.1:{self.server.server_port}"
@@ -103,11 +135,13 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(b"<!doctype html><html><body style='background:#123456;color:white'>"
                    b"Controlled capture</body></html>", "text/html")
 
-    def reply(self, body, content_type):
-        self.send_response(200)
+    def reply(self, body, content_type, *, status=200, headers=()):
+        self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        for name, value in headers:
+            self.send_header(name, value)
         self.end_headers()
         try:
             self.wfile.write(body)

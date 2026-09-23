@@ -62,6 +62,62 @@ struct WebCaptureIntegrationTests {
         #expect(ledger.contains { $0["path"] == "/page/\(key)" })
     }
 
+    @Test func crossHostSignInSessionIsAvailableToTheNextCapture() async throws {
+        let key = UUID().uuidString
+        let store = try isolatedStore()
+        let signIn = WebSessionWindowController(websiteDataStore: store).makeWebView()
+        #expect(signIn.configuration.websiteDataStore === store)
+        let waiter = FixtureNavigation()
+        signIn.navigationDelegate = waiter
+        defer {
+            signIn.stopLoading()
+            signIn.navigationDelegate = nil
+        }
+
+        // Both hosts resolve to the owned loopback fixture; the redirect changes
+        // host as a real SSO flow does without weakening product ATS.
+        signIn.load(URLRequest(url: try url("sso-start/\(key)")))
+        try await waiter.waiter.wait(timeout: .seconds(10))
+        let signInEvents = try await events()
+        #expect(
+            signInEvents.contains {
+                $0["path"] == "/sso-start/\(key)"
+                    && $0["host"]?.hasPrefix("127.0.0.1:") == true
+            })
+        #expect(
+            signInEvents.contains {
+                $0["path"] == "/sso-idp/\(key)"
+                    && $0["host"]?.hasPrefix("localhost:") == true
+            })
+        #expect(
+            signInEvents.contains {
+                $0["path"] == "/sso-complete/\(key)"
+                    && $0["host"]?.hasPrefix("127.0.0.1:") == true
+            })
+        #expect(
+            (await store.httpCookieStore.allCookies()).contains {
+                $0.name == "vitrine_session" && $0.value == key
+            })
+
+        var request = try WebSnapshotConfig(
+            captureURL: url("sso-private/\(key)"),
+            viewportPreset: .custom(width: 320, height: 240), scale: 1,
+            allowsLoopbackCapture: true)
+        request.dataStoreMode = .persistent
+        let image = try await URLSnapshotEngine(websiteDataStore: store).snapshot(of: request)
+        #expect(image.width == 320)
+        #expect(image.height == 240)
+        #expect(
+            try await events().contains {
+                $0["path"] == "/sso-private/\(key)" && $0["sessionSeen"] == "true"
+            })
+        #expect(!(await WebSessionStore.clearSessions(in: store)).isEmpty)
+        #expect((await store.httpCookieStore.allCookies()).isEmpty)
+        // Production uses the same default store in both windows; the injected
+        // nonpersistent store keeps this synthetic session out of the user's profile.
+        #expect(URLSnapshotEngine().dataStore(for: .persistent) === WKWebsiteDataStore.default())
+    }
+
     @Test func privateRedirectFailsBeforeReachingTheDestination() async throws {
         let key = UUID().uuidString
         do {

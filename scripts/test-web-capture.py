@@ -14,6 +14,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED = {
     "controlledRedirectProducesARealImage()",
+    "crossHostSignInSessionIsAvailableToTheNextCapture()",
     "privateRedirectFailsBeforeReachingTheDestination()",
     "privateResourcesAreBlockedWithAReachablePositiveControl()",
     "cancellationStopsAnActuallyPendingLoad()",

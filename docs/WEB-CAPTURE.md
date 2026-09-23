@@ -45,8 +45,9 @@ selection, missing scenario, skipped test, or failing test is not success.
 `make web-capture-check` tests those fail-closed receipt rules without Xcode.
 The fixture binds numeric loopback without reverse DNS and publishes its port
 atomically. `fixture.log` retains startup output even if readiness fails. The
-dedicated lane also runs four fixture regressions covering DNS independence, real
-local HTTP, child failure diagnostics, and fail-closed readiness timeout.
+dedicated lane also runs five fixture regressions covering DNS independence, real
+local HTTP, synthetic cross-host sign-in cookies, child failure diagnostics, and
+fail-closed readiness timeout.
 
 Some ad-hoc sandboxed test hosts cannot launch WebKit child processes. For local
 diagnosis only, the existing coverage-lane signing overrides can be requested:
@@ -71,6 +72,13 @@ The suite covers:
 - Loopback subresources refused by default and requested only with explicit opt-in.
 - Cancellation after the server observes a pending load, plus a real load timeout.
 - A full-page snapshot clipped to its configured height cap.
+- Synthetic app-to-identity-provider-to-app sign-in redirects: a cookie acquired
+  through the sign-in WebView's data store is available to the next opted-in
+  capture, while clearing that store removes it. The test injects a nonpersistent
+  store to avoid writing synthetic credentials to the user's profile; production
+  uses the default persistent store for both windows. This exercises WebKit's
+  shared-store contract across `127.0.0.1` and `localhost` without changing
+  product ATS, not a live identity provider or the complete sign-in window UI.
 - Temporary cookies isolated from the next capture, site inventory, and actual
   Cache Storage removal on sign-out. The original partial purge left the cached
   synthetic private response readable; this regression must stay covered.
@@ -78,6 +86,7 @@ The suite covers:
 For fake private addresses, only the test's isolated data store uses a nonforwarding
 loopback HTTP CONNECT fixture with failover disabled. It serves responses locally
 and never resolves or forwards a destination. System DNS/proxy settings are not
-changed. Plain HTTP fixtures do not qualify TLS, every resource category, SSO, or
-DNS-rebinding behavior. The default unit lane skips this suite unless the runner
-supplies its explicit fixture port; only the dedicated lane proves execution.
+changed. Plain HTTP fixtures do not qualify TLS, every resource category, live
+SSO providers, or DNS-rebinding behavior. The default unit lane skips this suite
+unless the runner supplies its explicit fixture port; only the dedicated lane
+proves execution.

@@ -19,6 +19,15 @@ import WebKit
 final class WebSessionWindowController: NSObject, NSWindowDelegate {
     static let shared = WebSessionWindowController()
 
+    private let websiteDataStore: WKWebsiteDataStore
+
+    /// Keep the sign-in and capture stores identical; tests inject an ephemeral store
+    /// rather than writing synthetic credentials into the user's WebKit profile.
+    init(websiteDataStore: WKWebsiteDataStore = .default()) {
+        self.websiteDataStore = websiteDataStore
+        super.init()
+    }
+
     private var window: NSWindow?
     private var webView: WKWebView?
     /// Run when the window closes, so the caller can refresh what it shows about stored
@@ -53,11 +62,11 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
         window?.close()
     }
 
-    private func makeWebView() -> WKWebView {
+    func makeWebView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
         // The whole point: the interactive session and the offscreen capture must share
         // one store, or signing in here would have no effect on what a capture sees.
-        configuration.websiteDataStore = .default()
+        configuration.websiteDataStore = websiteDataStore
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
         return webView
