@@ -51,8 +51,8 @@ struct CodeEditorView: NSViewRepresentable {
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.isGrammarCheckingEnabled = false
         textView.allowsUndo = true
-        // Transparent over the code panel's glass: the panel
-        // material shows through behind the highlighted text.
+        // Empty documents retain the panel's glass and onboarding overlay.
+        // Highlighting pairs nonempty syntax with its own theme background.
         textView.drawsBackground = false
         textView.textContainerInset = NSSize(width: 14, height: 12)
         textView.string = text
@@ -190,6 +190,18 @@ struct CodeEditorView: NSViewRepresentable {
             guard let storage = textView.textStorage else { return }
             isHighlighting = true
             defer { isHighlighting = false }
+
+            // Syntax colors belong to the selected theme, not the app's light/dark
+            // chrome. Keep their background paired, including custom palette updates.
+            let hasContent = !textView.string.isEmpty
+            let background = HighlightManager.shared.backgroundColor(for: parent.theme)
+            textView.drawsBackground = hasContent
+            textView.backgroundColor = NSColor(background)
+            textView.enclosingScrollView?.drawsBackground = hasContent
+            textView.enclosingScrollView?.backgroundColor = NSColor(background)
+            textView.insertionPointColor =
+                hasContent
+                ? NSColor(VitrineTokens.Text.readable(on: background)) : .textColor
 
             let mode = HighlightPolicy.mode(for: textView.string, language: parent.language)
             let attributed = HighlightManager.shared.attributedString(

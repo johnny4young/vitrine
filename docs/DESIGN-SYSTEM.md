@@ -46,7 +46,10 @@ variant for the current appearance automatically. The accent and neutral stage a
 mirrored in the asset catalog (`AccentColor`, `BrandStage`) with the same four variants.
 For native chrome that should follow the user's macOS accent, use
 `VitrineTokens.Accent.system` (and `systemContrast` for text on that fill), not
-`Color.accentColor` — Vitrine's `AccentColor` asset is the brand violet.
+`Color.accentColor` — Vitrine's `AccentColor` asset is the brand violet. The label
+resolves to black or white against the actual opaque fill at draw time; native
+`selectedControlTextColor` is not a contrast guarantee for custom flat controls.
+Keep selected labels opaque; fading the label invalidates its measured contrast.
 
 | Token | Role |
 | --- | --- |
@@ -57,7 +60,7 @@ For native chrome that should follow the user's macOS accent, use
 | `border` | hairline border for cards and previews |
 
 Contrast is enforced by tests (`Tests/DesignTokenTests.swift`): primary text on the stage
-clears WCAG **AA (4.5:1)** and secondary text clears at least **AA-large (3:1)** in all
+clears WCAG **AA (4.5:1)** and secondary text clears **AA (4.5:1)** in all
 four appearances, and high-contrast never lowers the ratio.
 
 ## Do / Don't
@@ -113,3 +116,29 @@ Run before shipping any change that touches UI chrome, the canvas, or exports:
 - [ ] Empty editor state shows the brand mark plus a "Paste Code" action.
 - [ ] Native controls still feel native — no reskinned `Picker`/`Toggle`/buttons.
 - [ ] `make lint && make build && make test` are green (contrast + token tests included).
+
+## Accessible chrome feedback
+
+App labels, including tertiary section headings and placeholders, meet normal-text
+contrast on the window, card, inset, and row fills. The tertiary palette has explicit
+increased-contrast variants. `ChromeContrastTests` measures resolved normal appearances
+and declared high-contrast variants separately: constructing a high-contrast NSAppearance
+without the actual system setting does not qualify the native increased-contrast UI.
+
+The floating preview status uses an opaque adaptive card fill, so its text contrast
+does not depend on the user-selected ambient gradient. Nonempty code input pairs syntax
+colors with their own theme background and a readable caret; empty input keeps the chrome
+onboarding surface. This does not recolor the export or override custom palettes.
+
+CTA controls use `VitrineTokens.Gradients.callToAction`, deeper stops from the existing
+violet/azure palette behind a fixed white label. Unlike decorative brand fills, this role
+keeps those stops in both appearances. Its hover brightness is bounded and pixel-tested.
+`Brand.Gradient.signature`, export presets, and export typography are unchanged.
+
+Reduce Motion removes decorative press/hover scaling and animated layout/background
+changes in the editor, inspector, menu, Settings, and social-card editor. Functional fit
+scaling still sizes the preview correctly; only interpolation is suppressed. Controls
+retain their focus, color and action feedback. `DecorativeScaleEffectTests` measures
+rendered pixels for both policy values; controls read the system's read-only environment.
+Native Reduce Motion / Increase Contrast / VoiceOver journeys remain separate acceptance
+checks, not conclusions inferred from those unit tests.

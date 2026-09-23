@@ -4,6 +4,128 @@ import XCTest
 
 final class VitrineUITests: XCTestCase {
     @MainActor
+    func testLocalizedVisualChromeFitsCompactAndDesktopEditors() throws {
+        continueAfterFailure = false
+        let visible = try XCTUnwrap(NSScreen.main).visibleFrame.size
+        try XCTSkipUnless(
+            visible.width >= 960 && visible.height >= 600,
+            "The primary display cannot hold the 960×600 editor viewport")
+        for language in ["en", "es"] {
+            for dark in [false, true] {
+                // Launch at each requested frame rather than relying on XCUITest
+                // pointer drags at a hosted display boundary. The app's Debug-only
+                // hook sets the real NSWindow frame, and we assert it below.
+                for size in [
+                    CGSize(width: min(1280, visible.width), height: min(800, visible.height)),
+                    CGSize(width: 960, height: 600),
+                ] {
+                    // End each cohort before launching the next one. A defer in
+                    // this loop's outer scope leaves previous app windows alive.
+                    do {
+                        let app = launch(
+                            arguments: VitrineLaunchArguments.editor + [
+                                "-AppleLanguages", "(\(language))", "-AppleLocale",
+                                language == "es" ? "es_ES" : "en_US",
+                                dark ? "--appearance-dark" : "--appearance-light",
+                            ],
+                            environment: [
+                                "VITRINE_UI_TEST_EDITOR_VIEWPORT":
+                                    "\(Int(size.width))x\(Int(size.height))"
+                            ])
+                        defer { app.terminate() }
+                        let resizedWindow = element("editor-window", in: app)
+                        assertExists(resizedWindow, in: app, timeout: 8)
+                        XCTAssertEqual(resizedWindow.frame.width, size.width, accuracy: 2)
+                        XCTAssertEqual(resizedWindow.frame.height, size.height, accuracy: 2)
+                        // Accessory apps can lose the foreground to another process
+                        // between launches. Activate and click the editor before
+                        // checking real pointer reachability.
+                        app.activate()
+                        resizedWindow.click()
+                        for identifier in [
+                            "editor-toolbar", "editor-preview-stage", "editor-inspector",
+                        ] {
+                            assertExists(element(identifier, in: app), in: app, timeout: 3)
+                            // SwiftUI propagates a container identifier to accessible
+                            // leaves. Check all matching frames, not a singular query.
+                            let controls = app.descendants(matching: .any)
+                                .matching(identifier: identifier).allElementsBoundByIndex
+                            XCTAssertFalse(controls.isEmpty)
+                            for control in controls {
+                                XCTAssertTrue(
+                                    resizedWindow.frame.insetBy(dx: -1, dy: -1).contains(
+                                        control.frame),
+                                    identifier)
+                            }
+                        }
+                        // Queries above may take several seconds; a background
+                        // desktop app can reclaim focus before the hit test.
+                        app.activate()
+                        assertHittable(
+                            "copy-button", in: app, "The primary action must remain reachable")
+                        // XCUIElement screenshots read composited screen pixels;
+                        // another desktop app can cover this accessory window
+                        // after the hit test even while the AX frame is correct.
+                        app.activate()
+                        let attachment = XCTAttachment(screenshot: resizedWindow.screenshot())
+                        attachment.name =
+                            "chrome-\(language)-\(dark ? "dark" : "light")-\(Int(resizedWindow.frame.width))x\(Int(resizedWindow.frame.height))"
+                        attachment.lifetime = .keepAlways
+                        add(attachment)
+                    }
+                }
+            }
+        }
+    }
+
+    @MainActor
+    func testLocalizedSettingsChromeKeepsNavigationAndStyleControlsVisible() {
+        continueAfterFailure = false
+        for language in ["en", "es"] {
+            for dark in [false, true] {
+                let app = launch(
+                    arguments: VitrineLaunchArguments.settings + [
+                        "-AppleLanguages", "(\(language))", "-AppleLocale",
+                        language == "es" ? "es_ES" : "en_US",
+                        dark ? "--appearance-dark" : "--appearance-light",
+                    ])
+                defer { app.terminate() }
+                assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+                for identifier in [
+                    "settings-nav-general", "settings-nav-style", "settings-nav-output",
+                    "settings-nav-about",
+                ] {
+                    assertHittable(
+                        identifier, in: app, "Localized sidebar controls must remain reachable")
+                }
+                element("settings-nav-style", in: app).click()
+                let stylePane = element("settings-style-pane", in: app)
+                assertExists(stylePane, in: app, timeout: 3)
+                assertHittable("style-theme-picker", in: app, "The localized theme picker must fit")
+                let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+                attachment.name = "settings-chrome-\(language)-\(dark ? "dark" : "light")"
+                attachment.lifetime = .keepAlways
+                add(attachment)
+
+                // Typography follows a deliberately scrollable preview and theme
+                // section. A 720×600 Settings window cannot show both at once,
+                // especially once Spanish labels wrap; verify the control is
+                // reachable rather than treating intentional scrolling as clipping.
+                if !element("style-font-picker", in: app).isHittable {
+                    stylePane.swipeUp()
+                }
+                assertHittable(
+                    "style-font-picker", in: app,
+                    "The localized font picker must be reachable after scrolling")
+                let typography = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+                typography.name = "settings-typography-\(language)-\(dark ? "dark" : "light")"
+                typography.lifetime = .keepAlways
+                add(typography)
+            }
+        }
+    }
+
+    @MainActor
     func testStyleSegmentsSupportArrowKeysAndSelectionSemantics() {
         continueAfterFailure = false
         for language in ["en", "es"] {
