@@ -62,6 +62,65 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testImageProcessingShowsProgressAndCanCancelOrRemoveItsSource() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        for (language, appearance) in [
+            ("en", "Light"), ("en", "Dark"), ("es", "Light"), ("es", "Dark"),
+        ] {
+            let app = launch(
+                arguments: [
+                    "--demo-beautify-image", "-AppleLanguages", "(\(language))", "-AppleLocale",
+                    language == "es" ? "es_ES" : "en_US",
+                    appearance == "Dark" ? "--appearance-dark" : "--appearance-light",
+                ],
+                environment: [
+                    "VITRINE_MANAGED_IMAGE_UI_TEST": "pending",
+                    "VITRINE_UI_TEST_EDITOR_VIEWPORT": "960x600",
+                ])
+            defer { app.terminate() }
+            let copy = element("copy-image-text-button", in: app)
+            let redact = element("redact-image-secrets-button", in: app)
+            let status = element("image-processing-status", in: app)
+            let cancel = element("cancel-image-processing-button", in: app)
+            assertExists(copy, in: app, timeout: 8)
+            let window = element("editor-window", in: app)
+            // The Debug launch hook requests a real compact AppKit frame; assert the
+            // resulting size so the test fails if the editor's minimum grows too large.
+            XCTAssertLessThanOrEqual(window.frame.width, 980)
+            XCTAssertLessThanOrEqual(window.frame.height, 620)
+            copy.click()
+            assertExists(status, in: app, timeout: 3)
+            XCTAssertEqual(
+                status.label, language == "es" ? "Reconociendo texto…" : "Recognizing text…")
+            XCTAssertFalse(copy.isEnabled)
+            XCTAssertFalse(redact.isEnabled)
+            XCTAssertTrue(cancel.isHittable)
+            XCTAssertTrue(element("editor-window", in: app).frame.contains(cancel.frame))
+            let screenshot = XCTAttachment(
+                screenshot: element("editor-window", in: app).screenshot())
+            screenshot.name = "image-processing-\(language)-\(appearance)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            cancel.click()
+            XCTAssertTrue(status.waitForNonExistence(timeout: 3))
+            XCTAssertTrue(copy.isEnabled)
+            XCTAssertTrue(redact.isEnabled)
+
+            // Starting a different operation immediately must not let the cancelled
+            // task clear its progress. Removal cancels the new job and restores code mode.
+            redact.click()
+            assertExists(status, in: app, timeout: 3)
+            XCTAssertEqual(
+                status.label, language == "es" ? "Ocultando secretos…" : "Redacting secrets…")
+            element("remove-image-button", in: app).click()
+            assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
+            XCTAssertTrue(status.waitForNonExistence(timeout: 3))
+            XCTAssertFalse(copy.exists)
+        }
+    }
+
+    @MainActor
     func testImagePanelExposesRedactAndCopyTextActions() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()

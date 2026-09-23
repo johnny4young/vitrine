@@ -1219,3 +1219,24 @@ struct Theme: Identifiable, Hashable {
   posture, and a sample capture, but it must stay skippable and compact. Empty state:
   "Paste or type code…".
 - **Perceived speed:** highlight with a debounce of ≤100ms; `Copy` < 300ms.
+
+### Image-operation ownership
+
+Each editor view owns one `ImageProcessingController`. It publishes the operation kind
+for progress, cancels on image replacement/removal and view disappearance, and checks an
+operation identity before publishing a result or clearing state. A cancelled recognizer
+may finish internally, but it cannot replace a newer job's progress, modify its image, or
+announce an obsolete error. The view also rechecks the source-image reference at publication.
+The controller's task does not retain the editor owner across suspension.
+
+`ImageTextExtractor` uses Vision's async `RecognizeTextRequest` on the concurrent executor,
+with accurate recognition, language correction disabled, and normalized bottom-left boxes.
+Recognition stays on-device. Cancellation discards pending results; it does not promise that
+all system compute stops instantaneously. Clipboard feedback uses the actual write result.
+
+Lifecycle regressions use controlled continuations, not sleeps. Separate synthetic Core Text
+fixtures exercise real Vision reading order, boxes, blank images, and cancellation. For UI
+qualification only, Debug builds accept `VITRINE_MANAGED_IMAGE_UI_TEST=pending` together with
+an explicit `VITRINE_USER_DEFAULTS_SUITE`. That recognizer waits on a cancellable stream so
+progress, Cancel, restart, and Remove can be exercised deterministically in EN/ES. It never
+runs on normal launches and is absent from Release; this fixture does not certify OCR accuracy.

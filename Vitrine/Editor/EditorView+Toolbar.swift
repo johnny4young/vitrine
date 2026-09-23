@@ -555,7 +555,9 @@ extension EditorView {
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
     /// and the selected font.
     func copyHighlightedCode() {
-        RichPasteboard.copyHighlightedCode(for: settings.config)
+        session.feedback(
+            ExportFeedback.sourceCopyOutcome(
+                RichPasteboard.copyHighlightedCode(for: settings.config)))
     }
 
     /// Copies a self-contained `vitrine://open` link that reproduces this snapshot. The
@@ -566,9 +568,8 @@ extension EditorView {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
-            pasteboard.setString(url.absoluteString, forType: .string)
-            session.feedback(
-                Notifier.confirmation(String(localized: "Share link copied")))
+            let copied = pasteboard.setString(url.absoluteString, forType: .string)
+            session.feedback(ExportFeedback.shareLinkCopyOutcome(copied))
         } catch SnapshotShareLink.ShareLinkError.tooLarge {
             session.feedback(
                 Notifier.failure(

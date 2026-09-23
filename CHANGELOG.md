@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Image text recognition and secret redaction show cancellable progress. Replaced or
+  cancelled operations cannot publish stale results, errors, or progress changes.
+- Highlighted-code, image-text, and share-link copying report the actual pasteboard
+  outcome instead of silently failing or announcing success after a failed write.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each

@@ -1,6 +1,46 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Couldn't copy text from the image" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar el texto de la imagen"
+          }
+        }
+      }
+    },
+    "Cancel image processing" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar el procesamiento de imagen"
+          }
+        }
+      }
+    },
+    "Redacting secrets…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultando secretos…"
+          }
+        }
+      }
+    },
+    "Recognizing text…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconociendo texto…"
+          }
+        }
+      }
+    },
     "Annotation Tool" : {
       "comment" : "Edit-menu submenu containing annotation tool choices and shortcuts.",
       "localizations" : {

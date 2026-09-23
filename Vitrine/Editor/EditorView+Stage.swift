@@ -56,12 +56,13 @@ extension EditorView {
             dropTask = Task { await handleDrop(providers) }
             return true
         }
+        .onChange(of: settings.style.foregroundImage) { _, _ in
+            imageProcessing.cancel()
+        }
         .onDisappear {
             dropTask?.cancel()
             dropTask = nil
-            imageProcessingTask?.cancel()
-            imageProcessingTask = nil
-            isExtractingText = false
+            imageProcessing.cancel()
         }
         .overlay { dropAffordance }
         .accessibilityContainerIdentifier("editor-drop-target")
@@ -210,7 +211,7 @@ extension EditorView {
             } label: {
                 Label("Copy text from image", systemImage: "text.viewfinder")
             }
-            .disabled(isExtractingText)
+            .disabled(imageProcessing.isProcessing)
             .help("Recognize the image's text on-device and copy it")
             .accessibilityIdentifier("copy-image-text-button")
             // OCR the image, then cover regions whose text looks like a secret.
@@ -219,10 +220,33 @@ extension EditorView {
             } label: {
                 Label("Redact secrets", systemImage: "eye.slash")
             }
-            .disabled(isExtractingText)
+            .disabled(imageProcessing.isProcessing)
             .help("Scan the image on-device and cover regions that look like secrets")
             .accessibilityIdentifier("redact-image-secrets-button")
+            if let operation = imageProcessing.operation {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel(
+                            Text(
+                                operation == .copyText ? "Recognizing text…" : "Redacting secrets…")
+                        )
+                        .accessibilityIdentifier("image-processing-status")
+                    Text(operation == .copyText ? "Recognizing text…" : "Redacting secrets…")
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityHidden(true)
+                    Spacer(minLength: 0)
+                    Button("Cancel") {
+                        imageProcessing.cancel()
+                    }
+                    .controlSize(.small)
+                    .accessibilityLabel("Cancel image processing")
+                    .accessibilityIdentifier("cancel-image-processing-button")
+                }
+            }
             Button(role: .destructive) {
+                imageProcessing.cancel()
                 settings.style.foregroundImage = nil
             } label: {
                 Text("Remove image")
@@ -241,39 +265,34 @@ extension EditorView {
             let image = foregroundImageStore.image(for: reference),
             let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
-        imageProcessingTask?.cancel()
-        isExtractingText = true
-        imageProcessingTask = Task {
-            defer {
-                imageProcessingTask = nil
-                isExtractingText = false
-            }
-            do {
-                let text = try await ImageTextExtractor.recognizeText(in: cgImage)
-                try Task.checkCancellation()
+        let settings = self.settings
+        let feedback = session.feedback
+        imageProcessing.start(
+            .copyText,
+            work: {
+                try await ImageTextExtractor.recognizeText(in: cgImage)
+            },
+            publish: { text in
                 guard settings.style.foregroundImage == reference else { return }
                 guard !text.isEmpty else {
-                    session.feedback(
-                        Notifier.confirmation(String(localized: "No text found in the image")))
+                    feedback(Notifier.confirmation(String(localized: "No text found in the image")))
                     return
                 }
                 let pasteboard = NSPasteboard.general
                 pasteboard.clearContents()
-                pasteboard.setString(text, forType: .string)
-                Log.export.notice(
-                    "Copied recognized image text (\(text.count, privacy: .public) chars)")
-                session.feedback(
-                    Notifier.confirmation(String(localized: "Text copied from image")))
-            } catch is CancellationError {
-                return
-            } catch {
+                let copied = pasteboard.setString(text, forType: .string)
+                if copied {
+                    Log.export.notice(
+                        "Copied recognized image text (\(text.count, privacy: .public) chars)")
+                }
+                feedback(ExportFeedback.imageTextCopyOutcome(copied))
+            },
+            onFailure: { _ in
                 guard settings.style.foregroundImage == reference else { return }
                 Log.export.error("Image text recognition failed")
-                session.feedback(
-                    Notifier.failure(
-                        String(localized: "Couldn't recognize text in the image")))
-            }
-        }
+                feedback(
+                    Notifier.failure(String(localized: "Couldn't recognize text in the image")))
+            })
     }
 
     /// Redacts secrets in the beautified image: recognize text regions on-device, cover
@@ -288,50 +307,50 @@ extension EditorView {
             let image = foregroundImageStore.image(for: reference),
             let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil)
         else { return }
-        imageProcessingTask?.cancel()
-        isExtractingText = true
-        imageProcessingTask = Task {
-            defer {
-                imageProcessingTask = nil
-                isExtractingText = false
-            }
-            do {
+        let settings = self.settings
+        let store = foregroundImageStore
+        let feedback = session.feedback
+        imageProcessing.start(
+            .redactSecrets,
+            work: { () async throws -> (ImageReference, Int)? in
                 let lines = try await ImageTextExtractor.recognizeLines(in: cgImage)
                 try Task.checkCancellation()
-                guard settings.style.foregroundImage == reference else { return }
+                guard settings.style.foregroundImage == reference else { throw CancellationError() }
                 guard
                     let result = try ImageSecretRedactor.redactSecrets(
                         in: cgImage, recognizedLines: lines)
                 else {
-                    session.feedback(
-                        Notifier.confirmation(String(localized: "No secrets found in the image")))
-                    return
+                    return nil
                 }
                 guard let data = ExportManager.pngData(from: result.image) else {
                     throw ImageSecretRedactor.RedactionError.renderingFailed
                 }
-                let newReference = try await foregroundImageStore.importImageConcurrently(
+                try Task.checkCancellation()
+                let newReference = try await store.importImageConcurrently(
                     data: data, preferredExtension: "png")
-                guard await foregroundImageStore.preloadImage(for: newReference) != nil else {
+                guard await store.preloadImage(for: newReference) != nil else {
                     throw BackgroundImageStore.ImportError.notAnImage
                 }
                 try Task.checkCancellation()
+                return (newReference, result.regionCount)
+            },
+            publish: { result in
                 guard settings.style.foregroundImage == reference else { return }
+                guard let (newReference, count) = result else {
+                    feedback(
+                        Notifier.confirmation(String(localized: "No secrets found in the image")))
+                    return
+                }
                 settings.style.foregroundImage = newReference
-                Log.export.notice(
-                    "Redacted image secrets (\(result.regionCount, privacy: .public) regions)")
-                session.feedback(
-                    Notifier.confirmation(String(localized: "Secrets redacted")))
-            } catch is CancellationError {
-                return
-            } catch {
+                Log.export.notice("Redacted image secrets (\(count, privacy: .public) regions)")
+                feedback(Notifier.confirmation(String(localized: "Secrets redacted")))
+            },
+            onFailure: { _ in
                 guard settings.style.foregroundImage == reference else { return }
                 Log.export.error("Image secret redaction failed")
-                session.feedback(
-                    Notifier.failure(
-                        String(localized: "Couldn't redact secrets in the image")))
-            }
-        }
+                feedback(
+                    Notifier.failure(String(localized: "Couldn't redact secrets in the image")))
+            })
     }
 
     /// The 26 pt format action in the code header — the mouse route to the
