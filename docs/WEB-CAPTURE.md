@@ -79,13 +79,15 @@ The suite covers:
 - Loopback subresources refused by default and requested only with explicit opt-in.
 - Cancellation after the server observes a pending load, plus a real load timeout.
 - A full-page snapshot clipped to its configured height cap.
-- Synthetic app-to-identity-provider-to-app sign-in redirects: a cookie acquired
-  through the sign-in WebView's data store is available to the next opted-in
-  capture, while clearing that store removes it. The test injects a nonpersistent
-  store to avoid writing synthetic credentials to the user's profile; production
-  uses the default persistent store for both windows. This exercises WebKit's
-  shared-store contract across `127.0.0.1` and `localhost` without changing
-  product ATS, not a live identity provider or the complete sign-in window UI.
+- Synthetic app-to-identity-provider-to-app sign-in redirects through the real,
+  visible sign-in window: it opens on the requested site, shares the capture's
+  data store, closes after receiving the synthetic cookie, and leaves that cookie
+  available to the next opted-in capture. Clearing the store removes it. The
+  test injects a nonpersistent store to avoid writing synthetic credentials to
+  the user's profile; production uses the default persistent store for both
+  windows. This exercises native window lifecycle and WebKit's shared-store
+  contract across `127.0.0.1` and `localhost` without changing product ATS. It
+  does not exercise a real login form, VoiceOver, TLS, or a live identity provider.
 - Temporary cookies isolated from the next capture, site inventory, and actual
   Cache Storage removal on sign-out. The original partial purge left the cached
   synthetic private response readable; this regression must stay covered.

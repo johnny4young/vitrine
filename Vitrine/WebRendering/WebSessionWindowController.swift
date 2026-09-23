@@ -30,10 +30,6 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
 
     private var window: NSWindow?
     private var webView: WKWebView?
-    /// Run when the window closes, so the caller can refresh what it shows about stored
-    /// sessions without polling.
-    private var onClose: (() -> Void)?
-
     /// Whether the sign-in window is currently open.
     var isPresented: Bool { window != nil }
 
@@ -41,9 +37,7 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
     ///
     /// The caller is responsible for having established that signing in is available —
     /// see `WebSessionAvailability`.
-    func show(url: URL, onClose: (() -> Void)? = nil) {
-        self.onClose = onClose
-
+    func show(url: URL) {
         let webView = self.webView ?? makeWebView()
         self.webView = webView
 
@@ -62,7 +56,7 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
         window?.close()
     }
 
-    func makeWebView() -> WKWebView {
+    private func makeWebView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
         // The whole point: the interactive session and the offscreen capture must share
         // one store, or signing in here would have no effect on what a capture sees.
@@ -81,6 +75,7 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
         window.contentView = webView
         window.delegate = self
         window.isReleasedWhenClosed = false
+        window.setAccessibilityIdentifier("web-sign-in-window")
         window.center()
         window.setFrameAutosaveName("VitrineWebSessionWindow")
         return window
@@ -92,9 +87,6 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
         webView?.stopLoading()
         webView = nil
         window = nil
-        let onClose = self.onClose
-        self.onClose = nil
-        onClose?()
         NotificationCenter.default.post(name: WebSessionStore.didChange, object: nil)
     }
 }

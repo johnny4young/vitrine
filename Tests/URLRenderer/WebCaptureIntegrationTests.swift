@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Network
 import Testing
@@ -65,19 +66,33 @@ struct WebCaptureIntegrationTests {
     @Test func crossHostSignInSessionIsAvailableToTheNextCapture() async throws {
         let key = UUID().uuidString
         let store = try isolatedStore()
-        let signIn = WebSessionWindowController(websiteDataStore: store).makeWebView()
+        let signInWindow = WebSessionWindowController(websiteDataStore: store)
+        signInWindow.show(url: try url("sso-start/\(key)"))
+        defer { signInWindow.close() }
+        #expect(signInWindow.isPresented)
+        let window = try #require(
+            NSApp.windows.first {
+                $0.accessibilityIdentifier() == "web-sign-in-window" && $0.isVisible
+            })
+        let signIn = try #require(window.contentView as? WKWebView)
         #expect(signIn.configuration.websiteDataStore === store)
-        let waiter = FixtureNavigation()
-        signIn.navigationDelegate = waiter
-        defer {
-            signIn.stopLoading()
-            signIn.navigationDelegate = nil
+
+        // Exercise the actual interactive window, not an unattached WKWebView. The
+        // injected store and nonforwarding fixture keep this synthetic session away
+        // from the user's persistent WebKit profile and the public network.
+        let deadline = ContinuousClock.now.advanced(by: .seconds(10))
+        while !(await store.httpCookieStore.allCookies()).contains(where: {
+            $0.name == "vitrine_session" && $0.value == key
+        }) {
+            try #require(ContinuousClock.now < deadline, "The sign-in window did not finish")
+            try await Task.sleep(for: .milliseconds(20))
         }
+        signInWindow.close()
+        #expect(!signInWindow.isPresented)
+        #expect(!window.isVisible)
 
         // Both hosts resolve to the owned loopback fixture; the redirect changes
         // host as a real SSO flow does without weakening product ATS.
-        signIn.load(URLRequest(url: try url("sso-start/\(key)")))
-        try await waiter.waiter.wait(timeout: .seconds(10))
         let signInEvents = try await events()
         #expect(
             signInEvents.contains {
