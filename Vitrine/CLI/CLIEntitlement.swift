@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 
 /// The out-of-process PRO entitlement check for Vitrine's advanced CLI capabilities.
 ///

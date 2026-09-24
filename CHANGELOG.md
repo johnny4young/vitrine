@@ -21,6 +21,7 @@ can never drift.
   explicit cleanup of older history and cached previews, with clear backup limitations.
 - Damaged history preserves its original archive and previews until the user recovers
   readable entries or explicitly deletes it, rather than silently replacing it with an empty list.
+- Link app and CLI clipboard delivery and offline license verification from their shared modules instead of compiling app adapters twice. Keep Keychain, activation and purchase effects app-owned.
 
 ### Fixed
 

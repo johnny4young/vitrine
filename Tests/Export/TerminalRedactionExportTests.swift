@@ -3,9 +3,9 @@ import Foundation
 import PDFKit
 import Testing
 import VitrineDomain
-import VitrineRendering
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 @Suite("Terminal redaction export", .serialized)
 struct TerminalRedactionExportTests {
