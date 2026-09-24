@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import VitrineDomain
 
 #if VITRINE_DIRECT_DOWNLOAD
     /// The Ed25519 **private** key the direct-download build uses to sign a freshly-activated

@@ -3,9 +3,9 @@ import Foundation
 import Testing
 import UniformTypeIdentifiers
 import VitrineDomain
-import VitrineRendering
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 /// Rich export targets and multi-representation clipboard.
 ///

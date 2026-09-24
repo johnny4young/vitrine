@@ -273,13 +273,8 @@ targets:
       - path: VitrineCLI
         excludes:
           - "main.swift"
-      # App files the command-line surface calls. The app compiles its own copy.
-      - path: Vitrine/Support/Log.swift
-      - path: Vitrine/Export/ExportManager+Pasteboard.swift
-      - path: Vitrine/Export/RichPasteboard.swift
-      # Offline verification only; StoreKit, purchase state, and paywall UI remain
-      # app-owned and are not compiled into the CLI.
-      - path: Vitrine/Pro/LicenseKey.swift
+      # Clipboard output is linked from VitrineRendering; offline token verification
+      # is linked from VitrineDomain. No app-owned sources compile into this target.
     dependencies:
       - target: VitrineDomain
       - target: VitrineRendering

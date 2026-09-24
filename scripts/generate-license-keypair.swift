@@ -7,7 +7,7 @@ import Foundation
 //
 //   swift scripts/generate-license-keypair.swift
 //
-//   • PUBLIC  → paste into LicenseVerifier.embedded (Vitrine/Pro/LicenseKey.swift). Not secret.
+//   • PUBLIC  → paste into LicenseVerifier.embedded (VitrineDomain/Licensing/LicenseToken.swift). Not secret.
 //   • PRIVATE → keep secret (your Keychain / a password manager). Export it as
 //     VITRINE_LICENSE_SIGNING_KEY only on the release machine, at build time. NEVER commit it.
 //
