@@ -505,6 +505,7 @@ jobs:
       - name: Run UI tests
         run: |
           set -o pipefail
+          touch "${RUNNER_TEMP}/ui-test-started"
           make test-ui RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
 
       # Keep the four privacy-settings states available for visual review on green
@@ -570,6 +571,25 @@ jobs:
             echo "::error title=UI automation blocked on this image::The XCUITest session could not initialize. The runner image has likely lost its pre-authorized automation state (cf. actions/runner-images#7621) — an infrastructure regression, not a test failure. See docs/RELEASING.md (Running the UI tests)."
           fi
 
+      # xcresult diagnostics can mention an app crash without retaining its stack.
+      # Keep only reports from this UI run and this app, never unrelated host reports.
+      - name: Collect UI crash reports
+        if: failure()
+        run: |
+          python3 - <<'PYTHON'
+          import os, pathlib, shutil
+          temporary = pathlib.Path(os.environ["RUNNER_TEMP"])
+          marker = temporary / "ui-test-started"
+          if marker.exists():
+              output = temporary / "ui-crash-reports"
+              for scope, root in [("user", pathlib.Path.home() / "Library/Logs/DiagnosticReports"),
+                                  ("system", pathlib.Path("/Library/Logs/DiagnosticReports"))]:
+                  for report in root.glob("Vitrine*.ips"):
+                      if report.is_file() and report.stat().st_mtime >= marker.stat().st_mtime:
+                          output.mkdir(parents=True, exist_ok=True)
+                          shutil.copy2(report, output / f"{scope}-{report.name}")
+          PYTHON
+
       - name: Upload .xcresult bundle
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -578,6 +598,7 @@ jobs:
           path: |
             ${{ runner.temp }}/test-ui.xcresult
             ${{ runner.temp }}/screenshot-tour.xcresult
+            ${{ runner.temp }}/ui-crash-reports
           if-no-files-found: ignore
 
       - name: Upload strict visual evidence

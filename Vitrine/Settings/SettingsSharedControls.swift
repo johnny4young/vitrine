@@ -15,18 +15,10 @@ enum DestinationChips {
         ("docs", "Docs"),
         ("transparent-slide", "Slide"),
     ]
-
-    /// The Settings row, which deliberately omits Transparent Slide: the compact
-    /// single row fits six segments (Custom + five), and Slide stays reachable via the
-    /// editor's two-row picker and the header popup.
-    static let settingsRow = all.filter { $0.id != "transparent-slide" }
 }
 
-/// The destination preset as the current design's segmented pill row: "Custom"
-/// leading, then the presets under short labels. The
-/// settings panes use this; the editor's Output disclosure carries its own
-/// two-row variant that adds Transparent Slide, drawing labels from the same
-/// `DestinationChips` source so the two surfaces stay aligned.
+/// The complete destination catalog in Settings. The shared segmented control wraps
+/// naturally instead of omitting an option when the column is narrow.
 struct DestinationSegmentedPicker: View {
     @Bindable var settings: AppSettings
 
@@ -34,15 +26,19 @@ struct DestinationSegmentedPicker: View {
     private static let customTag = ""
 
     var body: some View {
-        TokenSegmentedPicker(options: options, selection: selectionBinding)
-            .help(presetHelp)
-            .accessibilityLabel("Destination preset")
-            .accessibilityIdentifier("destination-preset-picker")
+        TokenSegmentedPicker(
+            options: options, selection: selectionBinding,
+            optionIdentifiers: ["settings-destination-custom"]
+                + DestinationChips.all.map { "settings-destination-\($0.id)" }
+        )
+        .help(presetHelp)
+        .accessibilityLabel("Destination preset")
+        .accessibilityIdentifier("destination-preset-picker")
     }
 
     private var options: [(String, Text)] {
         [(Self.customTag, Text("Custom"))]
-            + DestinationChips.settingsRow.map { ($0.id, Text(verbatim: $0.label)) }
+            + DestinationChips.all.map { ($0.id, Text(verbatim: $0.label)) }
     }
 
     private var presetHelp: String {

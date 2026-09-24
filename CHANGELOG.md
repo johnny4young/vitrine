@@ -25,6 +25,11 @@ can never drift.
 
 ### Fixed
 
+- Preserve custom default themes in additional editor windows without copying shared
+  catalogs into draft storage. Keep per-window output preferences separate from global
+  behavior, and explain the scope of Style defaults. Settings now includes the Slide
+  destination instead of hiding it from the compact picker.
+
 - Apply terminal redactions to reconstructed screen rows in rich-text copies and
   share links, including cursor movement, wrapping and alternate-screen output.
   Visible rich-text rows retain their colors; redacted share links never include the

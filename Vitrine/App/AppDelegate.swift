@@ -204,8 +204,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // sweep lists the Preferences directory and removes each stale suite, so it runs
         // off the launch path.
         Task(priority: .utility) {
-            await AppSettings.sweepStaleEditorSessionSuitesInBackground(
-                preferencesDirectory: AppSettings.preferencesDirectory)
+            await EditorSessionMigration.sweepStaleEditorSessionSuitesInBackground(
+                preferencesDirectory: EditorSessionMigration.preferencesDirectory)
         }
 
         // This is the app's only persistent affordance. A minimal child process owns the

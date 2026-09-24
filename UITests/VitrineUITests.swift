@@ -605,15 +605,38 @@ final class VitrineUITests: XCTestCase {
     @MainActor
     func testStylePaneShowsDestinationPresetPicker() {
         continueAfterFailure = false
-        let app = launch(arguments: VitrineLaunchArguments.settings)
-        defer { app.terminate() }
-        let settings = SettingsRobot(testCase: self, app: app)
-
-        // The Style pane surfaces the destination preset picker.
-        assertExists(settings.generalPane, in: app, timeout: 8)
-        _ = settings.open(
-            navigation: "settings-nav-style", pane: "settings-style-pane")
-        assertExists(element("destination-preset-picker", in: app), in: app, timeout: 3)
+        for language in ["en", "es"] {
+            let app = launch(
+                arguments: VitrineLaunchArguments.settings
+                    + ["-AppleLanguages", "(\(language))", "-AppleLocale", language])
+            defer { app.terminate() }
+            let settings = SettingsRobot(testCase: self, app: app)
+            assertExists(settings.generalPane, in: app, timeout: 8)
+            _ = settings.open(navigation: "settings-nav-style", pane: "settings-style-pane")
+            assertExists(element("destination-preset-picker", in: app), in: app, timeout: 3)
+            let scope = element("settings-style-scope", in: app)
+            assertExists(scope, in: app)
+            XCTAssertEqual(
+                (scope.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? scope.label,
+                language == "es"
+                    ? "Valores predeterminados para nuevas ventanas y capturas. Los editores abiertos conservan su propio estilo."
+                    : "Defaults for new windows and captures. Open editors keep their own style.")
+            for id in ["twitter", "linkedin", "opengraph", "keynote", "docs", "transparent-slide"] {
+                assertHittable(
+                    "settings-destination-\(id)", in: app, "Every destination should be reachable")
+            }
+            let slide = element("settings-destination-transparent-slide", in: app)
+            slide.click()
+            XCTAssertTrue(slide.isSelected)
+            _ = settings.open(navigation: "settings-nav-general", pane: "settings-general-pane")
+            _ = settings.open(navigation: "settings-nav-style", pane: "settings-style-pane")
+            XCTAssertTrue(element("settings-destination-transparent-slide", in: app).isSelected)
+            let attachment = XCTAttachment(screenshot: app.windows.firstMatch.screenshot())
+            attachment.name = "style-defaults-\(language)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            app.terminate()
+        }
     }
 
     @MainActor
