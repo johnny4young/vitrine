@@ -12,7 +12,7 @@ output and unlocks *new* surfaces.
 | --- | --- |
 | Entitlement state | `Vitrine/Pro/Entitlements.swift` — `Entitlements` (`@MainActor @Observable`, `isPro`), `ProFeature`, `EntitlementProvider`, `FreeProvider`, `#if DEBUG DebugUnlockProvider`; `Vitrine/App/AppEnvironment.swift` owns the app-wide instance |
 | App Store provider | `Vitrine/Pro/StoreKitProvider.swift` — non-consumable IAP `com.johnny4young.vitrine.pro` |
-| Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — Ed25519 `LicenseToken`/`LicenseVerifier`/`LicenseSigner`, device-only `LicenseActivationRecord`, `#if VITRINE_DIRECT_DOWNLOAD LicenseKeyProvider` |
+| Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — provider and device-only `LicenseActivationRecord`; the shared-module change moves the pure Ed25519 token codec into VitrineDomain's Licensing area |
 | CLI entitlement (out-of-process) | `Vitrine/CLI/CLIEntitlement.swift` — offline token verify + Debug bypass |
 | Gating UI | `Vitrine/Pro/ProGate.swift` — `View.proGated(_:action:)`, `ProBadge`, `PaywallSheet` |
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `VitrineRendering/Models/SnapshotConfig.swift` (`Watermark`), `VitrineRendering/Canvas/WatermarkBadge.swift` |
@@ -64,6 +64,9 @@ offline `LicenseToken` **locally** with the build-injected Ed25519 private key
 (`LicenseSigningKey.embedded`). This is a deliberate honor/convenience model, not server-side
 DRM: the private key is injected only into the signed release binary, never committed, while a
 from-source build has no key and cannot mint a token.
+The shipped signer is extractable by a determined client. The signature makes
+ordinary offline validation convenient; it is not a cryptographic claim that
+the client cannot forge its own local entitlement.
 
 The app embeds the matching public key in `LicenseVerifier.embedded` and verifies the stored
 token **offline** at every launch (`LicenseKeyProvider.cachedIsPro = storedValidToken != nil`).
@@ -118,14 +121,16 @@ unlock path (StoreKit buy + Restore, or a license-key field).
 
 In-process surfaces gate on their injected `environment.entitlements.isUnlocked(.automation)`:
 `RenderCodeImageIntent.perform()` (→ `IntentRenderError`), `CodeImageService.process()`
-(→ `.failed`, injectable for tests). The CLI is out-of-process and applies capability policy
-before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
+(→ `.failed`, injectable for tests). `OpenCodeInEditorIntent` is a free handoff
+and does not render an image. The CLI is out-of-process and applies capability
+policy before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
 forces terminal language, requires clipboard copy or editor handoff, and accepts only terminal
 width plus filename/title context. The parser rejects every general style, output, sidecar, and
-automation flag on that command. `render`, `multi-size`, and `batch` remain PRO; `CLICommandLine`
-calls `CLIEntitlement.isProUnlocked()` for those commands before dispatch, so the unchanged
-`CLIRenderer` operations stay ungated and fully testable. `vpane` deliberately uses general
-`render` and remains PRO. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
+automation flag on that command. `render --edit` is free only as an editor
+handoff: it neither renders nor saves, copies, or creates a sidecar. Other
+`render` operations, `multi-size`, and `batch` remain PRO; `CLICommandLine` checks
+the effective operation before dispatch. `vpane` deliberately uses general
+rendering and remains PRO. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
 `--recursive` opts into nested folders while preserving their relative output paths, and
 `--fail-on-skipped` turns any skipped file into a non-zero automation exit after the
 readable files are rendered. `--skipped-report <json>` can be paired with either mode
