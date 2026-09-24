@@ -596,6 +596,22 @@ vitrine render config.swift --out safe.png \
   --redact-secrets --sidecars all
 ```
 
+For terminal captures, redaction refers to rows in the final reconstructed screen,
+not physical lines in the ANSI transcript. Rich-text copies preserve the colors of
+visible rows; share links with redactions contain normalized, sanitized text rather
+than the original ANSI stream. An unredacted share link retains the original stream.
+Manual blur annotations change appearance only: use explicit line redaction or
+`--redact-secrets` when the source must not accompany an export.
+
+**Confidential clipboard exports:** enable **Settings → Export → Clipboard → Mark
+clipboard exports as confidential**, or pass `--copy --conceal-clipboard` to the CLI.
+Vitrine's export actions then add the cooperative `org.nspasteboard.ConcealedType`
+marker. Supporting clipboard managers can hide or exclude that content; other apps
+can still read it. This does not erase existing history, automatically expire the
+clipboard, or sanitize unredacted content. Native text-editor selection copies and
+third-party share services follow their own clipboard behavior. The option is off
+by default. See the [clipboard marker convention](https://nspasteboard.org/).
+
 ### Local by construction
 
 The CLI renders code, terminal content, and local images only. It does not capture URLs,
