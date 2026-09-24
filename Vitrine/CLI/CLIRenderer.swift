@@ -231,7 +231,8 @@ enum CLIRenderer {
         if options.copyToClipboard {
             let copyOutcome = ExportManager.copyToPasteboardOutcome(
                 config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                profile: options.profile, backgroundImageStore: backgroundStore,
+                profile: options.profile, concealed: options.concealClipboard,
+                backgroundImageStore: backgroundStore,
                 foregroundImageStore: foregroundStore)
             switch copyOutcome {
             case .copied:
