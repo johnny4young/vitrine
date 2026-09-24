@@ -77,6 +77,14 @@ struct RecentsGalleryView: View {
                 gallery
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if recents.needsRecovery || recents.hasLegacyHistory {
+                HistoryNotices(recents: recents)
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.regularMaterial)
+            }
+        }
         .frame(minWidth: 560, minHeight: 420)
         .background(Brand.Palette.stage.color)
         .tint(VitrineTokens.Accent.system)
@@ -124,7 +132,8 @@ struct RecentsGalleryView: View {
                                 },
                                 copySource: { copySource(capture) },
                                 renderAs: { preset in render(capture, as: preset) },
-                                delete: { pendingDeletion = capture })
+                                delete: { pendingDeletion = capture },
+                                allowsHistoryChanges: !recents.needsRecovery)
                         }
                     }
                     .padding(Brand.Spacing.lg)
@@ -279,7 +288,7 @@ struct RecentsGalleryView: View {
             } label: {
                 Label("Clear Unpinned", systemImage: "trash.slash")
             }
-            .disabled(!recents.captures.contains(where: { !$0.isPinned }))
+            .disabled(recents.needsRecovery || !recents.captures.contains(where: { !$0.isPinned }))
             .accessibilityIdentifier("recents-clear-unpinned-button")
 
             Divider()
@@ -414,6 +423,7 @@ private struct RecentsCard: View {
     let copySource: () -> Void
     let renderAs: (ExportPreset) -> Void
     let delete: () -> Void
+    let allowsHistoryChanges: Bool
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -514,11 +524,13 @@ private struct RecentsCard: View {
                 Button(action: pin) {
                     Label("Unpin Capture", systemImage: "pin.slash")
                 }
+                .disabled(!allowsHistoryChanges)
                 .accessibilityIdentifier("recents-unpin-capture")
             } else {
                 Button(action: pin) {
                     Label("Pin Capture", systemImage: "pin")
                 }
+                .disabled(!allowsHistoryChanges)
                 .accessibilityIdentifier("recents-pin-capture")
             }
             Divider()
@@ -537,6 +549,7 @@ private struct RecentsCard: View {
             }
             Divider()
             Button("Delete Capture", role: .destructive, action: delete)
+                .disabled(!allowsHistoryChanges)
                 .accessibilityIdentifier("recents-delete-capture")
         } label: {
             Image(systemName: "rectangle.3.group")
