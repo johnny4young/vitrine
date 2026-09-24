@@ -21,12 +21,12 @@
         }
       }
     },
-    "Couldn’t copy to the clipboard" : {
+    "Couldn't copy the recognized text" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo copiar al portapapeles"
+            "value" : "No se pudo copiar el texto reconocido"
           }
         }
       }
