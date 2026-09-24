@@ -167,8 +167,8 @@ coverage-check:
 # weekly/manual hosted workflow retains each result bundle. These lanes are
 # non-required early warnings until their runner stability has been established.
 # One manifest drives both xcodebuild selection and the executed-suite gate.
-ASAN_TEST_SELECTION := $(shell python3 scripts/check-sanitizer-results.py --lane asan --print-selection)
-TSAN_TEST_SELECTION := $(shell python3 scripts/check-sanitizer-results.py --lane tsan --print-selection)
+ASAN_TEST_SELECTION = $(shell python3 scripts/check-sanitizer-results.py --lane asan --print-selection)
+TSAN_TEST_SELECTION = $(shell python3 scripts/check-sanitizer-results.py --lane tsan --print-selection)
 ASAN_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/asan.xcresult)
 TSAN_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/tsan.xcresult)
 
