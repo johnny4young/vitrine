@@ -262,7 +262,7 @@ extension EditorView {
                         text, concealed: environment.appSettings.export.concealClipboard)
                 else {
                     session.feedback(
-                        Notifier.failure(String(localized: "Couldn’t copy to the clipboard")))
+                        Notifier.failure(String(localized: "Couldn't copy the recognized text")))
                     return
                 }
                 Log.export.notice(

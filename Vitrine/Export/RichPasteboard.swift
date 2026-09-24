@@ -294,7 +294,7 @@ enum RichPasteboard {
     /// language, theme, and *selected font* so the copied rich text matches the
     /// rendered image's typography.
     static func highlightedCode(for config: SnapshotConfig) -> NSAttributedString {
-        guard !config.usesImageContent else { return NSAttributedString(string: "") }
+        guard !config.usesImageContent else { return NSAttributedString() }
         let font = CodeFont.resolved(
             family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
         if config.language == .terminal {
@@ -547,8 +547,11 @@ enum RichPasteboard {
         if let rtf { item.setData(rtf, forType: rtfType) }
         if let html { item.setData(html, forType: htmlType) }
         // A plain-text representation lets a code editor that ignores styling still
-        // receive the source text.
-        item.setString(config.richClipboardText, forType: .string)
+        // receive the text. Terminal captures use the resolved screen the styled reps
+        // show, never the raw ANSI transcript.
+        item.setString(
+            config.language == .terminal ? config.sidecarText : config.richClipboardText,
+            forType: .string)
         let wrote = ClipboardWriter.write([item], concealed: concealed, to: pasteboard)
         Log.export.info(
             "Copied highlighted code to pasteboard (success \(wrote, privacy: .public))")

@@ -1660,17 +1660,20 @@ final class VitrineUITests: XCTestCase {
                 let toggle = element("conceal-clipboard-toggle", in: app)
                 assertExists(toggle, in: app, timeout: 3)
                 XCTAssertEqual(toggle.value as? Int, 0)
-                toggle.click()
-                XCTAssertEqual(toggle.value as? Int, 1)
-                app.terminate()
-                app.launch()
-                app.activate()
-                assertExists(element("settings-nav-output", in: app), in: app, timeout: 8)
-                element("settings-nav-output", in: app).click()
-                assertExists(toggle, in: app, timeout: 3)
-                XCTAssertEqual(toggle.value as? Int, 1)
-                toggle.click()
-                XCTAssertEqual(toggle.value as? Int, 0)
+                // Persistence is locale- and appearance-independent; check it once.
+                if language == "en", appearance == "light" {
+                    toggle.click()
+                    XCTAssertEqual(toggle.value as? Int, 1)
+                    app.terminate()
+                    app.launch()
+                    app.activate()
+                    assertExists(element("settings-nav-output", in: app), in: app, timeout: 8)
+                    element("settings-nav-output", in: app).click()
+                    assertExists(toggle, in: app, timeout: 3)
+                    XCTAssertEqual(toggle.value as? Int, 1)
+                    toggle.click()
+                    XCTAssertEqual(toggle.value as? Int, 0)
+                }
                 let attachment = XCTAttachment(
                     screenshot: element("settings-output-pane", in: app).screenshot())
                 attachment.name = "confidential-clipboard-\(language)-\(appearance)"
