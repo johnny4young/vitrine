@@ -419,8 +419,8 @@ struct EditorInspectorView: View {
             }
             HStack {
                 Spacer(minLength: 0)
-                // Row 2: the remaining chips, including Transparent Slide (the editor's
-                // extra segment, absent from the six-wide Settings row by design).
+                // Row 2: the remaining chips. Both surfaces expose the full catalog;
+                // the inspector keeps two compact rows beside its other controls.
                 TokenSegmentedPicker(
                     options: DestinationChips.all.dropFirst(3).map {
                         (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))

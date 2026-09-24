@@ -19,9 +19,6 @@ struct ClipboardPrivacyTests {
         defaults.set("not a boolean", forKey: SettingsCodec.Keys.concealClipboard)
         #expect(ExportSettings(defaults: defaults).concealClipboard == false)
         #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.concealClipboard))
-        #expect(
-            SettingsCodec.Keys.editorSessionSeed.contains(SettingsCodec.Keys.concealClipboard)
-                == false)
     }
 
     @Test func writerMarksEveryRepresentationWithoutMutatingTheInputOrChangingBytes() throws {

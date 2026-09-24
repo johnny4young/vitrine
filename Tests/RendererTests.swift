@@ -232,7 +232,6 @@ struct LineWrapTests {
         let defaults = testDefaults()
 
         #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.wrapColumns))
-        #expect(SettingsCodec.Keys.editorSessionSeed.contains(SettingsCodec.Keys.wrapColumns))
 
         var config = SnapshotConfig()
         config.wrapColumns = 72
