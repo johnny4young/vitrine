@@ -104,7 +104,8 @@ final class CaptureFeedbackPresenter {
         let result = QuickCapture.renderText(
             text,
             settings: environment.appSettings,
-            recents: environment.recents)
+            recents: environment.recents,
+            historyConsent: HistoryConsentPrompt.resolve)
         let feedback = Notifier.feedback(
             for: result.outcome,
             copiedToClipboard: result.copiedToClipboard,

@@ -12,6 +12,16 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Capture history now removes explicit redactions before creating records or previews.
+  Suspected secrets require a fresh choice to skip history, save sanitized text, or retain
+  the flagged text deliberately; this never silently changes the requested export.
+- History can be disabled without deleting existing captures. Settings and Recents offer
+  explicit cleanup of older history and cached previews, with clear backup limitations.
+- Damaged history preserves its original archive and previews until the user recovers
+  readable entries or explicitly deletes it, rather than silently replacing it with an empty list.
+
 ### Fixed
 
 - Apply terminal redactions to reconstructed screen rows in rich-text copies and
