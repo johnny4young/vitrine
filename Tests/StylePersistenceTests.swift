@@ -73,8 +73,12 @@ struct StyleCodecCompletenessTests {
         let defaults = freshDefaults()
         let rich = richConfig()
         SettingsCodec.persistStyle(rich, to: defaults)
+        #expect(SettingsCodec.readConfig(from: defaults) == persisted(rich))
+    }
 
-        var expected = rich
+    /// `config` as it reads back after `persistStyle`.
+    private func persisted(_ config: SnapshotConfig) -> SnapshotConfig {
+        var expected = config
         // Deliberately unpersisted, each with its reason:
         expected.code = ""  // document text, never style
         expected.redactedLineRanges = []  // secret marks on a specific document (see persistStyle)
@@ -83,20 +87,20 @@ struct StyleCodecCompletenessTests {
         expected.imageFrame = .none  // frame of that image, travels with it
         expected.imageFrameAppearance = .auto
         expected.terminalColumns = nil  // measured from the capture, not a preference
-
-        #expect(SettingsCodec.readConfig(from: defaults) == expected)
+        return expected
     }
 
-    /// Exercise all populated persisted fields through the actual factory, not a
-    /// second hand-maintained key list that can agree with an incomplete seed.
+    /// Exercise all populated persisted fields through the actual factory, against the
+    /// expected values rather than the reader the session itself uses.
     @Test func newEditorInheritsEveryPersistedStyleField() {
         let defaults = freshDefaults()
-        SettingsCodec.persistStyle(richConfig(), to: defaults)
+        let rich = richConfig()
+        SettingsCodec.persistStyle(rich, to: defaults)
         let environment = AppEnvironment(
             defaults: defaults, entitlements: Entitlements(provider: FreeProvider()))
         let session = environment.makeEditorSessionSettings()
         defer { session.discardEphemeralStore() }
-        #expect(session.config == SettingsCodec.readConfig(from: defaults))
+        #expect(session.config == persisted(rich))
     }
 
     /// The labels `richConfig()` actually changes from a default `SnapshotConfig`,
