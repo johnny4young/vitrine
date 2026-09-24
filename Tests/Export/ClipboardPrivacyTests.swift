@@ -2,9 +2,9 @@ import AppKit
 import Foundation
 import Testing
 import VitrineDomain
-import VitrineRendering
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 @Suite("Clipboard privacy", .serialized)
 struct ClipboardPrivacyTests {
@@ -43,10 +43,22 @@ struct ClipboardPrivacyTests {
         let pasteboard = NSPasteboard(name: .init("ClipboardPrivacy-\(UUID().uuidString)"))
         defer { pasteboard.releaseGlobally() }
         #expect(ClipboardWriter.copy("keep", to: pasteboard))
-        #expect(ClipboardWriter.write([], concealed: true, to: pasteboard) == false)
-        #expect(
-            ClipboardWriter.write([NSPasteboardItem()], concealed: true, to: pasteboard) == false)
+        for concealed in [false, true] {
+            #expect(ClipboardWriter.write([], concealed: concealed, to: pasteboard) == false)
+            #expect(
+                ClipboardWriter.write([NSPasteboardItem()], concealed: concealed, to: pasteboard)
+                    == false)
+        }
         #expect(pasteboard.string(forType: .string) == "keep")
+    }
+
+    @Test(arguments: [false, true])
+    func unavailableRepresentationsDoNotFailTheCopy(_ concealed: Bool) {
+        let pasteboard = NSPasteboard(name: .init("ClipboardPrivacy-\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        #expect(ClipboardWriter.write([PartialWriter()], concealed: concealed, to: pasteboard))
+        #expect(pasteboard.string(forType: .string) == PartialWriter.text)
+        #expect(pasteboard.types?.contains(ClipboardWriter.concealedType) == concealed)
     }
 
     @Test(arguments: [false, true])
@@ -102,5 +114,19 @@ struct ClipboardPrivacyTests {
                 SocialCardModel(title: "Synthetic card"), scale: 1, concealed: concealed,
                 pasteboard: pasteboard))
         #expect(NSImage(pasteboard: pasteboard) != nil)
+    }
+}
+
+/// Offers a representation it cannot produce, like a lazily rendered or failed type.
+private nonisolated final class PartialWriter: NSObject, NSPasteboardWriting {
+    static let text = "partial"
+    static let missing = NSPasteboard.PasteboardType("app.vitrine.tests.missing")
+
+    func writableTypes(for pasteboard: NSPasteboard) -> [NSPasteboard.PasteboardType] {
+        [.string, Self.missing]
+    }
+
+    func pasteboardPropertyList(forType type: NSPasteboard.PasteboardType) -> Any? {
+        type == .string ? Self.text : nil
     }
 }

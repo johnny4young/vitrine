@@ -3,9 +3,9 @@ import Foundation
 import PDFKit
 import Testing
 import VitrineDomain
-import VitrineRendering
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 @Suite("Terminal redaction export", .serialized)
 struct TerminalRedactionExportTests {
@@ -145,6 +145,28 @@ struct TerminalRedactionExportTests {
         config.redactedLineRanges = [2...3, 3...4, Int.max...Int.max]
         #expect(config.sidecarText == "safe\n[redacted]\n[redacted]\n[redacted]")
         #expect(RichPasteboard.highlightedCode(for: config).string == config.sidecarText)
+    }
+
+    @Test func highlightedCopyPlainTextMatchesTheResolvedScreen() {
+        let config = SnapshotConfig(
+            code: "hidden\r\u{1B}[2K\u{1B}[32mshown\u{1B}[0m", language: .terminal)
+        let pasteboard = NSPasteboard(name: .init("TerminalRedaction-\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        #expect(RichPasteboard.copyHighlightedCode(for: config, to: pasteboard))
+        #expect(pasteboard.string(forType: .string) == config.sidecarText)
+        #expect(pasteboard.string(forType: .string) == "shown")
+    }
+
+    @Test func narrowRedactedLinksKeepThePlaceholderOnOneRow() throws {
+        var config = SnapshotConfig(
+            code: "\u{1B}[1;1Hab\u{1B}[2;1HSECR\u{1B}[3;1Hcd", language: .terminal)
+        config.terminalColumns = 4
+        config.redactedLineRanges = [2...2]
+        let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: config))
+        var restored = SnapshotConfig()
+        try SnapshotShareLink.snapshot(from: url).apply(to: &restored)
+        #expect(restored.sidecarText == config.sidecarText)
+        #expect(restored.sidecarText.components(separatedBy: "\n")[1] == "[redacted]")
     }
 
     @Test func unredactedLinksRetainTheOriginalTerminalTranscript() throws {

@@ -5,6 +5,7 @@ import VitrineRendering
 /// Output pane: clipboard/save behavior, resolution, format.
 struct OutputSettingsView: View {
     @Bindable var settings: AppSettings
+    @Bindable var recents: RecentsStore
 
     var body: some View {
         SettingsPaneScroll {
@@ -97,6 +98,21 @@ struct OutputSettingsView: View {
                         .labelsHidden()
                         .accessibilityIdentifier("text-sidecar-toggle")
                 }
+            }
+
+            TokenGroup(title: Text("History")) {
+                TokenRow(
+                    label: Text("Save capture history"),
+                    caption: Text(
+                        "Turning this off stops new history writes. Existing captures stay until you delete them."
+                    )
+                ) {
+                    Toggle("Save capture history", isOn: $recents.isEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("history-enabled-toggle")
+                }
+                HistoryNotices(recents: recents)
             }
 
             // Color management lives in its own "Advanced" group so the default

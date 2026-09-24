@@ -3,7 +3,6 @@ import Foundation
 import OSLog
 import UniformTypeIdentifiers
 import VitrineDomain
-import VitrineRendering
 
 /// Builds developer-grade clipboard payloads with *multiple representations* and
 /// produces the non-PNG copy targets the editor exposes.
@@ -36,7 +35,7 @@ import VitrineRendering
 ///   the blob. Work stays on the main actor — the render that precedes it (`ImageRenderer`,
 ///   the highlight engine) is main-actor bound, and the bounded serialization that follows
 ///   is cheap for code-sized input.
-enum RichPasteboard {
+public enum RichPasteboard {
     /// The upper bound on a single large non-image representation placed on the
     /// pasteboard (the base64 `data:` URI, the RTF blob, and the HTML blob).
     ///
@@ -81,7 +80,7 @@ enum RichPasteboard {
         let prefix = "data:image/png;base64,"
         let uriByteCount = dataURIByteCount(forPNGByteCount: data.count)
         guard uriByteCount <= maxBytes else {
-            Log.export.error(
+            RenderingLog.export.error(
                 "Data URI omitted: exceeds cap (\(uriByteCount, privacy: .public) bytes)")
             return nil
         }
@@ -98,7 +97,7 @@ enum RichPasteboard {
         maxBytes: Int = maxRepresentationBytes
     ) -> String? {
         guard maxBytes >= 0, config.sidecarText.utf8.count <= maxBytes else {
-            Log.export.error("Markdown copy omitted: source exceeds cap")
+            RenderingLog.export.error("Markdown copy omitted: source exceeds cap")
             return nil
         }
 
@@ -111,7 +110,7 @@ enum RichPasteboard {
             template.utf8.count - placeholder.utf8.count
             + dataURIByteCount(forPNGByteCount: data.count)
         guard projectedByteCount <= maxBytes else {
-            Log.export.error(
+            RenderingLog.export.error(
                 "Markdown copy omitted: exceeds cap (\(projectedByteCount, privacy: .public) bytes)"
             )
             return nil
@@ -169,11 +168,11 @@ enum RichPasteboard {
             .characterEncoding: String.Encoding.utf8.rawValue,
         ]
         guard let data = try? attributed.data(from: range, documentAttributes: attributes) else {
-            Log.export.error("Rich text serialization failed (\(label, privacy: .public))")
+            RenderingLog.export.error("Rich text serialization failed (\(label, privacy: .public))")
             return nil
         }
         guard data.count <= maxBytes else {
-            Log.export.error(
+            RenderingLog.export.error(
                 "Rich text omitted: exceeds cap (\(label, privacy: .public), \(data.count, privacy: .public) bytes)"
             )
             return nil
@@ -273,7 +272,7 @@ enum RichPasteboard {
         includePlainText: Bool = false
     ) -> Payload? {
         guard let png = ExportManager.pngData(from: cgImage) else {
-            Log.export.error("Rich payload build failed: PNG encode returned nil")
+            RenderingLog.export.error("Rich payload build failed: PNG encode returned nil")
             return nil
         }
 
@@ -294,7 +293,7 @@ enum RichPasteboard {
     /// language, theme, and *selected font* so the copied rich text matches the
     /// rendered image's typography.
     static func highlightedCode(for config: SnapshotConfig) -> NSAttributedString {
-        guard !config.usesImageContent else { return NSAttributedString(string: "") }
+        guard !config.usesImageContent else { return NSAttributedString() }
         let font = CodeFont.resolved(
             family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
         if config.language == .terminal {
@@ -334,7 +333,7 @@ enum RichPasteboard {
             [payload.hasRichText ? "richtext" : nil, payload.plainText != nil ? "plaintext" : nil]
             .compactMap { $0 }
         let summary = extras.isEmpty ? "imageonly" : "image+\(extras.joined(separator: "+"))"
-        Log.export.info(
+        RenderingLog.export.info(
             "Rich copy wrote pasteboard item (\(summary, privacy: .public), success \(wrote, privacy: .public))"
         )
         return wrote
@@ -409,7 +408,7 @@ enum RichPasteboard {
     /// Checked rich-copy path for an already-rendered raster. Payload creation can
     /// still fail during PNG/RTF/HTML encoding or representation-size validation.
     @discardableResult
-    static func copyOutcome(
+    public static func copyOutcome(
         cgImage: CGImage,
         config: SnapshotConfig,
         includeRichText: Bool,
@@ -448,7 +447,7 @@ enum RichPasteboard {
     }
 
     @discardableResult
-    static func copyDataURIOutcome(
+    public static func copyDataURIOutcome(
         for config: SnapshotConfig,
         scale: CGFloat,
         fixedSize: CGSize?,
@@ -461,17 +460,18 @@ enum RichPasteboard {
             cgImage = try ExportManager.renderCGImageChecked(
                 config, scale: scale, fixedSize: fixedSize, profile: profile)
         } catch let error {
-            Log.export.error("Copy data URI failed: render rejected safely")
+            RenderingLog.export.error("Copy data URI failed: render rejected safely")
             return .renderFailed(error)
         }
         guard let png = ExportManager.pngData(from: cgImage),
             let uri = dataURI(forPNG: png)
         else {
-            Log.export.error("Copy data URI failed: encode or representation cap")
+            RenderingLog.export.error("Copy data URI failed: encode or representation cap")
             return .renderFailed(.encodingFailed)
         }
         let wrote = ClipboardWriter.copy(uri, concealed: concealed, to: pasteboard)
-        Log.export.info("Copied PNG data URI to pasteboard (success \(wrote, privacy: .public))")
+        RenderingLog.export.info(
+            "Copied PNG data URI to pasteboard (success \(wrote, privacy: .public))")
         return wrote ? .copied : .failed
     }
 
@@ -493,7 +493,7 @@ enum RichPasteboard {
     }
 
     @discardableResult
-    static func copyMarkdownOutcome(
+    public static func copyMarkdownOutcome(
         for config: SnapshotConfig,
         scale: CGFloat,
         fixedSize: CGSize?,
@@ -506,17 +506,17 @@ enum RichPasteboard {
             cgImage = try ExportManager.renderCGImageChecked(
                 config, scale: scale, fixedSize: fixedSize, profile: profile)
         } catch let error {
-            Log.export.error("Copy Markdown failed: render rejected safely")
+            RenderingLog.export.error("Copy Markdown failed: render rejected safely")
             return .renderFailed(error)
         }
         guard let png = ExportManager.pngData(from: cgImage),
             let markdown = markdownDocument(forPNG: png, config: config)
         else {
-            Log.export.error("Copy Markdown failed: encode or representation cap")
+            RenderingLog.export.error("Copy Markdown failed: encode or representation cap")
             return .renderFailed(.encodingFailed)
         }
         let wrote = ClipboardWriter.copy(markdown, concealed: concealed, to: pasteboard)
-        Log.export.info(
+        RenderingLog.export.info(
             "Copied Markdown snapshot to pasteboard (success \(wrote, privacy: .public))")
         return wrote ? .copied : .failed
     }
@@ -530,7 +530,7 @@ enum RichPasteboard {
     /// copy; a plain-text fallback rides along so a code editor still receives the
     /// raw source.
     @discardableResult
-    static func copyHighlightedCode(
+    public static func copyHighlightedCode(
         for config: SnapshotConfig,
         concealed: Bool = false,
         to pasteboard: NSPasteboard = .general
@@ -539,7 +539,8 @@ enum RichPasteboard {
         let rtf = rtfData(from: attributed)
         let html = htmlData(from: attributed)
         guard rtf != nil || html != nil else {
-            Log.export.error("Copy highlighted code failed: no styled representation produced")
+            RenderingLog.export.error(
+                "Copy highlighted code failed: no styled representation produced")
             return false
         }
 
@@ -547,10 +548,13 @@ enum RichPasteboard {
         if let rtf { item.setData(rtf, forType: rtfType) }
         if let html { item.setData(html, forType: htmlType) }
         // A plain-text representation lets a code editor that ignores styling still
-        // receive the source text.
-        item.setString(config.richClipboardText, forType: .string)
+        // receive the text. Terminal captures use the resolved screen the styled reps
+        // show, never the raw ANSI transcript.
+        item.setString(
+            config.language == .terminal ? config.sidecarText : config.richClipboardText,
+            forType: .string)
         let wrote = ClipboardWriter.write([item], concealed: concealed, to: pasteboard)
-        Log.export.info(
+        RenderingLog.export.info(
             "Copied highlighted code to pasteboard (success \(wrote, privacy: .public))")
         return wrote
     }

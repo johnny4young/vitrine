@@ -296,11 +296,19 @@ def baseline_comparison(
         candidate_environment, dict
     ):
         raise ValueError("baseline and candidate need environment provenance")
+    # A before/after comparison necessarily spans commits. Keep both SHAs in the
+    # reports and reject missing provenance, but compare the execution environment.
     mismatches = [
         key
-        for key in ("macos", "architecture", "xcode", "commit")
+        for key in ("macos", "architecture", "xcode")
         if baseline_environment.get(key) != candidate_environment.get(key)
     ]
+    for label, environment in (
+        ("baseline", baseline_environment),
+        ("candidate", candidate_environment),
+    ):
+        if not isinstance(environment.get("commit"), str) or not environment["commit"]:
+            mismatches.append(f"{label}_commit_missing")
     if baseline_environment.get("working_tree_clean") is not True:
         mismatches.append("baseline_working_tree_clean")
     if candidate_environment.get("working_tree_clean") is not True:
@@ -324,6 +332,8 @@ def baseline_comparison(
         "comparable_environment": not mismatches,
         "comparable_journey": comparable_journey,
         "comparable_iteration_count": comparable_iteration_count,
+        "same_commit": baseline_environment.get("commit")
+        == candidate_environment.get("commit"),
         "environment_mismatches": mismatches,
         "leak_records_delta": int(candidate_metrics["leak_records"])
         - int(baseline_metrics["leak_records"]),
@@ -427,6 +437,7 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
     comparison = baseline_comparison(baseline, candidate)
     require_self_test(comparison["comparable"] is True, "comparable report")
     require_self_test(comparison["comparable_environment"] is True, "comparable baseline")
+    require_self_test(comparison["same_commit"] is True, "same commit provenance")
     require_self_test(comparison["comparable_journey"] is True, "comparable journey")
     require_self_test(
         comparison["comparable_iteration_count"] is True,
@@ -436,11 +447,27 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
     candidate["environment"]["commit"] = "def456"
     different_commit = baseline_comparison(baseline, candidate)
     require_self_test(
-        different_commit["comparable"] is False
-        and "commit" in different_commit["environment_mismatches"],
-        "different commits are not comparable",
+        different_commit["comparable"] is True
+        and different_commit["same_commit"] is False
+        and different_commit["environment_mismatches"] == [],
+        "clean cross-commit reports are comparable",
+    )
+    candidate["environment"]["commit"] = None
+    missing_commit = baseline_comparison(baseline, candidate)
+    require_self_test(
+        missing_commit["comparable"] is False
+        and "candidate_commit_missing" in missing_commit["environment_mismatches"],
+        "missing candidate provenance is not comparable",
     )
     candidate["environment"]["commit"] = "abc123"
+    candidate["environment"]["macos"] = "14.0"
+    different_platform = baseline_comparison(baseline, candidate)
+    require_self_test(
+        different_platform["comparable"] is False
+        and "macos" in different_platform["environment_mismatches"],
+        "different platforms are not comparable",
+    )
+    candidate["environment"]["macos"] = "15.0"
     candidate["environment"]["working_tree_clean"] = False
     dirty_candidate = baseline_comparison(baseline, candidate)
     require_self_test(
