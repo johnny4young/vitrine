@@ -23,7 +23,10 @@ enum CaptureRetentionPolicy {
         // Explicit redactions are irreversible here, even if the user later elects
         // to keep a heuristic match. Never offer the pre-redaction source as a choice.
         let retained = config.richClipboardText
-        let visible = config.sidecarText
+        // Only an unredacted terminal transcript differs from its resolved screen.
+        let visible =
+            config.language == .terminal && config.redactedLineRanges.isEmpty
+            ? config.sidecarText : retained
         let visibleMatches = SecretScanner.secretLines(in: visible)
         guard
             !visibleMatches.isEmpty

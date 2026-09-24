@@ -82,7 +82,9 @@ final class RecentsStore {
             let archive = HistoryArchiveRecovery.decode(data)
             captures = Self.ordered(archive.captures)
             needsRecovery = archive.needsRecovery
-            hasLegacyHistory = defaults.integer(forKey: Self.privacyVersionKey) < 1
+            hasLegacyHistory =
+                defaults.integer(forKey: Self.privacyVersionKey) < 1
+                && (archive.needsRecovery || !archive.captures.isEmpty)
             // Retain pins and at least one unpinned capture, matching insertion.
             while captures.count > Self.limit {
                 let unpinned = captures.indices.filter { !captures[$0].isPinned }

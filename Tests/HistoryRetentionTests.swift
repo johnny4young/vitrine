@@ -257,4 +257,39 @@ struct HistoryArchiveRecoveryTests {
         let mismatched = HistoryArchiveRecovery.decode(Data("[[}, \(object)".utf8))
         #expect(mismatched.captures.isEmpty, "a mismatched closer cannot promote a nested record")
     }
+
+    @Test func emptyLegacyArchiveNeedsNoPrivacyNotice() throws {
+        let defaults = testDefaults()
+        defaults.set(try JSONEncoder().encode([Capture]()), forKey: "recentCaptures")
+        let thumbnails = RecentsThumbnailCache(
+            directory: FileManager.default.temporaryDirectory.appendingPathComponent(
+                UUID().uuidString))
+        defer { thumbnails.clear() }
+        let store = RecentsStore(
+            defaults: defaults, thumbnails: thumbnails, renderThumbnail: { _ in nil })
+        #expect(!store.needsRecovery)
+        #expect(!store.hasLegacyHistory)
+    }
+
+    @Test func recoveryFixtureSeedsOnlyAnIsolatedUITestSuiteOnce() throws {
+        let arguments = ["Vitrine", "--history-recovery-demo"]
+        let isolated = ["VITRINE_USER_DEFAULTS_SUITE": "ui-test"]
+        let standard = testDefaults()
+        AppLaunchArgumentHandler.seedPreLaunchFixtures(
+            in: standard, arguments: arguments, environment: [:])
+        #expect(standard.object(forKey: "recentCaptures") == nil)
+        let defaults = testDefaults()
+        AppLaunchArgumentHandler.seedPreLaunchFixtures(
+            in: defaults, arguments: ["Vitrine"], environment: isolated)
+        #expect(defaults.object(forKey: "recentCaptures") == nil)
+        AppLaunchArgumentHandler.seedPreLaunchFixtures(
+            in: defaults, arguments: arguments, environment: isolated)
+        let seeded = try #require(defaults.data(forKey: "recentCaptures"))
+        #expect(HistoryArchiveRecovery.decode(seeded).needsRecovery)
+        defaults.removeObject(forKey: "recentCaptures")
+        AppLaunchArgumentHandler.seedPreLaunchFixtures(
+            in: defaults, arguments: arguments, environment: isolated)
+        #expect(
+            defaults.object(forKey: "recentCaptures") == nil, "a purge is not undone on relaunch")
+    }
 }

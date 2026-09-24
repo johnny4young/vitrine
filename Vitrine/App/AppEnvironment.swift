@@ -41,6 +41,9 @@ final class AppEnvironment {
         entitlements: Entitlements? = nil
     ) {
         self.defaults = defaults
+        #if DEBUG
+            AppLaunchArgumentHandler.seedPreLaunchFixtures(in: defaults)
+        #endif
         self.entitlements = entitlements ?? Entitlements.makeDefault()
         brandKit = BrandKitStore(defaults: defaults)
         appSettings = AppSettings(

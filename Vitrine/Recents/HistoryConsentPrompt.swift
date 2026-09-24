@@ -29,6 +29,10 @@ enum HistoryConsentPrompt {
         alert.buttons[0].keyEquivalent = "\u{1b}"
         alert.buttons[1].keyEquivalent = ""
         alert.buttons[2].keyEquivalent = ""
+        // Quick capture runs from a global hotkey while another app is frontmost; an
+        // inactive agent app's modal would otherwise open behind it.
+        NSApp.activate()
+        alert.window.level = .modalPanel
         return choice(for: alert.runModal())
     }
 

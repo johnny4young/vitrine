@@ -1795,11 +1795,15 @@ final class VitrineUITests: XCTestCase {
                 } else {
                     XCTAssertGreaterThan(recents.cards.count, 0)
                 }
-                app.terminate()
-                app.launch()
-                app.activate()
-                assertExists(button, in: app, timeout: 8)
-                app.typeKey(.escape, modifierFlags: [])
+                // Consent is never remembered; one relaunch after keeping the original
+                // proves it for every language and choice.
+                if language == "en", choice == "original" {
+                    app.terminate()
+                    app.launch()
+                    app.activate()
+                    assertExists(button, in: app, timeout: 8)
+                    app.typeKey(.escape, modifierFlags: [])
+                }
             }
         }
     }

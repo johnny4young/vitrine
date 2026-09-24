@@ -31,6 +31,27 @@ import VitrineRendering
             self.showMenuBarPanel = showMenuBarPanel
         }
 
+        /// Seeds fixtures the stores must read at construction, so it runs before the
+        /// composition root builds them. Only an explicitly isolated UI-test suite is touched.
+        static func seedPreLaunchFixtures(
+            in defaults: UserDefaults,
+            arguments: [String] = ProcessInfo.processInfo.arguments,
+            environment: [String: String] = ProcessInfo.processInfo.environment
+        ) {
+            guard environment["VITRINE_USER_DEFAULTS_SUITE"]?.isEmpty == false,
+                arguments.contains("--history-recovery-demo"),
+                !defaults.bool(forKey: "historyRecoveryFixtureSeeded")
+            else { return }
+            let capture = Capture(
+                code: "Recovered sample", languageID: "swift", themeID: "one-dark")
+            guard let entry = try? JSONEncoder().encode(capture) else { return }
+            var archive = Data("[".utf8)
+            archive.append(entry)
+            archive.append(Data(", {\"unfinished\":".utf8))
+            defaults.set(archive, forKey: "recentCaptures")
+            defaults.set(true, forKey: "historyRecoveryFixtureSeeded")
+        }
+
         /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
         /// none of these run on a normal user launch. `--demo` preloads sample code;
         /// `--demo-large-document` preloads a source just above the interactive-highlighting ceiling;

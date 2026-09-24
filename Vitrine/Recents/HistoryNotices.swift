@@ -31,6 +31,7 @@ struct HistoryNotices: View {
             Button("Delete History and Cached Previews…", role: .destructive) {
                 confirmsPurge = true
             }
+            .disabled(recents.captures.isEmpty && !recents.needsRecovery)
             .accessibilityIdentifier("history-purge")
         }
         .confirmationDialog(
