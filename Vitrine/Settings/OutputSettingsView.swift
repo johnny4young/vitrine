@@ -65,6 +65,20 @@ struct OutputSettingsView: View {
             // editor remain available regardless of this toggle.
             TokenGroup(title: Text("Clipboard")) {
                 TokenRow(
+                    label: Text("Mark clipboard exports as confidential"),
+                    caption: Text(
+                        "Asks compatible clipboard managers to hide exports. Other apps can still read them."
+                    )
+                ) {
+                    Toggle(
+                        "Mark clipboard exports as confidential",
+                        isOn: $settings.export.concealClipboard
+                    )
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("conceal-clipboard-toggle")
+                }
+                TokenRow(
                     label: Text("Rich-text code on copy"),
                     caption: Text(
                         "Keeps colors and font when pasting; the image is always included")

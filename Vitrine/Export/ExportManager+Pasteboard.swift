@@ -10,10 +10,9 @@ extension ExportManager {
     /// touching the developer's clipboard outside the user-initiated default path.
     @discardableResult
     static func copySourceToPasteboard(
-        _ source: String, to pasteboard: NSPasteboard = .general
+        _ source: String, concealed: Bool = false, to pasteboard: NSPasteboard = .general
     ) -> Bool {
-        pasteboard.clearContents()
-        let copied = pasteboard.setString(source, forType: .string)
+        let copied = ClipboardWriter.copy(source, concealed: concealed, to: pasteboard)
         Log.export.info("Copied source to pasteboard (success \(copied, privacy: .public))")
         return copied
     }
@@ -31,13 +30,14 @@ extension ExportManager {
     static func copyToPasteboard(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false,
+        concealed: Bool = false,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         pasteboard: NSPasteboard = .general
     ) -> Bool {
         copyToPasteboardOutcome(
             config, scale: scale, fixedSize: fixedSize, profile: profile,
-            richText: richText, plainText: plainText,
+            richText: richText, plainText: plainText, concealed: concealed,
             backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore,
             pasteboard: pasteboard) == .copied
@@ -49,6 +49,7 @@ extension ExportManager {
     static func copyToPasteboardOutcome(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
         profile: ColorProfile = .sRGB, richText: Bool = false, plainText: Bool = false,
+        concealed: Bool = false,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         pasteboard: NSPasteboard = .general
@@ -60,7 +61,7 @@ extension ExportManager {
             do {
                 return try RichPasteboard.copyChecked(
                     config, scale: scale, fixedSize: fixedSize, profile: profile,
-                    includeRichText: richText, includePlainText: plainText,
+                    includeRichText: richText, includePlainText: plainText, concealed: concealed,
                     backgroundImageStore: backgroundImageStore,
                     foregroundImageStore: foregroundImageStore, to: pasteboard)
                     ? .copied : .failed
@@ -78,7 +79,7 @@ extension ExportManager {
             Log.export.error("Copy to pasteboard failed: render rejected or failed")
             return .renderFailed(error)
         }
-        return copyPNGToPasteboardOutcome(cgImage, to: pasteboard)
+        return copyPNGToPasteboardOutcome(cgImage, concealed: concealed, to: pasteboard)
     }
 
     /// Writes a PNG of an already-rendered `cgImage` to the pasteboard (the general
@@ -87,23 +88,22 @@ extension ExportManager {
     /// config-based copy above and editors that hold a rendered asset. Returns success.
     @discardableResult
     static func copyPNGToPasteboard(
-        _ cgImage: CGImage, to pasteboard: NSPasteboard = .general
+        _ cgImage: CGImage, concealed: Bool = false, to pasteboard: NSPasteboard = .general
     ) -> Bool {
-        copyPNGToPasteboardOutcome(cgImage, to: pasteboard) == .copied
+        copyPNGToPasteboardOutcome(cgImage, concealed: concealed, to: pasteboard) == .copied
     }
 
     /// Checked variant for callers that already own the raster. A PNG encoder
     /// failure remains distinct from a pasteboard write failure.
     @discardableResult
     static func copyPNGToPasteboardOutcome(
-        _ cgImage: CGImage, to pasteboard: NSPasteboard = .general
+        _ cgImage: CGImage, concealed: Bool = false, to pasteboard: NSPasteboard = .general
     ) -> CopyOutcome {
         guard let png = pngData(from: cgImage) else {
             Log.export.error("Copy to pasteboard failed: PNG encode returned nil")
             return .renderFailed(.encodingFailed)
         }
-        pasteboard.clearContents()
-        let copied = pasteboard.setData(png, forType: .png)
+        let copied = ClipboardWriter.copy(png, type: .png, concealed: concealed, to: pasteboard)
         Log.export.info("Copied image to pasteboard (success \(copied, privacy: .public))")
         return copied ? .copied : .failed
     }

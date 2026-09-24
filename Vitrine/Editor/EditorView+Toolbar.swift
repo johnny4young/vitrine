@@ -239,7 +239,8 @@ extension EditorView {
         let outcome = ExportManager.copyToPasteboardOutcome(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
+            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
+            concealed: environment.appSettings.export.concealClipboard)
         session.feedback(ExportFeedback.copyOutcome(outcome))
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
         // environment's app-wide settings (what the Settings toggle edits) rather than
@@ -537,7 +538,8 @@ extension EditorView {
                     for: settings.exportConfig,
                     scale: CGFloat(settings.effectiveExportScale),
                     fixedSize: settings.effectiveFixedSize,
-                    profile: settings.export.colorProfile)))
+                    profile: settings.export.colorProfile,
+                    concealed: environment.appSettings.export.concealClipboard)))
     }
 
     /// Copies a self-contained Markdown image embed followed by the visible,
@@ -549,13 +551,15 @@ extension EditorView {
                     for: settings.exportConfig,
                     scale: CGFloat(settings.effectiveExportScale),
                     fixedSize: settings.effectiveFixedSize,
-                    profile: settings.export.colorProfile)))
+                    profile: settings.export.colorProfile,
+                    concealed: environment.appSettings.export.concealClipboard)))
     }
 
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
     /// and the selected font.
     func copyHighlightedCode() {
-        RichPasteboard.copyHighlightedCode(for: settings.config)
+        RichPasteboard.copyHighlightedCode(
+            for: settings.config, concealed: environment.appSettings.export.concealClipboard)
     }
 
     /// Copies a self-contained `vitrine://open` link that reproduces this snapshot. The
@@ -564,11 +568,12 @@ extension EditorView {
     func copyShareLink() {
         do {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(url.absoluteString, forType: .string)
+            let copied = ClipboardWriter.copy(
+                url.absoluteString, concealed: environment.appSettings.export.concealClipboard)
             session.feedback(
-                Notifier.confirmation(String(localized: "Share link copied")))
+                copied
+                    ? Notifier.confirmation(String(localized: "Share link copied"))
+                    : Notifier.failure(String(localized: "Couldn't copy the share link")))
         } catch SnapshotShareLink.ShareLinkError.tooLarge {
             session.feedback(
                 Notifier.failure(

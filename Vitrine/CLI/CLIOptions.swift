@@ -296,6 +296,8 @@ struct CLIOptions: Equatable {
     /// Put the rendered image on the clipboard (instead of, or in addition to,
     /// writing a file). The default for the shell integration's "share now" flow.
     var copyToClipboard: Bool = false
+    /// Mark an explicit clipboard export as confidential for cooperating managers.
+    var concealClipboard: Bool = false
     /// Hand the loaded source to the running app's editor instead of rendering
     /// (`--edit`, behind `vgrab -e`): the CLI stages the text and opens a
     /// `vitrine://edit` URL rather than producing an image. Mutually exclusive with

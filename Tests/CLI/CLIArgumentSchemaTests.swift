@@ -11,7 +11,7 @@ struct CLIArgumentSchemaTests {
         #expect(Set(CLIArgumentSchema.options.map(\.id)) == Set(CLIOptionID.allCases))
 
         let names = CLIArgumentSchema.options.flatMap(\.names)
-        #expect(names.count == 114)
+        #expect(names.count == 115)
         #expect(Set(names).count == names.count)
         #expect(names.allSatisfy { $0.hasPrefix("-") })
         #expect(
@@ -80,7 +80,7 @@ struct CLIArgumentSchemaTests {
             allowed
                 == [
                     "--help", "-h", "--copy", "--edit", "-e", "--terminal-width",
-                    "--filename", "--title",
+                    "--filename", "--title", "--conceal-clipboard",
                 ])
     }
 

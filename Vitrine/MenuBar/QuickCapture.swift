@@ -216,7 +216,8 @@ enum QuickCapture {
                 switch RichPasteboard.copyOutcome(
                     cgImage: cgImage, config: plan.config,
                     includeRichText: settings.export.richClipboard,
-                    includePlainText: settings.export.textSidecar)
+                    includePlainText: settings.export.textSidecar,
+                    concealed: settings.export.concealClipboard)
                 {
                 case .copied:
                     didCopy = true
@@ -226,7 +227,9 @@ enum QuickCapture {
                     deferredRenderFailure = error
                 }
             } else {
-                switch ExportManager.copyPNGToPasteboardOutcome(cgImage) {
+                switch ExportManager.copyPNGToPasteboardOutcome(
+                    cgImage, concealed: settings.export.concealClipboard)
+                {
                 case .copied:
                     didCopy = true
                 case .failed:

@@ -294,13 +294,16 @@ enum RichPasteboard {
     /// language, theme, and *selected font* so the copied rich text matches the
     /// rendered image's typography.
     static func highlightedCode(for config: SnapshotConfig) -> NSAttributedString {
-        var exportConfig = config
-        exportConfig.code = config.richClipboardText
+        guard !config.usesImageContent else { return NSAttributedString() }
         let font = CodeFont.resolved(
-            family: exportConfig.fontName, size: exportConfig.fontSize,
-            ligatures: exportConfig.fontLigatures)
+            family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
+        if config.language == .terminal {
+            return ANSIRenderer.attributedString(
+                config.code, font: font, palette: .forTheme(config.theme),
+                columns: config.terminalColumns, redacting: config.redactedLineRanges)
+        }
         return HighlightManager.shared.attributedString(
-            for: exportConfig.code, language: exportConfig.language, theme: exportConfig.theme,
+            for: config.richClipboardText, language: config.language, theme: config.theme,
             font: font)
     }
 
@@ -313,8 +316,9 @@ enum RichPasteboard {
     /// All representations live on **one** pasteboard item so a destination reads
     /// whichever format it prefers from the same copy, rather than competing items.
     @discardableResult
-    static func write(_ payload: Payload, to pasteboard: NSPasteboard = .general) -> Bool {
-        pasteboard.clearContents()
+    static func write(
+        _ payload: Payload, concealed: Bool = false, to pasteboard: NSPasteboard = .general
+    ) -> Bool {
         let item = NSPasteboardItem()
         item.setData(payload.png, forType: pngType)
         if let rtf = payload.rtf { item.setData(rtf, forType: rtfType) }
@@ -322,7 +326,7 @@ enum RichPasteboard {
         // The plain-text rider is added last so a code editor that ignores styling still
         // receives the source; an image well and rich editors prefer the earlier reps.
         if let plainText = payload.plainText { item.setString(plainText, forType: .string) }
-        let wrote = pasteboard.writeObjects([item])
+        let wrote = ClipboardWriter.write([item], concealed: concealed, to: pasteboard)
         // Name every representation that accompanied the image so the log mirrors what
         // actually landed on the pasteboard — the plain-text rider counts too, not just
         // RTF/HTML — which is the point of diagnosing clipboard behavior.
@@ -351,6 +355,7 @@ enum RichPasteboard {
         profile: ColorProfile,
         includeRichText: Bool,
         includePlainText: Bool = false,
+        concealed: Bool = false,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         to pasteboard: NSPasteboard = .general
@@ -358,6 +363,7 @@ enum RichPasteboard {
         (try? copyChecked(
             config, scale: scale, fixedSize: fixedSize, profile: profile,
             includeRichText: includeRichText, includePlainText: includePlainText,
+            concealed: concealed,
             backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore, to: pasteboard)) ?? false
     }
@@ -371,6 +377,7 @@ enum RichPasteboard {
         profile: ColorProfile,
         includeRichText: Bool,
         includePlainText: Bool = false,
+        concealed: Bool = false,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         to pasteboard: NSPasteboard = .general
@@ -380,7 +387,7 @@ enum RichPasteboard {
             includeRichText: includeRichText, includePlainText: includePlainText,
             backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore)
-        return write(payload, to: pasteboard)
+        return write(payload, concealed: concealed, to: pasteboard)
     }
 
     /// Copies from an **already-rendered** `cgImage` — the quick-capture path passes
@@ -391,11 +398,12 @@ enum RichPasteboard {
         config: SnapshotConfig,
         includeRichText: Bool,
         includePlainText: Bool = false,
+        concealed: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
         copyOutcome(
             cgImage: cgImage, config: config, includeRichText: includeRichText,
-            includePlainText: includePlainText, to: pasteboard) == .copied
+            includePlainText: includePlainText, concealed: concealed, to: pasteboard) == .copied
     }
 
     /// Checked rich-copy path for an already-rendered raster. Payload creation can
@@ -406,6 +414,7 @@ enum RichPasteboard {
         config: SnapshotConfig,
         includeRichText: Bool,
         includePlainText: Bool = false,
+        concealed: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> ExportManager.CopyOutcome {
         guard
@@ -413,7 +422,7 @@ enum RichPasteboard {
                 cgImage: cgImage, for: config, includeRichText: includeRichText,
                 includePlainText: includePlainText)
         else { return .renderFailed(.encodingFailed) }
-        return write(payload, to: pasteboard) ? .copied : .failed
+        return write(payload, concealed: concealed, to: pasteboard) ? .copied : .failed
     }
 
     // MARK: - Explicit single-representation copies
@@ -430,10 +439,11 @@ enum RichPasteboard {
         scale: CGFloat,
         fixedSize: CGSize?,
         profile: ColorProfile,
+        concealed: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
         copyDataURIOutcome(
-            for: config, scale: scale, fixedSize: fixedSize, profile: profile,
+            for: config, scale: scale, fixedSize: fixedSize, profile: profile, concealed: concealed,
             to: pasteboard) == .copied
     }
 
@@ -443,6 +453,7 @@ enum RichPasteboard {
         scale: CGFloat,
         fixedSize: CGSize?,
         profile: ColorProfile,
+        concealed: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> ExportManager.CopyOutcome {
         let cgImage: CGImage
@@ -459,8 +470,7 @@ enum RichPasteboard {
             Log.export.error("Copy data URI failed: encode or representation cap")
             return .renderFailed(.encodingFailed)
         }
-        pasteboard.clearContents()
-        let wrote = pasteboard.setString(uri, forType: .string)
+        let wrote = ClipboardWriter.copy(uri, concealed: concealed, to: pasteboard)
         Log.export.info("Copied PNG data URI to pasteboard (success \(wrote, privacy: .public))")
         return wrote ? .copied : .failed
     }
@@ -474,10 +484,11 @@ enum RichPasteboard {
         scale: CGFloat,
         fixedSize: CGSize?,
         profile: ColorProfile,
+        concealed: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
         copyMarkdownOutcome(
-            for: config, scale: scale, fixedSize: fixedSize, profile: profile,
+            for: config, scale: scale, fixedSize: fixedSize, profile: profile, concealed: concealed,
             to: pasteboard) == .copied
     }
 
@@ -487,6 +498,7 @@ enum RichPasteboard {
         scale: CGFloat,
         fixedSize: CGSize?,
         profile: ColorProfile,
+        concealed: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> ExportManager.CopyOutcome {
         let cgImage: CGImage
@@ -503,8 +515,7 @@ enum RichPasteboard {
             Log.export.error("Copy Markdown failed: encode or representation cap")
             return .renderFailed(.encodingFailed)
         }
-        pasteboard.clearContents()
-        let wrote = pasteboard.setString(markdown, forType: .string)
+        let wrote = ClipboardWriter.copy(markdown, concealed: concealed, to: pasteboard)
         Log.export.info(
             "Copied Markdown snapshot to pasteboard (success \(wrote, privacy: .public))")
         return wrote ? .copied : .failed
@@ -521,6 +532,7 @@ enum RichPasteboard {
     @discardableResult
     static func copyHighlightedCode(
         for config: SnapshotConfig,
+        concealed: Bool = false,
         to pasteboard: NSPasteboard = .general
     ) -> Bool {
         let attributed = highlightedCode(for: config)
@@ -531,14 +543,16 @@ enum RichPasteboard {
             return false
         }
 
-        pasteboard.clearContents()
         let item = NSPasteboardItem()
         if let rtf { item.setData(rtf, forType: rtfType) }
         if let html { item.setData(html, forType: htmlType) }
         // A plain-text representation lets a code editor that ignores styling still
-        // receive the source text.
-        item.setString(config.richClipboardText, forType: .string)
-        let wrote = pasteboard.writeObjects([item])
+        // receive the text. Terminal captures use the resolved screen the styled reps
+        // show, never the raw ANSI transcript.
+        item.setString(
+            config.language == .terminal ? config.sidecarText : config.richClipboardText,
+            forType: .string)
+        let wrote = ClipboardWriter.write([item], concealed: concealed, to: pasteboard)
         Log.export.info(
             "Copied highlighted code to pasteboard (success \(wrote, privacy: .public))")
         return wrote

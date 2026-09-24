@@ -15,7 +15,9 @@ struct SocialCardPresentation {
 
     static let live = SocialCardPresentation { image in
         guard let view = NSApp.keyWindow?.contentView else { return }
-        ShareManager.share(image, relativeTo: view)
+        ShareManager.share(
+            image, relativeTo: view,
+            concealed: AppEnvironment.shared.appSettings.export.concealClipboard)
     }
 
     static let noOp = SocialCardPresentation(presentShare: { _ in })

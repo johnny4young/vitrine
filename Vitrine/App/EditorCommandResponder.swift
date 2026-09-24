@@ -109,7 +109,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         let outcome = ExportManager.copyToPasteboardOutcome(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
+            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
+            concealed: self.settings.export.concealClipboard)
         feedback(ExportFeedback.copyOutcome(outcome))
     }
 

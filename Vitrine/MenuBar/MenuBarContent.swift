@@ -360,14 +360,16 @@ struct MenuBarContent: View {
         let outcome = ExportManager.copyToPasteboardOutcome(
             config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
+            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
+            concealed: settings.export.concealClipboard)
         feedback.present(ExportFeedback.copyOutcome(outcome))
     }
 
     private func copySource(_ capture: Capture) {
         feedback.present(
             ExportFeedback.sourceCopyOutcome(
-                ExportManager.copySourceToPasteboard(capture.code)))
+                ExportManager.copySourceToPasteboard(
+                    capture.code, concealed: settings.export.concealClipboard)))
     }
 }
 

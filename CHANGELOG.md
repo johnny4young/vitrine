@@ -12,6 +12,19 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Apply terminal redactions to reconstructed screen rows in rich-text copies and
+  share links, including cursor movement, wrapping and alternate-screen output.
+  Visible rich-text rows retain their colors; redacted share links never include the
+  original ANSI transcript. Clarify that manual blur annotations are not source redaction.
+
+### Added
+
+- Optional confidential clipboard markers in Settings and CLI `--copy --conceal-clipboard`.
+  Compatible clipboard managers can conceal exports; this is not access control or
+  automatic clipboard expiration, and the preference is off by default.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each
