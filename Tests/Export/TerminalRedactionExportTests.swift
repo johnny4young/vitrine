@@ -147,6 +147,28 @@ struct TerminalRedactionExportTests {
         #expect(RichPasteboard.highlightedCode(for: config).string == config.sidecarText)
     }
 
+    @Test func highlightedCopyPlainTextMatchesTheResolvedScreen() {
+        let config = SnapshotConfig(
+            code: "hidden\r\u{1B}[2K\u{1B}[32mshown\u{1B}[0m", language: .terminal)
+        let pasteboard = NSPasteboard(name: .init("TerminalRedaction-\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        #expect(RichPasteboard.copyHighlightedCode(for: config, to: pasteboard))
+        #expect(pasteboard.string(forType: .string) == config.sidecarText)
+        #expect(pasteboard.string(forType: .string) == "shown")
+    }
+
+    @Test func narrowRedactedLinksKeepThePlaceholderOnOneRow() throws {
+        var config = SnapshotConfig(
+            code: "\u{1B}[1;1Hab\u{1B}[2;1HSECR\u{1B}[3;1Hcd", language: .terminal)
+        config.terminalColumns = 4
+        config.redactedLineRanges = [2...2]
+        let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: config))
+        var restored = SnapshotConfig()
+        try SnapshotShareLink.snapshot(from: url).apply(to: &restored)
+        #expect(restored.sidecarText == config.sidecarText)
+        #expect(restored.sidecarText.components(separatedBy: "\n")[1] == "[redacted]")
+    }
+
     @Test func unredactedLinksRetainTheOriginalTerminalTranscript() throws {
         let code = "\u{1B}[32mvisible\u{1B}[0m\u{1B}[2;1Htail"
         let config = SnapshotConfig(code: code, language: .terminal)

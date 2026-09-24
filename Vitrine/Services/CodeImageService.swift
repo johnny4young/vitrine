@@ -109,25 +109,16 @@ final class CodeImageService: NSObject {
             return .failed(message: "Vitrine could not render an image from that code.")
         }
 
-        // Hand the image back on the same pasteboard. Write both an `NSImage` object
-        // (for image wells) and explicit PNG bytes for apps that read raw PNG. The
-        // bytes go through the color-managed ImageIO path (`ExportManager.pngData`),
-        // not a legacy TIFF/`NSBitmapImageRep` round-trip — the latter double-encodes
-        // on the main actor and can drop the deliberate sRGB tagging the exporter
-        // guarantees.
+        // Hand the image back on the same pasteboard as one item: the `NSImage`
+        // representations (for image wells) plus explicit PNG bytes for apps that read
+        // raw PNG. The bytes go through the color-managed ImageIO path
+        // (`ExportManager.pngData`), which keeps the exporter's sRGB tagging.
         let image = NSImage(
             cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-        let item = NSPasteboardItem()
-        for type in image.writableTypes(for: pasteboard) {
-            if let data = image.pasteboardPropertyList(forType: type) as? Data {
-                item.setData(data, forType: type)
-            }
-        }
+        let item = ClipboardWriter.item(from: image, for: pasteboard)
         if let png = ExportManager.pngData(from: cgImage) { item.setData(png, forType: .png) }
-        let wroteImage =
-            !item.types.isEmpty
-            && ClipboardWriter.write(
-                [item], concealed: environment.appSettings.export.concealClipboard, to: pasteboard)
+        let wroteImage = ClipboardWriter.write(
+            [item], concealed: environment.appSettings.export.concealClipboard, to: pasteboard)
 
         guard wroteImage else {
             Log.capture.error("Services could not place the rendered image on the pasteboard")

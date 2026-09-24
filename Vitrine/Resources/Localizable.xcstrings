@@ -1,6 +1,196 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Save this capture in history?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Guardar esta captura en el historial?"
+          }
+        }
+      }
+    },
+    "This capture may contain a secret and has not been saved in history. Your export is unchanged. Sanitized history removes detected rows, but detection is not exhaustive. Keeping the original stores flagged text locally. Explicit redactions are always removed." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta captura puede contener un secreto y no se ha guardado en el historial. La exportación no cambia. El historial saneado elimina las filas detectadas, pero la detección no es exhaustiva. Conservar el original guarda localmente el texto señalado. Las ocultaciones explícitas siempre se eliminan."
+          }
+        }
+      }
+    },
+    "Don't Save" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No guardar"
+          }
+        }
+      }
+    },
+    "Save Sanitized" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar saneado"
+          }
+        }
+      }
+    },
+    "Keep Original" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservar original"
+          }
+        }
+      }
+    },
+    "History needs recovery" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El historial necesita recuperación"
+          }
+        }
+      }
+    },
+    "The original history and previews have been preserved. New captures are not saved until you recover valid entries or delete the damaged history." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se han conservado el historial original y las vistas previas. No se guardarán nuevas capturas hasta que recuperes las entradas válidas o elimines el historial dañado."
+          }
+        }
+      }
+    },
+    "Recover Valid Captures" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recuperar capturas válidas"
+          }
+        }
+      }
+    },
+    "Older history may contain sensitive text or previews. Keeping it does not sanitize it. You can delete it here; backups and copies outside Vitrine are not erased." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El historial anterior puede contener texto o vistas previas sensibles. Conservarlo no lo sanea. Puedes eliminarlo aquí; no se borran las copias de seguridad ni las copias fuera de Vitrine."
+          }
+        }
+      }
+    },
+    "Keep Existing History" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conservar historial existente"
+          }
+        }
+      }
+    },
+    "Delete History and Cached Previews…" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar historial y vistas previas en caché…"
+          }
+        }
+      }
+    },
+    "Recover history?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Recuperar el historial?"
+          }
+        }
+      }
+    },
+    "This replaces the damaged archive with its readable captures. Unreadable entries will be discarded. Cancel keeps the original archive unchanged." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto reemplaza el archivo dañado por sus capturas legibles. Se descartarán las entradas ilegibles. Cancelar conserva el archivo original sin cambios."
+          }
+        }
+      }
+    },
+    "Delete all history?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar todo el historial?"
+          }
+        }
+      }
+    },
+    "Delete All History" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar todo el historial"
+          }
+        }
+      }
+    },
+    "This deletes every capture, including pinned captures, and cached previews from Vitrine. It does not erase backups or copies outside the app." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina todas las capturas, incluidas las fijadas, y las vistas previas en caché de Vitrine. No borra las copias de seguridad ni las copias fuera de la app."
+          }
+        }
+      }
+    },
+    "History" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historial"
+          }
+        }
+      }
+    },
+    "Save capture history" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar historial de capturas"
+          }
+        }
+      }
+    },
+    "Turning this off stops new history writes. Existing captures stay until you delete them." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al desactivarlo, no se guardarán nuevas capturas en el historial. Las existentes permanecerán hasta que las elimines."
+          }
+        }
+      }
+    },
     "Mark clipboard exports as confidential" : {
       "localizations" : {
         "es" : {
@@ -21,12 +211,12 @@
         }
       }
     },
-    "Couldn’t copy to the clipboard" : {
+    "Couldn't copy the recognized text" : {
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudo copiar al portapapeles"
+            "value" : "No se pudo copiar el texto reconocido"
           }
         }
       }

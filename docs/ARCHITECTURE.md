@@ -141,6 +141,22 @@ making the UI lifecycle presenter part of the data-store graph. The feedback pre
 likewise receives HUD display and recovery navigation as operation values, so neither
 coordinator needs to construct UI during tests.
 
+## Capture-history retention
+
+Quick capture resolves `CaptureRetentionPolicy` before constructing a history record or
+thumbnail. Explicit redactions use the shared sanitized representation. A heuristic match
+requires a one-capture decision; absent consent means no write. The export already requested
+by the user is not changed by that history decision. `RecentsStore.record` is the production
+boundary and the legacy-shaped `add` API enforces the same policy rather than bypassing it.
+A generation check invalidates older consent when history is cleared, disabled, or replaced
+by a newer capture. Consent is never persisted.
+
+`HistoryArchiveRecovery` reads valid records from partially damaged arrays without altering
+original stored bytes or pruning cached previews. Mutations remain blocked until explicit
+recovery or purge. The observable store owns the global history toggle, shared by Settings
+and all gallery windows; disabling retention does not delete data. See [HISTORY.md](HISTORY.md)
+for the user-visible contract and limitations.
+
 ## Clipboard integration
 
 - **Input:** on trigger (hotkey or menu) it auto-reads
