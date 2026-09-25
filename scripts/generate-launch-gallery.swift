@@ -5,7 +5,7 @@
 // used in the README/release notes and committed under Tests/Fixtures/Samples/, all
 // rendered through the app's real export pipeline — never hand-made mockups.
 //
-// How it works (the same staging dance as scripts/record-goldens.sh): the
+// How it works: the
 // unit-test host is sandboxed and cannot write into the source tree, so the
 // generator suite (`SampleGalleryGeneratorTests`, armed by VITRINE_GENERATE_GALLERY)
 // renders every catalog sample, stages the PNGs and manifest.json in its own
