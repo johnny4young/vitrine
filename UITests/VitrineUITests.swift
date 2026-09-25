@@ -565,8 +565,11 @@ final class VitrineUITests: XCTestCase {
                     "annotation-tool-text", from: "annotation-tool-picker", in: app
                 ).click()
                 center.click()
-                let field = element("annotation-text-field", in: app)
+                // The stage identifier also overrides the inline field's own identifier.
+                let field = app.textFields.matching(identifier: "editor-preview-stage").firstMatch
                 assertExists(field, in: app)
+                // Under automation keyboard focus stays on the toolbar; focus the field.
+                field.click()
                 field.typeText("Callout\r")
                 XCTAssertTrue(field.waitForNonExistence(timeout: 3))
                 revealToolbarAction(
