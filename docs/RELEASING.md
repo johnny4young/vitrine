@@ -212,8 +212,9 @@ Each command retains a required result bundle (`build/asan.xcresult` or
 `build/tsan.xcresult`, override with `RESULT_BUNDLE`). The same
 `scripts/sanitizer-suites.json` manifest drives selection and the post-run execution
 guard. The terminal suite belongs to `VitrineDomainTests`, not the hosted app bundle.
-An empty selection, missing suite, skipped test/argument, or non-passing expected test
-fails the lane even if Xcode reports success. The guard reads actual test identifiers
+An empty selection, missing suite, skipped test/argument, non-passing expected test, or
+recorded runtime warning (where non-fatal sanitizer reports land) fails the lane even if
+Xcode reports success. The guard reads actual test identifiers
 from `xcresulttool`, not compiler output or human-readable suite names, and writes
 per-suite passing-test counts to the adjacent `.xcresult.execution.json` artifact.
 `make sanitizer-check` exercises the guard's negative cases without requiring Xcode.

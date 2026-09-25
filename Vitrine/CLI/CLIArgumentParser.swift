@@ -99,6 +99,7 @@ struct CLIArgumentParser {
     var gitDiffPaths: [String] = []
     var gitDiffContextLines: Int?
     var copyToClipboard = false
+    var concealClipboard = false
     var openInEditor = false
     var textSidecar = false
     var markdownSidecar = false
@@ -381,6 +382,8 @@ struct CLIArgumentParser {
             gitDiffPaths.append(try resolveGitPath(value, flag: token))
         case .gitContext:
             gitDiffContextLines = try resolveGitContextLines(value, flag: token)
+        case .concealClipboard:
+            concealClipboard = true
         case .copy:
             copyToClipboard = true
         case .edit:

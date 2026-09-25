@@ -2,9 +2,9 @@ import AppKit
 import Testing
 import UniformTypeIdentifiers
 import VitrineDomain
-import VitrineRendering
 
 @testable import Vitrine
+@testable import VitrineRendering
 
 // Quick capture renders the styled image once and feeds that single raster to
 // both the clipboard copy and the file save, instead of re-rendering the identical

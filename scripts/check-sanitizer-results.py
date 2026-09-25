@@ -51,6 +51,10 @@ def verify(tree: object, expected: list[str]) -> dict[str, int]:
         children = node.get("children", [])
         if not isinstance(children, list):
             raise EvidenceError("malformed test children")
+        # Sanitizer reports that do not crash surface as runtime warnings on a
+        # passing test, so a warning anywhere disqualifies the lane.
+        if node.get("nodeType") == "Runtime Warning":
+            raise EvidenceError(f"runtime warning: {node.get('name', '')}")
         identifier = node.get("nodeIdentifierURL", "")
         if not isinstance(identifier, str):
             raise EvidenceError("malformed test identifier")
@@ -100,7 +104,9 @@ def self_test() -> None:
         bad = copy.deepcopy(tree)
         bad["testNodes"][0]["children"][0]["result"] = result
         bad_trees.append(bad)
-    for change in ["empty suite", "wrong bundle", "skipped argument", "missing identifier"]:
+    for change in [
+        "empty suite", "wrong bundle", "skipped argument", "missing identifier", "runtime warning",
+    ]:
         bad = copy.deepcopy(tree)
         node = bad["testNodes"][0]
         if change == "empty suite":
@@ -110,6 +116,9 @@ def self_test() -> None:
                 "test://com.apple.xcode/Vitrine/VitrineTests/TerminalGridTests/example()")
         elif change == "skipped argument":
             node["children"][0]["children"][0]["result"] = "Skipped"
+        elif change == "runtime warning":
+            node["children"][0]["children"].append(
+                {"nodeType": "Runtime Warning", "name": "Data race in synthetic()"})
         else:
             del node["children"][0]["nodeIdentifierURL"]
         bad_trees.append(bad)
@@ -134,7 +143,9 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError("accepted malformed lane selection")
-    print("Sanitizer execution guard self-test passed (including empty/missing/skipped suites).")
+    print(
+        "Sanitizer execution guard self-test passed "
+        "(including empty/missing/skipped suites and runtime warnings).")
 
 
 def main() -> int:
