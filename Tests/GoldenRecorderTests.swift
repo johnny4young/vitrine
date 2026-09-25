@@ -8,11 +8,12 @@ import VitrineRendering
 /// The golden-fixture **recorder**.
 ///
 /// This suite is the "single command" that regenerates the visual baseline:
-/// `make record-goldens` runs only this suite with `VITRINE_RECORD_GOLDENS=1`. It
-/// renders every `GoldenScenario` through the production export path and writes the
-/// PNG fixtures plus the pinned-image `manifest.json` as test attachments. The recorder script exports them into
-/// `Tests/Fixtures/Golden/` after validating the complete set. A developer reviews and commits the resulting diff
-/// when a deliberate visual change lands.
+/// `make record-goldens` runs this suite and the social-card recorder with
+/// `VITRINE_RECORD_GOLDENS=1` and `VITRINE_RECORD_SOCIAL_CARD=1`. It renders every
+/// `GoldenScenario` through the production export path and attaches the PNGs plus
+/// the pinned-image `manifest.json` to the result bundle. The script exports both
+/// sets into `Tests/Fixtures/` only when complete; a developer reviews and commits
+/// the resulting diff when a deliberate visual change lands.
 ///
 /// It is **opt-in**: every test is `enabled(if:)` the environment flag is set, so a
 /// normal `make test` run never rewrites a single fixture. The recorder is

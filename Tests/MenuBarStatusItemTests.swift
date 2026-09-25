@@ -95,7 +95,10 @@ struct MenuBarStatusItemTests {
         let item = try #require(controller.statusItem)
         item.isVisible = false
 
-        try await Task.sleep(for: .milliseconds(50))
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while !item.isVisible, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(5))
+        }
 
         #expect(item.isVisible)
         #expect(

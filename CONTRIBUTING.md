@@ -59,6 +59,28 @@ review-friendly PNGs to `build/screenshot-tour/`.
 > `make` auto-detects full Xcode via `DEVELOPER_DIR` even when `xcode-select` points at
 > the Command Line Tools.
 
+## Behavioral regression tests
+
+- `TerminalCorpusTests` uses four fixed seeds and four widths, with 128 complete VT
+  commands per case. Grid bounds, wide-cell pairs and fresh-prefix replay must agree
+  after every command. Failed arguments and step numbers reproduce without a random
+  seed service. Reviewed scroll/wide-glyph examples provide explicit expected output;
+  replay alone is not an independent terminal specification. This is not a streaming
+  byte-chunk parser test or an unbounded fuzzer.
+- The corpus belongs to `make test-asan`'s required execution inventory. A successful
+  build or an omitted suite does not qualify it. Sanitizers retain their existing
+  weekly/manual, non-required policy.
+- Annotation geometry tests exercise the same canvas-space calculations used by
+  the overlay. The native drawing/selection/resize/keyboard journey also runs at
+  natural size and a scaled fixed destination; pure coordinate arithmetic alone
+  does not prove SwiftUI gesture routing. History and nudge suites remain separate.
+- Await operation handles to test debounce/format completion, including canceled
+  operations. For native state without an awaitable completion, poll the actual
+  condition with a bounded deadline instead of sleeping and assuming it finished.
+- Remove structural guards only when equivalent behavioral coverage exists. The
+  terminal file-placement guard is replaced; module boundaries, WebKit ownership and
+  editor invalidation guards remain until their distinct contracts have replacements.
+
 ## CI test lanes
 
 `make test` and `make test-coverage` remain complete local suite runs. CI uses
@@ -73,10 +95,9 @@ are saved beside the `.xcresult`.
 
 Timing runs explicitly disable coverage instrumentation. Golden runs retain the
 qualified strict comparison on Tahoe and explicitly labeled smoke on Sequoia. No
-coverage threshold, compatibility platform, Release or security gate is removed.
-The UI job's `xcodebuild test` compiles its target before execution, so the other
-build job does not repeat a compile-only UI pass. CoreText/AppKit suites stay serial;
-this change does not infer that framework work is safe to parallelize.
+coverage threshold, compatibility platform, Release, or security gate is removed.
+UI tests compile only in the UI job, whose `xcodebuild test` builds the target it
+executes. CoreText/AppKit suites stay serial.
 
 ## Conventions
 

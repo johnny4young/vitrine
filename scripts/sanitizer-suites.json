@@ -2,6 +2,7 @@
   "asan": [
     "VitrineTests/ANSIParserTests",
     "VitrineDomainTests/TerminalGridTests",
+    "VitrineDomainTests/TerminalCorpusTests",
     "VitrineTests/RenderBudgetTests",
     "VitrineTests/BoundedFileReaderTests",
     "VitrineTests/AsciinemaCastTests",

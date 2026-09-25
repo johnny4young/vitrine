@@ -14,6 +14,18 @@ can never drift.
 
 ### Changed
 
+- Capture history now removes explicit redactions before creating records or previews.
+  Suspected secrets require a fresh choice to skip history, save sanitized text, or retain
+  the flagged text deliberately; this never silently changes the requested export.
+- History can be disabled without deleting existing captures. Settings and Recents offer
+  explicit cleanup of older history and cached previews, with clear backup limitations.
+- Damaged history preserves its original archive and previews until the user recovers
+  readable entries or explicitly deletes it, rather than silently replacing it with an empty list.
+- Link app and CLI clipboard delivery and offline license verification from their shared modules instead of compiling app adapters twice. Keep Keychain, activation and purchase effects app-owned.
+- Exercise terminal state with a bounded, reproducible command corpus, including
+  sanitizer execution, and verify annotation drawing, selection, movement, resize
+  and keyboard routing on natural and fixed-size canvases. Await actual debounce
+  and formatting completion instead of arbitrary test delays.
 - Run heavy visual and timing suites once in their dedicated CI lanes, with
   nonempty execution receipts, while keeping local full-suite commands complete.
   UI tests compile in the job that executes them rather than in both platform jobs.
@@ -25,10 +37,27 @@ can never drift.
   card, with exact environment provenance and fail-closed execution evidence.
   Other environments retain explicitly labeled render smoke; baseline candidates
   require review and cannot automatically turn a failed comparison green.
+
 - Select the terminal domain tests in the Address Sanitizer lane and verify that
   every expected sanitizer suite actually executes passing tests. Empty, omitted,
   skipped or failed selections now fail instead of accepting build-only success.
   Sanitizers remain weekly/manual, non-required early-warning checks.
+
+- Preserve custom default themes in additional editor windows without copying shared
+  catalogs into draft storage. Keep per-window output preferences separate from global
+  behavior, and explain the scope of Style defaults. Settings now includes the Slide
+  destination instead of hiding it from the compact picker.
+
+- Apply terminal redactions to reconstructed screen rows in rich-text copies and
+  share links, including cursor movement, wrapping and alternate-screen output.
+  Visible rich-text rows retain their colors; redacted share links never include the
+  original ANSI transcript. Clarify that manual blur annotations are not source redaction.
+
+### Added
+
+- Optional confidential clipboard markers in Settings and CLI `--copy --conceal-clipboard`.
+  Compatible clipboard managers can conceal exports; this is not access control or
+  automatic clipboard expiration, and the preference is off by default.
 
 ## [1.2.3] - 2026-09-16
 

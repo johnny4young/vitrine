@@ -29,7 +29,9 @@ struct EditorPresentation {
     static let live = EditorPresentation(
         presentPin: { PinnedSnapshotController.shared.pin($0) },
         presentShare: { image, view in
-            ShareManager.share(image, relativeTo: view)
+            ShareManager.share(
+                image, relativeTo: view,
+                concealed: AppEnvironment.shared.appSettings.export.concealClipboard)
         },
         batchExport: .live)
 

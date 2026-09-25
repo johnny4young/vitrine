@@ -329,10 +329,12 @@ struct GoldenImageTests {
     @Test func recordedDimensionsMatchAFreshRenderOnThePinnedImage() throws {
         // For content-hugging scenarios the rendered size derives from text layout,
         // which can shift across OS versions — so the recorded-vs-fresh dimension
-        // check only holds on the pinned image. Off the pin it is a no-op (the
-        // strict pixel comparison is gated the same way and would not run either).
-        guard Self.isPinnedImage else {
-            print("GOLDEN SKIP recordedDimensions (runner is not the pinned image)")
+        // check only holds on the pinned image. Strict mode throws off the pin;
+        // smoke mode reports the check as not applicable.
+        let strict = try GoldenValidation.shouldCompare(
+            manifest: Self.manifest, fixtureExists: true)
+        guard strict || Self.isPinnedImage else {
+            print("GOLDEN SMOKE recordedDimensions (runner is not the pinned image)")
             return
         }
         let manifest = try #require(Self.manifest)

@@ -225,9 +225,9 @@ struct AnnotationToolbar: View {
         return Group {
             if let key = tool.keyEquivalent {
                 button
-                    .help(Text(tool.label) + Text(verbatim: " (⌘\(key.character))"))
+                    .help(Text(tool.helpText) + Text(verbatim: " (⌘\(key.character))"))
             } else {
-                button.help(tool.label)
+                button.help(tool.helpText)
             }
         }
     }

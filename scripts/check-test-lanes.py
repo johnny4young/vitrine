@@ -136,7 +136,7 @@ def main() -> int:
         Path(str(args.result_bundle) + ".lane.json").write_text(json.dumps(evidence, indent=2) + "\n")
         print(json.dumps(evidence, sort_keys=True))
         return 0
-    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+    except (OSError, ValueError, AttributeError, TypeError, subprocess.CalledProcessError) as error:
         print(f"error: test lane not qualified: {error}", file=sys.stderr)
         return 1
 

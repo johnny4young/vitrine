@@ -1,4 +1,5 @@
 import AppKit
+import VitrineRendering
 
 /// Presents the macOS Share Sheet for a rendered image.
 ///
@@ -12,16 +13,18 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
     private static var active: ShareManager?
 
     private let picker: NSSharingServicePicker
+    private let concealed: Bool
 
-    private init(image: NSImage) {
+    private init(image: NSImage, concealed: Bool) {
+        self.concealed = concealed
         self.picker = NSSharingServicePicker(items: [image])
         super.init()
         self.picker.delegate = self
     }
 
     /// Shows the sharing picker anchored to `view`, retaining it until dismissed.
-    static func share(_ image: NSImage, relativeTo view: NSView) {
-        let presenter = ShareManager(image: image)
+    static func share(_ image: NSImage, relativeTo view: NSView, concealed: Bool = false) {
+        let presenter = ShareManager(image: image, concealed: concealed)
         active = presenter  // keep it alive across the async popover
         presenter.picker.show(relativeTo: .zero, of: view, preferredEdge: .minY)
     }
@@ -65,13 +68,11 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
         return NSSharingService(
             title: network.title, image: NSImage(named: NSImage.shareTemplateName) ?? NSImage(),
             alternateImage: nil
-        ) {
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
+        ) { [concealed] in
             // Only open the compose page when the image actually reached the
             // pasteboard — with nothing to paste, opening the browser and claiming
             // success would mislead the user.
-            guard pasteboard.writeObjects([image]) else {
+            guard ClipboardWriter.write([image], concealed: concealed) else {
                 ExportFeedback.presentCopy(false)
                 return
             }

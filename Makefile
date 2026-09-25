@@ -178,8 +178,8 @@ coverage-check:
 # weekly/manual hosted workflow retains each result bundle. These lanes are
 # non-required early warnings until their runner stability has been established.
 # One manifest drives both xcodebuild selection and the executed-suite gate.
-ASAN_TEST_SELECTION := $(shell python3 scripts/check-sanitizer-results.py --lane asan --print-selection)
-TSAN_TEST_SELECTION := $(shell python3 scripts/check-sanitizer-results.py --lane tsan --print-selection)
+ASAN_TEST_SELECTION = $(shell python3 scripts/check-sanitizer-results.py --lane asan --print-selection)
+TSAN_TEST_SELECTION = $(shell python3 scripts/check-sanitizer-results.py --lane tsan --print-selection)
 ASAN_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/asan.xcresult)
 TSAN_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/tsan.xcresult)
 
@@ -268,7 +268,7 @@ test-visual: project screenshot-tour-check
 ## Serialized like `test` (see that target's CoreText rationale): the perf suite
 ## is CoreText-heavy, and a serial run also keeps latency numbers comparable.
 PERF_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/perf.xcresult)
-PERF_TEST_SELECTION := $(shell python3 scripts/check-test-lanes.py --lane performance --selection)
+PERF_TEST_SELECTION = $(shell python3 scripts/check-test-lanes.py --lane performance --selection)
 perf: project
 	@test -n "$(PERF_TEST_SELECTION)" || { echo "Empty performance selection" >&2; exit 1; }
 	@rm -rf "$(PERF_RESULT_BUNDLE)" "$(PERF_RESULT_BUNDLE).lane.json"
