@@ -568,8 +568,7 @@ final class VitrineUITests: XCTestCase {
                 // The stage identifier also overrides the inline field's own identifier.
                 let field = app.textFields.matching(identifier: "editor-preview-stage").firstMatch
                 assertExists(field, in: app)
-                // Under automation keyboard focus stays on the toolbar; focus the field.
-                field.click()
+                // A new callout owns keyboard focus: type without clicking the field.
                 field.typeText("Callout\r")
                 XCTAssertTrue(field.waitForNonExistence(timeout: 3))
                 revealToolbarAction(
@@ -589,6 +588,29 @@ final class VitrineUITests: XCTestCase {
             }
             app.terminate()
         }
+    }
+
+    /// A callout placed after choosing the Text tool by shortcut takes keyboard focus.
+    @MainActor
+    func testTextCalloutFromShortcutTakesKeyboardFocus() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        app.typeKey("5", modifierFlags: .command)
+        let stage = app.staticTexts.matching(
+            NSPredicate(
+                format: "identifier == %@ AND value BEGINSWITH %@",
+                "editor-preview-stage", "import SwiftUI")
+        ).element
+        assertExists(stage, in: app, timeout: 3)
+        stage.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        // The stage identifier also overrides the inline field's own identifier.
+        let field = app.textFields.matching(identifier: "editor-preview-stage").firstMatch
+        assertExists(field, in: app, timeout: 3)
+        field.typeText("Callout")
+        XCTAssertEqual(field.value as? String, "Callout")
     }
 
     /// Selection-only actions must be present but disabled until a mark is selected.
