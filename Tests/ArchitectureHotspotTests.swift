@@ -5,22 +5,6 @@ import Testing
 
 @Suite("Architecture hotspot boundaries")
 struct ArchitectureHotspotTests {
-    @Test func terminalScreenResponsibilitiesStayPhysicallySeparated() throws {
-        let terminal = Self.repositoryRoot.appending(path: "VitrineDomain/Terminal")
-        let state = try Self.source("TerminalGrid.swift", in: terminal)
-        let scanner = try Self.source("TerminalScreen+Scanner.swift", in: terminal)
-        let parser = try Self.source("TerminalScreen+Parser.swift", in: terminal)
-        let operations = try Self.source("TerminalScreen+Operations.swift", in: terminal)
-        let serialization = try Self.source("TerminalScreen+Serialization.swift", in: terminal)
-
-        #expect(state.contains("struct TerminalScreen"))
-        #expect(!state.contains("mutating func feed"))
-        #expect(scanner.contains("usesScreenAddressing"))
-        #expect(parser.contains("mutating func feed"))
-        #expect(operations.contains("mutating func putChar"))
-        #expect(serialization.contains("public func runs"))
-    }
-
     @Test func webSnapshotWindowOwnsPresentationButNotCaptureOrchestration() throws {
         let web = Self.repositoryRoot.appending(path: "Vitrine/WebRendering")
         let window = try Self.source("WebSnapshotWindowController.swift", in: web)

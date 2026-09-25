@@ -59,6 +59,28 @@ review-friendly PNGs to `build/screenshot-tour/`.
 > `make` auto-detects full Xcode via `DEVELOPER_DIR` even when `xcode-select` points at
 > the Command Line Tools.
 
+## Behavioral regression tests
+
+- `TerminalCorpusTests` uses four fixed seeds and four widths, with 128 complete VT
+  commands per case. Grid bounds, wide-cell pairs and fresh-prefix replay must agree
+  after every command. Failed arguments and step numbers reproduce without a random
+  seed service. Reviewed scroll/wide-glyph examples provide explicit expected output;
+  replay alone is not an independent terminal specification. This is not a streaming
+  byte-chunk parser test or an unbounded fuzzer.
+- The corpus belongs to `make test-asan`'s required execution inventory. A successful
+  build or an omitted suite does not qualify it. Sanitizers retain their existing
+  weekly/manual, non-required policy.
+- Annotation geometry tests exercise the same canvas-space calculations used by
+  the overlay. The native drawing/selection/resize/keyboard journey also runs at
+  natural size and a scaled fixed destination; pure coordinate arithmetic alone
+  does not prove SwiftUI gesture routing. History and nudge suites remain separate.
+- Await operation handles to test debounce/format completion, including canceled
+  operations. For native state without an awaitable completion, poll the actual
+  condition with a bounded deadline instead of sleeping and assuming it finished.
+- Remove structural guards only when equivalent behavioral coverage exists. The
+  terminal file-placement guard is replaced; module boundaries, WebKit ownership and
+  editor invalidation guards remain until their distinct contracts have replacements.
+
 ## Conventions
 
 See [AGENTS.md](AGENTS.md). In short:

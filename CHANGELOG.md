@@ -22,6 +22,10 @@ can never drift.
 - Damaged history preserves its original archive and previews until the user recovers
   readable entries or explicitly deletes it, rather than silently replacing it with an empty list.
 - Link app and CLI clipboard delivery and offline license verification from their shared modules instead of compiling app adapters twice. Keep Keychain, activation and purchase effects app-owned.
+- Exercise terminal state with a bounded, reproducible command corpus, including
+  sanitizer execution, and verify annotation drawing, selection, movement, resize
+  and keyboard routing on natural and fixed-size canvases. Await actual debounce
+  and formatting completion instead of arbitrary test delays.
 
 ### Fixed
 
