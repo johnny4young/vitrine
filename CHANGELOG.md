@@ -29,6 +29,11 @@ can never drift.
 
 ### Fixed
 
+- Require qualified visual comparisons for every export scenario and the social
+  card, with exact environment provenance and fail-closed execution evidence.
+  Other environments retain explicitly labeled render smoke; baseline candidates
+  require review and cannot automatically turn a failed comparison green.
+
 - Select the terminal domain tests in the Address Sanitizer lane and verify that
   every expected sanitizer suite actually executes passing tests. Empty, omitted,
   skipped or failed selections now fail instead of accepting build-only success.
