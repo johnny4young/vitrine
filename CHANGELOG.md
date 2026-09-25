@@ -25,6 +25,11 @@ can never drift.
 
 ### Fixed
 
+- Select the terminal domain tests in the Address Sanitizer lane and verify that
+  every expected sanitizer suite actually executes passing tests. Empty, omitted,
+  skipped or failed selections now fail instead of accepting build-only success.
+  Sanitizers remain weekly/manual, non-required early-warning checks.
+
 - Preserve custom default themes in additional editor windows without copying shared
   catalogs into draft storage. Keep per-window output preferences separate from global
   behavior, and explain the scope of Style defaults. Settings now includes the Slide

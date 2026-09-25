@@ -1,0 +1,19 @@
+{
+  "asan": [
+    "VitrineTests/ANSIParserTests",
+    "VitrineDomainTests/TerminalGridTests",
+    "VitrineTests/RenderBudgetTests",
+    "VitrineTests/BoundedFileReaderTests",
+    "VitrineTests/AsciinemaCastTests",
+    "VitrineTests/FileInputLoaderDecodeTests",
+    "VitrineTests/FileInputLoaderDecodeTextTests",
+    "VitrineTests/ImageSecretRedactorTests",
+    "VitrineTests/PrivateNetworkBlockRulesTests"
+  ],
+  "tsan": [
+    "VitrineTests/DebouncerTests",
+    "VitrineTests/ItemProviderLoadWaiterTests",
+    "VitrineTests/WebLoadWaiterTests",
+    "VitrineTests/MemoryWebSnapshotCycleJourneyTests"
+  ]
+}
