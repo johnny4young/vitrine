@@ -1143,9 +1143,11 @@ Missing fixtures, drifted environments, missing comparisons and smoke-only outpu
 fail the strict lane; a green build with zero selected tests cannot qualify it.
 The existing channel tolerance (2/255) and differing-pixel limit (0.1%) are unchanged.
 
-CI's Tahoe build selects Xcode 26.6 and runs strict comparisons. The runner OS
-image can still change: that is a qualification failure requiring baseline review,
-not permission to skip pixels. Sequoia and ordinary unit tests run render smoke;
+CI's Tahoe build runs strict comparisons with the Xcode build recorded in the
+golden manifest, selected for that step only; every other step uses the latest
+stable Xcode. A missing Xcode build fails the lane and records review candidates on
+the default Xcode. The runner OS image can still change: that is a qualification
+failure requiring baseline review, not permission to skip pixels. Sequoia and ordinary unit tests run render smoke;
 `make test-goldens GOLDEN_MODE=smoke` requests that contract explicitly. Smoke is not
 visual regression certification. Result bundles and logs identify each comparison.
 

@@ -206,13 +206,11 @@ jobs:
             artifact: sequoia-15
             coverage: sequoia
             golden-mode: smoke
-            xcode: latest-stable
           - runner: macos-26
             platform: Tahoe 26
             artifact: tahoe-26
             coverage: tahoe
             golden-mode: strict
-            xcode: "26.6"
     runs-on: ${{ matrix.runner }}
     # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
@@ -232,7 +230,6 @@ jobs:
         uses: ./.github/actions/setup-macos-toolchain
         with:
           summary-title: Toolchain
-          xcode-version: ${{ matrix.xcode }}
           summary-context: "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
           spm-cache: "true"
           spm-cache-prefix: ${{ matrix.runner }}
@@ -390,10 +387,33 @@ jobs:
 
       # Tahoe must compare every scenario, including the social card, on the
       # qualified image. Sequoia runs explicit smoke without claiming pixel coverage.
+      # Strict comparisons need the exact Xcode build that recorded the baselines;
+      # every other step keeps the latest stable toolchain selected above.
+      - name: Select the baseline's Xcode
+        id: golden-xcode
+        if: ${{ !cancelled() && matrix.golden-mode == 'strict' }}
+        run: |
+          set -euo pipefail
+          build="$(python3 -c 'import json; print(json.load(open("Tests/Fixtures/Golden/manifest.json"))["pinnedImage"]["xcodeBuild"])')"
+          for app in /Applications/Xcode*.app; do
+            plist="${app}/Contents/version.plist"
+            [ -f "${plist}" ] || continue
+            if [ "$(/usr/libexec/PlistBuddy -c 'Print :ProductBuildVersion' "${plist}")" = "${build}" ]; then
+              developer="${app}/Contents/Developer"
+              echo "developer-dir=${developer}" >> "${GITHUB_OUTPUT}"
+              { echo "### Golden Xcode"; echo '```'; DEVELOPER_DIR="${developer}" xcodebuild -version; echo '```'; } >> "${GITHUB_STEP_SUMMARY}"
+              exit 0
+            fi
+          done
+          echo "::error title=Baseline Xcode unavailable::No installed Xcode has build ${build}; record and review a baseline on an available Xcode."
+          exit 1
+
       - name: Golden-image suite
         id: goldens
-        if: ${{ !cancelled() }}
-        run: make test-goldens GOLDEN_MODE=${{ matrix.golden-mode }} RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult"
+        if: ${{ !cancelled() && steps.golden-xcode.outcome != 'failure' }}
+        env:
+          GOLDEN_DEVELOPER_DIR: ${{ steps.golden-xcode.outputs.developer-dir }}
+        run: make test-goldens GOLDEN_MODE=${{ matrix.golden-mode }} RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult" DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
 
       - name: Upload golden evidence
         if: ${{ !cancelled() }}
@@ -408,11 +428,13 @@ jobs:
       # Candidates never replace committed fixtures or make a failed comparison
       # green. They are separate artifacts for explicit baseline review on drift.
       - name: Record review-only baseline candidates
-        if: failure() && steps.goldens.outcome == 'failure' && matrix.golden-mode == 'strict'
-        run: GOLDEN_DEST_ROOT="${RUNNER_TEMP}/golden-candidates" make record-goldens
+        if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure') && matrix.golden-mode == 'strict'
+        env:
+          GOLDEN_DEVELOPER_DIR: ${{ steps.golden-xcode.outputs.developer-dir }}
+        run: GOLDEN_DEST_ROOT="${RUNNER_TEMP}/golden-candidates" make record-goldens DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
 
       - name: Upload baseline candidates for review
-        if: failure() && steps.goldens.outcome == 'failure' && matrix.golden-mode == 'strict'
+        if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure') && matrix.golden-mode == 'strict'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: golden-candidates-${{ matrix.artifact }}
