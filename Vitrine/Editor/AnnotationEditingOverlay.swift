@@ -410,9 +410,12 @@ private struct TextAnnotationEditor: View {
             )
             .position(annotation.startPoint(in: canvasSize))
             .focused($isFocused)
-            // `.task` (MainActor, post-appearance) focuses more reliably than setting
-            // `@FocusState` straight from `.onAppear`.
-            .task { isFocused = true }
+            // A request made as the field appears lands before SwiftUI registers it as
+            // a focus target and is dropped, leaving focus wherever it was.
+            .task {
+                await Task.yield()
+                isFocused = true
+            }
             .onSubmit(onCommit)
             .onExitCommand(perform: onCommit)
             .onChange(of: isFocused) { _, focused in
