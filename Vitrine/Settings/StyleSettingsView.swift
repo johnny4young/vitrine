@@ -69,6 +69,12 @@ struct StyleSettingsView: View {
     private var stickyHeader: some View {
         VStack(spacing: VitrineTokens.Spacing.sm) {
             preview
+            Text("Defaults for new windows and captures. Open editors keep their own style.")
+                .font(.caption)
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("settings-style-scope")
             TokenSegmentedPicker(
                 options: [
                     (StyleSubTab.appearance, Text("Appearance")),

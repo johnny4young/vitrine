@@ -67,7 +67,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: sanitizer-check test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -166,38 +166,37 @@ coverage-check:
 # asynchronous-lifecycle suites instead of the full AppKit/WebKit UI host. The
 # weekly/manual hosted workflow retains each result bundle. These lanes are
 # non-required early warnings until their runner stability has been established.
-ASAN_TEST_SELECTION := \
-	-only-testing:VitrineTests/ANSIParserTests \
-	-only-testing:VitrineTests/TerminalGridTests \
-	-only-testing:VitrineTests/RenderBudgetTests \
-	-only-testing:VitrineTests/BoundedFileReaderTests \
-	-only-testing:VitrineTests/AsciinemaCastTests \
-	-only-testing:VitrineTests/FileInputLoaderDecodeTests \
-	-only-testing:VitrineTests/FileInputLoaderDecodeTextTests \
-	-only-testing:VitrineTests/ImageSecretRedactorTests \
-	-only-testing:VitrineTests/PrivateNetworkBlockRulesTests
-
-TSAN_TEST_SELECTION := \
-	-only-testing:VitrineTests/DebouncerTests \
-	-only-testing:VitrineTests/ItemProviderLoadWaiterTests \
-	-only-testing:VitrineTests/WebLoadWaiterTests \
-	-only-testing:VitrineTests/MemoryWebSnapshotCycleJourneyTests
+# One manifest drives both xcodebuild selection and the executed-suite gate.
+ASAN_TEST_SELECTION = $(shell python3 scripts/check-sanitizer-results.py --lane asan --print-selection)
+TSAN_TEST_SELECTION = $(shell python3 scripts/check-sanitizer-results.py --lane tsan --print-selection)
+ASAN_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/asan.xcresult)
+TSAN_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/tsan.xcresult)
 
 ## test-asan: run focused allocation/input/parser logic under Address Sanitizer
 test-asan: project
-	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	@test -n "$(ASAN_TEST_SELECTION)" || { echo "Empty ASAN test selection" >&2; exit 1; }
+	@rm -rf "$(ASAN_RESULT_BUNDLE)" "$(ASAN_RESULT_BUNDLE).execution.json"
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage NO \
-		-enableAddressSanitizer YES $(RESULT_BUNDLE_FLAG) \
+		-enableAddressSanitizer YES -resultBundlePath "$(ASAN_RESULT_BUNDLE)" \
 		$(ASAN_TEST_SELECTION) test
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/check-sanitizer-results.py \
+		--lane asan --result-bundle "$(ASAN_RESULT_BUNDLE)"
 
 ## test-tsan: run focused cancellation/waiter lifecycle logic under Thread Sanitizer
 test-tsan: project
-	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	@test -n "$(TSAN_TEST_SELECTION)" || { echo "Empty TSAN test selection" >&2; exit 1; }
+	@rm -rf "$(TSAN_RESULT_BUNDLE)" "$(TSAN_RESULT_BUNDLE).execution.json"
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage NO \
-		-enableThreadSanitizer YES $(RESULT_BUNDLE_FLAG) \
+		-enableThreadSanitizer YES -resultBundlePath "$(TSAN_RESULT_BUNDLE)" \
 		$(TSAN_TEST_SELECTION) test
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/check-sanitizer-results.py \
+		--lane tsan --result-bundle "$(TSAN_RESULT_BUNDLE)"
+
+## sanitizer-check: prove empty, omitted, skipped and malformed result selections fail
+sanitizer-check:
+	python3 scripts/check-sanitizer-results.py --self-test
 
 ## build-ui-tests: compile UI tests without requiring local automation permission
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.
@@ -391,7 +390,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: sanitizer-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts

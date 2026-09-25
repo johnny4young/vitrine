@@ -90,6 +90,9 @@ extension CLIArgumentParser {
                     "Cannot combine multi-size with --copy or --edit.")
             }
         }
+        if concealClipboard, !copyToClipboard {
+            throw CLIError.incompatibleOptions("--conceal-clipboard requires --copy.")
+        }
         if quiet, jsonOutput {
             throw CLIError.incompatibleOptions("Cannot combine --quiet with --json.")
         }
@@ -495,6 +498,7 @@ extension CLIArgumentParser {
             gitDiffContextLines: gitDiffContextLines ?? GitDiffInputLoader.defaultContextLines,
             readStdin: readStdin,
             copyToClipboard: copyToClipboard,
+            concealClipboard: concealClipboard,
             openInEditor: openInEditor,
             textSidecar: textSidecar,
             markdownSidecar: markdownSidecar,

@@ -680,18 +680,17 @@ struct WorkflowConfigurationTests {
         #expect(make.contains("-enableAddressSanitizer YES"))
         #expect(make.contains("test-tsan: project"))
         #expect(make.contains("-enableThreadSanitizer YES"))
-        // The contract is that each lane stays FOCUSED on named unit suites rather than
-        // running the whole AppKit/WebKit host. Naming the suites here made every test
-        // rename or relocation fail this guard without weakening anything.
-        for selection in ["ASAN_TEST_SELECTION", "TSAN_TEST_SELECTION"] {
-            let lane = try #require(
-                sanitizerLanes.range(of: selection), "\(selection) must define a focused lane")
-            let body = sanitizerLanes[lane.upperBound...].prefix(while: { $0 != "#" })
-            #expect(
-                body.contains("-only-testing:VitrineTests/"),
-                "\(selection) must select individual unit suites")
+        // Selection and execution expectations come from one manifest, not a second
+        // copy of display names. The Python self-test exercises fail-closed behavior.
+        for lane in ["asan", "tsan"] {
+            #expect(sanitizerLanes.contains("--lane \(lane) --print-selection"))
+            #expect(sanitizerLanes.contains("--lane \(lane) --result-bundle"))
         }
-        #expect(!sanitizerLanes.contains("-only-testing:VitrineUITests"))
+        let suites = try Self.text("scripts", "sanitizer-suites.json")
+        #expect(suites.contains("VitrineDomainTests/TerminalGridTests"))
+        #expect(!suites.contains("VitrineTests/TerminalGridTests"))
+        #expect(!suites.contains("VitrineUITests/"))
+        #expect(make.contains("sanitizer-check"))
 
         #expect(doc.contains("make test-asan"))
         #expect(doc.contains("make test-tsan"))

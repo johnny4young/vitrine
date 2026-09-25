@@ -61,6 +61,9 @@ jobs:
       - name: Check strict screenshot-tour contract
         run: make screenshot-tour-check
 
+      - name: Check sanitizer execution guard
+        run: make sanitizer-check
+
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: "22"
@@ -509,7 +512,48 @@ jobs:
       - name: Run UI tests
         run: |
           set -o pipefail
+          touch "${RUNNER_TEMP}/ui-test-started"
           make test-ui RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
+
+      # Keep the four privacy-settings states available for visual review on green
+      # runs too, without retaining the entire successful UI result bundle/video.
+      - name: Export clipboard privacy UI evidence
+        run: |
+          xcrun xcresulttool export attachments \
+            --test-id 'VitrineUITests/testClipboardPrivacyIsOptInAndPersists()' \
+            --path "${RUNNER_TEMP}/test-ui.xcresult" \
+            --output-path "${RUNNER_TEMP}/clipboard-privacy-raw"
+          python3 - <<'PYTHON'
+          import json, os, pathlib, re, shutil
+          root = pathlib.Path(os.environ["RUNNER_TEMP"])
+          raw = root / "clipboard-privacy-raw"
+          output = root / "clipboard-privacy-ui"
+          expected = {f"confidential-clipboard-{language}-{appearance}"
+                      for language in ("en", "es") for appearance in ("light", "dark")}
+          found = {}
+          for group in json.loads((raw / "manifest.json").read_text()):
+              for attachment in group["attachments"]:
+                  name = attachment.get("suggestedHumanReadableName", "")
+                  match = re.fullmatch(r"(confidential-clipboard-(?:en|es)-(?:light|dark))(?:_\d+_[0-9A-F-]+)?\.png", name)
+                  if match:
+                      key = match.group(1)
+                      if key in found:
+                          raise SystemExit(f"Duplicate clipboard UI state: {key}")
+                      found[key] = raw / attachment["exportedFileName"]
+          if set(found) != expected:
+              raise SystemExit(f"Missing clipboard UI states: {sorted(expected - set(found))}")
+          output.mkdir(parents=True, exist_ok=True)
+          for key, source in found.items():
+              shutil.copyfile(source, output / f"{key}.png")
+          PYTHON
+
+      - name: Upload clipboard privacy UI evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: clipboard-privacy-ui-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/clipboard-privacy-ui
+          if-no-files-found: warn
 
       # The ordinary UI suite intentionally skips the expensive screenshot tour.
       # Run it separately with its opt-in environment, retain every image in the
@@ -534,6 +578,25 @@ jobs:
             echo "::error title=UI automation blocked on this image::The XCUITest session could not initialize. The runner image has likely lost its pre-authorized automation state (cf. actions/runner-images#7621) — an infrastructure regression, not a test failure. See docs/RELEASING.md (Running the UI tests)."
           fi
 
+      # xcresult diagnostics can mention an app crash without retaining its stack.
+      # Keep only reports from this UI run and this app, never unrelated host reports.
+      - name: Collect UI crash reports
+        if: failure()
+        run: |
+          python3 - <<'PYTHON'
+          import os, pathlib, shutil
+          temporary = pathlib.Path(os.environ["RUNNER_TEMP"])
+          marker = temporary / "ui-test-started"
+          if marker.exists():
+              output = temporary / "ui-crash-reports"
+              for scope, root in [("user", pathlib.Path.home() / "Library/Logs/DiagnosticReports"),
+                                  ("system", pathlib.Path("/Library/Logs/DiagnosticReports"))]:
+                  for report in root.glob("Vitrine*.ips"):
+                      if report.is_file() and report.stat().st_mtime >= marker.stat().st_mtime:
+                          output.mkdir(parents=True, exist_ok=True)
+                          shutil.copy2(report, output / f"{scope}-{report.name}")
+          PYTHON
+
       - name: Upload .xcresult bundle
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -542,6 +605,7 @@ jobs:
           path: |
             ${{ runner.temp }}/test-ui.xcresult
             ${{ runner.temp }}/screenshot-tour.xcresult
+            ${{ runner.temp }}/ui-crash-reports
           if-no-files-found: ignore
 
       - name: Upload strict visual evidence

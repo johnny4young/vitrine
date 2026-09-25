@@ -5,6 +5,7 @@ import VitrineRendering
 /// Output pane: clipboard/save behavior, resolution, format.
 struct OutputSettingsView: View {
     @Bindable var settings: AppSettings
+    @Bindable var recents: RecentsStore
 
     var body: some View {
         SettingsPaneScroll {
@@ -65,6 +66,20 @@ struct OutputSettingsView: View {
             // editor remain available regardless of this toggle.
             TokenGroup(title: Text("Clipboard")) {
                 TokenRow(
+                    label: Text("Mark clipboard exports as confidential"),
+                    caption: Text(
+                        "Asks compatible clipboard managers to hide exports. Other apps can still read them."
+                    )
+                ) {
+                    Toggle(
+                        "Mark clipboard exports as confidential",
+                        isOn: $settings.export.concealClipboard
+                    )
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("conceal-clipboard-toggle")
+                }
+                TokenRow(
                     label: Text("Rich-text code on copy"),
                     caption: Text(
                         "Keeps colors and font when pasting; the image is always included")
@@ -83,6 +98,21 @@ struct OutputSettingsView: View {
                         .labelsHidden()
                         .accessibilityIdentifier("text-sidecar-toggle")
                 }
+            }
+
+            TokenGroup(title: Text("History")) {
+                TokenRow(
+                    label: Text("Save capture history"),
+                    caption: Text(
+                        "Turning this off stops new history writes. Existing captures stay until you delete them."
+                    )
+                ) {
+                    Toggle("Save capture history", isOn: $recents.isEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("history-enabled-toggle")
+                }
+                HistoryNotices(recents: recents)
             }
 
             // Color management lives in its own "Advanced" group so the default
