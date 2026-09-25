@@ -1147,8 +1147,7 @@ struct WorkflowConfigurationTests {
             "the UI-test job must upload its .xcresult bundle on failure")
 
         // Skips must never be silent: if the job excludes tests (the
-        // display-geometry-sensitive set), every run must annotate them, mirroring
-        // the GOLDEN SKIP discipline of the golden-image suite.
+        // display-geometry-sensitive set), every run must annotate them.
         if uiJob.contains("TEST_UI_SKIP") {
             #expect(
                 uiJob.contains("::warning"),

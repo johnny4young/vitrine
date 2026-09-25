@@ -129,6 +129,9 @@ def export_recording(bundle: Path, destination: Path) -> None:
                 seen.add(target)
         expected_results(staged)  # Require complete PNG sets and both provenance manifests.
         for folder in ["Golden", "SocialCards"]:
+            # A recording is the complete baseline: drop fixtures it no longer produces.
+            for stale in [*(destination / folder).glob("*.png"), destination / folder / "manifest.json"]:
+                stale.unlink(missing_ok=True)
             shutil.copytree(staged / folder, destination / folder, dirs_exist_ok=True)
         print(f"Exported complete golden candidates to {destination}")
 

@@ -52,10 +52,10 @@ struct GoldenValidationTests {
         let current = GoldenManifest.RunnerImage.current()
         var manifest = GoldenManifest(
             schema: GoldenManifest.currentSchema, pinnedImage: current, scenarios: [:])
-        #expect(throws: GoldenValidation.Failure.self) {
+        #expect(throws: GoldenValidation.Failure.missingBaseline) {
             try GoldenValidation.shouldCompare(manifest: nil, fixtureExists: true, mode: "strict")
         }
-        #expect(throws: GoldenValidation.Failure.self) {
+        #expect(throws: GoldenValidation.Failure.missingBaseline) {
             try GoldenValidation.shouldCompare(
                 manifest: manifest, fixtureExists: false, mode: "strict")
         }
@@ -64,20 +64,32 @@ struct GoldenValidationTests {
             try GoldenValidation.shouldCompare(
                 manifest: manifest, fixtureExists: true, mode: "strict"))
         manifest.pinnedImage.osBuild = "different-build"
-        #expect(throws: GoldenValidation.Failure.self) {
+        #expect(throws: GoldenValidation.Failure.unqualifiedEnvironment) {
             try GoldenValidation.shouldCompare(
                 manifest: manifest, fixtureExists: true, mode: "strict")
         }
         manifest.pinnedImage = current
         manifest.pinnedImage.xcodeBuild = "different-compiler"
-        #expect(throws: GoldenValidation.Failure.self) {
+        #expect(throws: GoldenValidation.Failure.unqualifiedEnvironment) {
             try GoldenValidation.shouldCompare(
                 manifest: manifest, fixtureExists: true, mode: "strict")
         }
     }
 
+    @Test func strictRejectsAnUnidentifiedHostEvenWhenTheManifestMatches() {
+        var unknown = GoldenManifest.RunnerImage.current()
+        unknown.xcodeBuild = "unknown"
+        let manifest = GoldenManifest(
+            schema: GoldenManifest.currentSchema, pinnedImage: unknown, scenarios: [:])
+        #expect(!unknown.isQualified)
+        #expect(throws: GoldenValidation.Failure.unqualifiedEnvironment) {
+            try GoldenValidation.shouldCompare(
+                manifest: manifest, fixtureExists: true, mode: "strict", current: unknown)
+        }
+    }
+
     @Test func invalidModeFailsClosed() {
-        #expect(throws: GoldenValidation.Failure.self) {
+        #expect(throws: GoldenValidation.Failure.invalidMode) {
             try GoldenValidation.shouldCompare(manifest: nil, fixtureExists: false, mode: "strcit")
         }
     }

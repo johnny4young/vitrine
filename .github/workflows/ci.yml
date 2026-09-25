@@ -392,11 +392,11 @@ jobs:
       # qualified image. Sequoia runs explicit smoke without claiming pixel coverage.
       - name: Golden-image suite
         id: goldens
-        if: always()
+        if: ${{ !cancelled() }}
         run: make test-goldens GOLDEN_MODE=${{ matrix.golden-mode }} RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult"
 
       - name: Upload golden evidence
-        if: always()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: golden-diffs-${{ matrix.artifact }}
@@ -412,7 +412,7 @@ jobs:
         run: GOLDEN_DEST_ROOT="${RUNNER_TEMP}/golden-candidates" make record-goldens
 
       - name: Upload baseline candidates for review
-        if: failure() && matrix.golden-mode == 'strict'
+        if: failure() && steps.goldens.outcome == 'failure' && matrix.golden-mode == 'strict'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: golden-candidates-${{ matrix.artifact }}
