@@ -13,16 +13,19 @@ struct AnnotationInteractionGeometry {
     var end: CGPoint { annotation.endPoint(in: canvasSize) }
     var rect: CGRect { annotation.rect(in: canvasSize) }
 
-    /// Curved arrows and measures use the shaft hit area, not a point-sized fallback.
-    var isLineLike: Bool {
-        annotation.kind == .arrow || annotation.kind == .line
-            || annotation.kind == .curvedArrow || annotation.kind == .measure
+    enum Shape { case line, box, point }
+
+    /// Exhaustive, so a new kind cannot silently fall back to a point-sized hit area.
+    var shape: Shape {
+        switch annotation.kind {
+        case .arrow, .line, .curvedArrow, .measure: .line
+        case .rectangle, .highlighter, .blur, .spotlight: .box
+        case .text, .counter, .sticker: .point
+        }
     }
 
-    var isBoxLike: Bool {
-        annotation.kind == .rectangle || annotation.kind == .highlighter
-            || annotation.kind == .blur || annotation.kind == .spotlight
-    }
+    var isLineLike: Bool { shape == .line }
+    var isBoxLike: Bool { shape == .box }
 
     var hitSize: CGSize {
         if isLineLike {

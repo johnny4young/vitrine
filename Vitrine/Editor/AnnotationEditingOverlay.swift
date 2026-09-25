@@ -283,12 +283,12 @@ private struct AnnotationHandle: View {
             .rotationEffect(geometry.isLineLike ? .radians(geometry.shaftAngle) : .zero)
             .position(geometry.hitCenter)
         if let onEdit {
-            // A double-click re-opens a text callout's field; the single-click select is
-            // declared after so it yields to the double-click.
-            base
-                .onTapGesture(count: 2) { onEdit() }
-                .onTapGesture { onSelect() }
-                .gesture(moveGesture)
+            // Same exclusivity for text callouts; the single click yields to the double
+            // click that re-opens the field.
+            base.gesture(
+                moveGesture.exclusively(
+                    before: TapGesture(count: 2).onEnded { onEdit() }
+                        .exclusively(before: TapGesture().onEnded { onSelect() })))
         } else {
             base
                 // A short move and a click are mutually exclusive, not competing

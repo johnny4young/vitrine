@@ -559,6 +559,31 @@ final class VitrineUITests: XCTestCase {
             add(attachment)
             delete.click()
             XCTAssertTrue(delete.waitForNonExistence(timeout: 3))
+            if !fixedCanvas {
+                // Text callouts: a drag moves, a click selects, a double click edits.
+                revealToolbarAction(
+                    "annotation-tool-text", from: "annotation-tool-picker", in: app
+                ).click()
+                center.click()
+                let field = element("annotation-text-field", in: app)
+                assertExists(field, in: app)
+                field.typeText("Callout\r")
+                XCTAssertTrue(field.waitForNonExistence(timeout: 3))
+                revealToolbarAction(
+                    "annotation-tool-select", from: "annotation-tool-picker", in: app
+                ).click()
+                center.click()
+                assertExists(delete, in: app)
+                let beforeTextMove = delete.frame
+                let textTarget = center.withOffset(CGVector(dx: 15, dy: 0))
+                center.press(
+                    forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+                XCTAssertEqual(delete.frame.minX - beforeTextMove.minX, 15, accuracy: 3)
+                XCTAssertFalse(field.exists, "A move must not reopen the text field")
+                textTarget.doubleClick()
+                assertExists(field, in: app)
+            }
             app.terminate()
         }
     }

@@ -69,17 +69,19 @@ struct AnnotationInteractionGeometryTests {
                 == CGPoint(x: 0, y: 1))
     }
 
-    @Test(arguments: [0.25, 0.5, 1.0, 2.0])
-    func normalizedPointerAndNudgeGeometryAreZoomIndependent(scale: Double) {
-        let normalized = CGPoint(x: 0.25, y: 0.75)
-        let display = CGPoint(
-            x: normalized.x * canvas.width * scale, y: normalized.y * canvas.height * scale)
-        // SwiftUI supplies canvas-space locations to the already-scaled overlay.
-        let local = CGPoint(x: display.x / scale, y: display.y / scale)
-        #expect(AnnotationInteractionGeometry.normalize(local, in: canvas) == normalized)
-        var mark = Annotation(kind: .rectangle, start: normalized, end: CGPoint(x: 0.5, y: 0.9))
-        mark.nudge(by: CGSize(width: 8 / scale, height: -4 / scale), in: canvas)
-        #expect(abs((mark.start.x - normalized.x) * canvas.width * scale - 8) < 0.0001)
-        #expect(abs((mark.start.y - normalized.y) * canvas.height * scale + 4) < 0.0001)
+    @Test func nudgeMovesByCanvasPoints() {
+        var mark = Annotation(
+            kind: .rectangle, start: CGPoint(x: 0.25, y: 0.75), end: CGPoint(x: 0.5, y: 0.9))
+        let start = mark.start
+        mark.nudge(by: CGSize(width: 8, height: -4), in: canvas)
+        #expect(abs((mark.start.x - start.x) * canvas.width - 8) < 0.0001)
+        #expect(abs((mark.start.y - start.y) * canvas.height + 4) < 0.0001)
+    }
+
+    @Test(arguments: Annotation.Kind.allCases)
+    func pointShapesAreExactlyThePointPlacedKinds(kind: Annotation.Kind) {
+        let mark = Annotation(kind: kind, start: .zero, end: CGPoint(x: 1, y: 1))
+        let geometry = AnnotationInteractionGeometry(annotation: mark, canvasSize: canvas)
+        #expect((geometry.shape == .point) == kind.isPointPlaced)
     }
 }
