@@ -55,6 +55,9 @@ jobs:
       - name: Check repository hygiene
         run: make hygiene
 
+      - name: Check strict golden execution guard
+        run: make golden-check
+
       - name: Check strict screenshot-tour contract
         run: make screenshot-tour-check
 
@@ -202,10 +205,14 @@ jobs:
             platform: Sequoia 15
             artifact: sequoia-15
             coverage: sequoia
+            golden-mode: smoke
+            xcode: latest-stable
           - runner: macos-26
             platform: Tahoe 26
             artifact: tahoe-26
             coverage: tahoe
+            golden-mode: strict
+            xcode: "26.6"
     runs-on: ${{ matrix.runner }}
     # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
@@ -225,6 +232,7 @@ jobs:
         uses: ./.github/actions/setup-macos-toolchain
         with:
           summary-title: Toolchain
+          xcode-version: ${{ matrix.xcode }}
           summary-context: "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
           spm-cache: "true"
           spm-cache-prefix: ${{ matrix.runner }}
@@ -380,40 +388,36 @@ jobs:
         if: always()
         run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/${{ matrix.coverage }}.json"
 
-      # Golden-image regression suite. The strict pixel comparison runs
-      # only on the pinned runner image recorded in Tests/Fixtures/Golden/
-      # manifest.json; on any other image each scenario logs `GOLDEN SKIP` and the
-      # render is still exercised end to end, so this step stays green off the pin
-      # while a real regression on the pinned image fails it. A `GOLDEN SKIP` line
-      # is promoted to an annotation so it is visible that the strict diff did not
-      # run here.
-      # SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 mirrors `make test`: the
-      # golden suite is the most CoreText-heavy in the repo, and concurrent
-      # typesetting intermittently crashes the harness (see the Makefile's `test`
-      # target for the full rationale).
+      # Tahoe must compare every scenario, including the social card, on the
+      # qualified image. Sequoia runs explicit smoke without claiming pixel coverage.
       - name: Golden-image suite
-        run: |
-          set -o pipefail
-          env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
-            xcodebuild -project Vitrine.xcodeproj -scheme Vitrine -configuration Debug \
-            -destination 'platform=macOS' \
-            -only-testing:VitrineTests/GoldenImageTests test 2>&1 | tee golden.log
-      - name: Annotate skipped golden comparison
-        if: always()
-        run: |
-          if [ -f golden.log ] && grep -q 'GOLDEN SKIP' golden.log; then
-            echo "::warning title=Golden pixel diff skipped::This runner is not the pinned image; strict golden comparison was skipped (render coverage still ran)."
-          fi
-      # Upload the rendered "actual" images and diff masks for inspection when a
-      # golden comparison fails on the pinned image. The suite writes them under a
-      # stable temp directory; collect that path on failure.
-      - name: Upload golden diff artifacts
-        if: failure()
+        id: goldens
+        if: ${{ !cancelled() }}
+        run: make test-goldens GOLDEN_MODE=${{ matrix.golden-mode }} RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult"
+
+      - name: Upload golden evidence
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: golden-diffs-${{ matrix.artifact }}
-          path: ${{ runner.temp }}/vitrine-golden-diffs
-          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/goldens.xcresult
+            ${{ runner.temp }}/goldens.xcresult.log
+          if-no-files-found: warn
+
+      # Candidates never replace committed fixtures or make a failed comparison
+      # green. They are separate artifacts for explicit baseline review on drift.
+      - name: Record review-only baseline candidates
+        if: failure() && steps.goldens.outcome == 'failure' && matrix.golden-mode == 'strict'
+        run: GOLDEN_DEST_ROOT="${RUNNER_TEMP}/golden-candidates" make record-goldens
+
+      - name: Upload baseline candidates for review
+        if: failure() && steps.goldens.outcome == 'failure' && matrix.golden-mode == 'strict'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: golden-candidates-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/golden-candidates
+          if-no-files-found: warn
 
       # Artifact smoke for the standalone comparator: prove
       # scripts/compare-goldens.swift can diff a committed golden against an exact

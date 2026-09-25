@@ -26,6 +26,10 @@ inputs:
       their image default is the toolchain under test, and latest-stable would skip it.
     required: false
     default: "true"
+  xcode-version:
+    description: Explicit Xcode version for a qualified visual lane; other lanes use latest stable.
+    required: false
+    default: latest-stable
   spm-cache:
     description: >-
       "true" restores and saves the Swift Package Manager download cache.
@@ -45,7 +49,7 @@ runs:
       if: inputs.select-xcode == 'true'
       uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90  # v1.7.0
       with:
-        xcode-version: latest-stable
+        xcode-version: ${{ inputs.xcode-version }}
 
     - name: Export DEVELOPER_DIR
       shell: bash
