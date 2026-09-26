@@ -8,6 +8,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case quiet
     case json
     case copy
+    case concealClipboard
     case edit
     case stdin
     case gitDiff
@@ -154,6 +155,11 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .json, ["--json"], .flag, synopsis: "--json",
             description: "Print render/multi-size/batch success output as JSON (not with --quiet)."),
+        definition(
+            .concealClipboard, ["--conceal-clipboard"], .flag, synopsis: "--conceal-clipboard",
+            description:
+                "With --copy, mark clipboard content as confidential for compatible managers.",
+            terminalCaptureAllowed: true),
         definition(
             .copy, ["--copy"], .flag, synopsis: "--copy",
             description: "Copy the rendered image to the clipboard.", terminalCaptureAllowed: true),

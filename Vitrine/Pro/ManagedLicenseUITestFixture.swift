@@ -1,6 +1,7 @@
 #if DEBUG && VITRINE_DIRECT_DOWNLOAD
     import CryptoKit
     import Foundation
+    import VitrineDomain
 
     /// A complete managed-license graph for deterministic UI automation.
     ///

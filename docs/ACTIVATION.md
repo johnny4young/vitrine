@@ -53,7 +53,7 @@ manager). **Never commit it.**
 
 ## Step 2 — Pin the public key and product identity (source — not secret)
 
-In [`Vitrine/Pro/LicenseKey.swift`](../Vitrine/Pro/LicenseKey.swift), confirm
+In [`VitrineDomain/Licensing/LicenseToken.swift`](../VitrineDomain/Licensing/LicenseToken.swift), confirm
 `LicensePublicKeys.productionBase64` matches the generated public key. If rotating, replace that
 literal and update `embeddedPublicKeyIsThePinnedProductionKey` in
 `Tests/EntitlementsTests.swift` in the same change. Keep

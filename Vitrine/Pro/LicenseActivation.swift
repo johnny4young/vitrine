@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import VitrineDomain
 import os
 
 #if VITRINE_DIRECT_DOWNLOAD

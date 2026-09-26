@@ -257,9 +257,14 @@ extension EditorView {
                         Notifier.confirmation(String(localized: "No text found in the image")))
                     return
                 }
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                pasteboard.setString(text, forType: .string)
+                guard
+                    ClipboardWriter.copy(
+                        text, concealed: environment.appSettings.export.concealClipboard)
+                else {
+                    session.feedback(
+                        Notifier.failure(String(localized: "Couldn't copy the recognized text")))
+                    return
+                }
                 Log.export.notice(
                     "Copied recognized image text (\(text.count, privacy: .public) chars)")
                 session.feedback(

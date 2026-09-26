@@ -67,7 +67,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: sanitizer-check test-ci-coverage test-lanes-check test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -147,16 +147,27 @@ test-coverage: project
 		echo "Unsupported coverage platform '$(COVERAGE_PLATFORM)' or missing baseline: $(COVERAGE_BASELINE)" >&2; \
 		exit 1; \
 	}
-	@rm -rf "$(COVERAGE_RESULT_BUNDLE)"
+	@rm -rf "$(COVERAGE_RESULT_BUNDLE)" "$(COVERAGE_RESULT_BUNDLE).lane.json"
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage YES \
 		CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO \
-		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" test
+		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" $(COVERAGE_TEST_SELECTION) test
 	python3 scripts/check-coverage.py \
 		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \
 		--baseline "$(COVERAGE_BASELINE)" \
 		$(COVERAGE_BASE_REF_FLAG)
+
+## test-ci-coverage: coverage without suites qualified in dedicated CI lanes.
+## Local test/test-coverage remain complete; the CI entry point verifies nonempty
+## execution of every test bundle and rejects accidental overlap with those lanes.
+test-ci-coverage: COVERAGE_TEST_SELECTION = $(shell python3 scripts/check-test-lanes.py --lane coverage --selection)
+test-ci-coverage: test-coverage
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/check-test-lanes.py \
+		--lane coverage --result-bundle "$(COVERAGE_RESULT_BUNDLE)"
+
+test-lanes-check:
+	python3 scripts/check-test-lanes.py --self-test
 
 ## coverage-check: validate parser, scope, and fail-closed behavior without Xcode
 coverage-check:
@@ -166,38 +177,37 @@ coverage-check:
 # asynchronous-lifecycle suites instead of the full AppKit/WebKit UI host. The
 # weekly/manual hosted workflow retains each result bundle. These lanes are
 # non-required early warnings until their runner stability has been established.
-ASAN_TEST_SELECTION := \
-	-only-testing:VitrineTests/ANSIParserTests \
-	-only-testing:VitrineTests/TerminalGridTests \
-	-only-testing:VitrineTests/RenderBudgetTests \
-	-only-testing:VitrineTests/BoundedFileReaderTests \
-	-only-testing:VitrineTests/AsciinemaCastTests \
-	-only-testing:VitrineTests/FileInputLoaderDecodeTests \
-	-only-testing:VitrineTests/FileInputLoaderDecodeTextTests \
-	-only-testing:VitrineTests/ImageSecretRedactorTests \
-	-only-testing:VitrineTests/PrivateNetworkBlockRulesTests
-
-TSAN_TEST_SELECTION := \
-	-only-testing:VitrineTests/DebouncerTests \
-	-only-testing:VitrineTests/ItemProviderLoadWaiterTests \
-	-only-testing:VitrineTests/WebLoadWaiterTests \
-	-only-testing:VitrineTests/MemoryWebSnapshotCycleJourneyTests
+# One manifest drives both xcodebuild selection and the executed-suite gate.
+ASAN_TEST_SELECTION = $(shell python3 scripts/check-sanitizer-results.py --lane asan --print-selection)
+TSAN_TEST_SELECTION = $(shell python3 scripts/check-sanitizer-results.py --lane tsan --print-selection)
+ASAN_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/asan.xcresult)
+TSAN_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/tsan.xcresult)
 
 ## test-asan: run focused allocation/input/parser logic under Address Sanitizer
 test-asan: project
-	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	@test -n "$(ASAN_TEST_SELECTION)" || { echo "Empty ASAN test selection" >&2; exit 1; }
+	@rm -rf "$(ASAN_RESULT_BUNDLE)" "$(ASAN_RESULT_BUNDLE).execution.json"
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage NO \
-		-enableAddressSanitizer YES $(RESULT_BUNDLE_FLAG) \
+		-enableAddressSanitizer YES -resultBundlePath "$(ASAN_RESULT_BUNDLE)" \
 		$(ASAN_TEST_SELECTION) test
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/check-sanitizer-results.py \
+		--lane asan --result-bundle "$(ASAN_RESULT_BUNDLE)"
 
 ## test-tsan: run focused cancellation/waiter lifecycle logic under Thread Sanitizer
 test-tsan: project
-	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	@test -n "$(TSAN_TEST_SELECTION)" || { echo "Empty TSAN test selection" >&2; exit 1; }
+	@rm -rf "$(TSAN_RESULT_BUNDLE)" "$(TSAN_RESULT_BUNDLE).execution.json"
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage NO \
-		-enableThreadSanitizer YES $(RESULT_BUNDLE_FLAG) \
+		-enableThreadSanitizer YES -resultBundlePath "$(TSAN_RESULT_BUNDLE)" \
 		$(TSAN_TEST_SELECTION) test
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/check-sanitizer-results.py \
+		--lane tsan --result-bundle "$(TSAN_RESULT_BUNDLE)"
+
+## sanitizer-check: prove empty, omitted, skipped and malformed result selections fail
+sanitizer-check:
+	python3 scripts/check-sanitizer-results.py --self-test
 
 ## build-ui-tests: compile UI tests without requiring local automation permission
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.
@@ -257,11 +267,17 @@ test-visual: project screenshot-tour-check
 ## WARN` lines, which carry median/p95 for each representative fixture.
 ## Serialized like `test` (see that target's CoreText rationale): the perf suite
 ## is CoreText-heavy, and a serial run also keeps latency numbers comparable.
+PERF_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/perf.xcresult)
+PERF_TEST_SELECTION = $(shell python3 scripts/check-test-lanes.py --lane performance --selection)
 perf: project
+	@test -n "$(PERF_TEST_SELECTION)" || { echo "Empty performance selection" >&2; exit 1; }
+	@rm -rf "$(PERF_RESULT_BUNDLE)" "$(PERF_RESULT_BUNDLE).lane.json"
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'platform=macOS' \
-		-only-testing:VitrineTests/PerformanceTests test
+		-destination 'platform=macOS' -enableCodeCoverage NO \
+		-resultBundlePath "$(PERF_RESULT_BUNDLE)" $(PERF_TEST_SELECTION) test
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/check-test-lanes.py \
+		--lane performance --result-bundle "$(PERF_RESULT_BUNDLE)"
 
 ## swift-features-check: validate the upcoming-feature log guard without Xcode. CI runs
 ## the guard itself on the Debug build log.
@@ -353,14 +369,19 @@ commit-ci-check:
 qa-handoff-check:
 	./scripts/build-qa-handoff.sh --self-test
 
-## record-goldens: (re)generate the golden-image fixtures + manifest
-## The single command that refreshes the visual baseline. It runs only the
-## opt-in recorder test (gated by VITRINE_RECORD_GOLDENS) through the same render
-## path the suite compares, then copies the staged PNGs and the platform manifest
-## into Tests/Fixtures/Golden/. The recorder stages files in the sandboxed test
-## host's container temp, so the copy step is handled by scripts/record-goldens.sh.
-## Run this on the pinned runner image when a deliberate visual change lands, then
-## review and commit the diff.
+## test-goldens: require qualified pixel comparisons; use GOLDEN_MODE=smoke for render-only
+test-goldens: project
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" GOLDEN_MODE="$(or $(GOLDEN_MODE),strict)" \
+		RESULT_BUNDLE="$(or $(RESULT_BUNDLE),build/goldens.xcresult)" bash scripts/test-goldens.sh
+
+## golden-check: reject missing, unqualified or smoke-only comparison receipts
+golden-check:
+	python3 scripts/check-golden-results.py --self-test
+	python3 scripts/check-golden-results.py --check-fixtures
+
+## record-goldens: export complete synthetic export/social fixtures from xcresult attachments
+## Run on the intended image, inspect every candidate, then commit the reviewed baseline.
+## GOLDEN_DEST_ROOT may point outside the source tree for review-only candidates.
 record-goldens: project
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" PROJECT="$(PROJECT)" SCHEME="$(SCHEME)" \
 		bash scripts/record-goldens.sh
@@ -386,7 +407,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: sanitizer-check test-lanes-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts

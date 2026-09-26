@@ -46,6 +46,7 @@ enum SettingsCodec {
         static let exportFormat = "exportFormat"
         static let colorProfile = "colorProfile"
         static let richClipboard = "richClipboard"
+        static let concealClipboard = "concealClipboard"
         static let textSidecar = "textSidecar"
         static let hotkeyAction = "hotkeyAction"
         static let appLanguage = "appLanguage"
@@ -72,7 +73,7 @@ enum SettingsCodec {
         static let selectedPreset = "selectedPreset"
         /// The last-edited social card, stored as a JSON-encoded
         /// `SocialCardModel`. App-global (there is one working card, like the
-        /// working document), so it is not part of `editorSessionSeed`.
+        /// working document), so it is not part of `EditorPreferencesSnapshot`.
         static let socialCard = "socialCard"
         /// Whether the user has confirmed the first-use URL-capture privacy
         /// disclosure. Defaults false; URL capture shows the disclosure once
@@ -109,7 +110,8 @@ enum SettingsCodec {
             showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
-            colorProfile, richClipboard, textSidecar, hotkeyAction, appLanguage, treatURLs,
+            colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction, appLanguage,
+            treatURLs,
             reindentOnPaste,
             webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,
             webCaptureMode, webWaitKind, webWaitSeconds, webUsesLoggedInSession,
@@ -120,23 +122,6 @@ enum SettingsCodec {
             // Written by the inspector's @AppStorage toggle, not by this codec — listed so
             // "Reset All Settings" actually clears it.
             SafeAreaGuide.storageKey,
-        ]
-
-        /// The keys an editor window seeds from the app-wide defaults when it opens:
-        /// the document/style fields plus the per-capture output knobs and
-        /// the selected destination preset. Deliberately excludes the app-global,
-        /// non-per-window state — the onboarding/What's-New flags and the hotkey
-        /// action — and the shared preset/theme *catalogs* (those resolve through the
-        /// shared stores, not the window's ephemeral store). Seeding only these keys is
-        /// what lets a new window open looking like the user's default while editing
-        /// its own copy.
-        static let editorSessionSeed = [
-            themeID, languageID, fontSize, padding, cornerRadius, shadowRadius, showChrome,
-            windowTitle,
-            showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
-            diffDecorations, annotations, metadata, gradientPreset,
-            backgroundStyle, fontName, fontLigatures, exportScale, exportFormat,
-            colorProfile, richClipboard, textSidecar, selectedPreset,
         ]
     }
 

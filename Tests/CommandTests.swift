@@ -481,11 +481,8 @@ struct EditorCommandResponderTests {
         textView.setAccessibilityIdentifier("code-editor-text-view")
         textView.string = input
 
-        responder.formatCode(in: textView, language: .swift)
-        let deadline = ContinuousClock.now.advanced(by: .seconds(5))
-        while textView.string == input, ContinuousClock.now < deadline {
-            try await Task.sleep(for: .milliseconds(10))
-        }
+        let operation = try #require(responder.formatCode(in: textView, language: .swift))
+        await operation.value
 
         #expect(textView.string == expected)
     }
@@ -501,10 +498,10 @@ struct EditorCommandResponderTests {
         let textView = NSTextView(frame: .zero)
         textView.string = largeInput
 
-        responder.formatCode(in: textView, language: .swift)
+        let staleOperation = try #require(responder.formatCode(in: textView, language: .swift))
         textView.string = currentInput
-        responder.formatCode(in: textView, language: .swift)
-        try await Task.sleep(for: .milliseconds(100))
+        #expect(responder.formatCode(in: textView, language: .swift) == nil)
+        await staleOperation.value
 
         #expect(textView.string == expected)
     }
