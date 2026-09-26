@@ -51,7 +51,7 @@ struct ModuleImportContractTests {
             for file in Self.swiftFiles(in: directory) {
                 scanned += 1
                 let source = try String(contentsOf: file, encoding: .utf8)
-                let path = file.path.replacingOccurrences(of: Self.root.path + "/", with: "")
+                let path = file.relativePath(from: Self.root) ?? file.path
                 for match in source.matches(of: reexport)
                 where match.output[1].substring.map(String.init) != directory {
                     offenders.append("\(path): @_exported import")
