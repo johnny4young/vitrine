@@ -745,6 +745,12 @@ struct SocialCardGoldenTests {
             "default-card config changed since recording; re-record the social-card fixture")
     }
 
+}
+
+/// Recording is opt-in and never part of the comparison lane.
+@MainActor
+@Suite("Social card recorder")
+struct SocialCardRecorderTests {
     /// Attach the opt-in baseline and provenance to the result bundle. The script
     /// validates both recorder sets before exporting any candidate files.
     @Test(

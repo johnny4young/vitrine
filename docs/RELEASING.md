@@ -108,7 +108,7 @@ CI is a release gate, not just a compile check.
   the exact image, Xcode, and Swift versions into the job summary, so a green or
   red result is always tied to a known environment. CI validates every workflow's
   YAML, then runs `make lint`, `make build`, `make build-release`,
-  `make build-ui-tests`, and `make test-coverage`. The Release lane compiles both arm64
+  `make test-ci-coverage`, `make perf`, and `make test-goldens`. The Release lane compiles both arm64
   and x86_64 with optimization on every supported runner, so optimizer-only failures are
   caught before packaging. The Swift Package Manager download cache is restored between
   runs (keyed on `project.yml`,
@@ -237,7 +237,14 @@ test process finishes successfully but `xcodebuild` stalls while finalizing cove
 This changes instrumentation only; it does not select or skip tests.
 
 `make test-coverage` runs the same complete suite with coverage explicitly enabled.
-The lane always writes an `.xcresult` and passes its `xccov --json` report and raw line
+CI invokes the same coverage gate through `make test-ci-coverage`, excluding only
+PerformanceTests, GoldenImageTests, GoldenValidationTests and SocialCardGoldenTests.
+Those run once in dedicated timing and visual lanes. Execution receipts require all
+five coverage bundles and every dedicated suite, rejecting overlap or empty selection.
+Timing explicitly disables coverage; strict visual comparison retains its qualified
+platform and complete scenario inventory. Local full-suite commands remain unchanged.
+
+The coverage lane always writes an `.xcresult` and passes its `xccov --json` report and raw line
 archive through `scripts/check-coverage.py`; an absent, empty, or malformed report fails
 the gate rather than becoming a best-effort warning. CI selects the committed baseline
 for its Sequoia or Tahoe row, retains failure bundles, and publishes per-target `xccov`
@@ -391,8 +398,8 @@ five-megabyte source-import ceiling.
 ### Running the UI tests
 
 **The full UI suite (`make test-ui`) runs in CI on every PR and push to `main`**,
-as the dedicated `UI tests` job in `ci.yml`, alongside the compile-only
-`make build-ui-tests` step that also remains in the build job and the release gate.
+as the dedicated `UI tests` job in `ci.yml`, which compiles and executes the tests.
+`make build-ui-tests` compiles them locally when automation permission is unavailable.
 Both `macos-15` Sequoia and `macos-26` Tahoe must finish; the matrix does not cancel
 one runtime merely because the other failed.
 

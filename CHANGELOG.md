@@ -26,6 +26,10 @@ can never drift.
   sanitizer execution, and verify annotation drawing, selection, movement, resize
   and keyboard routing on natural and fixed-size canvases. Await actual debounce
   and formatting completion instead of arbitrary test delays.
+- Run heavy visual and timing suites once in their dedicated CI lanes, with
+  nonempty execution receipts, while keeping local full-suite commands complete.
+  UI tests compile in the job that executes them rather than in both platform jobs.
+  Universal Release, coverage floors and strict visual qualification are unchanged.
 
 ### Fixed
 
