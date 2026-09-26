@@ -67,7 +67,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: sanitizer-check test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: sanitizer-check test-ci-coverage test-lanes-check test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -147,16 +147,27 @@ test-coverage: project
 		echo "Unsupported coverage platform '$(COVERAGE_PLATFORM)' or missing baseline: $(COVERAGE_BASELINE)" >&2; \
 		exit 1; \
 	}
-	@rm -rf "$(COVERAGE_RESULT_BUNDLE)"
+	@rm -rf "$(COVERAGE_RESULT_BUNDLE)" "$(COVERAGE_RESULT_BUNDLE).lane.json"
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage YES \
 		CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO \
-		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" test
+		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" $(COVERAGE_TEST_SELECTION) test
 	python3 scripts/check-coverage.py \
 		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \
 		--baseline "$(COVERAGE_BASELINE)" \
 		$(COVERAGE_BASE_REF_FLAG)
+
+## test-ci-coverage: coverage without suites qualified in dedicated CI lanes.
+## Local test/test-coverage remain complete; the CI entry point verifies nonempty
+## execution of every test bundle and rejects accidental overlap with those lanes.
+test-ci-coverage: COVERAGE_TEST_SELECTION = $(shell python3 scripts/check-test-lanes.py --lane coverage --selection)
+test-ci-coverage: test-coverage
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/check-test-lanes.py \
+		--lane coverage --result-bundle "$(COVERAGE_RESULT_BUNDLE)"
+
+test-lanes-check:
+	python3 scripts/check-test-lanes.py --self-test
 
 ## coverage-check: validate parser, scope, and fail-closed behavior without Xcode
 coverage-check:
@@ -256,11 +267,17 @@ test-visual: project screenshot-tour-check
 ## WARN` lines, which carry median/p95 for each representative fixture.
 ## Serialized like `test` (see that target's CoreText rationale): the perf suite
 ## is CoreText-heavy, and a serial run also keeps latency numbers comparable.
+PERF_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/perf.xcresult)
+PERF_TEST_SELECTION = $(shell python3 scripts/check-test-lanes.py --lane performance --selection)
 perf: project
+	@test -n "$(PERF_TEST_SELECTION)" || { echo "Empty performance selection" >&2; exit 1; }
+	@rm -rf "$(PERF_RESULT_BUNDLE)" "$(PERF_RESULT_BUNDLE).lane.json"
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'platform=macOS' \
-		-only-testing:VitrineTests/PerformanceTests test
+		-destination 'platform=macOS' -enableCodeCoverage NO \
+		-resultBundlePath "$(PERF_RESULT_BUNDLE)" $(PERF_TEST_SELECTION) test
+	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/check-test-lanes.py \
+		--lane performance --result-bundle "$(PERF_RESULT_BUNDLE)"
 
 ## swift-features-check: validate the upcoming-feature log guard without Xcode. CI runs
 ## the guard itself on the Debug build log.
@@ -390,7 +407,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: sanitizer-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: sanitizer-check test-lanes-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts

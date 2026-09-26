@@ -311,7 +311,7 @@ struct WorkflowConfigurationTests {
         #expect(
             release.contains("runs-on: macos-26"),
             "the release workflow must run on an image the CI matrix certifies")
-        #expect(buildJob.contains("make test-coverage"))
+        #expect(buildJob.contains("make test-ci-coverage"))
         #expect(buildJob.contains("COVERAGE_PLATFORM=\"${{ matrix.coverage }}\""))
         #expect(buildJob.contains("fetch-depth: 0"))
         #expect(buildJob.contains("make perf"))
@@ -372,7 +372,7 @@ struct WorkflowConfigurationTests {
         #expect(releasingProse.contains("do not change `project.yml`"))
 
         let ci = try Self.ci()
-        #expect(ci.contains("make test-coverage"))
+        #expect(ci.contains("make test-ci-coverage"))
         #expect(ci.contains("github.event.pull_request.base.sha"))
         #expect(ci.contains("github.event.before"))
         #expect(ci.contains("COVERAGE_BASE_REF=\"$change_base\""))
@@ -598,16 +598,23 @@ struct WorkflowConfigurationTests {
             "CI must retain optimized-build diagnostics")
     }
 
-    // MARK: - Contract: run `make build-ui-tests` on every PR
+    // MARK: - Contract: compile UI tests once in the executing job
 
-    @Test func ciRunsBuildUITestsOnPullRequests() throws {
+    @Test func ciCompilesUITestsThroughTheExecutingPlatformJob() throws {
         let ci = try Self.ci()
-        #expect(
-            ci.contains("pull_request"),
-            "CI must trigger on pull requests")
-        #expect(
-            ci.contains("make build-ui-tests"),
-            "CI must compile the UI tests on every PR")
+        let uiJobMarker = try #require(ci.range(of: "\n  ui-test:"))
+        let uiJob = String(ci[uiJobMarker.lowerBound...])
+        #expect(ci.contains("pull_request"))
+        #expect(uiJob.contains("make test-ui"))
+        #expect(!ci.contains("make build-ui-tests"), "Do not duplicate the executing job's build")
+        let make = try Self.makefile()
+        let start = try #require(make.range(of: "\ntest-ui: project"))
+        let end = try #require(
+            make.range(of: "\n## test-visual:", range: start.upperBound..<make.endIndex))
+        let lane = String(make[start.lowerBound..<end.lowerBound])
+        #expect(lane.contains("$(XCODEBUILD)"))
+        #expect(lane.contains(" test"), "The UI lane must build and test, not run a stale binary")
+        #expect(!lane.contains("test-without-building"))
     }
 
     // MARK: - Contract: weekly scheduled drift job
@@ -1206,7 +1213,7 @@ struct WorkflowConfigurationTests {
 
     @Test func releasingDocExplainsTheUITestPolicy() throws {
         let doc = try Self.releasingDoc()
-        // The compile-only check still runs in the build job and the release gate…
+        // The local compile-only command stays documented…
         #expect(
             doc.contains("make build-ui-tests"),
             "RELEASING.md must document the UI-test compile step")
