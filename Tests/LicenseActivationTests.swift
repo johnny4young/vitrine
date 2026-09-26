@@ -23,6 +23,26 @@ import VitrineDomain
             }
         }
 
+        actor InstanceNameValidator: LicenseKeyValidator {
+            private(set) var receivedName: String?
+
+            func activate(
+                licenseKey: String, instanceName: String
+            ) async throws -> LicenseActivation {
+                receivedName = instanceName
+                return LicenseActivation(
+                    licenseID: "LOCAL", instanceID: "local-instance", status: "active")
+            }
+        }
+
+        @Test func newActivationsUseAGenericSeatName() async {
+            let validator = InstanceNameValidator()
+            let service = LicenseActivationService(
+                validator: validator, signingKey: Curve25519.Signing.PrivateKey())
+            #expect((await service.activate(licenseKey: "LOCAL-KEY")).didActivate)
+            #expect(await validator.receivedName == "Vitrine")
+        }
+
         /// A validator that would fail the outcome if the service tried to call it.
         nonisolated struct UnexpectedValidator: LicenseKeyValidator {
             func activate(

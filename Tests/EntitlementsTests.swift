@@ -135,6 +135,54 @@ struct EntitlementsTests {
                     ]) == nil)
         }
 
+        @Test func failedActivationUIFixtureRetainsThePartialTokenWithoutReportingSuccess()
+            async throws
+        {
+            #expect(
+                ManagedLicenseUITestFixture.makeEntitlements(environment: [
+                    ManagedLicenseUITestFixture.environmentKey: "activation-persistence-failure"
+                ]) == nil)
+            let entitlements = try #require(
+                ManagedLicenseUITestFixture.makeEntitlements(environment: [
+                    ManagedLicenseUITestFixture.environmentKey: "activation-persistence-failure",
+                    "VITRINE_USER_DEFAULTS_SUITE": "isolated-activation-failure-test",
+                ]))
+            #expect(!entitlements.isPro)
+            #expect(!(await entitlements.activate(licenseKey: "vitrine-ui-test-key")))
+            #expect(entitlements.isPro)
+            #expect(entitlements.directLicenseManagementState == .active)
+        }
+
+        @Test func paywallKeepsOnlyAPartialActivationFailureOpenAfterUnlock() {
+            // A failure while locked (a refused concurrent request, a bad key) must not keep
+            // the sheet open once another activation unlocks PRO.
+            var lockedFailure = PaywallActivationState()
+            lockedFailure.begin()
+            #expect(!lockedFailure.dismissesOnUnlock(isPro: true))
+            lockedFailure.finish(succeeded: false, isPro: false)
+            #expect(lockedFailure.failed)
+            #expect(lockedFailure.dismissesOnUnlock(isPro: true))
+
+            var partial = PaywallActivationState()
+            partial.begin()
+            partial.finish(succeeded: false, isPro: true)
+            #expect(!partial.dismissesOnUnlock(isPro: true))
+            partial.begin()
+            #expect(!partial.failed)
+            partial.finish(succeeded: true, isPro: true)
+            #expect(partial.dismissesOnUnlock(isPro: true))
+        }
+
+        @Test func managedLicenseUIFixtureRejectsAnUnknownKey() async throws {
+            let entitlements = try #require(
+                ManagedLicenseUITestFixture.makeEntitlements(environment: [
+                    ManagedLicenseUITestFixture.environmentKey: "activation-success",
+                    "VITRINE_USER_DEFAULTS_SUITE": "isolated-activation-invalid-key-test",
+                ]))
+            #expect(!(await entitlements.activate(licenseKey: "not-the-fixture-key")))
+            #expect(!entitlements.isPro)
+        }
+
         @Test func managedLicenseUIFixtureRelocksThroughTheDefaultService() async {
             let entitlements = Entitlements.makeDefault(
                 environment: [
@@ -362,6 +410,30 @@ struct LicenseKeyTests {
         #expect(wrongKey.verify(token) == nil)
     }
 
+    @Test func swappedPayloadsAndMalformedTokensNeverVerify() throws {
+        let key = Curve25519.Signing.PrivateKey()
+        let verifier = LicenseVerifier(publicKey: key.publicKey)
+        let first = try LicenseSigner.sign(
+            LicenseToken(licenseID: "FIRST", issuedAt: .now), with: key)
+        let second = try LicenseSigner.sign(
+            LicenseToken(licenseID: "SECOND", issuedAt: .now), with: key)
+        let firstParts = first.split(separator: ".")
+        let secondParts = second.split(separator: ".")
+        for token in [
+            "", ".", "invalid", "!.!", first + ".extra",
+            String(firstParts[0]) + "." + String(secondParts[1]),
+            String(secondParts[0]) + "." + String(firstParts[1]),
+            "." + String(firstParts[1]), String(firstParts[0]) + ".",
+        ] {
+            #expect(verifier.verify(token) == nil)
+        }
+        let malformedPayload = Data("{}".utf8)
+        let signedMalformed =
+            malformedPayload.base64EncodedString() + "."
+            + (try key.signature(for: malformedPayload)).base64EncodedString()
+        #expect(verifier.verify(signedMalformed) == nil)
+    }
+
     @Test func embeddedVerifierRejectsForeignTokens() throws {
         // No foreign-signed token validates against the embedded production public key, so a
         // forged or hand-edited token cannot unlock PRO. Only a token the
@@ -401,6 +473,7 @@ struct LicenseKeyTests {
         final class InMemoryTokenStore: LicenseTokenStore {
             private(set) var token: String?
             var rejectsClear = false
+            var rejectsWrite = false
 
             init(token: String? = nil) {
                 self.token = token
@@ -409,6 +482,7 @@ struct LicenseKeyTests {
             func read() -> String? { token }
             func write(_ token: String?) -> Bool {
                 if token == nil, rejectsClear { return false }
+                if token != nil, rejectsWrite { return false }
                 self.token = token
                 return true
             }
@@ -417,6 +491,7 @@ struct LicenseKeyTests {
         final class InMemoryActivationRecordStore: LicenseActivationRecordStore {
             private(set) var record: LicenseActivationRecord?
             var rejectsClear = false
+            var rejectsWrite = false
 
             init(record: LicenseActivationRecord? = nil) {
                 self.record = record
@@ -425,6 +500,7 @@ struct LicenseKeyTests {
             func read() -> LicenseActivationRecord? { record }
             func write(_ record: LicenseActivationRecord?) -> Bool {
                 if record == nil, rejectsClear { return false }
+                if record != nil, rejectsWrite { return false }
                 self.record = record
                 return true
             }
@@ -456,6 +532,88 @@ struct LicenseKeyTests {
             }
         }
 
+        actor ControlledValidator: LicenseKeyValidator {
+            private var didStart = false
+            private var startWaiter: CheckedContinuation<Void, Never>?
+            private var response: CheckedContinuation<LicenseActivation, Error>?
+
+            func activate(
+                licenseKey: String, instanceName: String
+            ) async throws -> LicenseActivation {
+                didStart = true
+                startWaiter?.resume()
+                startWaiter = nil
+                return try await withCheckedThrowingContinuation { response = $0 }
+            }
+
+            func waitUntilStarted() async {
+                if didStart { return }
+                await withCheckedContinuation { startWaiter = $0 }
+            }
+
+            func succeed() {
+                response?.resume(
+                    returning: LicenseActivation(
+                        licenseID: "FIRST", instanceID: "first-instance", status: "active"))
+                response = nil
+            }
+        }
+
+        @Test func defaultActivationWithoutASigningKeyStaysFree() async throws {
+            // The production service must stop before contacting the provider on a host
+            // without an injected key; fail loudly rather than reach the network.
+            try #require(LicenseSigningKey.embedded == nil)
+            let cliURL = tempTokenURL()
+            defer { try? FileManager.default.removeItem(at: cliURL.deletingLastPathComponent()) }
+            let provider = LicenseKeyProvider(
+                store: InMemoryTokenStore(), activationRecordStore: InMemoryActivationRecordStore(),
+                verifier: LicenseVerifier(publicKey: Curve25519.Signing.PrivateKey().publicKey),
+                cliTokenFile: CLITokenFile(url: cliURL))
+            let entitlements = Entitlements(provider: provider)
+            #expect(!(await entitlements.activate(licenseKey: "ANY-KEY")))
+            #expect(!entitlements.isPro)
+        }
+
+        @Test func concurrentActivationDoesNotConsumeAnotherSeat() async throws {
+            let key = Curve25519.Signing.PrivateKey()
+            let tokenStore = InMemoryTokenStore()
+            let recordStore = InMemoryActivationRecordStore()
+            let cliURL = tempTokenURL()
+            defer { try? FileManager.default.removeItem(at: cliURL.deletingLastPathComponent()) }
+            let provider = LicenseKeyProvider(
+                store: tokenStore, activationRecordStore: recordStore,
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: cliURL))
+            let entitlements = Entitlements(provider: provider)
+            let firstValidator = ControlledValidator()
+            let first = Task {
+                await entitlements.activate(
+                    licenseKey: "FIRST-KEY",
+                    using:
+                        LicenseActivationService(validator: firstValidator, signingKey: key))
+            }
+            await firstValidator.waitUntilStarted()
+            let secondValidator = RecordingValidator(
+                result: .success(
+                    LicenseActivation(
+                        licenseID: "SECOND", instanceID: "second-instance", status: "active")))
+            let second = await entitlements.activate(
+                licenseKey: "SECOND-KEY",
+                using:
+                    LicenseActivationService(validator: secondValidator, signingKey: key))
+            // Release the suspended operation before assertions can throw.
+            await firstValidator.succeed()
+            let firstSucceeded = await first.value
+            #expect(!second)
+            #expect(await secondValidator.callCount == 0)
+            #expect(firstSucceeded)
+            #expect(recordStore.record?.licenseID == "FIRST")
+            #expect(provider.cachedIsPro)
+            let mirrored = try String(contentsOf: cliURL, encoding: .utf8)
+            #expect(
+                LicenseVerifier(publicKey: key.publicKey).verify(mirrored)?.licenseID == "FIRST")
+        }
+
         actor ControlledDeactivator: LicenseKeyDeactivator {
             private var didStart = false
             private var startWaiter: CheckedContinuation<Void, Never>?
@@ -483,6 +641,72 @@ struct LicenseKeyTests {
                 response?.resume(returning: LicenseDeactivation(licenseID: licenseID))
                 response = nil
             }
+        }
+
+        @Test(arguments: ["record", "token", "mirror", "mirror-and-rollback"])
+        func failedPersistenceDoesNotReportCompletedActivation(failure: String) async throws {
+            let key = Curve25519.Signing.PrivateKey()
+            let tokenStore = InMemoryTokenStore()
+            let recordStore = InMemoryActivationRecordStore()
+            tokenStore.rejectsWrite = failure == "token"
+            tokenStore.rejectsClear = failure == "mirror-and-rollback"
+            recordStore.rejectsWrite = failure == "record"
+            let cliURL = tempTokenURL()
+            let parent = cliURL.deletingLastPathComponent()
+            defer { try? FileManager.default.removeItem(at: parent) }
+            if failure.hasPrefix("mirror") {
+                // A regular file cannot serve as the mirror's parent directory.
+                try Data("not a directory".utf8).write(to: parent)
+            }
+            let provider = LicenseKeyProvider(
+                store: tokenStore, activationRecordStore: recordStore,
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: cliURL))
+            let entitlements = Entitlements(provider: provider)
+            let validator = RecordingValidator(
+                result: .success(
+                    LicenseActivation(
+                        licenseID: "LOCAL", instanceID: "local-instance", status: "active")))
+            let service = LicenseActivationService(validator: validator, signingKey: key)
+            let completed = await entitlements.activate(licenseKey: "LOCAL-KEY", using: service)
+            #expect(!completed)
+            #expect(!FileManager.default.fileExists(atPath: cliURL.path))
+            #expect((recordStore.record != nil) == (failure != "record"))
+            #expect((tokenStore.token != nil) == (failure == "mirror-and-rollback"))
+            #expect(entitlements.isPro == provider.cachedIsPro)
+            // Persisted recovery state prevents retries from allocating another seat.
+            if failure != "record" {
+                _ = await entitlements.activate(licenseKey: "ANOTHER-KEY", using: service)
+                #expect(await validator.callCount == 1)
+            }
+        }
+
+        @Test func failedActivationReleasesTheInFlightGuardForRetry() async {
+            let key = Curve25519.Signing.PrivateKey()
+            let cliURL = tempTokenURL()
+            defer { try? FileManager.default.removeItem(at: cliURL.deletingLastPathComponent()) }
+            let provider = LicenseKeyProvider(
+                store: InMemoryTokenStore(), activationRecordStore: InMemoryActivationRecordStore(),
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: cliURL))
+            let entitlements = Entitlements(provider: provider)
+            let failed = RecordingValidator(result: .failure(.network("simulated offline")))
+            #expect(
+                !(await entitlements.activate(
+                    licenseKey: "LOCAL-KEY",
+                    using:
+                        LicenseActivationService(validator: failed, signingKey: key))))
+            let retry = RecordingValidator(
+                result: .success(
+                    LicenseActivation(
+                        licenseID: "RETRY", instanceID: "retry-instance", status: "active")))
+            #expect(
+                await entitlements.activate(
+                    licenseKey: "LOCAL-KEY",
+                    using:
+                        LicenseActivationService(validator: retry, signingKey: key)))
+            #expect(await failed.callCount == 1)
+            #expect(await retry.callCount == 1)
         }
 
         @Test func providerUnlocksWithAValidTokenAndClearsOnDeactivation() throws {

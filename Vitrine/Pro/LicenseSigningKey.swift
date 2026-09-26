@@ -5,7 +5,9 @@ import VitrineDomain
 #if VITRINE_DIRECT_DOWNLOAD
     /// The Ed25519 **private** key the direct-download build uses to sign a freshly-activated
     /// `LicenseToken` locally (embedded-key activation model). It is injected **only into the official
-    /// release** at build time and is never committed to the repository.
+    /// release** at build time and is never committed to the repository. It is nevertheless
+    /// extractable from that distributed binary, not a server-side trust boundary. Tokens
+    /// provide offline convenience, not exclusive purchase attestation or copy protection.
     ///
     /// Injection mirrors the project's existing build-secret pattern (`VITRINE_ENTITLEMENTS_FILE`):
     /// the `VITRINE_LICENSE_SIGNING_KEY` environment variable (the base64 of the 32-byte raw
