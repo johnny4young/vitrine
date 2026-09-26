@@ -153,6 +153,27 @@ struct EntitlementsTests {
             #expect(entitlements.directLicenseManagementState == .active)
         }
 
+        @Test func paywallKeepsOnlyAPartialActivationFailureOpenAfterUnlock() {
+            // A failure while locked (a refused concurrent request, a bad key) must not keep
+            // the sheet open once another activation unlocks PRO.
+            let lockedFailure = PaywallSheet.retainsPartialActivation(
+                succeeded: false, isPro: false)
+            #expect(!lockedFailure)
+            #expect(
+                PaywallSheet.dismissesOnUnlock(
+                    isPro: true, working: false, retainsPartialActivation: lockedFailure))
+
+            let partial = PaywallSheet.retainsPartialActivation(succeeded: false, isPro: true)
+            #expect(partial)
+            #expect(
+                !PaywallSheet.dismissesOnUnlock(
+                    isPro: true, working: false, retainsPartialActivation: partial))
+            #expect(
+                !PaywallSheet.dismissesOnUnlock(
+                    isPro: true, working: true, retainsPartialActivation: false))
+            #expect(!PaywallSheet.retainsPartialActivation(succeeded: true, isPro: true))
+        }
+
         @Test func managedLicenseUIFixtureRelocksThroughTheDefaultService() async {
             let entitlements = Entitlements.makeDefault(
                 environment: [

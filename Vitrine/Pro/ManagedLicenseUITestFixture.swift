@@ -14,15 +14,20 @@
     enum ManagedLicenseUITestFixture {
         static let environmentKey = "VITRINE_MANAGED_LICENSE_UI_TEST"
 
+        enum Mode: String {
+            case activeLicense = "1"
+            case activationSuccess = "activation-success"
+            case activationPersistenceFailure = "activation-persistence-failure"
+        }
+
         static func makeEntitlements(environment: [String: String]) -> Entitlements? {
-            let activationFailure = environment[environmentKey] == "activation-persistence-failure"
-            let newActivation =
-                activationFailure || environment[environmentKey] == "activation-success"
-            guard environment[environmentKey] == "1" || newActivation,
+            guard let mode = environment[environmentKey].flatMap(Mode.init(rawValue:)),
                 let defaultsSuite = environment["VITRINE_USER_DEFAULTS_SUITE"]?
                     .trimmingCharacters(in: .whitespacesAndNewlines),
                 !defaultsSuite.isEmpty
             else { return nil }
+            let newActivation = mode != .activeLicense
+            let activationFailure = mode == .activationPersistenceFailure
 
             let signingKey = Curve25519.Signing.PrivateKey()
             let licenseID = "vitrine-ui-test-license"

@@ -72,6 +72,7 @@ struct PaywallSheet: View {
     #if VITRINE_DIRECT_DOWNLOAD
         @State private var licenseKey = ""
         @State private var activationFailed = false
+        @State private var retainsPartialActivation = false
     #else
         @State private var purchaseFailed = false
     #endif
@@ -118,9 +119,12 @@ struct PaywallSheet: View {
         .background(VitrineTokens.Surface.window)
         .onChange(of: entitlements.isPro) {
             #if VITRINE_DIRECT_DOWNLOAD
-                // A token can survive failed persistence rollback. Let the active request's
-                // explicit result decide dismissal, not that partial cached entitlement.
-                if entitlements.isPro, !working, !activationFailed { dismiss() }
+                if Self.dismissesOnUnlock(
+                    isPro: entitlements.isPro, working: working,
+                    retainsPartialActivation: retainsPartialActivation)
+                {
+                    dismiss()
+                }
             #else
                 if entitlements.isPro { dismiss() }
             #endif
@@ -130,6 +134,20 @@ struct PaywallSheet: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("pro-paywall-sheet")
     }
+
+    #if VITRINE_DIRECT_DOWNLOAD
+        /// A token can survive a failed persistence rollback, so that attempt's explicit result
+        /// keeps the sheet open. Any other unlock, including one from another window, closes it.
+        static func dismissesOnUnlock(
+            isPro: Bool, working: Bool, retainsPartialActivation: Bool
+        ) -> Bool {
+            isPro && !working && !retainsPartialActivation
+        }
+
+        static func retainsPartialActivation(succeeded: Bool, isPro: Bool) -> Bool {
+            !succeeded && isPro
+        }
+    #endif
 
     @ViewBuilder
     private var unlockControls: some View {
@@ -154,8 +172,12 @@ struct PaywallSheet: View {
                 Button {
                     Task {
                         working = true
+                        activationFailed = false
+                        retainsPartialActivation = false
                         let ok = await entitlements.activate(licenseKey: licenseKey)
                         activationFailed = !ok
+                        retainsPartialActivation = Self.retainsPartialActivation(
+                            succeeded: ok, isPro: entitlements.isPro)
                         working = false
                         if ok { dismiss() }
                     }
