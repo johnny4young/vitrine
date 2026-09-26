@@ -168,7 +168,7 @@ struct VersionParserConsolidationTests {
                     at: root.appending(path: sourceRoot), includingPropertiesForKeys: nil)
             else { continue }
             for case let url as URL in walker where extensions.contains(url.pathExtension) {
-                files.append(url.path.replacingOccurrences(of: root.path + "/", with: ""))
+                files.append(try #require(url.relativePath(from: root)))
             }
         }
         return files

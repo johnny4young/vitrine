@@ -23,8 +23,8 @@ struct DocumentationPathTests {
                     !FileManager.default.fileExists(
                         atPath: Self.repositoryRoot.appending(path: relativePath).path)
                 else { continue }
-                let documentPath = document.path.replacingOccurrences(
-                    of: Self.repositoryRoot.path + "/", with: "")
+                let documentPath =
+                    document.relativePath(from: Self.repositoryRoot) ?? document.path
                 missing.append("\(documentPath): \(relativePath)")
             }
         }
