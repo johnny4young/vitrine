@@ -156,22 +156,31 @@ struct EntitlementsTests {
         @Test func paywallKeepsOnlyAPartialActivationFailureOpenAfterUnlock() {
             // A failure while locked (a refused concurrent request, a bad key) must not keep
             // the sheet open once another activation unlocks PRO.
-            let lockedFailure = PaywallSheet.retainsPartialActivation(
-                succeeded: false, isPro: false)
-            #expect(!lockedFailure)
-            #expect(
-                PaywallSheet.dismissesOnUnlock(
-                    isPro: true, working: false, retainsPartialActivation: lockedFailure))
+            var lockedFailure = PaywallActivationState()
+            lockedFailure.begin()
+            #expect(!lockedFailure.dismissesOnUnlock(isPro: true))
+            lockedFailure.finish(succeeded: false, isPro: false)
+            #expect(lockedFailure.failed)
+            #expect(lockedFailure.dismissesOnUnlock(isPro: true))
 
-            let partial = PaywallSheet.retainsPartialActivation(succeeded: false, isPro: true)
-            #expect(partial)
-            #expect(
-                !PaywallSheet.dismissesOnUnlock(
-                    isPro: true, working: false, retainsPartialActivation: partial))
-            #expect(
-                !PaywallSheet.dismissesOnUnlock(
-                    isPro: true, working: true, retainsPartialActivation: false))
-            #expect(!PaywallSheet.retainsPartialActivation(succeeded: true, isPro: true))
+            var partial = PaywallActivationState()
+            partial.begin()
+            partial.finish(succeeded: false, isPro: true)
+            #expect(!partial.dismissesOnUnlock(isPro: true))
+            partial.begin()
+            #expect(!partial.failed)
+            partial.finish(succeeded: true, isPro: true)
+            #expect(partial.dismissesOnUnlock(isPro: true))
+        }
+
+        @Test func managedLicenseUIFixtureRejectsAnUnknownKey() async throws {
+            let entitlements = try #require(
+                ManagedLicenseUITestFixture.makeEntitlements(environment: [
+                    ManagedLicenseUITestFixture.environmentKey: "activation-success",
+                    "VITRINE_USER_DEFAULTS_SUITE": "isolated-activation-invalid-key-test",
+                ]))
+            #expect(!(await entitlements.activate(licenseKey: "not-the-fixture-key")))
+            #expect(!entitlements.isPro)
         }
 
         @Test func managedLicenseUIFixtureRelocksThroughTheDefaultService() async {
@@ -548,6 +557,21 @@ struct LicenseKeyTests {
                         licenseID: "FIRST", instanceID: "first-instance", status: "active"))
                 response = nil
             }
+        }
+
+        @Test func defaultActivationWithoutASigningKeyStaysFree() async throws {
+            // The production service must stop before contacting the provider on a host
+            // without an injected key; fail loudly rather than reach the network.
+            try #require(LicenseSigningKey.embedded == nil)
+            let cliURL = tempTokenURL()
+            defer { try? FileManager.default.removeItem(at: cliURL.deletingLastPathComponent()) }
+            let provider = LicenseKeyProvider(
+                store: InMemoryTokenStore(), activationRecordStore: InMemoryActivationRecordStore(),
+                verifier: LicenseVerifier(publicKey: Curve25519.Signing.PrivateKey().publicKey),
+                cliTokenFile: CLITokenFile(url: cliURL))
+            let entitlements = Entitlements(provider: provider)
+            #expect(!(await entitlements.activate(licenseKey: "ANY-KEY")))
+            #expect(!entitlements.isPro)
         }
 
         @Test func concurrentActivationDoesNotConsumeAnotherSeat() async throws {

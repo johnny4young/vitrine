@@ -67,13 +67,12 @@ struct PaywallSheet: View {
     let feature: ProFeature
     let entitlements: Entitlements
     @Environment(\.dismiss) private var dismiss
-    @State private var working = false
 
     #if VITRINE_DIRECT_DOWNLOAD
         @State private var licenseKey = ""
-        @State private var activationFailed = false
-        @State private var retainsPartialActivation = false
+        @State private var activation = PaywallActivationState()
     #else
+        @State private var working = false
         @State private var purchaseFailed = false
     #endif
 
@@ -119,12 +118,7 @@ struct PaywallSheet: View {
         .background(VitrineTokens.Surface.window)
         .onChange(of: entitlements.isPro) {
             #if VITRINE_DIRECT_DOWNLOAD
-                if Self.dismissesOnUnlock(
-                    isPro: entitlements.isPro, working: working,
-                    retainsPartialActivation: retainsPartialActivation)
-                {
-                    dismiss()
-                }
+                if activation.dismissesOnUnlock(isPro: entitlements.isPro) { dismiss() }
             #else
                 if entitlements.isPro { dismiss() }
             #endif
@@ -134,20 +128,6 @@ struct PaywallSheet: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("pro-paywall-sheet")
     }
-
-    #if VITRINE_DIRECT_DOWNLOAD
-        /// A token can survive a failed persistence rollback, so that attempt's explicit result
-        /// keeps the sheet open. Any other unlock, including one from another window, closes it.
-        static func dismissesOnUnlock(
-            isPro: Bool, working: Bool, retainsPartialActivation: Bool
-        ) -> Bool {
-            isPro && !working && !retainsPartialActivation
-        }
-
-        static func retainsPartialActivation(succeeded: Bool, isPro: Bool) -> Bool {
-            !succeeded && isPro
-        }
-    #endif
 
     @ViewBuilder
     private var unlockControls: some View {
@@ -171,24 +151,22 @@ struct PaywallSheet: View {
                     .accessibilityIdentifier("pro-license-field")
                 Button {
                     Task {
-                        working = true
-                        activationFailed = false
-                        retainsPartialActivation = false
+                        activation.begin()
                         let ok = await entitlements.activate(licenseKey: licenseKey)
-                        activationFailed = !ok
-                        retainsPartialActivation = Self.retainsPartialActivation(
-                            succeeded: ok, isPro: entitlements.isPro)
-                        working = false
+                        activation.finish(succeeded: ok, isPro: entitlements.isPro)
                         if ok { dismiss() }
                     }
                 } label: {
                     Text("Activate").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(working || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(
+                    activation.isWorking
+                        || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty
+                )
                 .accessibilityIdentifier("pro-activate-button")
                 .keyboardShortcut(.defaultAction)
-                if activationFailed {
+                if activation.failed {
                     Text("That license key couldn't be activated. Check it and try again.")
                         .font(.system(size: VitrineTokens.FontSize.caption))
                         .foregroundStyle(.red)
@@ -233,3 +211,29 @@ struct PaywallSheet: View {
         #endif
     }
 }
+
+#if VITRINE_DIRECT_DOWNLOAD
+    /// A token can survive a failed persistence rollback, so that attempt's own result keeps the
+    /// paywall open. Any other unlock, including one from another window, closes it.
+    struct PaywallActivationState {
+        private(set) var isWorking = false
+        private(set) var failed = false
+        private var retainsPartialActivation = false
+
+        mutating func begin() {
+            isWorking = true
+            failed = false
+            retainsPartialActivation = false
+        }
+
+        mutating func finish(succeeded: Bool, isPro: Bool) {
+            isWorking = false
+            failed = !succeeded
+            retainsPartialActivation = !succeeded && isPro
+        }
+
+        func dismissesOnUnlock(isPro: Bool) -> Bool {
+            isPro && !isWorking && !retainsPartialActivation
+        }
+    }
+#endif
