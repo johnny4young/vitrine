@@ -322,16 +322,13 @@ struct SoftwareUpdateChannelTests {
             "the App Store workflow must verify Sparkle is excluded from the archive")
     }
 
-    /// The runtime gate matches the build gate: `SoftwareUpdater.isSupported` reflects whether
-    /// Sparkle is compiled in. The direct-download build is the default and defines
-    /// `VITRINE_DIRECT_DOWNLOAD`, so the updater is live and reports itself supported here. The
-    /// Mac App Store archive removes that flag and strips the framework, flipping this to
-    /// `false` there — asserted by `appStoreBuildExcludesSparkleViaCompilationFlagAndStrip`.
-    @Test func directDownloadBuildReportsUpdatesSupported() {
-        #expect(
-            SoftwareUpdater.isSupported,
-            "the direct-download build defines VITRINE_DIRECT_DOWNLOAD, so Sparkle is compiled in and updates are supported"
-        )
+    /// Exercise both compiled channel contracts, not only the default direct build.
+    @Test func updaterSupportMatchesTheCompiledChannel() {
+        #if VITRINE_DIRECT_DOWNLOAD
+            #expect(SoftwareUpdater.isSupported)
+        #else
+            #expect(!SoftwareUpdater.isSupported)
+        #endif
     }
 
     // MARK: - Contract: EdDSA signing keys are generated and documented

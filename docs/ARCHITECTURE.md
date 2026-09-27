@@ -4,6 +4,27 @@ This document mirrors the shipping module layout in [`VitrineDomain/`](../Vitrin
 [`VitrineRendering/`](../VitrineRendering), [`Vitrine/`](../Vitrine), and
 [`VitrineCLI/`](../VitrineCLI), plus the runtime boundaries enforced by the test suite.
 
+## Shared code ownership
+
+The app and `VitrineCLICore` link the same `VitrineDomain` and `VitrineRendering`
+implementations. The CLI target does not compile app adapters as an allowlist.
+
+| Responsibility | Owner | Effects and boundaries |
+| --- | --- | --- |
+| Signed license payload, codec, signing and verification | `VitrineDomain/Licensing/LicenseToken.swift` | Pure byte/value transformations using CryptoKit; callers supply keys. No Keychain, provider, purchase, environment or file access. Wire format and production public key are unchanged. |
+| License storage, injected signing key and activation | `Vitrine/Pro/` | App-owned Keychain/provider and bundle configuration adapters. CLI reads its existing bounded token file and calls the shared verifier; it never activates a license. |
+| Image rendering, safe rich representations and clipboard delivery | `VitrineRendering/Export/` | AppKit effects stay outside Domain. Payload construction is separate from clipboard mutation. App and CLI link one implementation, including sanitization, size limits and cooperative privacy markers. |
+| Logging | Each process/module | App, CLI and rendering own their loggers; `LogCategory` in Domain owns the subsystem/category vocabulary. No app lifecycle code compiles into CLI. |
+| Editor handoff | `Vitrine/CLI/EditorHandoff.swift` | Deliberately source-shared local pasteboard/URL adapter for two processes, not a render or Domain dependency. The app consumes; the CLI stages. |
+| Shell integration | `Vitrine/CLI/ShellInit.swift` | Deliberately source-shared shell selection/snippet contract. Settings installs the same snippet the CLI prints. No extra module is justified for these two small integration boundaries. |
+
+The Domain import guard permits CryptoKit only for pure signed-token operations, not
+Security or StoreKit. Hostless token tests pin the wire format and rejection behavior;
+app/CLI entitlement tests continue to exercise each consumer. The source-ownership guard
+checks the CLI source roots, while compilation proves it links the shared public APIs.
+Moving a source file is not evidence of faster runtime or lower memory: those claims
+require measurements, and this change does not make either claim.
+
 ## Product and distribution boundaries
 
 Vitrine has one open-core product contract, not separate demo and paid render engines.
@@ -119,6 +140,22 @@ This keeps the render, history write, and any later recovery render aligned with
 making the UI lifecycle presenter part of the data-store graph. The feedback presenter
 likewise receives HUD display and recovery navigation as operation values, so neither
 coordinator needs to construct UI during tests.
+
+## Capture-history retention
+
+Quick capture resolves `CaptureRetentionPolicy` before constructing a history record or
+thumbnail. Explicit redactions use the shared sanitized representation. A heuristic match
+requires a one-capture decision; absent consent means no write. The export already requested
+by the user is not changed by that history decision. `RecentsStore.record` is the production
+boundary and the legacy-shaped `add` API enforces the same policy rather than bypassing it.
+A generation check invalidates older consent when history is cleared, disabled, or replaced
+by a newer capture. Consent is never persisted.
+
+`HistoryArchiveRecovery` reads valid records from partially damaged arrays without altering
+original stored bytes or pruning cached previews. Mutations remain blocked until explicit
+recovery or purge. The observable store owns the global history toggle, shared by Settings
+and all gallery windows; disabling retention does not delete data. See [HISTORY.md](HISTORY.md)
+for the user-visible contract and limitations.
 
 ## Clipboard integration
 
@@ -399,9 +436,9 @@ App and CLI link the same `VitrineDomain` value/policy module and the same stati
 `VitrineRendering` engine containing `SnapshotCanvas`, `ExportManager`, `RenderBudget`,
 the image policy/store, and `HighlightManager`. The CLI does not compile app lifecycle,
 windows, Settings, menu-bar, onboarding, Recents, StoreKit, or WebKit UI. The thin CLI
-layer lives in `Vitrine/CLI/` and compiles into `VitrineCLICore`, together with the entry
-point and the four app files it calls (`Log`, `LicenseKey`, and the two pasteboard export
-files). The executable and the hostless `VitrineCLITests` bundle both link that library,
+layer lives in `Vitrine/CLI/` and compiles into `VitrineCLICore`, together with the command-line
+entry adapter. Clipboard delivery comes from `VitrineRendering`; offline token verification
+comes from `VitrineDomain`. No app adapters are compiled into the CLI. The executable and the hostless `VitrineCLITests` bundle both link that library,
 because a tool target cannot be imported by tests. The app compiles only `EditorHandoff`
 and `ShellInit` from `Vitrine/CLI/`. `CLIArguments` is the stable dependency-free
 facade. `CLIArgumentSchema` is the single catalog for parser-owned commands, option
@@ -808,6 +845,7 @@ another application window.
 
 ```
 VitrineDomain/                # static Foundation/CoreGraphics value and policy module
+├── Licensing/                 # pure offline signed-token codec and verification
 ├── Models/                    # portable themes, presets, recipes, search, metadata
 ├── Policies/                  # pure host/input safety classification
 ├── Settings/                  # typed defaults/schema and pure migrations
@@ -823,7 +861,7 @@ VitrineRendering/             # static AppKit/SwiftUI engine linked by App and C
 ├── Canvas/                    # shared snapshot/social-card layout and visual adapters
 ├── DesignSystem/              # render-facing brand tokens and SwiftUI color bridges
 ├── Editor/                    # Highlightr adapter, bounded caches, large-document policy
-├── Export/                    # raster/PDF/Markdown/SVG encoding facades
+├── Export/                    # encoders, safe rich payloads, shared clipboard delivery
 ├── Models/                    # SnapshotConfig, images, fonts, and social-card values
 ├── Rendering/                 # RenderBudget, CaptureInput, Renderer, RenderedAsset
 ├── Support/                   # rendering-owned logging and cost-limited LRU cache
@@ -863,7 +901,6 @@ Vitrine/
 ├── Canvas/
 │   └── BackgroundEditor.swift # app-owned image/gradient editing controls
 ├── Export/
-│   ├── ExportManager+Pasteboard.swift # source/image clipboard delivery
 │   ├── ExportManager+File.swift # save-panel and file delivery
 │   ├── ExportManager+Batch.swift # multi-size and carousel delivery
 │   ├── BatchExportPresentation.swift # directory UI + completion policy
@@ -872,8 +909,7 @@ Vitrine/
 │   ├── CarouselExportView.swift # multi-slide export sheet
 │   ├── ComparisonBoard.swift # path-free validated 2–4 item value
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
-│   ├── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
-│   └── RichPasteboard.swift   # RTF/HTML copyable-text flavors alongside the image
+│   └── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
 ├── Comparison/
 │   ├── ComparisonBoardSelection.swift # ordered ephemeral Recents selection
 │   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
@@ -1088,6 +1124,25 @@ envelope. `PresetStore` owns the in-memory/user-defaults catalog without importi
 `Tests/Presets/` mirror these boundaries so persistence, schema validation, catalog
 immutability, and settings application can evolve independently.
 
+`EditorPreferencesSnapshot` is the app-owned value boundary between persisted defaults
+and per-window editors. It resolves the complete configuration against the real theme
+catalog before entering an ephemeral store; it does not copy that catalog or resolve a
+custom theme against an empty store. It also carries the selected destination and five
+per-capture output values (scale, format, profile, rich text, plain-text sidecar). Session
+creation and Make Default apply this same contract through the existing observable
+properties. Auto-copy, save behavior, close-after-copy, and confidential clipboard markers
+remain app-global. Make Default strips working content and marks; it never restyles other
+open editors. Settings describes this scope and exposes every destination, including Slide.
+
+The filesystem cleanup for historical editor-session plists belongs to
+`EditorSessionMigration`, not to the observable settings store or Domain's pure schema
+migration. Its background entry point preserves the age guard for concurrent instances.
+Window implementations remain specialized: the editor retains a primary draft and releases
+additional sessions; Web Snapshot cancels work and releases rendered assets on close;
+pinned snapshots own floating panels across Spaces. Shared title-bar chrome already lives
+in `TitleBarAlignedWindow`; combining these different lifetimes into another window factory
+would obscure teardown rather than remove a duplicated behavioral contract.
+
 `SettingsResetCoordinator` keeps global reset side effects out of the SwiftUI view.
 `AppSettings` remains the single owner that removes persisted values and resets its own
 state; the coordinator then reloads the independent preset, theme, and Brand Kit stores
@@ -1154,10 +1209,12 @@ has returned to its baseline and completed three bounded main-run-loop/autorelea
 drains. The local harness requires an exact ordered sample sequence and completion count,
 then preserves every sample, full and post-warm-up slopes, `leaks` roots, memgraph, and
 environment provenance. Image, editor-window, local-HTML WebKit, and large-document
-journeys support 20/50/100 profiles. Comparisons require the same clean commit, journey,
-iteration count, macOS, architecture, and Xcode. Slopes and allocation paths are diagnostic
-signals rather than ownership verdicts; WebKit samples cover the Vitrine host process, not
-separate WebContent processes.
+journeys support 20/50/100 profiles. Comparisons require clean exact commits, the same
+journey, iteration count, macOS, architecture, and Xcode; a changed commit is recorded,
+not rejected, so before/after code changes can be compared. Slopes and allocation paths
+are diagnostic signals rather than ownership verdicts. The local-HTML WebKit journey does
+not open an editor window and covers the Vitrine host process, not separate WebContent
+processes or interactive window lifetimes.
 
 `SocialCardWindowController` and `WebSnapshotWindowController` apply the same boundary to
 the app's singleton auxiliary editors. Each controller retains the `AppEnvironment` that

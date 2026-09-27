@@ -53,6 +53,10 @@ NONVISUAL_WEB_FILES = {
 # Files xccov reports no entry for, because they declare nothing executable. The guard fails
 # when xccov starts measuring one of them, so an exemption cannot outlive the file's lack of code.
 DATA_ONLY_FILES = {
+    # Two static Logger declarations, with no app-owned function body. xccov emits
+    # no file entry; the measured-data-only check below revokes this exemption if
+    # executable logging policy is introduced later.
+    "Vitrine/CLI/CLILog.swift",
     # A declarative help-text wrapper. The executable schema interpolation is
     # attributed to CLIArgumentSchema.swift, so xccov emits no entry for this file.
     "Vitrine/CLI/CLIUsage.swift",
@@ -300,6 +304,7 @@ def self_test() -> None:
     assert is_critical("VitrineDomain/Models/Theme.swift")
     assert is_critical("VitrineRendering/Rendering/RenderBudget.swift")
     assert is_critical("VitrineRendering/Models/SnapshotConfig.swift")
+    assert not is_critical("Vitrine/CLI/CLILog.swift")
     assert not is_critical("Vitrine/CLI/CLIUsage.swift")
     assert not is_critical("VitrineRendering/Rendering/CaptureInput.swift")
     assert not is_critical("VitrineDomain/Support/LogCategory.swift")
