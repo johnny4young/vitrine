@@ -140,6 +140,8 @@ enum CommandPaletteFilter {
 /// Escape (or a click outside) to dismiss. The ranking is `CommandPaletteFilter`;
 /// this view is only the presentation and keyboard handling.
 struct CommandPaletteView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     @Binding var isPresented: Bool
     let commands: [EditorCommand]
 
@@ -225,7 +227,7 @@ struct CommandPaletteView: View {
                     }
                     .frame(maxHeight: 320)
                     .onChange(of: selection) { _, new in
-                        withAnimation(.easeOut(duration: 0.1)) {
+                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.1)) {
                             proxy.scrollTo(new, anchor: .center)
                         }
                     }

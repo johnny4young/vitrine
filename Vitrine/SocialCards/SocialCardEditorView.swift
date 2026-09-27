@@ -186,7 +186,7 @@ struct SocialCardEditorView: View {
                         width: SocialCardModel.defaultSize.width * scale,
                         height: SocialCardModel.defaultSize.height * scale
                     )
-                    .animation(.easeInOut(duration: 0.2), value: scale)
+                    .motionSensitiveAnimation(.easeInOut(duration: 0.2), value: scale)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

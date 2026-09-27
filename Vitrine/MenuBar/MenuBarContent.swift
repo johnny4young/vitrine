@@ -436,7 +436,7 @@ private struct RecentCaptureRow: View {
             .padding(.trailing, 6)
         }
         .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("menu-recent-row")
     }
@@ -549,7 +549,7 @@ private struct MenuPanelRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(
                         isHovered
-                            ? VitrineTokens.Accent.systemContrast.opacity(0.85)
+                            ? VitrineTokens.Accent.systemContrast
                             : VitrineTokens.Text.secondary
                     )
                     .frame(width: 15)
@@ -564,7 +564,7 @@ private struct MenuPanelRow: View {
                         .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
                         .foregroundStyle(
                             isHovered
-                                ? VitrineTokens.Accent.systemContrast.opacity(0.85)
+                                ? VitrineTokens.Accent.systemContrast
                                 : VitrineTokens.Text.tertiary
                         )
                         .padding(.vertical, 2)
@@ -590,7 +590,7 @@ private struct MenuPanelRow: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
 
