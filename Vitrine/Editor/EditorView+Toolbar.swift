@@ -191,13 +191,19 @@ extension EditorView {
             .accessibilityIdentifier("pin-snapshot-button")
 
             Button(action: presentMultiSizeExport) {
-                Label("Export sizes", systemImage: "square.grid.2x2")
+                Label(
+                    entitlements.isUnlocked(.multiSizeExport)
+                        ? "Export sizes" : "Export sizes — Requires PRO",
+                    systemImage: "square.grid.2x2")
             }
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("export-sizes-button")
 
             Button(action: presentCarouselExport) {
-                Label("Export carousel", systemImage: "rectangle.stack")
+                Label(
+                    entitlements.isUnlocked(.carouselExport)
+                        ? "Export carousel" : "Export carousel — Requires PRO",
+                    systemImage: "rectangle.stack")
             }
             .disabled(!settings.hasRenderableContent || settings.style.usesImageContent)
             .accessibilityIdentifier("export-carousel-button")
@@ -354,6 +360,7 @@ extension EditorView {
             .help("Export this snapshot to several platform sizes at once")
             .disabled(!settings.hasRenderableContent)
             .accessibilityLabel(Text("Export sizes"))
+            .accessibilityValue(entitlements.proRequirementValue(for: .multiSizeExport))
             .accessibilityIdentifier("export-sizes-button")
     }
 
@@ -372,6 +379,7 @@ extension EditorView {
                 !settings.hasRenderableContent || settings.style.usesImageContent
             )
             .accessibilityLabel(Text("Export carousel"))
+            .accessibilityValue(entitlements.proRequirementValue(for: .carouselExport))
             .accessibilityIdentifier("export-carousel-button")
     }
 

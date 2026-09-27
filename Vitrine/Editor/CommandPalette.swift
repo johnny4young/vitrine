@@ -1,3 +1,4 @@
+import Accessibility
 import SwiftUI
 import VitrineDomain
 
@@ -166,12 +167,17 @@ struct CommandPaletteView: View {
         // from the UI smoke on CI while the palette itself rendered fine).
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("command-palette")
+        .accessibilityAddTraits(.isModal)
+        .accessibilityAction(.escape) { dismiss() }
         .onAppear {
             selection = 0
             fieldFocused = true
         }
         // Clamp the selection whenever the result set shrinks under the cursor.
-        .onChange(of: query) { _, _ in selection = 0 }
+        .onChange(of: query) { _, _ in
+            selection = 0
+            announceResults()
+        }
     }
 
     private var panel: some View {
@@ -210,6 +216,7 @@ struct CommandPaletteView: View {
                                     row(command, isSelected: index == selection)
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityAddTraits(index == selection ? [.isSelected] : [])
                                 .accessibilityIdentifier("command-palette-command-\(command.id)")
                                 .id(index)
                             }
@@ -277,6 +284,19 @@ struct CommandPaletteView: View {
     private func move(_ delta: Int) {
         guard !results.isEmpty else { return }
         selection = (selection + delta + results.count) % results.count
+        AccessibilityNotification.Announcement(results[selection].title).post()
+    }
+
+    private func announceResults() {
+        let message: String
+        if let first = results.first {
+            message = String(localized: "Results: \(results.count). \(first.title)")
+        } else {
+            message = String(localized: "No matching commands")
+        }
+        var announcement = AttributedString(message)
+        announcement.accessibilitySpeechAnnouncementPriority = .low
+        AccessibilityNotification.Announcement(announcement).post()
     }
 
     private func runSelection() {

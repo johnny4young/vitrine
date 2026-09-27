@@ -33,6 +33,14 @@ can never drift.
 
 ### Fixed
 
+- Segmented controls are a single keyboard stop whose arrow keys change the selection
+  when macOS keyboard navigation is on, and a mouse click no longer takes focus from the
+  editor. The command palette exposes selected results and announces search updates to
+  assistive technology.
+- Locked export controls announce their PRO requirement. The Store paywall displays
+  the localized StoreKit price with retry and restore paths; direct-download pricing
+  is never guessed.
+
 - Require qualified visual comparisons for every export scenario and the social
   card, with exact environment provenance and fail-closed execution evidence.
   Other environments retain explicitly labeled render smoke; baseline candidates
