@@ -67,12 +67,12 @@ struct PaywallSheet: View {
     let feature: ProFeature
     let entitlements: Entitlements
     @Environment(\.dismiss) private var dismiss
-    @State private var working = false
 
     #if VITRINE_DIRECT_DOWNLOAD
         @State private var licenseKey = ""
-        @State private var activationFailed = false
+        @State private var activation = PaywallActivationState()
     #else
+        @State private var working = false
         @State private var purchaseFailed = false
     #endif
 
@@ -117,8 +117,11 @@ struct PaywallSheet: View {
         .frame(width: 380)
         .background(VitrineTokens.Surface.window)
         .onChange(of: entitlements.isPro) {
-            // Unlocked (a purchase or activation landed) → close the paywall.
-            if entitlements.isPro { dismiss() }
+            #if VITRINE_DIRECT_DOWNLOAD
+                if activation.dismissesOnUnlock(isPro: entitlements.isPro) { dismiss() }
+            #else
+                if entitlements.isPro { dismiss() }
+            #endif
         }
         // `.contain` keeps the children's identifiers reachable under the root id. An
         // identifier on a bare VStack propagates down and hides the stable child controls.
@@ -148,19 +151,22 @@ struct PaywallSheet: View {
                     .accessibilityIdentifier("pro-license-field")
                 Button {
                     Task {
-                        working = true
+                        activation.begin()
                         let ok = await entitlements.activate(licenseKey: licenseKey)
-                        activationFailed = !ok
-                        working = false
+                        activation.finish(succeeded: ok, isPro: entitlements.isPro)
+                        if ok { dismiss() }
                     }
                 } label: {
                     Text("Activate").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(working || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(
+                    activation.isWorking
+                        || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty
+                )
                 .accessibilityIdentifier("pro-activate-button")
                 .keyboardShortcut(.defaultAction)
-                if activationFailed {
+                if activation.failed {
                     Text("That license key couldn't be activated. Check it and try again.")
                         .font(.system(size: VitrineTokens.FontSize.caption))
                         .foregroundStyle(.red)
@@ -205,3 +211,29 @@ struct PaywallSheet: View {
         #endif
     }
 }
+
+#if VITRINE_DIRECT_DOWNLOAD
+    /// A token can survive a failed persistence rollback, so that attempt's own result keeps the
+    /// paywall open. Any other unlock, including one from another window, closes it.
+    struct PaywallActivationState {
+        private(set) var isWorking = false
+        private(set) var failed = false
+        private var retainsPartialActivation = false
+
+        mutating func begin() {
+            isWorking = true
+            failed = false
+            retainsPartialActivation = false
+        }
+
+        mutating func finish(succeeded: Bool, isPro: Bool) {
+            isWorking = false
+            failed = !succeeded
+            retainsPartialActivation = !succeeded && isPro
+        }
+
+        func dismissesOnUnlock(isPro: Bool) -> Bool {
+            isPro && !isWorking && !retainsPartialActivation
+        }
+    }
+#endif

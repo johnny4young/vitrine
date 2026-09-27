@@ -847,6 +847,62 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testFailedLicensePersistenceDoesNotDismissThePaywall() {
+        continueAfterFailure = false
+        for language in ["en", "es"] {
+            assertLicenseActivationOutcome(failsPersistence: true, language: language)
+        }
+    }
+
+    @MainActor
+    func testSuccessfulLicenseActivationDismissesThePaywall() {
+        continueAfterFailure = false
+        for language in ["en", "es"] {
+            assertLicenseActivationOutcome(failsPersistence: false, language: language)
+        }
+    }
+
+    @MainActor
+    private func assertLicenseActivationOutcome(failsPersistence: Bool, language: String) {
+        let app = launch(
+            arguments: VitrineLaunchArguments.settings + [
+                "-AppleLanguages", "(\(language))", "-AppleLocale",
+                language == "es" ? "es_ES" : "en_US",
+            ],
+            environment: [
+                "VITRINE_MANAGED_LICENSE_UI_TEST":
+                    failsPersistence ? "activation-persistence-failure" : "activation-success"
+            ])
+        defer { app.terminate() }
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-brandKit", in: app).click()
+        let unlock = app.buttons[
+            language == "es" ? "Desbloquear Vitrine PRO" : "Unlock Vitrine PRO"]
+        assertExists(unlock, in: app, timeout: 3)
+        unlock.click()
+        let field = app.secureTextFields["pro-license-field"]
+        assertExists(field, in: app, timeout: 3)
+        field.click()
+        field.typeText("vitrine-ui-test-key")
+        element("pro-activate-button", in: app).click()
+        if failsPersistence {
+            let message =
+                language == "es"
+                ? "No se pudo activar esa clave de licencia. Revísala e inténtalo de nuevo."
+                : "That license key couldn't be activated. Check it and try again."
+            assertExists(app.staticTexts[message], in: app, timeout: 5)
+            assertExists(element("pro-paywall-sheet", in: app), in: app)
+            let cancel = app.buttons[language == "es" ? "Ahora no" : "Not now"].firstMatch
+            assertExists(cancel, in: app)
+            cancel.click()
+        }
+        XCTAssertTrue(element("pro-paywall-sheet", in: app).waitForNonExistence(timeout: 3))
+        assertExists(element("settings-brand-kit-controls", in: app), in: app, timeout: 3)
+        element("settings-nav-about", in: app).click()
+        assertExists(element("deactivate-license-button", in: app), in: app, timeout: 3)
+    }
+
+    @MainActor
     func testManagedLicenseDeactivationRelocksProWithoutNetwork() {
         continueAfterFailure = false
         let app = launch(

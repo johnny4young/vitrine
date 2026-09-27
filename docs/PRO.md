@@ -63,8 +63,11 @@ The official direct-download build validates a Lemon Squeezy license key once, c
 response belongs to the source-pinned Vitrine store/product (and is not a test-mode key), then signs the
 offline `LicenseToken` **locally** with the build-injected Ed25519 private key
 (`LicenseSigningKey.embedded`). This is a deliberate honor/convenience model, not server-side
-DRM: the private key is injected only into the signed release binary, never committed, while a
-from-source build has no key and cannot mint a token.
+DRM: the private key is injected into the signed release binary and can be extracted from it.
+It is not committed to source, but distribution means it is not a trusted-server secret.
+A signature does not exclusively attest a purchase; tokens are not hardware-bound and do not
+implement refund revocation. An unmodified from-source build without injection cannot mint a
+token. No backend, obfuscation, or client-key migration is part of this model.
 
 The app embeds the matching public key in `LicenseVerifier.embedded` and verifies the stored
 token **offline** at every launch (`LicenseKeyProvider.cachedIsPro = storedValidToken != nil`).
@@ -72,6 +75,11 @@ Tamper / wrong-key / malformed tokens all fail closed. The CLI is a separate pro
 re-verifies the same token itself via `CLIEntitlement` (no StoreKit↔CLI bridge, no App Group) —
 this is why `LicenseVerifier` is compiled unconditionally while `LicenseKeyProvider` is
 `#if VITRINE_DIRECT_DOWNLOAD`.
+
+New activations send the generic seat name **Vitrine**, not the computer name. Existing seats
+keep their names and instance ids; there is no renaming or reactivation migration.
+Only one activation request can run at a time, and a recoverable record blocks a new seat.
+See [ACTIVATION.md](ACTIVATION.md#concurrency-and-partial-persistence) for partial-write recovery.
 
 New activations also store the validated raw key, license id, and Lemon Squeezy instance id in a
 separate device-only Keychain `LicenseActivationRecord`. That record never enters defaults, the
