@@ -486,8 +486,7 @@ extension EditorView {
                         endRadius: max(proxy.size.width, proxy.size.height) * 0.55)
                 }
             }
-            .animation(
-                reduceMotion ? nil : .easeInOut(duration: 0.6), value: settings.style.background)
+            .motionSensitiveAnimation(.easeInOut(duration: 0.6), value: settings.style.background)
         }
         .accessibilityHidden(true)
     }
@@ -612,8 +611,6 @@ final class PreviewCardGeometry {
 /// Scales the preview card to fit the stage and pins its layout footprint to the scaled
 /// size, handing the card's measured size to `content`.
 private struct PreviewCardStage<Content: View>: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let geometry: PreviewCardGeometry
     let stageSize: CGSize
     @ViewBuilder let content: (CGSize) -> Content
@@ -630,7 +627,7 @@ private struct PreviewCardStage<Content: View>: View {
             // inside the stage at every window size (usability fix).
             .frame(width: cardSize.width * scale, height: cardSize.height * scale)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: scale)
+            .motionSensitiveAnimation(.easeInOut(duration: 0.25), value: scale)
     }
 }
 

@@ -138,7 +138,8 @@ keeps those stops in both appearances. Its hover brightness is bounded and pixel
 Reduce Motion removes decorative press/hover scaling and animated layout/background
 changes in the editor, inspector, menu, Settings, and social-card editor. Functional fit
 scaling still sizes the preview correctly; only interpolation is suppressed. Controls
-retain their focus, color and action feedback. `DecorativeScaleEffectTests` measures
+retain their focus, color and action feedback. Use `motionSensitiveAnimation(_:value:)`
+for decorative `.animation` changes. `DecorativeScaleEffectTests` measures
 rendered pixels for both policy values; controls read the system's read-only environment.
 Native Reduce Motion / Increase Contrast / VoiceOver journeys remain separate acceptance
 checks, not conclusions inferred from those unit tests.

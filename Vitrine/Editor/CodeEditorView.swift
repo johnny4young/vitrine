@@ -191,17 +191,7 @@ struct CodeEditorView: NSViewRepresentable {
             isHighlighting = true
             defer { isHighlighting = false }
 
-            // Syntax colors belong to the selected theme, not the app's light/dark
-            // chrome. Keep their background paired, including custom palette updates.
-            let hasContent = !textView.string.isEmpty
-            let background = HighlightManager.shared.backgroundColor(for: parent.theme)
-            textView.drawsBackground = hasContent
-            textView.backgroundColor = NSColor(background)
-            textView.enclosingScrollView?.drawsBackground = hasContent
-            textView.enclosingScrollView?.backgroundColor = NSColor(background)
-            textView.insertionPointColor =
-                hasContent
-                ? NSColor(VitrineTokens.Text.readable(on: background)) : .textColor
+            applySurface(to: textView)
 
             let mode = HighlightPolicy.mode(for: textView.string, language: parent.language)
             let attributed = HighlightManager.shared.attributedString(
@@ -249,9 +239,27 @@ struct CodeEditorView: NSViewRepresentable {
             appliedMode = mode
         }
 
+        /// Syntax colors belong to the selected theme, not the app's light/dark chrome.
+        /// Keep their background paired, including custom palette updates.
+        func applySurface(to textView: NSTextView) {
+            let hasContent = !textView.string.isEmpty
+            let background = HighlightManager.shared.backgroundColor(for: parent.theme)
+            textView.drawsBackground = hasContent
+            textView.backgroundColor = NSColor(background)
+            textView.enclosingScrollView?.drawsBackground = hasContent
+            textView.enclosingScrollView?.backgroundColor = NSColor(background)
+            textView.insertionPointColor =
+                hasContent
+                ? NSColor(VitrineTokens.Text.readable(on: background)) : .textColor
+        }
+
         func textDidChange(_ notification: Notification) {
             guard !isHighlighting, let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
+            // Recoloring is debounced; the surface must not lag an empty/nonempty flip.
+            if textView.drawsBackground == textView.string.isEmpty {
+                applySurface(to: textView)
+            }
             let mode = HighlightPolicy.mode(for: textView.string, language: parent.language)
             if mode.usesPlainTextFallback {
                 debouncer.cancel()

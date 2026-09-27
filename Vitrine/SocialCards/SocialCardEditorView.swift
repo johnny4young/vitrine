@@ -13,8 +13,6 @@ import VitrineRendering
 /// the multi-window code editor this surface edits the shared settings directly; its
 /// changes persist immediately through the settings' own observer.
 struct SocialCardEditorView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let environment: AppEnvironment
     let feedback: FeedbackDisplay
     let presentation: SocialCardPresentation
@@ -188,7 +186,7 @@ struct SocialCardEditorView: View {
                         width: SocialCardModel.defaultSize.width * scale,
                         height: SocialCardModel.defaultSize.height * scale
                     )
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: scale)
+                    .motionSensitiveAnimation(.easeInOut(duration: 0.2), value: scale)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

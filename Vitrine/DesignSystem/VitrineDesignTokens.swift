@@ -32,10 +32,11 @@ enum VitrineTokens {
         /// `AccentColor` asset, and `.controlAccentColor` reports the macOS *default blue*
         /// on Multicolor, which would silently drop the brand identity for everyone who
         /// never chose an accent.
-        static var system: Color {
+        static var system: Color { system(brand: base) }
+        nonisolated static func system(brand: Color) -> Color {
             usesSystemAccentOverride(
                 accentColorValue: UserDefaults.standard.object(forKey: "AppleAccentColor"))
-                ? Color(nsColor: .controlAccentColor) : base
+                ? Color(nsColor: .controlAccentColor) : brand
         }
         /// Whether a stored `AppleAccentColor` value means the user chose a specific
         /// macOS accent (vs. the default "Multicolor", where the key is absent → `nil`).
@@ -43,20 +44,27 @@ enum VitrineTokens {
         /// function of the value so it is unit-testable — a `UserDefaults(suiteName:)`
         /// still cascades to the global domain, so the real key cannot be hidden in a
         /// test by removing it from a suite.
-        static func usesSystemAccentOverride(accentColorValue: Any?) -> Bool {
+        nonisolated static func usesSystemAccentOverride(accentColorValue: Any?) -> Bool {
             accentColorValue != nil
         }
         /// Resolve against the actual custom-control fill, not AppKit's native
         /// selected-control material. A system-selected white label can have low
         /// contrast on a bright, flat accent fill in dark appearance.
         static let systemContrast = Color(
-            nsColor: NSColor(name: nil) { appearance in
+            nsColor: NSColor(name: nil, dynamicProvider: systemContrastProvider(brand: base)))
+
+        /// SwiftUI's asynchronous renderer resolves dynamic colors off the main thread.
+        private nonisolated static func systemContrastProvider(
+            brand: Color
+        ) -> @Sendable (NSAppearance) -> NSColor {
+            { appearance in
                 var label = NSColor.black
                 appearance.performAsCurrentDrawingAppearance {
-                    label = NSColor(Text.readable(on: system))
+                    label = NSColor(Text.readable(on: system(brand: brand)))
                 }
                 return label
-            })
+            }
+        }
 
         /// `--accent-hover` — one step brighter on hover.
         static let hover = Brand.BrandColor(
@@ -123,7 +131,7 @@ enum VitrineTokens {
         static let tertiary = tertiaryPalette.color
 
         /// A readable label or caret without changing its opaque sRGB background.
-        static func readable(on fill: Color) -> Color {
+        nonisolated static func readable(on fill: Color) -> Color {
             Brand.Contrast.ratio(.black, on: fill) >= Brand.Contrast.ratio(.white, on: fill)
                 ? .black : .white
         }

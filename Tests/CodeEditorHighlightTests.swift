@@ -67,6 +67,28 @@ struct CodeEditorHighlightTests {
         #expect(!scrollView.drawsBackground)
     }
 
+    @Test func pairsTheSurfaceBeforeTheDebouncedRecolor() {
+        let coordinator = makeCoordinator()
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        let textView = NSTextView(frame: scrollView.bounds)
+        scrollView.documentView = textView
+        coordinator.applyHighlight(to: textView)
+        #expect(!textView.drawsBackground)
+
+        textView.string = "let answer = 42"
+        coordinator.textDidChange(
+            Notification(name: NSText.didChangeNotification, object: textView))
+        #expect(textView.drawsBackground)
+        #expect(scrollView.drawsBackground)
+
+        textView.string = ""
+        coordinator.textDidChange(
+            Notification(name: NSText.didChangeNotification, object: textView))
+        #expect(!textView.drawsBackground)
+        #expect(!scrollView.drawsBackground)
+        coordinator.dismantle()
+    }
+
     @Test func recolorsWithoutChangingCharactersOrSelection() throws {
         let coordinator = makeCoordinator(language: .swift)
         let code = "func greet() {\n    let x = 42\n    return x\n}"

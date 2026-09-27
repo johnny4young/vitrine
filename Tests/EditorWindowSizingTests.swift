@@ -58,9 +58,6 @@ struct EditorWindowSizingTests {
         let minimumFrame = window.frameRect(
             forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
         ).size
-        print(
-            "EDITOR-MINIMUM hasContent=\(!code.isEmpty) width=\(minimumFrame.width) height=\(minimumFrame.height)"
-        )
         #expect(minimumFrame.width <= 960, "Measured minimum frame: \(minimumFrame)")
         #expect(minimumFrame.height <= 600, "Measured minimum frame: \(minimumFrame)")
     }
@@ -98,8 +95,6 @@ struct EditorWindowSizingTests {
         let minimumFrame = window.frameRect(
             forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
         ).size
-        print("EDITOR-DISPLAYED-MINIMUM width=\(minimumFrame.width) height=\(minimumFrame.height)")
-        print("EDITOR-DISPLAYED-FRAME-MINIMUM width=\(window.minSize.width)")
         #expect(minimumFrame.width <= 960, "Displayed minimum frame: \(minimumFrame)")
         #expect(minimumFrame.height <= 600, "Displayed minimum frame: \(minimumFrame)")
         #expect(window.minSize.width <= 960, "Displayed frame minimum: \(window.minSize)")
@@ -108,7 +103,6 @@ struct EditorWindowSizingTests {
             window.layoutIfNeeded()
             RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
         }
-        print("EDITOR-DISPLAYED-RESIZE width=\(window.frame.width) height=\(window.frame.height)")
         #expect(window.frame.width <= 962, "Displayed compact frame: \(window.frame)")
         #expect(window.frame.height <= 602, "Displayed compact frame: \(window.frame)")
     }

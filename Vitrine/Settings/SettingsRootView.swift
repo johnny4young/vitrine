@@ -150,8 +150,6 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 /// One sidebar navigation row: icon + title, accent-filled when active,
 /// subtly washed on hover.
 private struct SettingsSidebarRow: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let tab: SettingsTab
     let isActive: Bool
     let action: () -> Void
@@ -184,7 +182,7 @@ private struct SettingsSidebarRow: View {
             .contentShape(
                 RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous)
             )
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.13), value: isActive)
+            .motionSensitiveAnimation(.easeInOut(duration: 0.13), value: isActive)
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }

@@ -14,8 +14,6 @@ import VitrineRendering
 /// 0.98 press scale. Shared by the editor toolbar, the menu-bar panel, and the
 /// Welcome window.
 struct GradientCTAButton<Label: View>: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     @ViewBuilder var label: Label
     let action: () -> Void
 
@@ -55,7 +53,7 @@ struct GradientCTAButton<Label: View>: View {
         .buttonStyle(PressScaleButtonStyle())
         .focused($isFocused)
         .onHover { isHovered = $0 }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: isHovered)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
 
@@ -74,8 +72,6 @@ struct PressScaleButtonStyle: ButtonStyle {
 /// The quiet pill button (`.ghost`): hairline border, secondary label that
 /// lifts to primary on hover. The understated counterpart to the gradient CTA.
 struct GhostPillButton: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let title: Text
     let action: () -> Void
 
@@ -103,15 +99,13 @@ struct GhostPillButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: isHovered)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
 
 /// A bordered 30×30 icon button on a glass panel (`.ibtn`): hairline border,
 /// secondary glyph that lifts to primary on hover.
 struct GlassIconButton: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let systemImage: String
     let action: () -> Void
 
@@ -152,6 +146,6 @@ struct GlassIconButton: View {
         .buttonStyle(.plain)
         .focused($isFocused)
         .onHover { isHovered = $0 }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.12), value: isHovered)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }

@@ -64,17 +64,15 @@ struct ChromeContrastTests {
         }
     }
 
-    @Test(arguments: [ColorScheme.light, .dark], [false, true])
-    func whiteCTALabelMeetsAAAcrossRenderedGradient(
-        scheme: ColorScheme, hovered: Bool
-    ) throws {
+    /// The CTA stops are fixed, so one rendering covers both appearances.
+    @Test(arguments: [false, true])
+    func whiteCTALabelMeetsAAAcrossRenderedGradient(hovered: Bool) throws {
         let hoverBrightness = hovered ? VitrineTokens.Chrome.ctaHoverBrightness : 0
         let renderer = ImageRenderer(
             content:
                 Rectangle().fill(VitrineTokens.Gradients.callToAction)
                 .frame(width: 200, height: 40)
-                .brightness(hoverBrightness)
-                .environment(\.colorScheme, scheme))
+                .brightness(hoverBrightness))
         renderer.scale = 1
         let image = try #require(renderer.cgImage)
         let pixels = NSBitmapImageRep(cgImage: image)
@@ -85,7 +83,7 @@ struct ChromeContrastTests {
         }
         #expect(
             minimum >= 4.5,
-            "White CTA text reaches only \(minimum):1 in \(scheme), brightness \(hoverBrightness)")
+            "White CTA text reaches only \(minimum):1 at brightness \(hoverBrightness)")
     }
 
     @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
@@ -96,6 +94,16 @@ struct ChromeContrastTests {
                 VitrineTokens.Accent.systemContrast, on: VitrineTokens.Accent.system)
             #expect(ratio >= 4.5, "Selected accent label is only \(ratio):1 in \(name.rawValue)")
         }
+    }
+
+    /// SwiftUI's display-link renderer resolves dynamic colors off the main thread.
+    @Test func selectedAccentLabelResolvesOffTheMainThread() async {
+        let label = NSColor(VitrineTokens.Accent.systemContrast)
+        let resolved = await Task.detached {
+            (offMain: pthread_main_np() == 0, color: label.usingColorSpace(.sRGB))
+        }.value
+        #expect(resolved.offMain)
+        #expect(resolved.color != nil)
     }
 
     @Test
