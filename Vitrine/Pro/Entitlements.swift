@@ -77,6 +77,11 @@ final class Entitlements {
                 return fixture
             }
         #endif
+        #if DEBUG && !VITRINE_DIRECT_DOWNLOAD
+            if let fixture = ManagedStoreUITestFixture.makeEntitlements(environment: environment) {
+                return fixture
+            }
+        #endif
         return Entitlements(provider: defaultProvider(environment: environment))
     }
 
@@ -102,6 +107,12 @@ final class Entitlements {
             Task { await self?.refresh() }
         }
         Task { await refresh() }
+    }
+
+    /// Storefront-localized price, when the active provider has a purchase offer.
+    /// Direct-download providers do not invent a checkout price.
+    func purchaseDisplayPrice() async -> String? {
+        await provider.purchaseDisplayPrice()
     }
 
     /// Starts a PRO purchase and reports the outcome (so the paywall can surface a failure
@@ -312,6 +323,8 @@ protocol EntitlementProvider {
     func currentIsPro() async -> Bool
     /// Starts a purchase (the App Store IAP). Providers without a purchase flow no-op.
     func purchase() async -> PurchaseOutcome
+    /// Storefront-localized price; nil when no offer is available.
+    func purchaseDisplayPrice() async -> String?
     /// Restores prior purchases (the App Store requirement). Providers without one no-op.
     func restore() async -> Bool
 }
@@ -325,6 +338,7 @@ protocol LiveEntitlementProvider: EntitlementProvider {
 extension EntitlementProvider {
     /// Default no-ops, so only the StoreKit provider implements a real purchase/restore and
     /// `Entitlements` need not downcast to it.
+    func purchaseDisplayPrice() async -> String? { nil }
     func purchase() async -> PurchaseOutcome { .cancelled }
     func restore() async -> Bool { cachedIsPro }
 }

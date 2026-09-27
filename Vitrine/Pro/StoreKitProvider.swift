@@ -29,12 +29,16 @@ struct StoreKitClient {
         case failed
     }
 
+    let displayPrice: @MainActor (String) async throws -> String?
     let currentIsPro: @MainActor (String) async -> Bool
     let purchase: @MainActor (String) async throws -> PurchaseResult
     let sync: @MainActor () async throws -> Void
     let observeUpdates: @MainActor (@escaping @MainActor () -> Void) -> Task<Void, Never>
 
     static let live = Self(
+        displayPrice: { productID in
+            try await Product.products(for: [productID]).first { $0.id == productID }?.displayPrice
+        },
         currentIsPro: { productID in
             for await result in Transaction.currentEntitlements {
                 guard case .verified(let transaction) = result else { continue }
@@ -124,6 +128,12 @@ final class StoreKitProvider: LiveEntitlementProvider {
         let unlocked = await client.currentIsPro(Self.productID)
         defaults.set(unlocked, forKey: cacheKey)
         return unlocked
+    }
+
+    /// Return StoreKit's storefront-localized text unchanged. A missing product or
+    /// failed lookup is unavailable, never a guessed price or an entitlement change.
+    func purchaseDisplayPrice() async -> String? {
+        try? await client.displayPrice(Self.productID)
     }
 
     /// Buys the PRO product and reports the outcome. Errors (no product, network, payment)

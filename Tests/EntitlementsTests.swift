@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import SwiftUI
 import Testing
 import VitrineDomain
 
@@ -81,6 +82,15 @@ struct EntitlementsTests {
 
         #expect(await eventually { entitlements.isPro })
         #expect(provider.refreshCount == 2)
+    }
+
+    @Test func gatedControlsAnnounceThePROrequirementUntilUnlocked() {
+        let locked = Entitlements(provider: FakeProvider(cached: false))
+        let unlocked = Entitlements(provider: FakeProvider(cached: true))
+        for feature in ProFeature.allCases {
+            #expect(locked.proRequirementValue(for: feature) == Text("Requires PRO"))
+            #expect(unlocked.proRequirementValue(for: feature) == Text(verbatim: ""))
+        }
     }
 
     @Test func theFreeProviderLocksEverything() async {
@@ -246,6 +256,9 @@ struct StoreKitProviderTests {
     private final class ClientSpy {
         struct FixtureError: Error {}
 
+        var displayPrice: String?
+        var priceError: Error?
+        var priceProductIDs: [String] = []
         var currentResults: [Bool] = []
         var purchaseResult: StoreKitClient.PurchaseResult = .failed
         var purchaseError: Error?
@@ -259,6 +272,11 @@ struct StoreKitProviderTests {
 
         var client: StoreKitClient {
             StoreKitClient(
+                displayPrice: { productID in
+                    self.priceProductIDs.append(productID)
+                    if let error = self.priceError { throw error }
+                    return self.displayPrice
+                },
                 currentIsPro: { productID in
                     self.currentProductIDs.append(productID)
                     return self.currentResults.isEmpty ? false : self.currentResults.removeFirst()
@@ -281,6 +299,68 @@ struct StoreKitProviderTests {
                     return task
                 })
         }
+    }
+
+    #if DEBUG
+        @Test func managedStoreFixtureRequiresExplicitIsolation() async throws {
+            #expect(ManagedStoreUITestFixture.makeEntitlements(environment: [:]) == nil)
+            #expect(
+                ManagedStoreUITestFixture.makeEntitlements(environment: [
+                    ManagedStoreUITestFixture.environmentKey: "price-retry"
+                ]) == nil)
+            let suite = "StorePriceFixture-\(UUID().uuidString)"
+            let entitlements = try #require(
+                ManagedStoreUITestFixture.makeEntitlements(
+                    environment: [
+                        ManagedStoreUITestFixture.environmentKey: "price-retry",
+                        "VITRINE_USER_DEFAULTS_SUITE": suite,
+                    ], defaults: testDefaults()))
+            #expect(await entitlements.purchaseDisplayPrice() == nil)
+            #expect(await entitlements.purchaseDisplayPrice() == "12,34 €")
+            #expect(!entitlements.isPro)
+            #expect(await entitlements.purchase() == .cancelled)
+            #expect(!entitlements.isPro)
+            await entitlements.restorePurchases()
+            #expect(entitlements.isPro)
+        }
+
+        @Test func managedStoreFixtureScenariosControlThePriceOffer() async throws {
+            func fixture(_ scenario: String) -> Entitlements? {
+                ManagedStoreUITestFixture.makeEntitlements(
+                    environment: [
+                        ManagedStoreUITestFixture.environmentKey: scenario,
+                        "VITRINE_USER_DEFAULTS_SUITE": "StorePriceFixture-\(UUID().uuidString)",
+                    ], defaults: testDefaults())
+            }
+            #expect(fixture("price-unknown") == nil)
+            let available = try #require(fixture("price-available"))
+            #expect(await available.purchaseDisplayPrice() == "12,34 €")
+            let unavailable = try #require(fixture("price-unavailable"))
+            #expect(await unavailable.purchaseDisplayPrice() == nil)
+            #expect(await unavailable.purchaseDisplayPrice() == nil)
+        }
+    #endif
+
+    @Test(arguments: ["12,34 €", "CHF 12.34", "¥1,234"])
+    func storefrontPriceIsPreservedWithoutInventingOrReformattingIt(price: String) async {
+        let spy = ClientSpy()
+        spy.displayPrice = price
+        let provider = StoreKitProvider(defaults: testDefaults(), client: spy.client)
+        let entitlements = Entitlements(provider: provider)
+        #expect(await entitlements.purchaseDisplayPrice() == price)
+        #expect(spy.priceProductIDs == [StoreKitProvider.productID])
+        #expect(spy.purchaseProductIDs.isEmpty)
+        #expect(!entitlements.isPro)
+    }
+
+    @Test func missingOrFailedPriceNeverFallsBackToAnInventedAmount() async {
+        let spy = ClientSpy()
+        let provider = StoreKitProvider(defaults: testDefaults(), client: spy.client)
+        #expect(await provider.purchaseDisplayPrice() == nil)
+        spy.priceError = ClientSpy.FixtureError()
+        #expect(await provider.purchaseDisplayPrice() == nil)
+        #expect(await Entitlements(provider: FreeProvider()).purchaseDisplayPrice() == nil)
+        #expect(spy.purchaseProductIDs.isEmpty)
     }
 
     @Test func startsFromTheOfflineCacheAndExposesTheConfiguredProduct() {
