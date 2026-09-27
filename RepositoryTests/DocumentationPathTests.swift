@@ -24,7 +24,7 @@ struct DocumentationPathTests {
                         atPath: Self.repositoryRoot.appending(path: relativePath).path)
                 else { continue }
                 let documentPath =
-                    document.relativePath(from: Self.repositoryRoot) ?? document.path
+                    document.subpath(under: Self.repositoryRoot) ?? document.path
                 missing.append("\(documentPath): \(relativePath)")
             }
         }
