@@ -103,8 +103,8 @@ struct AnnotationToolbar: View {
         // tracking (tooltips keep working); the surrounding title bar stays draggable
         // so the window can still be moved.
         .background(NonDraggableArea())
-        .animation(.easeInOut(duration: 0.15), value: showsColor)
-        .animation(.easeInOut(duration: 0.15), value: showsThickness)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.15), value: showsColor)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.15), value: showsThickness)
     }
 
     @ViewBuilder private var selectionActionButtons: some View {

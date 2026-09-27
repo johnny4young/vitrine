@@ -10,7 +10,7 @@ import VitrineRendering
 // MARK: - Buttons
 
 /// The signature gradient call-to-action capsule (`.cta`): white semibold
-/// label on the brand gradient, accent halo, +10 % brightness on hover and a
+/// label on the brand gradient, accent halo, a contrast-bounded brightness lift on hover and a
 /// 0.98 press scale. Shared by the editor toolbar, the menu-bar panel, and the
 /// Welcome window.
 struct GradientCTAButton<Label: View>: View {
@@ -32,18 +32,18 @@ struct GradientCTAButton<Label: View>: View {
             .fixedSize(horizontal: true, vertical: false)
             .padding(.vertical, VitrineTokens.Spacing.xs)
             .padding(.horizontal, 18)
-            .background(Capsule(style: .continuous).fill(VitrineTokens.Gradients.signature))
+            .background(Capsule(style: .continuous).fill(VitrineTokens.Gradients.callToAction))
             // Keyboard focus ring (Full Keyboard Access): an accent halo shown only
             // while focused, so the unfocused CTA is unchanged.
             .overlay(
                 Capsule(style: .continuous)
                     .inset(by: -2.5)
-                    .stroke(isFocused ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
+                    .stroke(isFocused ? VitrineTokens.Line.focusRing : .clear, lineWidth: 3)
             )
             // No accent shadow when disabled — a glowing, full-color capsule must not
             // read as the active primary action when it does nothing.
             .brandShadow(isEnabled ? VitrineTokens.Chrome.ctaShadow : Brand.ShadowStyle.none)
-            .brightness(isHovered ? 0.06 : 0)
+            .brightness(isHovered ? VitrineTokens.Chrome.ctaHoverBrightness : 0)
             .contentShape(Capsule(style: .continuous))
             // Dim + desaturate the gradient when disabled so the state is visible
             // (a custom-painted background does not honor `.disabled()` on its own).
@@ -53,16 +53,19 @@ struct GradientCTAButton<Label: View>: View {
         .buttonStyle(PressScaleButtonStyle())
         .focused($isFocused)
         .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
 
 /// Scales the pressed control to 0.98 — the universal press affordance.
 struct PressScaleButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.easeInOut(duration: 0.12), value: configuration.isPressed)
+            .modifier(
+                DecorativeScaleEffect(
+                    isActive: configuration.isPressed, scale: 0.98, reduceMotion: reduceMotion))
     }
 }
 
@@ -96,7 +99,7 @@ struct GhostPillButton: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
 
@@ -143,6 +146,6 @@ struct GlassIconButton: View {
         .buttonStyle(.plain)
         .focused($isFocused)
         .onHover { isHovered = $0 }
-        .animation(.easeInOut(duration: 0.12), value: isHovered)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }

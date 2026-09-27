@@ -91,6 +91,8 @@ struct InspectorRow<Content: View>: View {
 /// A collapsed-by-default disclosure: hairline on top, a
 /// rotating chevron, and a semibold body label.
 struct InspectorDisclosure<Content: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let label: Text
     let identifier: String
     @Binding var isExpanded: Bool
@@ -101,7 +103,9 @@ struct InspectorDisclosure<Content: View>: View {
             Divider()
                 .overlay(VitrineTokens.Line.separator)
             Button {
-                withAnimation(.easeInOut(duration: 0.15)) { isExpanded.toggle() }
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) {
+                    isExpanded.toggle()
+                }
             } label: {
                 HStack(spacing: 7) {
                     Image(systemName: "chevron.right")
