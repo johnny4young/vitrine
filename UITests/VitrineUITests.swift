@@ -3,8 +3,10 @@ import ImageIO
 import XCTest
 
 final class VitrineUITests: XCTestCase {
+    /// Keyboard focus and arrow keys are covered with real AppKit events in
+    /// `SegmentedPickerFocusTests`; this checks the app's segments in both languages.
     @MainActor
-    func testStyleSegmentsSupportArrowKeysAndSelectionSemantics() {
+    func testStyleSegmentsExposeSelectionSemantics() {
         continueAfterFailure = false
         for language in ["en", "es"] {
             let app = launch(
@@ -19,23 +21,14 @@ final class VitrineUITests: XCTestCase {
             let lines = element("style-subtab-lines", in: app)
             let background = element("style-subtab-background", in: app)
             assertExists(appearance, in: app, timeout: 3)
-            appearance.click()
-            app.typeKey(.rightArrow, modifierFlags: [])
+            lines.click()
             XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
+            XCTAssertFalse(appearance.isSelected)
             assertExists(element("metadata-filename-field", in: app), in: app)
-            app.typeKey(.rightArrow, modifierFlags: [])
+            background.click()
             XCTAssertTrue(background.wait(for: \.isSelected, toEqual: true, timeout: 3))
-            app.typeKey(.rightArrow, modifierFlags: [])
-            XCTAssertTrue(background.isSelected, "Arrow navigation must stop at the last segment")
-            app.typeKey(.leftArrow, modifierFlags: [])
-            XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
-            app.typeKey(.leftArrow, modifierFlags: [])
-            XCTAssertTrue(appearance.wait(for: \.isSelected, toEqual: true, timeout: 3))
-            app.typeKey(.tab, modifierFlags: [])
-            app.typeKey(.rightArrow, modifierFlags: [])
-            XCTAssertTrue(background.wait(for: \.isSelected, toEqual: true, timeout: 3))
-            app.typeKey(.tab, modifierFlags: .shift)
-            app.typeKey(.leftArrow, modifierFlags: [])
+            XCTAssertFalse(lines.isSelected)
+            appearance.click()
             XCTAssertTrue(appearance.wait(for: \.isSelected, toEqual: true, timeout: 3))
         }
     }

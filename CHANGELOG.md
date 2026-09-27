@@ -33,8 +33,10 @@ can never drift.
 
 ### Fixed
 
-- Segmented controls support focused arrow-key selection, and the command palette
-  exposes selected results and announces search updates to assistive technology.
+- Segmented controls are a single keyboard stop whose arrow keys change the selection
+  when macOS keyboard navigation is on, and a mouse click no longer takes focus from the
+  editor. The command palette exposes selected results and announces search updates to
+  assistive technology.
 - Locked export controls announce their PRO requirement. The Store paywall displays
   the localized StoreKit price with retry and restore paths; direct-download pricing
   is never guessed.
