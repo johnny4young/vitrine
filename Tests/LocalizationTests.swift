@@ -394,7 +394,7 @@ struct LocalizationTests {
         var offenders: [String] = []
         for url in try swiftSources() {
             let text = try String(contentsOf: url, encoding: .utf8)
-            let relative = url.path.replacingOccurrences(of: sourceRoot.path + "/", with: "")
+            let relative = url.subpath(under: sourceRoot) ?? url.path
             for (index, line) in text.components(separatedBy: .newlines).enumerated() {
                 let range = NSRange(line.startIndex..<line.endIndex, in: line)
                 if verbatimText.firstMatch(in: line, range: range) != nil

@@ -478,6 +478,8 @@ targets:
       - path: RepositoryTests
       # Shared with the app-hosted bundle so both halves read the version identically.
       - path: Tests/ProjectVersionSupport.swift
+      # Shared with the app-hosted bundle: relative paths for repository scans.
+      - path: Tests/RepositorySubpath.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
