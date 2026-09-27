@@ -120,7 +120,7 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
     /// Optional stable identifiers, one per option in order, so UI tests can
     /// address individual segments independently of their localized titles.
     var optionIdentifiers: [String]? = nil
-    @FocusState private var focusedValue: Value?
+    @FocusState private var isFocused: Bool
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -131,6 +131,19 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
                 RoundedRectangle(cornerRadius: 999, style: .continuous)
                     .fill(VitrineTokens.Chrome.segmentTrack)
             )
+            // One key-view stop that follows the system keyboard-navigation setting, so a
+            // mouse click never takes focus from the editor, like a native segmented control.
+            .focusable(interactions: .activate)
+            .focusEffectDisabled()
+            .focused($isFocused)
+            .onKeyPress(.leftArrow) {
+                move(by: layoutDirection == .leftToRight ? -1 : 1)
+                return .handled
+            }
+            .onKeyPress(.rightArrow) {
+                move(by: layoutDirection == .leftToRight ? 1 : -1)
+                return .handled
+            }
             .accessibilityElement(children: .contain)
             .accessibilityValue(selectedLabel)
     }
@@ -201,36 +214,23 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
                 .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
-        // This picker edits a selection with arrow keys; plain button activation
-        // alone is not focusable on macOS unless full keyboard navigation is enabled.
-        .focusable(interactions: .edit)
-        .focusEffectDisabled()
-        .focused($focusedValue, equals: value)
+        .focusable(false)
         .overlay {
-            if focusedValue == value {
+            if isFocused && isSelected {
                 Capsule().strokeBorder(VitrineTokens.Line.focusRing, lineWidth: Brand.Stroke.focus)
                     .padding(-2)
                     .allowsHitTesting(false)
             }
         }
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-        .onKeyPress(.leftArrow) {
-            move(from: value, offset: layoutDirection == .leftToRight ? -1 : 1)
-            return .handled
-        }
-        .onKeyPress(.rightArrow) {
-            move(from: value, offset: layoutDirection == .leftToRight ? 1 : -1)
-            return .handled
-        }
     }
 
     private func select(_ value: Value) {
         withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) { selection = value }
-        focusedValue = value
     }
 
-    private func move(from value: Value, offset: Int) {
-        guard let index = options.firstIndex(where: { $0.value == value }) else { return }
+    private func move(by offset: Int) {
+        guard let index = options.firstIndex(where: { $0.value == selection }) else { return }
         let next = index + offset
         guard options.indices.contains(next) else { return }
         select(options[next].value)

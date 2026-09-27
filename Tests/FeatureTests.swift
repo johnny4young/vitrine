@@ -320,8 +320,29 @@ struct DebouncerTests {
     @Test func coalescesRapidCalls() async {
         let debouncer = Debouncer(interval: .milliseconds(40))
         var count = 0
-        for _ in 0..<5 { debouncer.schedule { count += 1 } }
-        try? await Task.sleep(for: .milliseconds(160))
+        let scheduled = (0..<5).map { _ in debouncer.schedule { count += 1 } }
+        for task in scheduled { await task.value }
         #expect(count == 1)
+    }
+
+    @Test func cancellationCompletesWithoutRunningTheAction() async {
+        let debouncer = Debouncer(interval: .seconds(60))
+        var invoked = false
+        let operation = debouncer.schedule { invoked = true }
+        debouncer.cancel()
+        await operation.value
+        #expect(operation.isCancelled)
+        #expect(!invoked)
+    }
+
+    @Test func anOverrideReplacesThePendingDelayAndAction() async {
+        let debouncer = Debouncer(interval: .seconds(60))
+        var values: [Int] = []
+        let replaced = debouncer.schedule { values.append(1) }
+        let latest = debouncer.schedule(after: .zero) { values.append(2) }
+        await replaced.value
+        await latest.value
+        #expect(replaced.isCancelled)
+        #expect(values == [2])
     }
 }
