@@ -1,6 +1,8 @@
 import CryptoKit
 import Foundation
+import SwiftUI
 import Testing
+import VitrineDomain
 
 @testable import Vitrine
 
@@ -82,6 +84,15 @@ struct EntitlementsTests {
         #expect(provider.refreshCount == 2)
     }
 
+    @Test func gatedControlsAnnounceThePROrequirementUntilUnlocked() {
+        let locked = Entitlements(provider: FakeProvider(cached: false))
+        let unlocked = Entitlements(provider: FakeProvider(cached: true))
+        for feature in ProFeature.allCases {
+            #expect(locked.proRequirementValue(for: feature) == Text("Requires PRO"))
+            #expect(unlocked.proRequirementValue(for: feature) == Text(verbatim: ""))
+        }
+    }
+
     @Test func theFreeProviderLocksEverything() async {
         let entitlements = Entitlements(provider: FreeProvider())
         #expect(!entitlements.isPro)
@@ -150,6 +161,36 @@ struct EntitlementsTests {
             #expect(!(await entitlements.activate(licenseKey: "vitrine-ui-test-key")))
             #expect(entitlements.isPro)
             #expect(entitlements.directLicenseManagementState == .active)
+        }
+
+        @Test func paywallKeepsOnlyAPartialActivationFailureOpenAfterUnlock() {
+            // A failure while locked (a refused concurrent request, a bad key) must not keep
+            // the sheet open once another activation unlocks PRO.
+            var lockedFailure = PaywallActivationState()
+            lockedFailure.begin()
+            #expect(!lockedFailure.dismissesOnUnlock(isPro: true))
+            lockedFailure.finish(succeeded: false, isPro: false)
+            #expect(lockedFailure.failed)
+            #expect(lockedFailure.dismissesOnUnlock(isPro: true))
+
+            var partial = PaywallActivationState()
+            partial.begin()
+            partial.finish(succeeded: false, isPro: true)
+            #expect(!partial.dismissesOnUnlock(isPro: true))
+            partial.begin()
+            #expect(!partial.failed)
+            partial.finish(succeeded: true, isPro: true)
+            #expect(partial.dismissesOnUnlock(isPro: true))
+        }
+
+        @Test func managedLicenseUIFixtureRejectsAnUnknownKey() async throws {
+            let entitlements = try #require(
+                ManagedLicenseUITestFixture.makeEntitlements(environment: [
+                    ManagedLicenseUITestFixture.environmentKey: "activation-success",
+                    "VITRINE_USER_DEFAULTS_SUITE": "isolated-activation-invalid-key-test",
+                ]))
+            #expect(!(await entitlements.activate(licenseKey: "not-the-fixture-key")))
+            #expect(!entitlements.isPro)
         }
 
         @Test func managedLicenseUIFixtureRelocksThroughTheDefaultService() async {
@@ -281,6 +322,22 @@ struct StoreKitProviderTests {
             #expect(!entitlements.isPro)
             await entitlements.restorePurchases()
             #expect(entitlements.isPro)
+        }
+
+        @Test func managedStoreFixtureScenariosControlThePriceOffer() async throws {
+            func fixture(_ scenario: String) -> Entitlements? {
+                ManagedStoreUITestFixture.makeEntitlements(
+                    environment: [
+                        ManagedStoreUITestFixture.environmentKey: scenario,
+                        "VITRINE_USER_DEFAULTS_SUITE": "StorePriceFixture-\(UUID().uuidString)",
+                    ], defaults: testDefaults())
+            }
+            #expect(fixture("price-unknown") == nil)
+            let available = try #require(fixture("price-available"))
+            #expect(await available.purchaseDisplayPrice() == "12,34 €")
+            let unavailable = try #require(fixture("price-unavailable"))
+            #expect(await unavailable.purchaseDisplayPrice() == nil)
+            #expect(await unavailable.purchaseDisplayPrice() == nil)
         }
     #endif
 
@@ -580,6 +637,21 @@ struct LicenseKeyTests {
                         licenseID: "FIRST", instanceID: "first-instance", status: "active"))
                 response = nil
             }
+        }
+
+        @Test func defaultActivationWithoutASigningKeyStaysFree() async throws {
+            // The production service must stop before contacting the provider on a host
+            // without an injected key; fail loudly rather than reach the network.
+            try #require(LicenseSigningKey.embedded == nil)
+            let cliURL = tempTokenURL()
+            defer { try? FileManager.default.removeItem(at: cliURL.deletingLastPathComponent()) }
+            let provider = LicenseKeyProvider(
+                store: InMemoryTokenStore(), activationRecordStore: InMemoryActivationRecordStore(),
+                verifier: LicenseVerifier(publicKey: Curve25519.Signing.PrivateKey().publicKey),
+                cliTokenFile: CLITokenFile(url: cliURL))
+            let entitlements = Entitlements(provider: provider)
+            #expect(!(await entitlements.activate(licenseKey: "ANY-KEY")))
+            #expect(!entitlements.isPro)
         }
 
         @Test func concurrentActivationDoesNotConsumeAnotherSeat() async throws {

@@ -14,7 +14,13 @@ extension XCTestCase {
     ) {
         app.activate()
         window.click()
-        Thread.sleep(forTimeInterval: 1.5)
+        let fileMenu = app.menuBars.firstMatch.menuBarItems["File"]
+        XCTAssertTrue(fileMenu.waitForExistence(timeout: 5), "The app main menu did not appear")
+        let ready = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hittable == true"), object: fileMenu)
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [ready], timeout: 5), .completed,
+            "The app did not become frontmost with a usable main menu")
     }
 
     /// Skips display-geometry-sensitive tests when no attached display can hold

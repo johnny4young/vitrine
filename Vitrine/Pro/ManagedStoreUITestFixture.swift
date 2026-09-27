@@ -8,11 +8,16 @@
     enum ManagedStoreUITestFixture {
         static let environmentKey = "VITRINE_MANAGED_STORE_UI_TEST"
 
+        enum Scenario: String {
+            case priceAvailable = "price-available"
+            case priceRetry = "price-retry"
+            case priceUnavailable = "price-unavailable"
+        }
+
         static func makeEntitlements(
             environment: [String: String], defaults: UserDefaults = AppDefaults.current
         ) -> Entitlements? {
-            guard let scenario = environment[environmentKey],
-                ["price-available", "price-retry", "price-unavailable"].contains(scenario),
+            guard let scenario = environment[environmentKey].flatMap(Scenario.init(rawValue:)),
                 let suite = environment["VITRINE_USER_DEFAULTS_SUITE"],
                 !suite.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             else { return nil }
@@ -21,10 +26,11 @@
             let client = StoreKitClient(
                 displayPrice: { _ in
                     priceRequests += 1
-                    guard scenario != "price-unavailable",
-                        scenario != "price-retry" || priceRequests > 1
-                    else { return nil }
-                    return "12,34 €"
+                    switch scenario {
+                    case .priceAvailable: return "12,34 €"
+                    case .priceRetry: return priceRequests > 1 ? "12,34 €" : nil
+                    case .priceUnavailable: return nil
+                    }
                 },
                 currentIsPro: { _ in unlocked },
                 purchase: { _ in .userCancelled },

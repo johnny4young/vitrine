@@ -311,11 +311,17 @@ struct WorkflowConfigurationTests {
         #expect(
             release.contains("runs-on: macos-26"),
             "the release workflow must run on an image the CI matrix certifies")
-        #expect(buildJob.contains("make test-coverage"))
+        #expect(buildJob.contains("make test-ci-coverage"))
         #expect(buildJob.contains("COVERAGE_PLATFORM=\"${{ matrix.coverage }}\""))
         #expect(buildJob.contains("fetch-depth: 0"))
         #expect(buildJob.contains("make perf"))
-        #expect(buildJob.contains("GoldenImageTests"))
+        #expect(buildJob.contains("make test-goldens"))
+        #expect(buildJob.contains("golden-mode: strict"))
+        #expect(buildJob.contains("golden-mode: smoke"))
+        // Only the strict golden step uses the baseline's Xcode build.
+        #expect(!buildJob.contains("xcode-version:"))
+        #expect(buildJob.contains(#"["pinnedImage"]["xcodeBuild"]"#))
+        #expect(buildJob.contains(#"DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}""#))
         #expect(uiJob.contains("make test-ui RESULT_BUNDLE="))
         #expect(uiJob.contains("make test-visual"))
 
@@ -366,7 +372,7 @@ struct WorkflowConfigurationTests {
         #expect(releasingProse.contains("do not change `project.yml`"))
 
         let ci = try Self.ci()
-        #expect(ci.contains("make test-coverage"))
+        #expect(ci.contains("make test-ci-coverage"))
         #expect(ci.contains("github.event.pull_request.base.sha"))
         #expect(ci.contains("github.event.before"))
         #expect(ci.contains("COVERAGE_BASE_REF=\"$change_base\""))
@@ -592,16 +598,23 @@ struct WorkflowConfigurationTests {
             "CI must retain optimized-build diagnostics")
     }
 
-    // MARK: - Contract: run `make build-ui-tests` on every PR
+    // MARK: - Contract: compile UI tests once in the executing job
 
-    @Test func ciRunsBuildUITestsOnPullRequests() throws {
+    @Test func ciCompilesUITestsThroughTheExecutingPlatformJob() throws {
         let ci = try Self.ci()
-        #expect(
-            ci.contains("pull_request"),
-            "CI must trigger on pull requests")
-        #expect(
-            ci.contains("make build-ui-tests"),
-            "CI must compile the UI tests on every PR")
+        let uiJobMarker = try #require(ci.range(of: "\n  ui-test:"))
+        let uiJob = String(ci[uiJobMarker.lowerBound...])
+        #expect(ci.contains("pull_request"))
+        #expect(uiJob.contains("make test-ui"))
+        #expect(!ci.contains("make build-ui-tests"), "Do not duplicate the executing job's build")
+        let make = try Self.makefile()
+        let start = try #require(make.range(of: "\ntest-ui: project"))
+        let end = try #require(
+            make.range(of: "\n## test-visual:", range: start.upperBound..<make.endIndex))
+        let lane = String(make[start.lowerBound..<end.lowerBound])
+        #expect(lane.contains("$(XCODEBUILD)"))
+        #expect(lane.contains(" test"), "The UI lane must build and test, not run a stale binary")
+        #expect(!lane.contains("test-without-building"))
     }
 
     // MARK: - Contract: weekly scheduled drift job
@@ -676,18 +689,17 @@ struct WorkflowConfigurationTests {
         #expect(make.contains("-enableAddressSanitizer YES"))
         #expect(make.contains("test-tsan: project"))
         #expect(make.contains("-enableThreadSanitizer YES"))
-        // The contract is that each lane stays FOCUSED on named unit suites rather than
-        // running the whole AppKit/WebKit host. Naming the suites here made every test
-        // rename or relocation fail this guard without weakening anything.
-        for selection in ["ASAN_TEST_SELECTION", "TSAN_TEST_SELECTION"] {
-            let lane = try #require(
-                sanitizerLanes.range(of: selection), "\(selection) must define a focused lane")
-            let body = sanitizerLanes[lane.upperBound...].prefix(while: { $0 != "#" })
-            #expect(
-                body.contains("-only-testing:VitrineTests/"),
-                "\(selection) must select individual unit suites")
+        // Selection and execution expectations come from one manifest, not a second
+        // copy of display names. The Python self-test exercises fail-closed behavior.
+        for lane in ["asan", "tsan"] {
+            #expect(sanitizerLanes.contains("--lane \(lane) --print-selection"))
+            #expect(sanitizerLanes.contains("--lane \(lane) --result-bundle"))
         }
-        #expect(!sanitizerLanes.contains("-only-testing:VitrineUITests"))
+        let suites = try Self.text("scripts", "sanitizer-suites.json")
+        #expect(suites.contains("VitrineDomainTests/TerminalGridTests"))
+        #expect(!suites.contains("VitrineTests/TerminalGridTests"))
+        #expect(!suites.contains("VitrineUITests/"))
+        #expect(make.contains("sanitizer-check"))
 
         #expect(doc.contains("make test-asan"))
         #expect(doc.contains("make test-tsan"))
@@ -1144,8 +1156,7 @@ struct WorkflowConfigurationTests {
             "the UI-test job must upload its .xcresult bundle on failure")
 
         // Skips must never be silent: if the job excludes tests (the
-        // display-geometry-sensitive set), every run must annotate them, mirroring
-        // the GOLDEN SKIP discipline of the golden-image suite.
+        // display-geometry-sensitive set), every run must annotate them.
         if uiJob.contains("TEST_UI_SKIP") {
             #expect(
                 uiJob.contains("::warning"),
@@ -1202,7 +1213,7 @@ struct WorkflowConfigurationTests {
 
     @Test func releasingDocExplainsTheUITestPolicy() throws {
         let doc = try Self.releasingDoc()
-        // The compile-only check still runs in the build job and the release gate…
+        // The local compile-only command stays documented…
         #expect(
             doc.contains("make build-ui-tests"),
             "RELEASING.md must document the UI-test compile step")

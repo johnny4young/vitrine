@@ -54,10 +54,10 @@ public struct SnapshotConfig: Equatable {
     /// ordering.
     public var highlightedLineRanges: [ClosedRange<Int>] = []
 
-    /// 1-based, inclusive line ranges to redact (blur) — e.g. secret keys found by
+    /// 1-based, inclusive line ranges to redact — e.g. secret keys found by
     /// `SecretScanner` and applied via the editor's "Redact secrets" action. Empty by
-    /// default (no redaction); blurred per-row at render time so each line is fully
-    /// covered. Content-bound, so a new capture clears it (see `clearContentMarks`).
+    /// default (no redaction); replaced with neutral content before rendering and
+    /// exporting text. Content-bound, so a new capture clears it (see `clearContentMarks`).
     public var redactedLineRanges: [ClosedRange<Int>] = []
 
     /// Dim the non-highlighted lines so the highlighted ones stand out — the "focus"
@@ -161,16 +161,19 @@ public struct SnapshotConfig: Equatable {
     /// secret that the image visually hides.
     public var sidecarText: String {
         guard !usesImageContent else { return "" }
-        let visibleText =
-            language == .terminal ? ANSIRenderer.plainText(code, columns: terminalColumns) : code
-        return replacingRedactedLines(in: visibleText)
+        if language == .terminal {
+            return ANSIRenderer.plainText(
+                code, columns: terminalColumns, redacting: redactedLineRanges)
+        }
+        return replacingRedactedLines(in: code)
     }
 
-    /// The source text used for rich/styled clipboard representations. It intentionally
-    /// preserves syntax-highlighting input for non-redacted lines but removes any line
-    /// the user marked as redacted, so RTF/HTML/plain fallbacks cannot bypass the blur.
+    /// Source for portable text and share links. Unredacted terminal captures retain
+    /// their ANSI transcript for faithful reopening; once any rows are redacted, only
+    /// the sanitized final screen may leave the app, never the original transcript.
     public var richClipboardText: String {
         guard !usesImageContent else { return "" }
+        if language == .terminal, !redactedLineRanges.isEmpty { return sidecarText }
         return replacingRedactedLines(in: code)
     }
 

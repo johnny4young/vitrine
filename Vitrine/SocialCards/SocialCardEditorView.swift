@@ -132,7 +132,8 @@ struct SocialCardEditorView: View {
         feedback(
             ExportFeedback.copyOutcome(
                 SocialCardRenderer.copyToPasteboardOutcome(
-                    card, scale: exportScale, profile: settings.export.colorProfile)))
+                    card, scale: exportScale, profile: settings.export.colorProfile,
+                    concealed: settings.export.concealClipboard)))
     }
 
     private func saveCard() {
