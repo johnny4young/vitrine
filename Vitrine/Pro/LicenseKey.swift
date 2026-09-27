@@ -270,8 +270,8 @@ import VitrineDomain
             guard store.write(signedToken), storedValidToken?.licenseID == record.licenseID
             else { return false }
             guard cliTokenFile.write(signedToken) else {
-                // Keep the record for remote seat recovery, but never leave app and CLI
-                // entitlement state disagreeing after a newly activated seat.
+                // Keep the record for remote seat recovery and attempt to relock the app.
+                // Cleanup can also fail; return failure even if a valid token survives.
                 _ = store.write(nil)
                 return false
             }
