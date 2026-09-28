@@ -33,6 +33,12 @@ can never drift.
 
 ### Fixed
 
+- New text captures, editor handoffs, and Shortcuts clear the previous document's
+  annotations, redactions, highlights, foreground image, and terminal width while keeping
+  reusable style. Shared snapshot links still restore their own annotations.
+- `render --edit` is a free editor-only handoff, consistent with Open Code in Editor.
+  Image rendering, output files, clipboard exports, and sidecars keep their existing gates.
+
 - Register the macOS Services provider at application startup, using the same live
   settings and PRO entitlement as the app. The advertised code-image service keeps
   its PNG return contract and Free/PRO policy.

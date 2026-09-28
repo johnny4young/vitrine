@@ -587,7 +587,7 @@ extension EditorView {
         settings.style.language = language
         // Pasting fresh code is a new capture, so drop content-bound marks (annotations,
         // highlighted lines) that were positioned over whatever was here before.
-        settings.style.clearContentMarks()
+        settings.style.resetForNewContent()
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
         settings.documentCode =
@@ -686,7 +686,7 @@ private struct CodeDocumentEditor: View {
             fontSize: settings.style.fontSize,
             fontLigatures: settings.style.fontLigatures,
             reindentOnPaste: reindentOnPaste,
-            onReplaceAllPaste: { settings.style.clearContentMarks() }
+            onReplaceAllPaste: { settings.style.resetForNewContent() }
         )
         .overlay {
             if settings.documentIsEmpty {
