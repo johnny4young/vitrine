@@ -33,6 +33,11 @@ can never drift.
 
 ### Fixed
 
+- New text captures, editor handoffs, and Shortcuts clear the previous document's
+  annotations, redactions, highlights, foreground image, and terminal width while keeping
+  reusable style. Shared snapshot links still restore their own annotations.
+- `render --edit` is a free editor-only handoff, consistent with Open Code in Editor.
+  Image rendering, output files, clipboard exports, and sidecars keep their existing gates.
 - Avoid flagging constructor calls such as `WordPieceTokenizer()` and
   `NSSecureTextField()` as secret values, without exempting quoted literals or
   provider tokens inside their arguments. Bound generic assignment scanning on

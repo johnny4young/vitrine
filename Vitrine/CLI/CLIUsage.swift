@@ -26,7 +26,8 @@ nonisolated enum CLIUsage {
 
         ACCESS:
           `vgrab` uses the constrained terminal-capture command and is free. General
-          render, multi-size, batch, vpane, and other automation capabilities require PRO.
+          render, multi-size, batch, and vpane image output require PRO.
+          `render --edit` (including vpane -e) is a free editor handoff, with no output.
 
         OPTIONS:
         \(CLIArgumentSchema.helpText)
