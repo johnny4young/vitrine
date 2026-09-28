@@ -1,5 +1,6 @@
 ---
-import type { Locale, SiteCopy } from '~/i18n/content';
+import ResponsiveImage from '~/components/ResponsiveImage.astro';
+import type { Locale, SiteMetadata } from '~/i18n/content';
 import { cliCommands, cliExamples, cliOptionGroups } from '~/i18n/cli';
 import BaseLayout from '~/layouts/BaseLayout.astro';
 import Header from './Header.astro';
@@ -87,7 +88,7 @@ const text = es
       openRecipeGuide: 'Workspace recipe format',
     };
 
-const meta: SiteCopy = {
+const meta: SiteMetadata = {
   locale,
   meta: {
     title: text.title,
@@ -137,7 +138,7 @@ const troubleshooting = es
           <p class="cli-search-status" aria-live="polite"><span id="cli-result-count"></span> <span>{text.results}</span><span class="search-hint"> · {text.searchHint}</span></p>
         </div>
         <figure class="cli-hero-shot">
-          <img src="/screenshots/workspace-recipe-cli.png" alt={text.screenshotAlt} />
+          <ResponsiveImage src="/screenshots/workspace-recipe-cli.png" alt={text.screenshotAlt} sizes="(max-width: 816px) calc(100vw - 56px), (max-width: 980px) 760px, 540px" loading="eager" />
         </figure>
       </div>
     </section>

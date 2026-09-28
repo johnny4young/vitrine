@@ -69,13 +69,12 @@ struct ProDocumentationTests {
         let project = try Self.text("docs/PROJECT.md")
         let architecture = try Self.text("docs/ARCHITECTURE.md")
         let pro = try Self.text("docs/PRO.md")
-        let website = try Self.text("site/src/components/Commercial.astro")
-        let websiteTranslations = try Self.text("site/public/scripts/site.js")
+        let website = try Self.text("site/src/i18n/content.ts")
 
         for document in [readme, project, architecture, pro, website] {
             #expect(document.localizedCaseInsensitiveContains("no expiring trial"))
         }
-        #expect(websiteTranslations.contains("No hay una prueba que caduque"))
+        #expect(website.contains("No hay una prueba que caduque"))
 
         for document in [readme, project, architecture, pro] {
             #expect(document.contains("Homebrew"))
