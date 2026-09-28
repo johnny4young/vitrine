@@ -24,11 +24,12 @@ struct ModelLayerPurityTests {
     /// - Foundation: the module's baseline.
     /// - CoreGraphics: `CGFloat`/`CGSize`/`CGPoint`/`CGRect` geometry and
     ///   `CGColorSpace` names are value vocabulary, not rendering.
+    /// - CryptoKit: deterministic signed-token verification/encoding; no Keychain or networking.
     /// - Compression: share-link payload codec (pure bytes in, bytes out).
     /// - Darwin: `inet_aton`/`inet_pton` address parsing and descriptor-level bounded
     ///   file reads (`open`/`fstat`) — POSIX, not Apple UI.
     private static let allowedImports: Set<String> = [
-        "Foundation", "CoreGraphics", "Compression", "Darwin",
+        "Foundation", "CoreGraphics", "Compression", "Darwin", "CryptoKit",
     ]
 
     @Test func domainImportsOnlyAllowlistedFrameworks() throws {

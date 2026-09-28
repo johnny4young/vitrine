@@ -29,7 +29,9 @@ struct WebSnapshotPresentation {
         presentSignIn: { WebSessionWindowController.shared.show(url: $0) },
         presentShare: { image in
             guard let view = NSApp.keyWindow?.contentView else { return }
-            ShareManager.share(image, relativeTo: view)
+            ShareManager.share(
+                image, relativeTo: view,
+                concealed: AppEnvironment.shared.appSettings.export.concealClipboard)
         },
         batchExport: .live)
 

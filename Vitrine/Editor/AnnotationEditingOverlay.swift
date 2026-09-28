@@ -191,21 +191,14 @@ private struct DrawingLayer: View {
             }
             .onEnded { value in
                 defer { drag = nil }
-                if kind.isPointPlaced {
-                    onBeginDraw()
-                    onCommit(makeAnnotation(from: value.location, to: value.location))
-                    onEndDraw()
-                } else {
-                    // Ignore an accidental click (no real drag) so a stray tap never
-                    // leaves a zero-size shape behind.
-                    let distance = hypot(
-                        value.location.x - value.startLocation.x,
-                        value.location.y - value.startLocation.y)
-                    guard distance > 6 else { return }
-                    onBeginDraw()
-                    onCommit(makeAnnotation(from: value.startLocation, to: value.location))
-                    onEndDraw()
-                }
+                guard
+                    AnnotationInteractionGeometry.shouldCommit(
+                        kind: kind, from: value.startLocation, to: value.location)
+                else { return }
+                onBeginDraw()
+                let start = kind.isPointPlaced ? value.location : value.startLocation
+                onCommit(makeAnnotation(from: start, to: value.location))
+                onEndDraw()
             }
     }
 
@@ -217,9 +210,7 @@ private struct DrawingLayer: View {
     }
 
     private func normalize(_ point: CGPoint) -> CGPoint {
-        Annotation.clampNormalized(
-            CGPoint(
-                x: point.x / max(canvasSize.width, 1), y: point.y / max(canvasSize.height, 1)))
+        AnnotationInteractionGeometry.normalize(point, in: canvasSize)
     }
 }
 
@@ -241,24 +232,8 @@ private struct AnnotationHandle: View {
     @State private var isResizing = false
 
     private var accent: Color { VitrineTokens.Accent.base }
-    private var startPoint: CGPoint { annotation.startPoint(in: canvasSize) }
-    private var endPoint: CGPoint { annotation.endPoint(in: canvasSize) }
-    private var rect: CGRect { annotation.rect(in: canvasSize) }
-
-    /// Marks whose geometry is a stroke between two free points: their grab area and
-    /// selection outline follow the span, not a rect. The curved arrow's arc and the
-    /// measure's shaft both live along (near) the start→end line, so line hit-testing
-    /// serves them; leaving a kind out of both groups drops it into the point-placed
-    /// fallback — a small box at `start` — which broke select/move for the newer kinds.
-    private var isLineLike: Bool {
-        annotation.kind == .arrow || annotation.kind == .line
-            || annotation.kind == .curvedArrow || annotation.kind == .measure
-    }
-    /// Marks whose geometry is the spanned rectangle. A spotlight is a region exactly
-    /// like blur, so it selects and resizes by its rect.
-    private var isBoxLike: Bool {
-        annotation.kind == .rectangle || annotation.kind == .highlighter
-            || annotation.kind == .blur || annotation.kind == .spotlight
+    private var geometry: AnnotationInteractionGeometry {
+        AnnotationInteractionGeometry(annotation: annotation, canvasSize: canvasSize)
     }
 
     var body: some View {
@@ -287,11 +262,12 @@ private struct AnnotationHandle: View {
 
     private var deleteAnchor: CGPoint {
         let box =
-            isLineLike
+            geometry.isLineLike
             ? CGRect(
-                x: min(startPoint.x, endPoint.x), y: min(startPoint.y, endPoint.y),
-                width: abs(startPoint.x - endPoint.x), height: abs(startPoint.y - endPoint.y))
-            : selectionRect
+                x: min(geometry.start.x, geometry.end.x), y: min(geometry.start.y, geometry.end.y),
+                width: abs(geometry.start.x - geometry.end.x),
+                height: abs(geometry.start.y - geometry.end.y))
+            : geometry.selectionRect
         return CGPoint(
             x: min(box.maxX + 4, canvasSize.width - 10),
             y: max(box.minY - 4, 10))
@@ -302,47 +278,25 @@ private struct AnnotationHandle: View {
     @ViewBuilder
     private var bodyHitArea: some View {
         let base = Color.clear
-            .frame(width: hitSize.width, height: hitSize.height)
+            .frame(width: geometry.hitSize.width, height: geometry.hitSize.height)
             .contentShape(Rectangle())
-            .rotationEffect(isLineLike ? .radians(shaftAngle) : .zero)
-            .position(hitCenter)
+            .rotationEffect(geometry.isLineLike ? .radians(geometry.shaftAngle) : .zero)
+            .position(geometry.hitCenter)
         if let onEdit {
-            // A double-click re-opens a text callout's field; the single-click select is
-            // declared after so it yields to the double-click.
-            base
-                .onTapGesture(count: 2) { onEdit() }
-                .onTapGesture { onSelect() }
-                .gesture(moveGesture)
+            // Same exclusivity for text callouts; the single click yields to the double
+            // click that re-opens the field.
+            base.gesture(
+                moveGesture.exclusively(
+                    before: TapGesture(count: 2).onEnded { onEdit() }
+                        .exclusively(before: TapGesture().onEnded { onSelect() })))
         } else {
             base
-                .onTapGesture { onSelect() }
-                .gesture(moveGesture)
+                // A short move and a click are mutually exclusive, not competing
+                // recognizers. Give a real drag first chance, then let a click select.
+                .gesture(
+                    moveGesture.exclusively(before: TapGesture().onEnded { onSelect() })
+                )
         }
-    }
-
-    private var hitSize: CGSize {
-        if isLineLike {
-            let length = max(hypot(endPoint.x - startPoint.x, endPoint.y - startPoint.y), 1)
-            return CGSize(width: length, height: max(26, annotation.thickness + 18))
-        }
-        if isBoxLike {
-            return CGSize(width: max(rect.width, 24), height: max(rect.height, 24))
-        }
-        // Point-placed: a generous box around the anchor.
-        let span = annotation.kind == .counter ? max(40, annotation.thickness * 4 + 16) : 120
-        return CGSize(width: span, height: annotation.kind == .counter ? span : 44)
-    }
-
-    private var hitCenter: CGPoint {
-        if isLineLike {
-            return CGPoint(x: (startPoint.x + endPoint.x) / 2, y: (startPoint.y + endPoint.y) / 2)
-        }
-        if isBoxLike { return CGPoint(x: rect.midX, y: rect.midY) }
-        return startPoint
-    }
-
-    private var shaftAngle: Double {
-        atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x)
     }
 
     private var moveGesture: some Gesture {
@@ -368,14 +322,14 @@ private struct AnnotationHandle: View {
 
     @ViewBuilder
     private var selectionChrome: some View {
-        if isLineLike {
+        if geometry.isLineLike {
             Path { path in
-                path.move(to: startPoint)
-                path.addLine(to: endPoint)
+                path.move(to: geometry.start)
+                path.addLine(to: geometry.end)
             }
             .stroke(accent.opacity(0.6), style: StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
         } else {
-            let outline = selectionRect
+            let outline = geometry.selectionRect
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .stroke(accent.opacity(0.85), style: StrokeStyle(lineWidth: 1.5, dash: [5, 3]))
                 .frame(width: outline.width, height: outline.height)
@@ -383,20 +337,12 @@ private struct AnnotationHandle: View {
         }
     }
 
-    private var selectionRect: CGRect {
-        if isBoxLike { return rect }
-        // Point-placed: a box around the anchor.
-        let span = annotation.kind == .counter ? max(40, annotation.thickness * 4 + 16) : 120
-        let h = annotation.kind == .counter ? span : 44
-        return CGRect(x: startPoint.x - span / 2, y: startPoint.y - h / 2, width: span, height: h)
-    }
-
     // MARK: Resize handles (shapes only)
 
     @ViewBuilder
     private var resizeHandles: some View {
-        handleDot(at: startPoint, gesture: resizeGesture(\.start))
-        handleDot(at: endPoint, gesture: resizeGesture(\.end))
+        handleDot(at: geometry.start, gesture: resizeGesture(\.start))
+        handleDot(at: geometry.end, gesture: resizeGesture(\.end))
     }
 
     private func handleDot<G: Gesture>(at point: CGPoint, gesture: G) -> some View {
@@ -418,10 +364,8 @@ private struct AnnotationHandle: View {
                     onBeginEdit()
                 }
                 onSelect()
-                annotation[keyPath: keyPath] = Annotation.clampNormalized(
-                    CGPoint(
-                        x: value.location.x / max(canvasSize.width, 1),
-                        y: value.location.y / max(canvasSize.height, 1)))
+                annotation[keyPath: keyPath] = AnnotationInteractionGeometry.normalize(
+                    value.location, in: canvasSize)
             }
             .onEnded { _ in
                 isResizing = false
@@ -466,9 +410,12 @@ private struct TextAnnotationEditor: View {
             )
             .position(annotation.startPoint(in: canvasSize))
             .focused($isFocused)
-            // `.task` (MainActor, post-appearance) focuses more reliably than setting
-            // `@FocusState` straight from `.onAppear`.
-            .task { isFocused = true }
+            // A request made as the field appears lands before SwiftUI registers it as
+            // a focus target and is dropped, leaving focus wherever it was.
+            .task {
+                await Task.yield()
+                isFocused = true
+            }
             .onSubmit(onCommit)
             .onExitCommand(perform: onCommit)
             .onChange(of: isFocused) { _, focused in

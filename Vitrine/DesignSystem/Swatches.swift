@@ -13,6 +13,8 @@ import VitrineRendering
 /// One gradient swatch (`.swatch`): rounded, hover-scaled, with the selected
 /// border + focus ring. 26 pt in Settings, 28 pt in the editor inspector.
 struct GradientSwatch: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let preset: GradientPreset
     let isSelected: Bool
     var size: CGFloat = 26
@@ -37,8 +39,9 @@ struct GradientSwatch: View {
                         .inset(by: -1.5)
                         .stroke(isSelected ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
                 )
-                .scaleEffect(isHovered ? 1.08 : 1)
-                .animation(.easeInOut(duration: 0.12), value: isHovered)
+                .modifier(
+                    DecorativeScaleEffect(
+                        isActive: isHovered, scale: 1.08, reduceMotion: reduceMotion))
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
@@ -50,6 +53,8 @@ struct GradientSwatch: View {
 
 /// The dashed "+" swatch that leads to the custom background kinds.
 struct CustomBackgroundSwatch: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var size: CGFloat = 26
     let action: () -> Void
 
@@ -68,8 +73,10 @@ struct CustomBackgroundSwatch: View {
                         .font(.system(size: 11))
                         .foregroundStyle(VitrineTokens.Text.tertiary)
                 )
-                .scaleEffect(isHovered ? 1.08 : 1)
-                .animation(.easeInOut(duration: 0.12), value: isHovered)
+                .modifier(
+                    DecorativeScaleEffect(
+                        isActive: isHovered, scale: 1.08, reduceMotion: reduceMotion)
+                )
                 .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }
         .buttonStyle(.plain)
