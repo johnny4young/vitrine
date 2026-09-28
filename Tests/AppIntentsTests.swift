@@ -464,7 +464,7 @@ struct ServiceRegistrationTests {
         // `renderCodeImage:userData:error:`; the provider must expose exactly that
         // selector regardless of the Swift argument label.
         let selector = NSSelectorFromString("renderCodeImage:userData:error:")
-        #expect(CodeImageService.shared.responds(to: selector))
+        #expect(CodeImageService(environment: .shared).responds(to: selector))
     }
 
     @Test func emptySelectionIsRejectedWithAMessageAndWritesNoImage() throws {
