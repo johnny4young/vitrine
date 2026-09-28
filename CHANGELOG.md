@@ -35,7 +35,7 @@ can never drift.
 
 - Website preview filenames follow the selected code theme for readable contrast.
   CLI examples stay inside narrow viewports, and Reduce Motion disables smooth
-  anchor scrolling and decorative transitions.
+  anchor scrolling and decorative motion.
 - Website screenshots now reserve layout space and use responsive, lossless WebP
   variants with the original PNG fallback. Generated assets have matching cache rules.
 - Download links validate published stable release assets rather than inferring

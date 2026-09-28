@@ -383,5 +383,5 @@
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
     *, *::before, *::after { transition: none !important; animation: none !important; }
-    .swatch:hover { transform: none; }
+    .swatch:hover, .cli-sidebar a:hover, .btn:active { transform: none; }
   }
