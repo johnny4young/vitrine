@@ -236,6 +236,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // re-locks/unlocks PRO without a relaunch.
         environment.entitlements.startLiveUpdates()
 
+        // Services may arrive as soon as the provider is installed. Each request reads
+        // this graph's current style and entitlement (cached until the first refresh).
+        ServiceRegistration.register(provider: CodeImageService(environment: environment))
+
         // First-run surfaces on a normal launch: onboarding owns the
         // first launch; once it has been seen, What's New surfaces on a version
         // upgrade — never both. Skipped when a dev launch hook already opened a window

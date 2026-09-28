@@ -21,10 +21,6 @@ import VitrineRendering
 /// `NSServices` Info.plist declaration live in `ServiceRegistration` and the app's
 /// Info.plist; this type is only the provider object the runtime calls.
 final class CodeImageService: NSObject {
-    /// The shared provider instance the app registers with `NSApp.servicesProvider`,
-    /// composed over the app-wide data graph.
-    static let shared = CodeImageService(environment: .shared)
-
     /// The graph that supplies the automation entitlement and the exported user style.
     /// Retaining it here keeps the gate and the render request on the same dependencies.
     let environment: AppEnvironment
