@@ -210,8 +210,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // sweep lists the Preferences directory and removes each stale suite, so it runs
         // off the launch path.
         Task(priority: .utility) {
-            await AppSettings.sweepStaleEditorSessionSuitesInBackground(
-                preferencesDirectory: AppSettings.preferencesDirectory)
+            await EditorSessionMigration.sweepStaleEditorSessionSuitesInBackground(
+                preferencesDirectory: EditorSessionMigration.preferencesDirectory)
         }
 
         // This is the app's only persistent affordance. A minimal child process owns the
@@ -241,6 +241,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // out-of-band StoreKit updates, so a refund or a purchase made on another device
         // re-locks/unlocks PRO without a relaunch.
         environment.entitlements.startLiveUpdates()
+
+        // Services may arrive as soon as the provider is installed. Each request reads
+        // this graph's current style and entitlement (cached until the first refresh).
+        ServiceRegistration.register(provider: CodeImageService(environment: environment))
 
         // First-run surfaces on a normal launch: onboarding owns the
         // first launch; once it has been seen, What's New surfaces on a version

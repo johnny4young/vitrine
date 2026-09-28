@@ -73,7 +73,8 @@ enum QuickCapture {
         settings: AppSettings,
         recents: RecentsStore,
         destinationPreset: ExportPreset? = nil,
-        clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) }
+        clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) },
+        historyConsent: RecentsStore.ConsentResolver? = nil
     ) -> Result {
         guard let text = clipboard(),
             !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -147,10 +148,7 @@ enum QuickCapture {
             return .nonProducing(.renderFailed(error))
         }
 
-        recents.add(
-            Capture(
-                code: config.code, languageID: config.language.rawValue,
-                themeID: config.theme.id))
+        recents.record(config, consent: historyConsent)
 
         Log.capture.notice(
             "Quick capture complete (\(didCopy ? "copied" : "rendered", privacy: .public))")
@@ -212,7 +210,8 @@ enum QuickCapture {
                 switch RichPasteboard.copyOutcome(
                     cgImage: cgImage, config: plan.config,
                     includeRichText: settings.export.richClipboard,
-                    includePlainText: settings.export.textSidecar, to: pasteboard)
+                    includePlainText: settings.export.textSidecar,
+                    concealed: settings.export.concealClipboard, to: pasteboard)
                 {
                 case .copied:
                     didCopy = true
@@ -222,7 +221,9 @@ enum QuickCapture {
                     deferredRenderFailure = error
                 }
             } else {
-                switch ExportManager.copyPNGToPasteboardOutcome(cgImage, to: pasteboard) {
+                switch ExportManager.copyPNGToPasteboardOutcome(
+                    cgImage, concealed: settings.export.concealClipboard, to: pasteboard)
+                {
                 case .copied:
                     didCopy = true
                 case .failed:
@@ -331,7 +332,8 @@ enum QuickCapture {
         language: Language = .plaintext,
         settings: AppSettings,
         recents: RecentsStore = .shared,
-        pasteboard: NSPasteboard = .general
+        pasteboard: NSPasteboard = .general,
+        historyConsent: RecentsStore.ConsentResolver? = nil
     ) -> Result {
         var config = settings.config.replacingContent(with: text, language: language)
         settings.noteLanguageUsed(language)
@@ -353,10 +355,7 @@ enum QuickCapture {
             return .nonProducing(.renderFailed(error))
         }
 
-        recents.add(
-            Capture(
-                code: config.code, languageID: config.language.rawValue,
-                themeID: config.theme.id))
+        recents.record(config, consent: historyConsent)
         Log.capture.notice(
             "Rendered text capture (\(didCopy ? "copied" : "rendered", privacy: .public))")
         return Result(
@@ -395,7 +394,8 @@ enum QuickCapture {
         let result = capture(
             settings: settings,
             recents: recents,
-            destinationPreset: destinationPreset)
+            destinationPreset: destinationPreset,
+            historyConsent: HistoryConsentPrompt.resolve)
         switch result.outcome {
         case .deferredToEditor:
             // `capture` has already written the combined multi-block source into

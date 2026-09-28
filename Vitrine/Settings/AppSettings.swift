@@ -290,91 +290,15 @@ final class AppSettings {
 
     // MARK: - Per-window editor sessions
 
-    /// The suite-name prefix used by editor sessions in earlier releases. Current sessions
-    /// never create a persistent suite; this remains only as the launch sweep's match
-    /// criterion so an upgrade can collect historical files safely.
-    nonisolated static let legacyEditorSessionSuitePrefix =
-        "com.johnny4young.vitrine.editor-session."
-
-    /// Deletes stale per-window suite files left behind by earlier releases.
-    ///
-    /// Earlier per-window UUID suites could outlive a primary session, a force-quit, or
-    /// a crash, and `removePersistentDomain` could leave an empty cfprefsd-owned husk.
-    /// Left alone they accumulated without bound and could hold user-typed annotation
-    /// text. Current sessions use ``InMemoryUserDefaults`` and cannot create these files;
-    /// this migration sweep remains so upgrading users converge to the new invariant.
-    ///
-    /// At launch no session of *this* process exists yet, so every matching file is
-    /// garbage — except one belonging to a concurrently running second instance (a dev
-    /// build and an installed build share the container). The age threshold makes the
-    /// sweep safe against that race: a live session's plist was written recently, a
-    /// stranded one has not been touched since its run died.
-    nonisolated static func sweepStaleEditorSessionSuites(
-        preferencesDirectory: URL,
-        olderThan age: TimeInterval = 86_400,
-        now: Date = Date()
-    ) {
-        let fileManager = FileManager.default
-        guard
-            let files = try? fileManager.contentsOfDirectory(
-                at: preferencesDirectory, includingPropertiesForKeys: [.contentModificationDateKey],
-                options: [.skipsHiddenFiles])
-        else { return }
-        for file in files {
-            let name = file.lastPathComponent
-            guard name.hasPrefix(legacyEditorSessionSuitePrefix), name.hasSuffix(".plist") else {
-                continue
-            }
-            // Fail conservatively: a file whose modification date cannot be read is
-            // *skipped*, not treated as ancient — a transient filesystem error must
-            // never clear a suite that might belong to a live session. A genuinely
-            // stranded file will stat fine on a later launch and be collected then.
-            guard
-                let modified =
-                    (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?
-                    .contentModificationDate,
-                now.timeIntervalSince(modified) > age
-            else { continue }
-            // Empty the domain first so cfprefsd's cache agrees with the deletion, then
-            // remove the file itself — the half `removePersistentDomain` cannot do.
-            let suiteName = String(name.dropLast(".plist".count))
-            UserDefaults.standard.removePersistentDomain(forName: suiteName)
-            try? fileManager.removeItem(at: file)
-        }
-    }
-
-    /// Runs ``sweepStaleEditorSessionSuites(preferencesDirectory:olderThan:now:)`` off the
-    /// main actor, so launch never waits on it.
-    ///
-    /// Each stale suite costs a `cfprefsd` round trip plus a file removal: 50 of them took
-    /// about 15 ms, and even with none to remove the sweep still lists the whole directory.
-    /// Nothing at launch depends on the result, and the sweep is idempotent, so a quit
-    /// before it finishes only leaves the rest for the next launch.
-    @concurrent
-    nonisolated static func sweepStaleEditorSessionSuitesInBackground(
-        preferencesDirectory: URL
-    ) async {
-        sweepStaleEditorSessionSuites(preferencesDirectory: preferencesDirectory)
-    }
-
-    /// The container's Preferences directory, where `cfprefsd` materializes suites.
-    nonisolated static var preferencesDirectory: URL {
-        FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Preferences", isDirectory: true)
-    }
-
     /// Builds an independent settings instance for one editor window, seeded from the
     /// app-wide defaults but backed by its own **ephemeral in-memory** store, so the window
     /// edits its own document/style without clobbering the global default. Edits in the
     /// returned instance live only for this process; the user adopts a window's look as
     /// the new default explicitly via ``makeDefault(from:)``.
     ///
-    /// Seeding copies just the document/style and output keys (``Keys.editorSessionSeed``)
-    /// from `source` into a fresh memory store, then loads through the normal defensive
-    /// read path so the window starts from exactly what the user would see — same theme
-    /// (built-in or custom), font, background, and output settings. The preset/theme
-    /// *catalogs* are not copied: the editor resolves those through its `AppEnvironment`,
-    /// so saved presets and custom themes are visible in every window.
+    /// Resolve the complete configuration against the real defaults before crossing the
+    /// session boundary. Only value preferences travel; shared theme/preset catalogs and
+    /// app-global behavior never enter the ephemeral store.
     static func makeEditorSession(
         seededFrom source: UserDefaults,
         store: InMemoryUserDefaults = InMemoryUserDefaults(),
@@ -383,17 +307,15 @@ final class AppSettings {
     )
         -> AppSettings
     {
-        // Start from a clean slate on the fresh, exclusive store, then copy the seed keys
-        // verbatim. Construction is nonfailable and never falls back to the app-wide
-        // persistent domain. A discarded store is deliberately never reusable: otherwise
-        // its old owner could write into a new editor session.
+        let preferences = EditorPreferencesSnapshot(defaults: source)
+        // A discarded store cannot be reused: late writes from its old owner must never
+        // enter another window. Production supplies a fresh exclusive store each time.
         store.removeAllValues()
-        for key in Keys.editorSessionSeed {
-            if let value = source.object(forKey: key) { store.set(value, forKey: key) }
-        }
-        return AppSettings(
+        let session = AppSettings(
             defaults: store, ephemeralStore: store,
             brandKit: brandKit, entitlements: entitlements)
+        session.applyEditorPreferences(preferences)
+        return session
     }
 
     /// Convenience initializer for an ephemeral per-window session that retains the
@@ -445,21 +367,21 @@ final class AppSettings {
     /// the normal `config` observer. Working content is stripped first: code, annotations,
     /// line marks, and a beautified foreground image are document-specific, not defaults.
     func makeDefault(from session: AppSettings) {
-        var defaultConfig = session.config
-        defaultConfig.code = ""
-        defaultConfig.clearContentMarks()
-        config = defaultConfig
-        export.scale = session.export.scale
-        export.format = session.export.format.availableOrFallback
-        export.colorProfile = session.export.colorProfile
-        export.richClipboard = session.export.richClipboard
-        export.textSidecar = session.export.textSidecar
-        if let preset = session.selectedPreset {
-            selectedPresetID = preset.id
-        } else {
-            selectedPresetID = nil
-        }
+        var preferences = EditorPreferencesSnapshot(settings: session)
+        preferences.configuration.code = ""
+        preferences.configuration.clearContentMarks()
+        applyEditorPreferences(preferences)
         Log.settings.info("Adopted an editor window's configuration as the app default")
+    }
+
+    /// Apply through existing observable properties: typing remains independent from
+    /// style, and output controls continue observing individual fields rather than a
+    /// new aggregate store. Set the destination last so intermediate style writes cannot
+    /// clear a valid selection.
+    private func applyEditorPreferences(_ preferences: EditorPreferencesSnapshot) {
+        config = preferences.configuration
+        preferences.output.apply(to: export)
+        selectedPresetID = preferences.destinationID
     }
 
     /// Sets the default theme (used by the "Theme" submenu).

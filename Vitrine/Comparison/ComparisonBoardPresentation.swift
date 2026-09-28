@@ -14,7 +14,9 @@ struct ComparisonBoardPresentation {
 
     static let live = ComparisonBoardPresentation { image in
         guard let view = NSApp.keyWindow?.contentView else { return }
-        ShareManager.share(image, relativeTo: view)
+        ShareManager.share(
+            image, relativeTo: view,
+            concealed: AppEnvironment.shared.appSettings.export.concealClipboard)
     }
 
     static let noOp = ComparisonBoardPresentation(presentShare: { _ in })
