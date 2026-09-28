@@ -2,8 +2,22 @@ import assert from 'node:assert/strict';
 
 // Inspect generated HTML, not the translation source or a client-side script.
 export function messages(html) {
-  return new Map([...html.matchAll(/<([a-z][\w-]*)\b[^>]*\bdata-copy="([^"]+)"[^>]*>([\s\S]*?)<\/\1>/g)]
-    .map((match) => [match[2], match[3]]));
+  const found = new Map();
+  for (const match of html.matchAll(/<([a-z][\w-]*)\b[^>]*\bdata-copy="([^"]+)"[^>]*>/g)) {
+    const [open, tag, key] = match;
+    const start = match.index + open.length;
+    // Close at the matching depth so nested same-name tags keep the whole message.
+    const tags = new RegExp(`<(/?)${tag}\\b[^>]*>`, 'g');
+    tags.lastIndex = start;
+    let depth = 1;
+    let end = html.length;
+    for (let next = tags.exec(html); next; next = tags.exec(html)) {
+      depth += next[1] ? -1 : 1;
+      if (depth === 0) { end = next.index; break; }
+    }
+    found.set(key, html.slice(start, end));
+  }
+  return found;
 }
 
 export function validateLocalizedHomes(english, spanish) {

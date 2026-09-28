@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { validateLocalizedHomes, validateLanguageLinks } from './localization-contract.mjs';
+import { messages, validateLocalizedHomes, validateLanguageLinks } from './localization-contract.mjs';
 
 const en = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
 const es = await readFile(new URL('../dist/es.html', import.meta.url), 'utf8');
@@ -21,6 +21,11 @@ test('a secondary section falling back to English is rejected', () => {
 test('an omitted or duplicated translation is rejected', () => {
   assert.throws(() => validateLocalizedHomes(en, es.replace('data-copy="bench.title"', 'data-missing="bench.title"')));
   assert.throws(() => validateLocalizedHomes(en, es + '<p data-copy="bench.title">Duplicated</p>'));
+});
+
+test('a message keeps content after a nested element of the same tag', () => {
+  const html = '<span data-copy="k">Hola <span class="em">mundo</span> English tail</span>';
+  assert.equal(messages(html).get('k'), 'Hola <span class="em">mundo</span> English tail');
 });
 
 test('real language links preserve each page and current-language state', async () => {

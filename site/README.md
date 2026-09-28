@@ -55,7 +55,8 @@ its manual link. Both routes share `public/scripts/release.js` and its adversari
 ## Images and caching
 
 `npm run images` generates content-addressed WebP variants from the original PNGs in
-`public/`; development, checking, and build scripts run it automatically. Original paths
+`public/`; development, checking, and build scripts run it automatically, reusing outputs
+for unchanged sources. Original paths
 remain available for README links and PNG fallback. Generated files are ignored, not
 hand-edited. `ResponsiveImage.astro` emits native `picture`, responsive source widths,
 explicit geometry and localized alt text without a client framework.

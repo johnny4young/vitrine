@@ -8,11 +8,12 @@ import VitrineRendering
 /// The golden-fixture **recorder**.
 ///
 /// This suite is the "single command" that regenerates the visual baseline:
-/// `make record-goldens` runs only this suite with `VITRINE_RECORD_GOLDENS=1`. It
-/// renders every `GoldenScenario` through the production export path and writes the
-/// PNG fixtures plus the pinned-image `manifest.json` into
-/// `Tests/Fixtures/Golden/`. A developer reviews and commits the resulting diff
-/// when a deliberate visual change lands.
+/// `make record-goldens` runs this suite and the social-card recorder with
+/// `VITRINE_RECORD_GOLDENS=1` and `VITRINE_RECORD_SOCIAL_CARD=1`. It renders every
+/// `GoldenScenario` through the production export path and attaches the PNGs plus
+/// the pinned-image `manifest.json` to the result bundle. The script exports both
+/// sets into `Tests/Fixtures/` only when complete; a developer reviews and commits
+/// the resulting diff when a deliberate visual change lands.
 ///
 /// It is **opt-in**: every test is `enabled(if:)` the environment flag is set, so a
 /// normal `make test` run never rewrites a single fixture. The recorder is
@@ -44,41 +45,28 @@ enum GoldenRecording {
         if: GoldenRecording.isActive,
         "set VITRINE_RECORD_GOLDENS=1 (make record-goldens) to (re)generate fixtures"))
 struct GoldenRecorderTests {
-    /// Renders every scenario, writes its PNG, and (re)writes the manifest pinned
-    /// to this runner image. One test keeps the write atomic-ish: the PNGs and the
-    /// manifest are produced together from the same render pass, so the pin always
-    /// matches the bytes on disk.
+    /// Attach every rendered PNG and its provenance from the same run. The
+    /// exporter requires the full attachment set before copying candidates.
     @Test func recordAllFixtures() throws {
-        let directory = GoldenPaths.recordingOutputDirectory
-        // Start from a clean staging directory so a stale file from a previous run
-        // can never be copied into the committed baseline.
-        try? FileManager.default.removeItem(at: directory)
-        try FileManager.default.createDirectory(
-            at: directory, withIntermediateDirectories: true)
-        // The single machine-readable line `make record-goldens` parses to learn
-        // where the (sandbox-remapped) staging files landed.
-        print("GOLDEN OUTPUT \(directory.path)")
-
         var records: [String: GoldenManifest.ScenarioRecord] = [:]
         for scenario in GoldenScenario.allCases {
             let image = try #require(
                 scenario.render(), "recording render failed for \(scenario.label)")
             let png = try #require(
                 ExportManager.pngData(from: image), "PNG encode failed for \(scenario.label)")
-            let url = directory.appendingPathComponent(scenario.fileName)
-            try png.write(to: url)
+            Attachment.record(png, named: "export-\(scenario.fileName)")
             records[scenario.rawValue] = GoldenManifest.ScenarioRecord(
                 width: image.width,
                 height: image.height,
                 configFingerprint: scenario.configFingerprint)
-            print("GOLDEN RECORD \(scenario.label) \(image.width)x\(image.height) \(url.path)")
+            print("GOLDEN RECORD \(scenario.label) \(image.width)x\(image.height)")
         }
 
         let manifest = GoldenManifest(
             schema: GoldenManifest.currentSchema,
             pinnedImage: .current(),
             scenarios: records)
-        try manifest.encoded().write(to: GoldenManifest.url(in: directory))
+        Attachment.record(try manifest.encoded(), named: "export-manifest.json")
         print(
             "GOLDEN RECORD manifest pinned to "
                 + "\(manifest.pinnedImage.osVersion)/\(manifest.pinnedImage.architecture)/"

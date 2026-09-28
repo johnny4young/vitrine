@@ -1,21 +1,14 @@
 import Foundation
 
-/// The manifest recorded next to the golden PNGs (`Tests/Fixtures/Golden/manifest.json`),
-/// pinning the runner image the committed fixtures were generated on.
-///
-/// Text rasterization differs across macOS/Xcode versions, so a golden PNG is only
-/// a valid baseline on the image that produced it. This manifest records *which*
-/// image that is, so the comparison suite (`GoldenImageTests`) can run a strict
-/// pixel diff only when the current runner matches — and otherwise log `GOLDEN
-/// SKIP` while still exercising the render end to end. The recorder
-/// (`GoldenRecorderTests`) writes this file alongside the PNGs, so the pin and the
-/// fixtures always travel together.
+/// Baseline provenance shared by export and social-card fixtures. Strict runs
+/// require the exact OS, architecture, Xcode and SDK builds that produced the
+/// reviewed pixels; normal unit runs remain explicit render smoke.
 struct GoldenManifest: Codable, Equatable {
     /// Schema version, so a future format change is detectable rather than silently
     /// mis-parsed.
     var schema: Int
     /// The runner image the committed PNGs were recorded on. The strict pixel
-    /// comparison runs only when the live runner equals this.
+    /// comparison requires the live runner to equal this.
     var pinnedImage: RunnerImage
     /// Per-scenario metadata: the expected pixel dimensions and a content hash of
     /// the deterministic config, keyed by the scenario's raw name.
@@ -23,7 +16,7 @@ struct GoldenManifest: Codable, Equatable {
 
     /// The current schema version. Bumped only on a deliberate, reviewed format
     /// change.
-    static let currentSchema = 1
+    static let currentSchema = 2
 
     /// The on-disk file name for the manifest within the golden fixtures directory.
     static let fileName = "manifest.json"
@@ -35,9 +28,12 @@ struct GoldenManifest: Codable, Equatable {
         var osVersion: String
         /// CPU architecture string from `uname` (e.g. `"arm64"`, `"x86_64"`).
         var architecture: String
-        /// The Swift compiler/language version the fixtures were built with, e.g.
-        /// `"6.0"`. Recorded because a compiler change can shift text metrics.
+        /// Swift language-feature floor. The exact compiler is pinned separately
+        /// by xcodeBuild, rather than inferred from this language-mode label.
         var swiftVersion: String
+        var osBuild: String
+        var xcodeBuild: String
+        var sdkBuild: String
 
         /// The live runner image, resolved at runtime. `osVersion` and
         /// `architecture` come from `ProcessInfo`/`uname`; `swiftVersion` is the
@@ -47,7 +43,29 @@ struct GoldenManifest: Codable, Equatable {
             return RunnerImage(
                 osVersion: "\(os.majorVersion).\(os.minorVersion).\(os.patchVersion)",
                 architecture: machineArchitecture(),
-                swiftVersion: swiftVersionString)
+                swiftVersion: swiftVersionString,
+                osBuild: operatingSystemBuild(),
+                xcodeBuild: Bundle.main.infoDictionary?["DTXcodeBuild"] as? String ?? "unknown",
+                sdkBuild: Bundle.main.infoDictionary?["DTSDKBuild"] as? String ?? "unknown")
+        }
+
+        /// Read the build, not just the marketing version: rasterization can change
+        /// across patch builds. Xcode/SDK identities above come from built metadata.
+        private static func operatingSystemBuild() -> String {
+            var size = 0
+            guard sysctlbyname("kern.osversion", nil, &size, nil, 0) == 0, size > 0 else {
+                return "unknown"
+            }
+            var bytes = [UInt8](repeating: 0, count: size)
+            guard sysctlbyname("kern.osversion", &bytes, &size, nil, 0) == 0 else {
+                return "unknown"
+            }
+            return String(decoding: bytes.prefix { $0 != 0 }, as: UTF8.self)
+        }
+
+        var isQualified: Bool {
+            [osVersion, architecture, swiftVersion, osBuild, xcodeBuild, sdkBuild]
+                .allSatisfy { !$0.isEmpty && $0 != "unknown" }
         }
 
         /// The hardware architecture string (`arm64`, `x86_64`, …) via `uname`.
