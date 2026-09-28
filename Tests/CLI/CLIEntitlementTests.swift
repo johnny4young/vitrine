@@ -155,7 +155,7 @@ struct CLIEntitlementTests: CLITestSupport {
         ["--markdown-sidecar"], ["--html-sidecar"],
     ])
     func handoffCannotAuthorizeAnOutput(_ flags: [String]) {
-        #expect(throws: (any Error).self) {
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --edit with \(flags[0]).")) {
             try CLIArguments.parse(["render", "input.swift", "--edit"] + flags)
         }
     }

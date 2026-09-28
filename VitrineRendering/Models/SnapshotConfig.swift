@@ -181,11 +181,17 @@ public struct SnapshotConfig: Equatable {
     /// shared document must instead apply its own marks and content unchanged.
     public func replacingContent(with text: String, language: Language? = nil) -> SnapshotConfig {
         var document = self
-        document.clearContentMarks()
-        document.terminalColumns = nil
+        document.resetForNewContent()
         document.code = text
         if let language { document.language = language }
         return document
+    }
+
+    /// Clears content marks and the invocation-only terminal width before other content
+    /// replaces this document's text.
+    public mutating func resetForNewContent() {
+        clearContentMarks()
+        terminalColumns = nil
     }
 
     /// Clears the marks tied to *this specific content* — free-form annotations

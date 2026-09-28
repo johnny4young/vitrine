@@ -1279,7 +1279,8 @@ existing style. It drops annotations, highlighted/redacted rows, foreground imag
 and invocation-only terminal width. A missing language hint preserves the caller's
 language; adapters that promise detection resolve it before replacement. CLI handoff,
 Open Code in Editor, quick capture (including URL-as-text recovery), loaded files, and
-recent captures use this boundary. File append remains distinct and keeps existing marks.
+recent captures use this boundary; editor paste and Make Default clear the same state with
+`resetForNewContent()`. File append remains distinct and keeps existing marks.
 
 A shared snapshot is already a complete document: its decoder applies its own validated
 annotations and style, and `loadIntoPrimary` does not clear them. That window operation

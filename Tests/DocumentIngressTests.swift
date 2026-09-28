@@ -73,6 +73,32 @@ struct DocumentIngressTests {
         #expect(restored.code == shared.code)
     }
 
+    @Test func editHandoffWithoutALanguageDetectsItFromTheContent() throws {
+        let environment = AppEnvironment(
+            defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+        environment.appSettings.config = markedDocument()
+        var documents: [SnapshotConfig] = []
+        let delegate = AppDelegate(
+            environment: environment, feedback: CaptureFeedbackPresenter(display: .noOp),
+            editorPresentation: .noOp, loadEditor: { documents.append($0) })
+        let content = "\u{1B}[31merror\u{1B}[0m: build failed"
+        let detected = LanguageDetector.interpret(content).language
+        #expect(detected != .python)
+        delegate.openHandoff(try #require(EditorHandoff.stage(content: content, language: nil)))
+        #expect(try #require(documents.first).language == detected)
+    }
+
+    @Test func makeDefaultDropsTheInvocationTerminalWidth() {
+        let environment = AppEnvironment(
+            defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+        let session = environment.makeEditorSessionSettings()
+        defer { session.discardEphemeralStore() }
+        session.style.terminalColumns = 120
+        environment.appSettings.makeDefault(from: session)
+        #expect(environment.appSettings.config.terminalColumns == nil)
+        #expect(session.style.terminalColumns == 120)
+    }
+
     @Test func freeOpenIntentUsesItsActualSettingsSource() throws {
         let environment = AppEnvironment(
             defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
