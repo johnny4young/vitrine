@@ -75,17 +75,24 @@
     paintTheme("one-dark");
   })();
 
+  var clearFeedback;
   document.getElementById("copy-brew").addEventListener("click", function () {
     var button = this;
     var feedback = document.getElementById("install-feedback");
     var command = document.getElementById("brew-cmd").textContent;
+    /* Clear the status so the same label is announced again on the next copy. */
+    function show(label) {
+      feedback.textContent = label;
+      clearTimeout(clearFeedback);
+      clearFeedback = setTimeout(function () { feedback.textContent = ""; }, 1800);
+    }
     if (!navigator.clipboard) {
-      feedback.textContent = button.dataset.errorLabel;
+      show(button.dataset.errorLabel);
       return;
     }
     navigator.clipboard.writeText(command).then(function () {
-      feedback.textContent = button.dataset.copiedLabel;
+      show(button.dataset.copiedLabel);
     }).catch(function () {
-      feedback.textContent = button.dataset.errorLabel;
+      show(button.dataset.errorLabel);
     });
   });

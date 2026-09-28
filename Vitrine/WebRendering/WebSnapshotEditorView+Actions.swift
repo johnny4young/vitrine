@@ -86,7 +86,8 @@ extension WebSnapshotEditorView {
         guard let asset = model.renderedAsset else { return }
         feedback(
             ExportFeedback.copyOutcome(
-                ExportManager.copyPNGToPasteboardOutcome(asset.cgImage)))
+                ExportManager.copyPNGToPasteboardOutcome(
+                    asset.cgImage, concealed: settings.export.concealClipboard)))
     }
 
     func saveImage() {

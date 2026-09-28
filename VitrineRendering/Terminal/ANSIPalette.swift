@@ -144,10 +144,11 @@ public enum ANSIRenderer {
     /// background is left unset so the canvas's terminal fill shows through; an
     /// explicit or inverse background is painted per run.
     public static func attributedString(
-        _ text: String, font: NSFont, palette: ANSIPalette = .terminal, columns: Int? = nil
+        _ text: String, font: NSFont, palette: ANSIPalette = .terminal, columns: Int? = nil,
+        redacting rows: [ClosedRange<Int>] = []
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        for run in styledRuns(text, columns: columns) {
+        for run in exportRuns(text, columns: columns, redacting: rows) {
             result.append(
                 NSAttributedString(
                     string: run.text,
@@ -160,8 +161,44 @@ public enum ANSIRenderer {
     /// redraws/backspaces resolved — the plain text a reader would copy, matching what
     /// the rendered image shows. Used for the copyable-text sidecar so the shared image
     /// ships with selectable, accessible output rather than only pixels.
-    public static func plainText(_ text: String, columns: Int? = nil) -> String {
-        styledRuns(text, columns: columns).map(\.text).joined()
+    public static func plainText(
+        _ text: String, columns: Int? = nil, redacting rows: [ClosedRange<Int>] = []
+    ) -> String {
+        exportRuns(text, columns: columns, redacting: rows).map(\.text).joined()
+    }
+
+    /// Redactions address the final screen, never physical lines in the ANSI transcript.
+    /// Text and attributed exports share this transform so styles and row numbers cannot
+    /// diverge. A replacement gets a fresh style, not attributes from hidden content.
+    private static func exportRuns(
+        _ text: String, columns: Int?, redacting rows: [ClosedRange<Int>]
+    ) -> [ANSIRun] {
+        let runs = styledRuns(text, columns: columns)
+        let redactions = LineHighlight.normalize(rows)
+        guard !redactions.isEmpty else { return runs }
+        var result: [ANSIRun] = []
+        var row = 1
+        var replacedRow = false
+        for run in runs.isEmpty ? [ANSIRun(text: "", style: ANSIStyle())] : runs {
+            for (index, fragment) in run.text.components(separatedBy: "\n").enumerated() {
+                if index > 0 {
+                    result.append(ANSIRun(text: "\n", style: ANSIStyle()))
+                    row += 1
+                    replacedRow = false
+                }
+                if LineHighlight.contains(redactions, line: row) {
+                    if !replacedRow {
+                        result.append(
+                            ANSIRun(
+                                text: SnapshotConfig.redactedLinePlaceholder, style: ANSIStyle()))
+                        replacedRow = true
+                    }
+                } else if !fragment.isEmpty {
+                    result.append(ANSIRun(text: fragment, style: run.style))
+                }
+            }
+        }
+        return result
     }
 
     /// The styled runs for terminal `text`, choosing the renderer by content: when the

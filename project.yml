@@ -46,7 +46,10 @@ settings:
     # live Sparkle updater; the App Store archive removes this flag. Sparkle ships as a
     # LOCAL framework embedded into the app bundle (see the dependency note below); the
     # framework is fetched + checksum-verified by scripts/fetch-sparkle.sh into Vendor/.
-    SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) VITRINE_DIRECT_DOWNLOAD
+    # Select the channel without overwriting target-specific test flags (for example
+    # VITRINE_HOSTLESS_PROBE). Set this to an empty value for Store qualification.
+    VITRINE_CHANNEL_CONDITIONS: VITRINE_DIRECT_DOWNLOAD
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(inherited) $(VITRINE_CHANNEL_CONDITIONS)
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
@@ -61,7 +64,7 @@ settings:
     # DEBUG. Release stays bare (`VITRINE_DIRECT_DOWNLOAD` only), so the unlock is
     # physically absent from a shipped binary (the `EntitlementsTests` guardrail holds).
     Debug:
-      SWIFT_ACTIVE_COMPILATION_CONDITIONS: VITRINE_DIRECT_DOWNLOAD DEBUG
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: $(VITRINE_CHANNEL_CONDITIONS) DEBUG
 
 # Swift Package Manager dependencies.
 # Pinned to exact versions : the generated .xcodeproj — and therefore the
@@ -273,13 +276,8 @@ targets:
       - path: VitrineCLI
         excludes:
           - "main.swift"
-      # App files the command-line surface calls. The app compiles its own copy.
-      - path: Vitrine/Support/Log.swift
-      - path: Vitrine/Export/ExportManager+Pasteboard.swift
-      - path: Vitrine/Export/RichPasteboard.swift
-      # Offline verification only; StoreKit, purchase state, and paywall UI remain
-      # app-owned and are not compiled into the CLI.
-      - path: Vitrine/Pro/LicenseKey.swift
+      # Clipboard output is linked from VitrineRendering; offline token verification
+      # is linked from VitrineDomain. No app-owned sources compile into this target.
     dependencies:
       - target: VitrineDomain
       - target: VitrineRendering
@@ -483,6 +481,8 @@ targets:
       - path: RepositoryTests
       # Shared with the app-hosted bundle so both halves read the version identically.
       - path: Tests/ProjectVersionSupport.swift
+      # Shared with the app-hosted bundle: relative paths for repository scans.
+      - path: Tests/RepositorySubpath.swift
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
@@ -567,6 +567,9 @@ schemes:
       #   - VITRINE_RECORD_SOCIAL_CARD → social-card golden recorder
       #   - VITRINE_RECORD_COMPARISON_BOARD → comparison-board evidence recorder
       environmentVariables:
+        - variable: VITRINE_GOLDEN_MODE
+          value: $(VITRINE_GOLDEN_MODE)
+          isEnabled: true
         - variable: VITRINE_RECORD_GOLDENS
           value: $(VITRINE_RECORD_GOLDENS)
           isEnabled: true

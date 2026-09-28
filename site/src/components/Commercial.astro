@@ -1,9 +1,9 @@
 ---
 import type { SiteCopy } from '~/i18n/content';
+import { currentVersion } from '~/lib/project';
 
 interface Props { copy: SiteCopy; }
 const { copy } = Astro.props;
-import { currentVersion } from '~/lib/project';
 
 const releaseVersion = '1.2.3';
 
