@@ -52,6 +52,13 @@ struct OpenCodeInEditorIntent: AppIntent {
         // The system constructs this adapter, so bind once to the app-wide graph before
         // resolving the editor document and language history.
         let environment = AppEnvironment.shared
+        loadCode(
+            environment: environment, loadEditor: EditorWindowController.shared.loadIntoPrimary)
+        return .result()
+    }
+
+    @MainActor
+    func loadCode(environment: AppEnvironment, loadEditor: @MainActor (SnapshotConfig) -> Void) {
         // Resolve the language the same way quick capture does when none is given,
         // so a snippet loads with correct highlighting out of the box.
         let resolved = language.language ?? LanguageDetector.interpret(code).language
@@ -62,11 +69,8 @@ struct OpenCodeInEditorIntent: AppIntent {
         // Load the snippet into the primary editor window over the user's default
         // style, so it appears even if the editor was already open; a plain `show()`
         // no longer clobbers an open window's per-window document.
-        var document = settings.config
-        document.code = code
-        document.language = resolved
-        EditorWindowController.shared.loadIntoPrimary(document)
+        let document = settings.config.replacingContent(with: code, language: resolved)
+        loadEditor(document)
         Log.app.notice("Open Code in Editor intent loaded a snippet into the editor")
-        return .result()
     }
 }

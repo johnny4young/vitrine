@@ -138,8 +138,8 @@ nonisolated enum CLIError: Error, Equatable {
             "Could not prepare the local Vitrine editor handoff."
         case .proRequired:
             "Vitrine PRO is required for advanced command-line automation. "
-                + "Basic vgrab terminal capture is free; activate PRO in the Vitrine app "
-                + "to unlock render, multi-size, batch, and vpane."
+                + "Basic vgrab terminal capture is free, as is render --edit; activate PRO in the Vitrine app "
+                + "to unlock image-output automation with render, multi-size, batch, and vpane."
         }
     }
 

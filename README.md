@@ -308,10 +308,10 @@ Shortcuts and App Intents.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
 - 🕘 **Recents gallery** — a local history of quick captures, one click from the menu bar. Disable new writes without deleting existing captures; suspected secrets require a per-capture retention decision. → [`docs/HISTORY.md`](docs/HISTORY.md). Enter **Compare** to select two to four captures in order and compose a labelled, path-free board for before/after reviews or release notes. → [`docs/COMPARISON-BOARDS.md`](docs/COMPARISON-BOARDS.md).
 - 🚀 **First-run quick-start**, offline in-app **Help**, and a **What's New** window on upgrades.
-- ⚡ **Shortcuts / App Intents** *(PRO)* — render a code image or open the editor from Shortcuts and Spotlight.
+- ⚡ **Shortcuts / App Intents** — render a code image *(PRO)* or open code in the editor (free) from Shortcuts and Spotlight.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
 - 🌍 **Localized** in English and Spanish (String Catalog), with pseudolocale and RTL layout tests.
-- 🖥️ **Command-line tools** — basic `vgrab <command>` terminal capture is free. The general `vitrine render input.swift --out image.png`, multi-size, batch, and `vpane` automation surfaces are direct-download PRO, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
+- 🖥️ **Command-line tools** — basic `vgrab <command>` terminal capture and `vitrine render --edit` editor handoff are free. The general `vitrine render input.swift --out image.png`, multi-size, batch, and `vpane` image-output automation surfaces are direct-download PRO, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
 - 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark (now with a scannable **QR link chip** and a **signature footer bar** placement), multi-size one-pass export, carousel export, and the automation surfaces above; core capture and editing stay free.
 - 🔒 Sandboxed local rendering — your code **never leaves your Mac** when Vitrine renders code. URL capture is the explicit exception because the requested page must be fetched.
 

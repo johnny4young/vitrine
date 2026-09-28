@@ -127,7 +127,7 @@ struct EditorPreferencesTests {
         let document = session.config
         var expected = document
         expected.code = ""
-        expected.clearContentMarks()
+        expected.resetForNewContent()
         shared.makeDefault(from: session)
 
         #expect(shared.config == expected)

@@ -369,7 +369,7 @@ final class AppSettings {
     func makeDefault(from session: AppSettings) {
         var preferences = EditorPreferencesSnapshot(settings: session)
         preferences.configuration.code = ""
-        preferences.configuration.clearContentMarks()
+        preferences.configuration.resetForNewContent()
         applyEditorPreferences(preferences)
         Log.settings.info("Adopted an editor window's configuration as the app default")
     }
