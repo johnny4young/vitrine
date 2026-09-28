@@ -24,11 +24,6 @@
   light.addEventListener('click', function () { setPreference(appearanceKey, 'light'); applyAppearance('light'); });
   dark.addEventListener('click', function () { setPreference(appearanceKey, 'dark'); applyAppearance('dark'); });
 
-  ['set-en', 'set-es'].forEach(function (id) {
-    var control = document.getElementById(id);
-    control.addEventListener('click', function () { window.location.assign(control.dataset.target); });
-  });
-
   document.querySelectorAll('.cli-copy').forEach(function (button) {
     button.addEventListener('click', function () {
       var code = button.parentElement.querySelector('code').textContent;

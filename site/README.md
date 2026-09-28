@@ -35,7 +35,17 @@ npm test
 
 The build validator checks both language routes, canonical and alternate-language
 metadata, structured data, core gallery sections, browser-script syntax, crawl files,
-internal links, and the social-card dimensions.
+internal links, and the social-card dimensions. Both home pages render all 93 marketing
+messages from `src/i18n/content.ts` at build time; navigation, accessible labels and image
+descriptions share the typed locale catalog. Rich-text messages are trusted repository
+content only, never user input or release API data.
+
+Language switches are native links on both the home and CLI pages, including when
+JavaScript is disabled. Browser scripts handle only optional interactions and release
+lookup; `/download` retains its manual release link without JavaScript. The postbuild
+tests reject English fallback in Spanish sections, omitted or duplicated messages, and
+JavaScript-only or incorrectly routed language controls. Product names and source-code
+samples are intentionally not translated.
 The displayed release version and structured data come from the repository's authoritative
 `project.yml`, so a release version bump cannot leave static website metadata behind.
 

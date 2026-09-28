@@ -48,8 +48,7 @@ struct PlatformSupportContractTests {
             ("docs/ARCHITECTURE.md", "public binary floor is macOS 15 Sequoia"),
             ("docs/APP-STORE.md", "15.0 (Sequoia)"),
             ("docs/RELEASING.md", "macOS 15.0 Sequoia"),
-            ("site/src/components/Hero.astro", "macOS 15+"),
-            ("site/public/scripts/site.js", "macOS 15+"),
+            ("site/src/i18n/content.ts", "macOS 15+"),
             (
                 "site/src/layouts/BaseLayout.astro",
                 "operatingSystem: 'macOS 15 Sequoia or later'"
