@@ -1,6 +1,6 @@
 // Keep the public PNG originals stable for README links and non-WebP clients.
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
 
 const publicDir = new URL('../public/', import.meta.url);
@@ -12,6 +12,9 @@ const screenshots = [
 ];
 await mkdir(mediaDir, { recursive: true });
 await mkdir(generatedDir, { recursive: true });
+const manifestURL = new URL('images.json', generatedDir);
+const previous = await readFile(manifestURL, 'utf8').then(JSON.parse, () => ({}));
+const exists = (url) => access(url).then(() => true, () => false);
 const manifest = {};
 const generated = new Set();
 for (const source of ['vitrine-icon.png', ...screenshots.map((name) => `screenshots/${name}.png`)]) {
@@ -19,6 +22,15 @@ for (const source of ['vitrine-icon.png', ...screenshots.map((name) => `screensh
   const { width, height } = await sharp(input).metadata();
   const icon = source === 'vitrine-icon.png';
   const widths = icon ? [28, 56, 84, 144] : [480, 960, 1440, width];
+  // Re-encoding is slow; reuse outputs whose source bytes and target widths are unchanged.
+  const key = createHash('sha256').update(input).update(JSON.stringify(widths)).digest('hex');
+  const cached = previous[`/${source}`];
+  if (cached?.key === key && (await Promise.all(cached.candidates.map((candidate) =>
+    exists(new URL(candidate.src.split('/').pop(), mediaDir))))).every(Boolean)) {
+    for (const candidate of cached.candidates) generated.add(candidate.src.split('/').pop());
+    manifest[`/${source}`] = cached;
+    continue;
+  }
   const candidates = [];
   for (const target of [...new Set(widths)].filter((value) => value <= width).sort((a, b) => a - b)) {
     const buffer = await sharp(input).resize({ width: target }).webp({ lossless: true }).toBuffer();
@@ -32,7 +44,7 @@ for (const source of ['vitrine-icon.png', ...screenshots.map((name) => `screensh
   const efficient = candidates.filter((candidate, index) =>
     !candidates.slice(index + 1).some((larger) => larger.bytes <= candidate.bytes));
   for (const candidate of efficient) generated.add(candidate.src.split('/').pop());
-  manifest[`/${source}`] = { width, height, candidates: efficient };
+  manifest[`/${source}`] = { key, width, height, candidates: efficient };
 }
 // Only remove obsolete files that match this generator's content-addressed names.
 for (const filename of await readdir(mediaDir)) {
@@ -40,5 +52,5 @@ for (const filename of await readdir(mediaDir)) {
     await unlink(new URL(filename, mediaDir));
   }
 }
-await writeFile(new URL('images.json', generatedDir), JSON.stringify(manifest, null, 2) + '\n');
+await writeFile(manifestURL, JSON.stringify(manifest, null, 2) + '\n');
 console.log(`Generated ${generated.size} lossless responsive images from ${Object.keys(manifest).length} originals`);

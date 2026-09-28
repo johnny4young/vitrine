@@ -26,7 +26,7 @@ export function publishedDownload(release) {
 }
 
 export async function fetchPublishedDownload() {
-  const response = await fetch('https://api.github.com/repos/johnny4young/vitrine/releases/latest', {
+  const response = await fetch(`https://api.github.com/repos${repository}/releases/latest`, {
     headers: { Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) throw new Error('Published release unavailable');

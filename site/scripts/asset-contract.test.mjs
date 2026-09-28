@@ -10,18 +10,20 @@ const manifest = JSON.parse(await readFile(new URL('../src/generated/images.json
 const home = await readFile(new URL('index.html', dist), 'utf8');
 
 test('every page reserves image geometry and references existing responsive assets', async () => {
+  const referenced = new Set();
   for (const page of ['index.html', 'es.html', 'cli.html', 'es/cli.html', 'download.html', '404.html']) {
     const html = await readFile(new URL(page, dist), 'utf8');
     const { images, variants } = imageReferences(html);
-    if (['index.html', 'es.html'].includes(page)) assert.equal(variants.length,
-      Object.entries(manifest).filter(([src]) => !src.includes('workspace-recipe-cli'))
-        .reduce((count, [src, image]) => count + image.candidates.length * (src.includes('icon') ? 2 : 1), 0));
+    for (const variant of variants) referenced.add(variant.src);
     for (const src of images) await stat(new URL(src.slice(1), dist));
     for (const variant of variants) {
       const metadata = await sharp(new URL(variant.src.slice(1), dist).pathname).metadata();
       assert.equal(metadata.width, variant.width);
     }
   }
+  // Every generated variant is offered somewhere; none is shipped unused.
+  const generated = Object.values(manifest).flatMap((image) => image.candidates.map((candidate) => candidate.src));
+  assert.deepEqual([...referenced].sort(), generated.sort());
 });
 
 test('missing dimensions, sizes, candidates, and fallback are rejected', () => {
