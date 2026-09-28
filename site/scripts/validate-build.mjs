@@ -116,6 +116,9 @@ requireAbsent(siteScript, 'raw.githubusercontent.com', 'Static release highlight
 requireText(headers, "connect-src 'self' https://api.github.com;", 'Website connection policy');
 requireAbsent(headers, 'raw.githubusercontent.com', 'Website connection policy');
 requireAbsent(download, 'src="/scripts/site.js"', 'Download route');
+for (const [html, label] of [[english, 'English'], [spanish, 'Spanish'], [download, 'Download route']]) {
+  requireText(html, "from '/scripts/release.js'", `${label} release lookup`);
+}
 requireAbsent(notFound, 'src="/scripts/site.js"', '404 route');
 requireText(notFound, 'noindex', '404 crawl policy');
 requireText(robots, 'sitemap-index.xml', 'robots sitemap');

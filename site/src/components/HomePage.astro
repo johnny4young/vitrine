@@ -26,4 +26,11 @@ const { copy } = Astro.props;
     <InstallFooter copy={copy} />
   </main>
   <SiteFooter locale={copy.locale} />
+  <script is:inline type="module">
+    import { fetchPublishedDownload } from '/scripts/release.js';
+    fetchPublishedDownload().then(({ version, url }) => {
+      document.querySelectorAll('[data-version]').forEach((element) => { element.textContent = version; });
+      document.querySelectorAll('[data-download]').forEach((element) => { element.href = url; });
+    }).catch(() => { /* Keep the static download route when offline or rate-limited. */ });
+  </script>
 </BaseLayout>
