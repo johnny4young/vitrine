@@ -15,15 +15,9 @@ const copy = content.en;
       <a href="https://github.com/johnny4young/vitrine/releases/latest">latest GitHub release</a>.
     </p>
   </main>
-  <script is:inline>
-    fetch('https://api.github.com/repos/johnny4young/vitrine/releases/latest', {
-      headers: { Accept: 'application/vnd.github+json' },
-    })
-      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('release'))))
-      .then((release) => {
-        const asset = release.assets?.find((candidate) => /\.dmg$/i.test(candidate.name));
-        location.replace(asset?.browser_download_url ?? release.html_url);
-      })
-      .catch(() => location.replace('https://github.com/johnny4young/vitrine/releases/latest'));
+  <script is:inline type="module">
+    import { fetchPublishedDownload, latestReleasePage } from '/scripts/release.js';
+    fetchPublishedDownload().then(({ url }) => location.replace(url))
+      .catch(() => location.replace(latestReleasePage));
   </script>
 </BaseLayout>

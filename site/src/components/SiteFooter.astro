@@ -1,4 +1,5 @@
 ---
+import ResponsiveImage from '~/components/ResponsiveImage.astro';
 import { content, type Locale } from '~/i18n/content';
 
 interface Props {
@@ -13,7 +14,7 @@ const labels = content[locale].ui;
 
 <footer>
   <div class="wrap">
-    <a class="brand" href={`${home}#top`}><img src="/vitrine-icon.png" alt="" style="width:24px;height:24px">Vitrine</a>
+    <a class="brand" href={`${home}#top`}><ResponsiveImage src="/vitrine-icon.png" alt="" sizes="24px" width={24} height={24} loading="eager" />Vitrine</a>
     <div class="flinks">
       <a class="flink" href={cli}>CLI</a>
       <a class="flink" href="https://github.com/johnny4young/vitrine">GitHub</a>

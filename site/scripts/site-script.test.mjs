@@ -33,7 +33,6 @@ function load(clipboard) {
   vm.runInNewContext(source, {
     document,
     navigator: { clipboard },
-    fetch: () => Promise.reject(new Error('offline')),
     setTimeout: (callback) => timers.push(callback),
     clearTimeout() {},
   });
