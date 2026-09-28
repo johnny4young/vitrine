@@ -114,8 +114,8 @@
   .appearance button svg { width: 15px; height: 15px; }
   .appearance button.active { background: var(--accent); color: var(--accent-contrast); }
   .lang { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 3px; background: var(--surface-card); }
-  .lang button { border: 0; background: transparent; cursor: pointer; color: var(--text-tertiary); height: 26px; padding: 0 10px; border-radius: var(--radius-pill); font-family: var(--font-ui); font-size: 12px; font-weight: var(--weight-semibold); letter-spacing: 0.04em; }
-  .lang button.active { background: var(--accent); color: var(--accent-contrast); }
+  .lang a { display: inline-flex; align-items: center; text-decoration: none; border: 0; background: transparent; cursor: pointer; color: var(--text-tertiary); height: 26px; padding: 0 10px; border-radius: var(--radius-pill); font-family: var(--font-ui); font-size: 12px; font-weight: var(--weight-semibold); letter-spacing: 0.04em; }
+  .lang a.active { background: var(--accent); color: var(--accent-contrast); }
 
   /* ---------- hero ---------- */
   .hero { padding: 64px 0 24px; }

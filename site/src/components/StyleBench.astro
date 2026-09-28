@@ -1,9 +1,16 @@
+---
+import type { SiteCopy } from '~/i18n/content';
+
+interface Props { copy: SiteCopy; }
+const { copy } = Astro.props;
+---
+
 <!-- ============ STYLE BENCH (interactive) ============ -->
 <section id="bench">
   <div class="wrap">
-    <span class="eyebrow" data-i18n="bench.eyebrow">The style bench</span>
-    <h2 class="title" data-i18n="bench.title">One snippet. Every look.</h2>
-    <p class="lead" data-i18n="bench.lead">Pick a gradient and a theme — the same code, restyled live. In the app these are saved presets, applied the instant you press the hotkey.</p>
+    <span class="eyebrow" data-copy="bench.eyebrow" set:html={copy.home["bench.eyebrow"]}></span>
+    <h2 class="title" data-copy="bench.title" set:html={copy.home["bench.title"]}></h2>
+    <p class="lead" data-copy="bench.lead" set:html={copy.home["bench.lead"]}></p>
     <div class="bench">
       <div class="bench-grid">
         <div class="bench-stage" id="stage" style="background:var(--grad-aurora)">
@@ -21,7 +28,7 @@
           </div>
         </div>
         <div class="bench-controls">
-          <p class="ctl-label" data-i18n="bench.bg">Background preset</p>
+          <p class="ctl-label" data-copy="bench.bg" set:html={copy.home["bench.bg"]}></p>
           <div class="swatches" id="swatches">
             <button class="swatch" data-grad="var(--grad-aurora)" aria-pressed="true" title="Aurora" style="background:var(--grad-aurora)"></button>
             <button class="swatch" data-grad="var(--grad-ocean)" aria-pressed="false" title="Ocean" style="background:var(--grad-ocean)"></button>
@@ -30,19 +37,19 @@
             <button class="swatch" data-grad="var(--grad-night)" aria-pressed="false" title="Night" style="background:var(--grad-night)"></button>
             <button class="swatch" data-grad="var(--grad-carbon)" aria-pressed="false" title="Carbon" style="background:var(--grad-carbon)"></button>
           </div>
-          <p class="ctl-label" data-i18n="bench.theme">Theme</p>
+          <p class="ctl-label" data-copy="bench.theme" set:html={copy.home["bench.theme"]}></p>
           <div class="chips" id="themes">
             <button class="chip" data-theme="one-dark" aria-pressed="true">One Dark</button>
             <button class="chip" data-theme="one-light" aria-pressed="false">One Light</button>
             <button class="chip" data-theme="dracula" aria-pressed="false">Dracula</button>
           </div>
-          <p class="ctl-label" data-i18n="bench.lang">Language</p>
+          <p class="ctl-label" data-copy="bench.lang" set:html={copy.home["bench.lang"]}></p>
           <div class="chips" id="langs">
             <button class="chip" data-lang="swift" aria-pressed="true">Swift</button>
             <button class="chip" data-lang="ts" aria-pressed="false">TypeScript</button>
             <button class="chip" data-lang="py" aria-pressed="false">Python</button>
           </div>
-          <p class="bench-note" data-i18n="bench.note">13 themes, 33 syntax languages, Terminal and Plain Text modes, gradient &amp; image backgrounds, focus mode, and diff coloring ship in the app.</p>
+          <p class="bench-note" data-copy="bench.note" set:html={copy.home["bench.note"]}></p>
         </div>
       </div>
     </div>

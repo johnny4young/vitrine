@@ -33,6 +33,9 @@ can never drift.
 
 ### Fixed
 
+- English and Spanish website pages now contain their complete localized content
+  before JavaScript runs. Language links work natively on the home and CLI pages;
+  accessible descriptions and installation feedback follow the selected language.
 - Native controls and previews respect Reduce Motion without changing export geometry.
   Small chrome labels and white CTA text have measured contrast in light/dark appearances.
   Selected labels adapt to the actual macOS accent without changing the user's color.

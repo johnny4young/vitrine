@@ -1,10 +1,10 @@
 ---
-import type { SiteCopy } from '~/i18n/content';
+import type { SiteMetadata } from '~/i18n/content';
 import { currentVersion } from '~/lib/project';
 import '~/styles/global.css';
 
 interface Props {
-  copy: SiteCopy;
+  copy: SiteMetadata;
   path?: string;
   noindex?: boolean;
   includeMarketingInteractions?: boolean;

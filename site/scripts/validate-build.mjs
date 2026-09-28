@@ -1,3 +1,4 @@
+import { validateLocalizedHomes, validateLanguageLinks } from './localization-contract.mjs';
 import { readFile, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
@@ -31,8 +32,14 @@ async function requireMissing(relative) {
 
 const english = await read('index.html');
 const spanish = await read('es.html');
+requireText(spanish, 'Pon tu código', 'Spanish static hero');
+requireAbsent(spanish, 'Put your code', 'Spanish static hero');
 const cli = await read('cli.html');
 const spanishCli = await read('es/cli.html');
+validateLocalizedHomes(english, spanish);
+for (const [html, page, locale] of [[english, 'home', 'en'], [spanish, 'home', 'es'], [cli, 'cli', 'en'], [spanishCli, 'cli', 'es']]) {
+  validateLanguageLinks(html, page, locale);
+}
 const download = await read('download.html');
 const notFound = await read('404.html');
 const robots = await read('robots.txt');
@@ -83,18 +90,18 @@ requireText(english, 'no Vitrine cloud renderer', 'Rendering privacy claim');
 requireText(english, 'Pasted HTML is rendered offline', 'HTML rendering boundary');
 requireText(english, 'src="/scripts/site.js"', 'English interactions');
 requireText(spanish, 'src="/scripts/site.js"', 'Spanish interactions');
-requireText(siteScript, 'Escribir es más liviano.', 'Spanish release highlight');
-requireText(siteScript, '33 lenguajes de sintaxis', 'Spanish language catalog claim');
-requireText(siteScript, 'puedes activar la CLI desde Ajustes', 'Spanish CLI installation claim');
-requireText(siteScript, 'No hay una prueba que caduque', 'Spanish no-expiry evaluation policy');
-requireText(siteScript, 'son los canales canónicos', 'Spanish canonical distribution policy');
-requireText(siteScript, 'macOS 15+', 'Spanish deployment floor');
+requireText(spanish, 'Escribir es más liviano.', 'Spanish release highlight');
+requireText(spanish, '33 lenguajes de sintaxis', 'Spanish language catalog claim');
+requireText(spanish, 'puedes activar la CLI desde Ajustes', 'Spanish CLI installation claim');
+requireText(spanish, 'No hay una prueba que caduque', 'Spanish no-expiry evaluation policy');
+requireText(spanish, 'son los canales canónicos', 'Spanish canonical distribution policy');
+requireText(spanish, 'macOS 15+', 'Spanish deployment floor');
 requireAbsent(english, 'macOS 14+', 'Stale English deployment floor');
-requireAbsent(siteScript, 'macOS 14+', 'Stale Spanish deployment floor');
+requireAbsent(spanish, 'macOS 14+', 'Stale Spanish deployment floor');
 requireAbsent(english, '160+ languages', 'Stale language catalog claim');
-requireAbsent(siteScript, '160+ lenguajes', 'Stale Spanish language catalog claim');
+requireAbsent(spanish, '160+ lenguajes', 'Stale Spanish language catalog claim');
 requireAbsent(english, 'fully local', 'Overbroad local-rendering claim');
-requireAbsent(siteScript, 'todo local', 'Overbroad Spanish local-rendering claim');
+requireAbsent(spanish, 'todo local', 'Overbroad Spanish local-rendering claim');
 requireText(readme, '33 syntax languages', 'README language catalog claim');
 requireText(readme, 'does **not** add it to your', 'README DMG CLI claim');
 requireText(readme, 'Basic `vgrab <command>` terminal capture is **free**', 'README free vgrab claim');
@@ -103,6 +110,8 @@ requireText(readme, 'There is **no expiring trial**', 'README no-expiry evaluati
 requireText(readme, 'Homebrew and the signed, notarized DMG are', 'README canonical distribution policy');
 requireText(readme, 'https://vitrineframe.app/cli', 'README CLI documentation route');
 requireAbsent(readme, '160+ languages', 'README stale language catalog claim');
+requireAbsent(siteScript, 'data-i18n', 'No runtime translation pass');
+requireAbsent(siteScript, 'document.documentElement.lang =', 'Locale is determined by the route');
 requireAbsent(siteScript, 'raw.githubusercontent.com', 'Static release highlights');
 requireText(headers, "connect-src 'self' https://api.github.com;", 'Website connection policy');
 requireAbsent(headers, 'raw.githubusercontent.com', 'Website connection policy');
@@ -162,7 +171,7 @@ for (const required of [
 await requireMissing('es/index.html');
 await requireMissing('download/index.html');
 
-const internalLinks = [...english.matchAll(/href="(\/[^"]*)"/g)].map((match) => match[1]);
+const internalLinks = [...[english, spanish, cli, spanishCli, download].join('').matchAll(/href="(\/[^"]*)"/g)].map((match) => match[1]);
 for (const href of internalLinks) {
   if (href.startsWith('/#') || href === '/') continue;
   const pathname = href.split('#')[0].replace(/^\//, '');
