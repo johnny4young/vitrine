@@ -33,6 +33,10 @@ can never drift.
 
 ### Fixed
 
+- Register the macOS Services provider at application startup, using the same live
+  settings and PRO entitlement as the app. The advertised code-image service keeps
+  its PNG return contract and Free/PRO policy.
+
 - Website preview filenames follow the selected code theme for readable contrast.
   CLI examples stay inside narrow viewports, and Reduce Motion disables smooth
   anchor scrolling and decorative motion.
