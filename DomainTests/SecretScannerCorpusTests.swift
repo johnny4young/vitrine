@@ -8,7 +8,6 @@ struct SecretScannerCorpusTests {
         "tokenizer = WordPieceTokenizer()",
         "passwordField = NSSecureTextField()",
         "let secretStore = ApplicationSecretStorage()",
-        "let accessToken = SecureTokenProviderFactory (configuration)",
         "let bearer = AuthenticationTokenProvider(argument: 1)",
         "let value = ordinaryLongIdentifierWithoutCredentials",
         "// token: short-example",
@@ -45,6 +44,9 @@ struct SecretScannerCorpusTests {
             SecretScanner.secretLines(
                 in: "password = EnvironmentPasswordProvider(\"\(shortLiteral)\")") == [1]
         )
+        #expect(
+            SecretScanner.secretLines(
+                in: "const password = decryptPasswordValue(`\(shortLiteral)`)") == [1])
         let provider = "gh" + "p_" + String(repeating: "x", count: 36)
         #expect(
             SecretScanner.scan("passwordField = NSSecureTextField(\"\(provider)\")").contains {
@@ -58,6 +60,17 @@ struct SecretScannerCorpusTests {
             String(repeating: "a/", count: 12),
         ] {
             #expect(SecretScanner.secretLines(in: "API_KEY=" + value + "()") == [1])
+        }
+    }
+
+    @Test func onlyTypeNamesDirectlyFollowedByACallAreExempt() {
+        for source in [
+            "token=" + String(repeating: "Ab", count: 10) + " (expires in 3600s)",
+            "let accessToken = SecureTokenProviderFactory (configuration)",
+            "password=" + String(repeating: "ab1", count: 7) + "()",
+            "API_KEY=" + String(repeating: "A", count: 20) + "()",
+        ] {
+            #expect(SecretScanner.secretLines(in: source) == [1], "\(source)")
         }
     }
 

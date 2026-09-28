@@ -51,8 +51,7 @@ public enum SecretScanner {
     private static let secretName = expression(
         #"(?i)(?:api[_-]?key|secret|token|password|passwd|pwd|access[_-]?key|client[_-]?secret|bearer)"#
     )
-    private static let callSuffix = expression(#"^[^\S\r\n]*\("#)
-    private static let plainIdentifier = expression(#"^[A-Za-z_][A-Za-z0-9_]*$"#)
+    private static let typeName = expression(#"^[A-Z][A-Za-z0-9_]*[a-z][A-Za-z0-9_]*$"#)
 
     private static func expression(_ pattern: String) -> NSRegularExpression {
         do {
@@ -67,7 +66,7 @@ public enum SecretScanner {
         // A call may still contain a literal credential of any length. Find its
         // final quote once instead of rescanning every suffix on a dense line.
         let quote = source.rangeOfCharacter(
-            from: CharacterSet(charactersIn: "\"'"), options: .backwards)
+            from: CharacterSet(charactersIn: "\"'`"), options: .backwards)
         let lastQuote = quote.location == NSNotFound ? -1 : quote.location
         var detected = false
         assignment.enumerateMatches(in: line, range: range) { match, _, stop in
@@ -81,16 +80,15 @@ public enum SecretScanner {
             }
             let valueRange = match.range(at: 3)
             let value = source.substring(with: valueRange)
-            let tail = NSRange(
-                location: NSMaxRange(valueRange), length: source.length - NSMaxRange(valueRange))
-            // A bare identifier followed by '(' is source code, not its runtime
-            // value, unless later quoted content may need protection.
-            // Never apply this exemption to quoted values or issuer patterns.
+            let next = NSMaxRange(valueRange)
+            // A type name directly followed by '(' is a constructor call, not its
+            // runtime value, unless later quoted content may need protection. A space
+            // before '(' reads as prose. Never exempt quoted values or issuer patterns.
             if match.range(at: 2).length == 0,
-                lastQuote < NSMaxRange(valueRange),
-                plainIdentifier.firstMatch(
+                lastQuote < next,
+                typeName.firstMatch(
                     in: value, range: NSRange(location: 0, length: valueRange.length)) != nil,
-                callSuffix.firstMatch(in: line, options: .withTransparentBounds, range: tail) != nil
+                next < source.length, source.character(at: next) == UInt16(UInt8(ascii: "("))
             {
                 return
             }

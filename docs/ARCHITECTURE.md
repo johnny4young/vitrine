@@ -532,14 +532,15 @@ same deterministic `SecretScanner` as the editor and merges detected rows with a
 manual `--redact-lines` ranges. Redacted rows are replaced with `[redacted]` before
 copyable sidecars are written. The scanner is a conservative line-based heuristic,
 not a guarantee that all credentials are detected. Provider patterns run independently
-of generic assignment parsing; the latter excludes bare identifier call expressions
-such as `passwordField = NSSecureTextField()` only when no later quoted
-content needs protection, retaining quoted values and bare
-alphabetic secrets. A word-boundary assignment scan and separate name check avoid
-nested greedy rescans. No line-length cutoff is used. A deterministic positive/negative
-corpus covers issuer tokens, PEM blocks, Unicode/CRLF and call-expression false
-positives; megabyte-scale adversarial cases enforce a three-second hard ceiling and
-assert that secrets at the end of long lines are still found. For single-file renders, known output extensions
+of generic assignment parsing; the latter excludes constructor calls, a type name
+directly followed by `(` such as `passwordField = NSSecureTextField()`, only when no
+later quoted content needs protection. Quoted values, other bare values and a value
+followed by a spaced parenthetical remain detected. A word-boundary assignment scan
+and separate name check avoid nested greedy rescans. No line-length cutoff is used. A
+deterministic positive/negative corpus covers issuer tokens, PEM blocks, Unicode/CRLF
+and call-expression false positives; megabyte-scale adversarial cases enforce a
+three-second hard ceiling and assert that secrets at the end of long lines are still
+found. For single-file renders, known output extensions
 (`.png`, `.pdf`, `.heic`, `.avif`) infer the export format when `--format` is omitted; if an
 explicit `--format` is present, the extension must match so automation never receives
 mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
