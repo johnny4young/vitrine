@@ -65,6 +65,11 @@ final class ExportSettings {
         didSet { defaults.set(textSidecar, forKey: Keys.textSidecar) }
     }
 
+    /// App-global opt-in: ask cooperating clipboard managers to conceal exports.
+    var concealClipboard: Bool {
+        didSet { defaults.set(concealClipboard, forKey: Keys.concealClipboard) }
+    }
+
     private let defaults: UserDefaults
 
     /// Seeds every property from `defaults` with the same documented fallbacks the god
@@ -79,6 +84,7 @@ final class ExportSettings {
         format = ExportFormat.resolveAvailable(defaults.string(forKey: Keys.exportFormat))
         colorProfile = ColorProfile.resolve(defaults.string(forKey: Keys.colorProfile))
         richClipboard = defaults.object(forKey: Keys.richClipboard) as? Bool ?? false
+        concealClipboard = defaults.object(forKey: Keys.concealClipboard) as? Bool ?? false
         textSidecar = defaults.object(forKey: Keys.textSidecar) as? Bool ?? false
     }
 
@@ -94,5 +100,6 @@ final class ExportSettings {
         colorProfile = .fallback
         richClipboard = false
         textSidecar = false
+        concealClipboard = false
     }
 }

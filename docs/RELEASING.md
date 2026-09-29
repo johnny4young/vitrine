@@ -108,7 +108,7 @@ CI is a release gate, not just a compile check.
   the exact image, Xcode, and Swift versions into the job summary, so a green or
   red result is always tied to a known environment. CI validates every workflow's
   YAML, then runs `make lint`, `make build`, `make build-release`,
-  `make build-ui-tests`, and `make test-coverage`. The Release lane compiles both arm64
+  `make test-ci-coverage`, `make perf`, and `make test-goldens`. The Release lane compiles both arm64
   and x86_64 with optimization on every supported runner, so optimizer-only failures are
   caught before packaging. The Swift Package Manager download cache is restored between
   runs (keyed on `project.yml`,
@@ -208,6 +208,17 @@ make test-asan
 make test-tsan
 ```
 
+Each command retains a required result bundle (`build/asan.xcresult` or
+`build/tsan.xcresult`, override with `RESULT_BUNDLE`). The same
+`scripts/sanitizer-suites.json` manifest drives selection and the post-run execution
+guard. The terminal suite belongs to `VitrineDomainTests`, not the hosted app bundle.
+An empty selection, missing suite, skipped test/argument, non-passing expected test, or
+recorded runtime warning (where non-fatal sanitizer reports land) fails the lane even if
+Xcode reports success. The guard reads actual test identifiers
+from `xcresulttool`, not compiler output or human-readable suite names, and writes
+per-suite passing-test counts to the adjacent `.xcresult.execution.json` artifact.
+`make sanitizer-check` exercises the guard's negative cases without requiring Xcode.
+
 These are focused test-host runs, not replacements for `make test`, XCUITest, memory
 journeys, or clean-Mac qualification. Address Sanitizer covers parsers, terminal state,
 render budgets, bounded file input, redaction, and private-host rules. Thread Sanitizer
@@ -226,7 +237,14 @@ test process finishes successfully but `xcodebuild` stalls while finalizing cove
 This changes instrumentation only; it does not select or skip tests.
 
 `make test-coverage` runs the same complete suite with coverage explicitly enabled.
-The lane always writes an `.xcresult` and passes its `xccov --json` report and raw line
+CI invokes the same coverage gate through `make test-ci-coverage`, excluding only
+PerformanceTests, GoldenImageTests, GoldenValidationTests and SocialCardGoldenTests.
+Those run once in dedicated timing and visual lanes. Execution receipts require all
+five coverage bundles and every dedicated suite, rejecting overlap or empty selection.
+Timing explicitly disables coverage; strict visual comparison retains its qualified
+platform and complete scenario inventory. Local full-suite commands remain unchanged.
+
+The coverage lane always writes an `.xcresult` and passes its `xccov --json` report and raw line
 archive through `scripts/check-coverage.py`; an absent, empty, or malformed report fails
 the gate rather than becoming a best-effort warning. CI selects the committed baseline
 for its Sequoia or Tahoe row, retains failure bundles, and publishes per-target `xccov`
@@ -380,8 +398,8 @@ five-megabyte source-import ceiling.
 ### Running the UI tests
 
 **The full UI suite (`make test-ui`) runs in CI on every PR and push to `main`**,
-as the dedicated `UI tests` job in `ci.yml`, alongside the compile-only
-`make build-ui-tests` step that also remains in the build job and the release gate.
+as the dedicated `UI tests` job in `ci.yml`, which compiles and executes the tests.
+`make build-ui-tests` compiles them locally when automation permission is unavailable.
 Both `macos-15` Sequoia and `macos-26` Tahoe must finish; the matrix does not cancel
 one runtime merely because the other failed.
 
@@ -1122,3 +1140,29 @@ license again.
       PRO-only CLI multi-size, `0600` token proof, and all installed-candidate WebKit
       fixtures), the structured Sequoia and Tahoe entries completed, and any failure
       triaged as app bug vs. signing/notarization
+
+## Strict export-image comparisons
+
+`make test-goldens` requires a successful pixel comparison for every export
+scenario and the default social card. Both fixture manifests pin the OS version
+and build, CPU architecture, Swift language mode, Xcode build and SDK build.
+Missing fixtures, drifted environments, missing comparisons and smoke-only output
+fail the strict lane; a green build with zero selected tests cannot qualify it.
+The existing channel tolerance (2/255) and differing-pixel limit (0.1%) are unchanged.
+
+CI's Tahoe build runs strict comparisons with the Xcode build recorded in the
+golden manifest, selected for that step only; every other step uses the latest
+stable Xcode. A missing Xcode build fails the lane and records review candidates on
+the default Xcode. The runner OS image can still change: that is a qualification
+failure requiring baseline review, not permission to skip pixels. Sequoia and ordinary unit tests run render smoke;
+`make test-goldens GOLDEN_MODE=smoke` requests that contract explicitly. Smoke is not
+visual regression certification. Result bundles and logs identify each comparison.
+
+When intentional rendering or image changes require a new baseline, run
+`make record-goldens` on the intended image, review all export and social-card PNGs,
+and commit their manifests together. On a failed hosted strict run, CI records
+candidates into a separate artifact directory: it never replaces committed fixtures
+or reruns the failed gate against those candidates. Download and inspect those
+artifacts before accepting a baseline, then rerun strict comparisons on the new SHA.
+`GOLDEN_DEST_ROOT=/path/to/candidates make record-goldens` keeps local candidates
+separate too. `make golden-check` tests omitted, duplicate and unqualified receipts.

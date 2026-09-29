@@ -81,11 +81,7 @@ public enum FileInputLoader {
         @MainActor
         public func apply(to config: inout SnapshotConfig, replacing: Bool) {
             if replacing {
-                // Swapping the whole document is a new capture: drop content-bound marks
-                // (annotations, highlighted lines) positioned over the previous code.
-                config.clearContentMarks()
-                config.code = text
-                config.language = language
+                config = config.replacingContent(with: text, language: language)
                 if !filename.isEmpty {
                     config.metadata.filename = filename
                 }

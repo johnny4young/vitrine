@@ -19,11 +19,18 @@ const { copy } = Astro.props;
 <BaseLayout copy={copy} includeMarketingInteractions>
   <Header locale={copy.locale} />
   <main>
-    <Hero />
-    <StyleBench />
-    <FeatureSections />
-    <Commercial />
-    <InstallFooter />
+    <Hero copy={copy} />
+    <StyleBench copy={copy} />
+    <FeatureSections copy={copy} />
+    <Commercial copy={copy} />
+    <InstallFooter copy={copy} />
   </main>
   <SiteFooter locale={copy.locale} />
+  <script is:inline type="module">
+    import { fetchPublishedDownload } from '/scripts/release.js';
+    fetchPublishedDownload().then(({ version, url }) => {
+      document.querySelectorAll('[data-version]').forEach((element) => { element.textContent = version; });
+      document.querySelectorAll('[data-download]').forEach((element) => { element.href = url; });
+    }).catch(() => { /* Keep the static download route when offline or rate-limited. */ });
+  </script>
 </BaseLayout>

@@ -33,9 +33,15 @@ final class Entitlements {
         /// UI fixture injects a deterministic local deactivator so automation never handles
         /// a real credential or contacts the network.
         private let licenseDeactivationService: LicenseDeactivationService
+        /// `nil` builds the production service per activation, so the signing key is not
+        /// held for the whole session.
+        private let licenseActivationService: LicenseActivationService?
 
         /// Invalidates older suspended license operations when a newer user action begins.
         private var licenseOperationGeneration = 0
+
+        /// Actor reentrancy must not allocate a second remote seat while the first awaits.
+        private var licenseActivationInFlight = false
     #endif
 
     /// Seeds `isPro` from the provider's cached flag — instant and offline, so the first
@@ -43,10 +49,12 @@ final class Entitlements {
     #if VITRINE_DIRECT_DOWNLOAD
         init(
             provider: EntitlementProvider,
+            licenseActivationService: LicenseActivationService? = nil,
             licenseDeactivationService: LicenseDeactivationService = LicenseDeactivationService(
                 deactivator: LemonSqueezyValidator())
         ) {
             self.provider = provider
+            self.licenseActivationService = licenseActivationService
             self.licenseDeactivationService = licenseDeactivationService
             self.isPro = provider.cachedIsPro
         }
@@ -66,6 +74,11 @@ final class Entitlements {
             if let fixture = ManagedLicenseUITestFixture.makeEntitlements(
                 environment: environment)
             {
+                return fixture
+            }
+        #endif
+        #if DEBUG && !VITRINE_DIRECT_DOWNLOAD
+            if let fixture = ManagedStoreUITestFixture.makeEntitlements(environment: environment) {
                 return fixture
             }
         #endif
@@ -94,6 +107,12 @@ final class Entitlements {
             Task { await self?.refresh() }
         }
         Task { await refresh() }
+    }
+
+    /// Storefront-localized price, when the active provider has a purchase offer.
+    /// Direct-download providers do not invent a checkout price.
+    func purchaseDisplayPrice() async -> String? {
+        await provider.purchaseDisplayPrice()
     }
 
     /// Starts a PRO purchase and reports the outcome (so the paywall can surface a failure
@@ -125,7 +144,7 @@ final class Entitlements {
         }
 
         /// Activates a Lemon Squeezy license key on the direct-download build (
-        /// embedded-key activation model), returning whether PRO is unlocked afterward.
+        /// embedded-key activation model), returning whether this activation persisted successfully.
         ///
         /// Validates the key once online via `LicenseActivationService`, which on success mints
         /// a locally-signed token; that token is handed to the `LicenseKeyProvider`, which
@@ -133,8 +152,10 @@ final class Entitlements {
         /// publishes the unlock. A build without the injected signing key cannot mint a token,
         /// so it reports `notConfigured` and stays free (the open-source / pre-key state).
         func activate(licenseKey: String) async -> Bool {
-            let service = LicenseActivationService(
-                validator: LemonSqueezyValidator(), signingKey: LicenseSigningKey.embedded)
+            let service =
+                licenseActivationService
+                ?? LicenseActivationService(
+                    validator: LemonSqueezyValidator(), signingKey: LicenseSigningKey.embedded)
             return await activate(licenseKey: licenseKey, using: service)
         }
 
@@ -145,21 +166,25 @@ final class Entitlements {
             licenseKey: String,
             using service: LicenseActivationService
         ) async -> Bool {
-            guard let licenseProvider = provider as? LicenseKeyProvider,
+            guard !licenseActivationInFlight,
+                let licenseProvider = provider as? LicenseKeyProvider,
                 licenseProvider.activationRecordForDeactivation == nil
-            else { return isPro }
+            else { return false }
+            licenseActivationInFlight = true
+            defer { licenseActivationInFlight = false }
 
             licenseOperationGeneration += 1
             let generation = licenseOperationGeneration
             let outcome = await service.activate(licenseKey: licenseKey)
-            guard generation == licenseOperationGeneration else { return isPro }
+            guard generation == licenseOperationGeneration else { return false }
+            var persisted = false
             if case .activated(let signedToken, let record) = outcome {
-                _ = licenseProvider.setActivation(
+                persisted = licenseProvider.setActivation(
                     signedToken: signedToken,
                     record: record)
             }
             await refresh()
-            return isPro
+            return persisted && isPro
         }
 
         /// Releases this machine's direct-download seat and clears entitlement state only
@@ -298,6 +323,8 @@ protocol EntitlementProvider {
     func currentIsPro() async -> Bool
     /// Starts a purchase (the App Store IAP). Providers without a purchase flow no-op.
     func purchase() async -> PurchaseOutcome
+    /// Storefront-localized price; nil when no offer is available.
+    func purchaseDisplayPrice() async -> String?
     /// Restores prior purchases (the App Store requirement). Providers without one no-op.
     func restore() async -> Bool
 }
@@ -311,6 +338,7 @@ protocol LiveEntitlementProvider: EntitlementProvider {
 extension EntitlementProvider {
     /// Default no-ops, so only the StoreKit provider implements a real purchase/restore and
     /// `Entitlements` need not downcast to it.
+    func purchaseDisplayPrice() async -> String? { nil }
     func purchase() async -> PurchaseOutcome { .cancelled }
     func restore() async -> Bool { cachedIsPro }
 }

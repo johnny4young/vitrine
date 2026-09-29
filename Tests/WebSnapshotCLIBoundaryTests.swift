@@ -32,7 +32,7 @@ struct WebSnapshotCLIBoundaryTests {
             guard
                 sourceCodeWithoutLineComments(source).contains("WebSnapshotWindowController.shared")
             else { continue }
-            files.append(url.path.replacingOccurrences(of: repositoryRoot.path + "/", with: ""))
+            files.append(try #require(url.subpath(under: repositoryRoot)))
         }
         return files.sorted()
     }

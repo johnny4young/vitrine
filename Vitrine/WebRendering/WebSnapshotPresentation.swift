@@ -30,7 +30,11 @@ struct WebSnapshotPresentation {
     static func makeLive(
         requestSignIn: @escaping (URL, Bool) -> Void = WebSessionWindowController.requestSignIn,
         keyWindow: @escaping () -> NSWindow? = { NSApp.keyWindow },
-        share: @escaping @MainActor (NSImage, NSView) -> Void = ShareManager.share
+        share: @escaping @MainActor (NSImage, NSView) -> Void = { image, view in
+            ShareManager.share(
+                image, relativeTo: view,
+                concealed: AppEnvironment.shared.appSettings.export.concealClipboard)
+        }
     ) -> WebSnapshotPresentation {
         WebSnapshotPresentation(
             presentSignIn: requestSignIn,
