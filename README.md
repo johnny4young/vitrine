@@ -306,19 +306,19 @@ Shortcuts and App Intents.
 - 📣 **Post to X / LinkedIn / Bluesky** — compose targets in the share sheet: the image is staged on the clipboard and the network's compose page opens with a paste hint. One paste from posting; Vitrine sends nothing anywhere.
 - 🎠 **Carousel export** *(PRO)* — split a long snippet into numbered 4:5 slides (`carousel-01.png` …) for a LinkedIn/Instagram carousel. Pick the lines per slide; the split balances so the last slide never trails, and every slide carries your style and brand mark.
 - 📌 **Pinned snapshot** — pin the current render in a floating window that stays above every app and follows you across Spaces, so the error or design you're working against stays visible while you code.
-- 🔤 **Copy text from image** — one click runs on-device OCR (Vision) on a beautified screenshot and puts the recognized text on the clipboard. Nothing leaves the Mac.
+- 🔤 **Copy text from image** — one click runs on-device OCR (Vision) on a beautified screenshot and puts the recognized text on the clipboard. Nothing leaves the Mac. Progress is visible and cancellable; replacing the image or closing its editor discards outstanding results. Copy feedback reflects whether the clipboard write succeeded.
 - 📐 **Safe-area guides** — an editor-only overlay that draws the margin platforms may crop over a fixed-size destination, with a live "lines × widest column" chip; never part of the export.
 - 📝 **Developer-grade copy formats** — copy highlighted RTF/HTML, a standalone PNG data URI, or one self-contained Markdown block containing the image plus copyable fenced source. Redacted lines stay redacted in every text representation.
 - 🪧 **Social cards** — compose a 1200×630 card from your code (template, theme, background) to copy, save, or share, with **Instagram Story** and **GitHub banner** export presets.
 - 🌐 **Web snapshots** — render pasted **HTML** offline, or capture a **webpage** (direct-download build) after a first-use privacy disclosure. The requested page is fetched and rendered locally in WebKit; there is no remote screenshot service. Full-page output is clamped by total pixels and estimated working memory, and literal private-network subresources are blocked unless narrow loopback access is explicitly enabled. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
 - ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
-- 🕘 **Recents gallery** — a visual history of your captures, one click from the menu bar. Enter **Compare** to select two to four captures in order and compose a labelled, path-free board for before/after reviews or release notes. → [`docs/COMPARISON-BOARDS.md`](docs/COMPARISON-BOARDS.md).
+- 🕘 **Recents gallery** — a local history of quick captures, one click from the menu bar. Disable new writes without deleting existing captures; suspected secrets require a per-capture retention decision. → [`docs/HISTORY.md`](docs/HISTORY.md). Enter **Compare** to select two to four captures in order and compose a labelled, path-free board for before/after reviews or release notes. → [`docs/COMPARISON-BOARDS.md`](docs/COMPARISON-BOARDS.md).
 - 🚀 **First-run quick-start**, offline in-app **Help**, and a **What's New** window on upgrades.
-- ⚡ **Shortcuts / App Intents** — opening code in the editor is free; rendering an image from Shortcuts or macOS Services requires PRO.
+- ⚡ **Shortcuts / App Intents** — open code in the editor (free) or render a code image *(PRO)* from Shortcuts and Spotlight. Rendering through macOS Services also requires PRO.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
 - 🌍 **Localized** in English and Spanish (String Catalog), with pseudolocale and RTL layout tests.
-- 🖥️ **Command-line tools** — basic `vgrab <command>` terminal capture is free. The general `vitrine render input.swift --out image.png`, multi-size, batch, and `vpane` automation surfaces are direct-download PRO, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
+- 🖥️ **Command-line tools** — basic `vgrab <command>` terminal capture and `vitrine render --edit` editor handoff are free. The general `vitrine render input.swift --out image.png`, multi-size, batch, and `vpane` image-output automation surfaces are direct-download PRO, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
 - 💎 **PRO power features** — [Brand Kit](#vitrine-pro) watermark (now with a scannable **QR link chip** and a **signature footer bar** placement), multi-size one-pass export, carousel export, and the automation surfaces above; core capture and editing stay free.
 - 🔒 Sandboxed local rendering — your code **never leaves your Mac** when Vitrine renders code. URL capture is the explicit exception because the requested page must be fetched.
 
@@ -379,7 +379,10 @@ Vitrine is private by design, and that promise does not soften as the product gr
   and other subresources. This is URL-level filtering rather than DNS resolver isolation,
   so public-host DNS rebinding remains a documented residual risk. The web view uses a
   non-persistent data store by default (no cookies or website data persist across captures
-  unless you opt in).
+  unless you opt in). Pages can set temporary cookies during one capture. **Clear All
+  Web Data** closes the sign-in window and clears Vitrine’s saved website data, including
+  cached responses and service workers. This does not revoke server-side sessions or
+  erase another browser’s data. See [web capture validation](docs/WEB-CAPTURE.md).
 - **PRO activation contacts only the license provider, once.** On the direct-download build,
   activating a PRO license makes a single online check to the license provider (Lemon
   Squeezy) to validate your key; afterward PRO is verified from an offline signed token and
@@ -604,6 +607,22 @@ changes pixels only and must not be used as a text-sanitization boundary.
 vitrine render config.swift --out safe.png \
   --redact-secrets --sidecars all
 ```
+
+For terminal captures, redaction refers to rows in the final reconstructed screen,
+not physical lines in the ANSI transcript. Rich-text copies preserve the colors of
+visible rows; share links with redactions contain normalized, sanitized text rather
+than the original ANSI stream. An unredacted share link retains the original stream.
+Manual blur annotations change appearance only: use explicit line redaction or
+`--redact-secrets` when the source must not accompany an export.
+
+**Confidential clipboard exports:** enable **Settings → Export → Clipboard → Mark
+clipboard exports as confidential**, or pass `--copy --conceal-clipboard` to the CLI.
+Vitrine's export actions then add the cooperative `org.nspasteboard.ConcealedType`
+marker. Supporting clipboard managers can hide or exclude that content; other apps
+can still read it. This does not erase existing history, automatically expire the
+clipboard, or sanitize unredacted content. Native text-editor selection copies and
+third-party share services follow their own clipboard behavior. The option is off
+by default. See the [clipboard marker convention](https://nspasteboard.org/).
 
 ### Local by construction
 

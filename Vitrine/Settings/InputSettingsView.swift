@@ -94,10 +94,11 @@ struct WebCaptureControls: View {
     var collapsesAdvanced = false
     @State private var showAdvanced = false
 
-    /// The sites Vitrine currently holds a session for. Read from the web data store
-    /// rather than tracked in settings, so it reflects what is actually stored — including
-    /// sessions a site expired on its own.
-    @State private var signedInHosts: [String] = []
+    /// WebKit site labels with saved data, not proof of an active login. Read from
+    /// the store rather than duplicating its inventory in preferences.
+    @State private var sitesWithSavedData: [String] = []
+    @State private var sessionRevision = 0
+    @State private var isClearingSessions = false
 
     var body: some View {
         viewportsRow
@@ -114,7 +115,7 @@ struct WebCaptureControls: View {
                 waitRow
                 if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
                 loggedInSessionRow
-                signedInSitesRow
+                savedSitesRow
                 loopbackCaptureRow
             }
         } else {
@@ -122,7 +123,7 @@ struct WebCaptureControls: View {
             waitRow
             if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
             loggedInSessionRow
-            signedInSitesRow
+            savedSitesRow
             loopbackCaptureRow
         }
     }
@@ -142,12 +143,15 @@ struct WebCaptureControls: View {
             .toggleStyle(.switch)
             .labelsHidden()
             .accessibilityIdentifier("web-allow-loopback-toggle")
+            .onChange(of: settings.webCapture.allowsLoopbackCapture) { _, allowed in
+                if !allowed { WebSessionWindowController.shared.close() }
+            }
         }
     }
 
     /// Opt-in to keeping a signed-in session for web capture, for pages behind a login.
-    /// Off by default — the private per-render store sends no cookies — so this is a
-    /// deliberate, privacy-widening choice the caption spells out.
+    /// Off by default: the private per-render store starts without saved cookies.
+    /// Retention is a deliberate, privacy-widening choice the caption spells out.
     ///
     /// The caption used to say "your existing cookies", which read as though Vitrine
     /// borrowed the session from Safari or Chrome. It cannot: WebKit isolates website
@@ -164,11 +168,26 @@ struct WebCaptureControls: View {
                 .toggleStyle(.switch)
                 .labelsHidden()
                 .accessibilityIdentifier("web-logged-in-session-toggle")
+                .onChange(of: settings.webCapture.usesLoggedInSession) { _, enabled in
+                    if !enabled { WebSessionWindowController.shared.close() }
+                }
         }
         // Read the stored sessions here rather than on the row that lists them: that row
         // is hidden while the list is empty, so it could never populate itself. This row
         // is always present in both layouts.
-        .task { signedInHosts = await WebSessionStore.signedInHosts() }
+        .task(id: sessionRevision) {
+            let sites = await WebSessionStore.storedSiteLabels()
+            guard !Task.isCancelled else { return }
+            sitesWithSavedData = sites
+        }
+        .onReceive(NotificationCenter.default.publisher(for: WebSessionStore.didChange)) { _ in
+            sessionRevision += 1
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+        ) { _ in
+            sessionRevision += 1
+        }
     }
 
     /// Throwing away every stored session.
@@ -176,18 +195,25 @@ struct WebCaptureControls: View {
     /// A feature that keeps cookies on disk has to offer the way back out, and it has to
     /// say what it holds: the row names the sites rather than asking the user to trust an
     /// opaque "clear" button. Shown only while there is something to clear.
-    @ViewBuilder private var signedInSitesRow: some View {
-        if !signedInHosts.isEmpty {
+    @ViewBuilder private var savedSitesRow: some View {
+        if !sitesWithSavedData.isEmpty {
             TokenRow(
-                label: Text("Signed-in sites"),
-                caption: Text(verbatim: signedInHosts.joined(separator: ", "))
+                label: Text("Sites with saved data"),
+                caption: Text(verbatim: sitesWithSavedData.joined(separator: ", "))
             ) {
-                Button("Sign Out of All") {
+                Button("Clear All Web Data") {
+                    isClearingSessions = true
+                    // A live sign-in page could immediately recreate its data.
+                    WebSessionWindowController.shared.close()
                     Task {
                         await WebSessionStore.clearSessions()
-                        signedInHosts = await WebSessionStore.signedInHosts()
+                        isClearingSessions = false
                     }
                 }
+                .disabled(isClearingSessions)
+                .accessibilityHint(
+                    "Removes website data saved by Vitrine; it does not end server-side sessions."
+                )
                 .accessibilityIdentifier("web-clear-sessions-button")
             }
         }

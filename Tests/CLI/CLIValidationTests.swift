@@ -462,6 +462,7 @@ struct CLIValidationTests: CLITestSupport {
     @Test func editStagesTheHandoffAndReportsSuccess() throws {
         var captured: URL?
         let options = try CLIArguments.parse(["render", "session.log", "--edit"])
+        try CLIEntitlement.authorize(options) { false }
         let summary = try CLIRenderer.openInEditor(
             options,
             fileLoader: { _ in

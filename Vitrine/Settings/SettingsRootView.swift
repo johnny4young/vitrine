@@ -94,7 +94,7 @@ struct SettingsRootView: View {
                 workspaceRecipes: environment.workspaceRecipes
             )
         case .output:
-            OutputSettingsView(settings: environment.appSettings)
+            OutputSettingsView(settings: environment.appSettings, recents: environment.recents)
         case .input:
             InputSettingsView(settings: environment.appSettings)
         case .about:
@@ -182,7 +182,7 @@ private struct SettingsSidebarRow: View {
             .contentShape(
                 RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous)
             )
-            .animation(.easeInOut(duration: 0.13), value: isActive)
+            .motionSensitiveAnimation(.easeInOut(duration: 0.13), value: isActive)
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }

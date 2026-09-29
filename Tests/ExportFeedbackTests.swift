@@ -9,10 +9,10 @@ import VitrineRendering
 struct ExportFeedbackTests {
     @Test func mapsImageCopyOutcomes() {
         #expect(
-            ExportFeedback.copyOutcome(true)
+            ExportFeedback.copyOutcome(.copied)
                 == Notifier.confirmation(String(localized: "Image copied to clipboard")))
         #expect(
-            ExportFeedback.copyOutcome(false)
+            ExportFeedback.copyOutcome(.failed)
                 == Notifier.failure(String(localized: "Couldn't copy the image")))
         #expect(
             ExportFeedback.copyOutcome(
@@ -48,6 +48,24 @@ struct ExportFeedbackTests {
                             "Vitrine couldn't allocate the image buffer. Reduce the canvas size or scale and try again."
                     )))
         #expect(ExportFeedback.saveOutcome(.cancelled) == nil)
+    }
+
+    @Test func imageTextCopyReportsTheActualPasteboardResult() {
+        #expect(
+            ExportFeedback.imageTextCopyOutcome(true)
+                == Notifier.confirmation(String(localized: "Text copied from image")))
+        #expect(
+            ExportFeedback.imageTextCopyOutcome(false)
+                == Notifier.failure(String(localized: "Couldn't copy text from the image")))
+    }
+
+    @Test func shareLinkCopyDoesNotAnnounceSuccessAfterAWriteFailure() {
+        #expect(
+            ExportFeedback.shareLinkCopyOutcome(true)
+                == Notifier.confirmation(String(localized: "Share link copied")))
+        #expect(
+            ExportFeedback.shareLinkCopyOutcome(false)
+                == Notifier.failure(String(localized: "Couldn't copy the share link")))
     }
 
     @Test func mapsShareFailure() {
