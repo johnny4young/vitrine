@@ -38,6 +38,10 @@ can never drift.
   reusable style. Shared snapshot links still restore their own annotations.
 - `render --edit` is a free editor-only handoff, consistent with Open Code in Editor.
   Image rendering, output files, clipboard exports, and sidecars keep their existing gates.
+- Avoid flagging constructor calls such as `WordPieceTokenizer()` and
+  `NSSecureTextField()` as secret values, without exempting quoted literals or
+  provider tokens inside their arguments. Bound generic assignment scanning on
+  adversarial long identifiers and verify that megabyte-line tails are not skipped.
 
 - Register the macOS Services provider at application startup, using the same live
   settings and PRO entitlement as the app. The advertised code-image service keeps
