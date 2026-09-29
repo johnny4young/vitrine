@@ -32,6 +32,18 @@ enum ExportFeedback {
             : Notifier.failure(String(localized: "Couldn't copy the source"))
     }
 
+    static func imageTextCopyOutcome(_ copied: Bool) -> Notifier.CaptureFeedback {
+        copied
+            ? Notifier.confirmation(String(localized: "Text copied from image"))
+            : Notifier.failure(String(localized: "Couldn't copy text from the image"))
+    }
+
+    static func shareLinkCopyOutcome(_ copied: Bool) -> Notifier.CaptureFeedback {
+        copied
+            ? Notifier.confirmation(String(localized: "Share link copied"))
+            : Notifier.failure(String(localized: "Couldn't copy the share link"))
+    }
+
     static func saveOutcome(
         _ outcome: ExportManager.SaveOutcome
     ) -> Notifier.CaptureFeedback? {

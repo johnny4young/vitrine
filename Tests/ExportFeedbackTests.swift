@@ -50,6 +50,24 @@ struct ExportFeedbackTests {
         #expect(ExportFeedback.saveOutcome(.cancelled) == nil)
     }
 
+    @Test func imageTextCopyReportsTheActualPasteboardResult() {
+        #expect(
+            ExportFeedback.imageTextCopyOutcome(true)
+                == Notifier.confirmation(String(localized: "Text copied from image")))
+        #expect(
+            ExportFeedback.imageTextCopyOutcome(false)
+                == Notifier.failure(String(localized: "Couldn't copy text from the image")))
+    }
+
+    @Test func shareLinkCopyDoesNotAnnounceSuccessAfterAWriteFailure() {
+        #expect(
+            ExportFeedback.shareLinkCopyOutcome(true)
+                == Notifier.confirmation(String(localized: "Share link copied")))
+        #expect(
+            ExportFeedback.shareLinkCopyOutcome(false)
+                == Notifier.failure(String(localized: "Couldn't copy the share link")))
+    }
+
     @Test func mapsShareFailure() {
         #expect(
             ExportFeedback.shareFailure

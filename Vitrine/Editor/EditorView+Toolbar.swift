@@ -566,8 +566,11 @@ extension EditorView {
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
     /// and the selected font.
     func copyHighlightedCode() {
-        RichPasteboard.copyHighlightedCode(
-            for: settings.config, concealed: environment.appSettings.export.concealClipboard)
+        session.feedback(
+            ExportFeedback.sourceCopyOutcome(
+                RichPasteboard.copyHighlightedCode(
+                    for: settings.config,
+                    concealed: environment.appSettings.export.concealClipboard)))
     }
 
     /// Copies a self-contained `vitrine://open` link that reproduces this snapshot. The
@@ -578,10 +581,7 @@ extension EditorView {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
             let copied = ClipboardWriter.copy(
                 url.absoluteString, concealed: environment.appSettings.export.concealClipboard)
-            session.feedback(
-                copied
-                    ? Notifier.confirmation(String(localized: "Share link copied"))
-                    : Notifier.failure(String(localized: "Couldn't copy the share link")))
+            session.feedback(ExportFeedback.shareLinkCopyOutcome(copied))
         } catch SnapshotShareLink.ShareLinkError.tooLarge {
             session.feedback(
                 Notifier.failure(
