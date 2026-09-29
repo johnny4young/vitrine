@@ -1156,8 +1156,10 @@ final class VitrineUITests: XCTestCase {
             app.activate()
             assertExists(app.windows.firstMatch, in: app, timeout: 8)
             settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
-            element("style-preset-picker", in: app).click()
-            XCTAssertFalse(app.menuItems["Deletion example"].exists)
+            let picker = element("style-preset-picker", in: app)
+            picker.click()
+            XCTAssertTrue(picker.menuItems.firstMatch.waitForExistence(timeout: 3))
+            XCTAssertFalse(picker.menuItems["Deletion example"].exists)
             app.typeKey(.escape, modifierFlags: [])
         }
     }

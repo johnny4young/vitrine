@@ -39,7 +39,6 @@ struct StylePresetsSection: View {
     /// live style on selection.
     @State private var selectedID: String?
     @State private var pendingDeletion: StylePreset?
-    @State private var showsDeleteConfirmation = false
     @State private var showSavePrompt = false
     @State private var saveName = ""
     @State private var showRenamePrompt = false
@@ -114,7 +113,10 @@ struct StylePresetsSection: View {
             presetRowActions
         }
         .confirmationDialog(
-            "Delete Preset?", isPresented: $showsDeleteConfirmation,
+            "Delete Preset?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }),
             titleVisibility: .visible, presenting: pendingDeletion
         ) { preset in
             Button("Delete Preset", role: .destructive) {
@@ -202,7 +204,6 @@ struct StylePresetsSection: View {
                 Button("Delete", role: .destructive) {
                     if let preset {
                         pendingDeletion = preset
-                        showsDeleteConfirmation = true
                     }
                 }
                 .help("Delete this saved preset. Built-in presets can't be deleted.")
@@ -269,7 +270,6 @@ struct CustomThemesSection: View {
     /// The custom theme id selected for management, or `nil` before the user picks.
     @State private var selectedID: String?
     @State private var pendingDeletion: Theme?
-    @State private var showsDeleteConfirmation = false
     @State private var editorDraft: CustomThemeDraft?
     @State private var showRenamePrompt = false
     @State private var renameName = ""
@@ -328,7 +328,10 @@ struct CustomThemesSection: View {
                 onCancel: { editorDraft = nil })
         }
         .confirmationDialog(
-            "Delete Theme?", isPresented: $showsDeleteConfirmation,
+            "Delete Theme?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }),
             titleVisibility: .visible, presenting: pendingDeletion
         ) { theme in
             Button("Delete Theme", role: .destructive) {
@@ -431,7 +434,6 @@ struct CustomThemesSection: View {
                 Button("Delete", role: .destructive) {
                     if let theme {
                         pendingDeletion = theme
-                        showsDeleteConfirmation = true
                     }
                 }
                 .help("Delete this custom theme.")

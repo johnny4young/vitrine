@@ -379,7 +379,7 @@ final class AppSettings {
     @discardableResult
     func deleteCustomTheme(id: String, from themes: CustomThemeStore) -> Bool {
         guard themes.delete(id: id) else { return false }
-        if config.theme.id == id { config.theme = .oneDark }
+        if style.theme.id == id { style.theme = themes.theme(withID: id) }
         return true
     }
 
