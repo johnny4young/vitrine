@@ -36,16 +36,6 @@ public enum Brand {
         public static let xxl: CGFloat = 48
     }
 
-    // MARK: Layout
-
-    /// Shared layout sizes for app chrome. Centralizing these keeps adjacent
-    /// controls aligned instead of drifting to slightly different magic numbers.
-    public enum Layout {
-        /// Maximum width for the popup controls in the editor header, so the
-        /// Language and Destination pickers sit at the same size on one row.
-        public static let headerControlMaxWidth: CGFloat = 220
-    }
-
     // MARK: Radius
 
     /// Corner-radius scale. Cards and previews use `.continuous` rounded

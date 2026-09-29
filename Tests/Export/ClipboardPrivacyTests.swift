@@ -79,12 +79,12 @@ struct ClipboardPrivacyTests {
             ExportManager.copyPNGToPasteboardOutcome(image, concealed: concealed, to: pasteboard)
                 == .copied)
         check(
-            ExportManager.copyToPasteboard(
-                config, scale: 1, concealed: concealed, pasteboard: pasteboard))
+            ExportManager.copyToPasteboardOutcome(
+                config, scale: 1, concealed: concealed, pasteboard: pasteboard) == .copied)
         check(
-            ExportManager.copyToPasteboard(
+            ExportManager.copyToPasteboardOutcome(
                 config, scale: 1, richText: true, plainText: true, concealed: concealed,
-                pasteboard: pasteboard))
+                pasteboard: pasteboard) == .copied)
         #expect(pasteboard.data(forType: .png) != nil)
         #expect(pasteboard.data(forType: .rtf) != nil)
         #expect(pasteboard.data(forType: .html) != nil)
@@ -110,9 +110,9 @@ struct ClipboardPrivacyTests {
         check(ClipboardWriter.write([sharedImage], concealed: concealed, to: pasteboard))
         #expect(NSImage(pasteboard: pasteboard) != nil)
         check(
-            SocialCardRenderer.copyToPasteboard(
+            SocialCardRenderer.copyToPasteboardOutcome(
                 SocialCardModel(title: "Synthetic card"), scale: 1, concealed: concealed,
-                pasteboard: pasteboard))
+                pasteboard: pasteboard) == .copied)
         #expect(NSImage(pasteboard: pasteboard) != nil)
     }
 }

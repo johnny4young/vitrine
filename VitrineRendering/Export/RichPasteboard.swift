@@ -18,7 +18,7 @@ import VitrineDomain
 ///
 /// ## How this stays safe and predictable
 ///
-/// - The default one-shortcut copy is unchanged: `ExportManager.copyToPasteboard`
+/// - The default one-shortcut copy is unchanged: `ExportManager.copyToPasteboardOutcome`
 ///   still writes PNG and only *adds* text representations when the user opts in
 ///   (`AppSettings.export.richClipboard` for styled RTF/HTML, `AppSettings.export.textSidecar`
 ///   for plain text). The explicit "Copy as data URI" and "Copy highlighted code"

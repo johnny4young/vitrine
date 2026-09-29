@@ -37,20 +37,6 @@ enum ShellIntegrationInstaller {
         "# Vitrine shell integration (vgrab)\n\(evalLine(for: shell))"
     }
 
-    /// The default startup file for `shell` under the user's home directory
-    /// (`~/.zshrc` or `~/.bashrc`). Parameterized so tests can point it at a
-    /// temporary home.
-    static func startupFile(
-        for shell: ShellInit.Shell,
-        home: URL = FileManager.default.homeDirectoryForCurrentUser
-    ) -> URL {
-        switch shell {
-        case .zsh: home.appendingPathComponent(".zshrc")
-        case .bash: home.appendingPathComponent(".bashrc")
-        case .fish: home.appendingPathComponent(".config/fish/config.fish")
-        }
-    }
-
     /// Whether `contents` already activates the integration. Keyed on the stable
     /// `vitrine shell-init` marker (present in any eval line, zsh or bash, and in
     /// a hand-pasted variant) so the install never appends a duplicate.

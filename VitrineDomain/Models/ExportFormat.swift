@@ -8,9 +8,7 @@ import Foundation
 /// deliberately absent: SwiftUI / `ImageRenderer` / AppKit expose no
 /// faithful full-canvas SVG path, and Vitrine does not ship a fake `.svg` that is
 /// merely a raster PNG wrapped in an `<image>` tag. PDF is therefore the supported
-/// vector format. A hand-authored SVG exists only for the deterministic
-/// simple-template subset (`VectorTemplateSVG`) and is intentionally not a
-/// general export choice here. See `docs/ARCHITECTURE.md` ("Vector export").
+/// vector format. See `docs/ARCHITECTURE.md` ("Vector export").
 public enum ExportFormat: String, CaseIterable, Identifiable, Codable, Sendable {
     case png
     case pdf
