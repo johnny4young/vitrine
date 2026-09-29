@@ -11,9 +11,13 @@ struct SettingsResetCoordinator {
     let themes: CustomThemeStore
     let brandKit: BrandKitStore
     let workspaceRecipes: WorkspaceRecipeStore
+    /// Reset turns off saved sessions and localhost access, so an open sign-in window
+    /// must not keep browsing under the previous policy.
+    var closeWebSignIn: () -> Void = { WebSessionWindowController.shared.close() }
 
     func reset() {
         settings.resetToDefaults()
+        closeWebSignIn()
         presets.reload()
         themes.reload()
         brandKit.reload()

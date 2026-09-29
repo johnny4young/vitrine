@@ -33,6 +33,10 @@ can never drift.
 
 ### Fixed
 
+- Web capture sign-out now clears cached private responses and service worker data,
+  closes the sign-in window, and refreshes the stored-site inventory. Temporary
+  capture cookies are correctly documented as isolated, not disabled.
+
 - Confirm named theme and preset deletions with Cancel as the safe default. Deleting
   the active default theme explicitly falls back to One Dark without changing other
   style settings or open editor snapshots.
@@ -100,6 +104,13 @@ can never drift.
 - Optional confidential clipboard markers in Settings and CLI `--copy --conceal-clipboard`.
   Compatible clipboard managers can conceal exports; this is not access control or
   automatic clipboard expiration, and the preference is off by default.
+
+### Testing
+
+- Controlled WebKit integration tests exercise redirects, private subresources,
+  localhost opt-in, cancellation, timeouts, capture limits, and session removal.
+  Dedicated result validation rejects missing or skipped scenarios. Fixture startup
+  avoids reverse DNS, publishes readiness atomically, and retains failure logs.
 
 ## [1.2.3] - 2026-09-16
 
@@ -773,8 +784,8 @@ explicit, and understandable after the image leaves the Mac.
 - **Capture pages that are behind a login.** Turn on "Use my logged-in session" and the
   Web Snapshot window offers to sign you in to the site first, in a real browser window;
   the capture that follows sees the signed-in page. The session belongs to Vitrine alone
-  — nothing is read from Safari or Chrome — and Settings lists the sites you are signed
-  in to, with one button to sign out of all of them.
+  — nothing is read from Safari or Chrome — and Settings lists sites with saved WebKit
+  data, with one button to clear it. This does not revoke server-side sessions.
 
 ### Fixed
 
