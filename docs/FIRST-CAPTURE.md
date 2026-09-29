@@ -30,9 +30,10 @@ struct ReleaseNote {
 1. Copy the sample above. Open Vitrine from its menu-bar icon and choose **Open
    Editor**. You should see an editor window, not a Dock app that needs a separate
    sign-in.
-2. Paste the snippet into the code editor. The preview should show highlighted
-   Swift code. If another language is selected, choose **Swift** in the language
-   picker. Nothing is uploaded to render this preview.
+2. The editor opens your current document, so select any existing code (⌘A)
+   before you paste. Paste the snippet into the code editor. The preview should
+   show highlighted Swift code. If another language is selected, choose **Swift**
+   in the language picker. Nothing is uploaded to render this preview.
 3. Pick a theme and background you like. Leave the default output size for this
    first run. The preview should change immediately while the source text stays
    the same.
