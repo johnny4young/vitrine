@@ -351,7 +351,7 @@ struct SocialCardRenderDimensionTests {
         #expect(SocialCardRenderer.renderCGImage(empty) == nil)
         #expect(SocialCardRenderer.renderNSImage(empty) == nil)
         #expect(SocialCardRenderer.pdfData(empty) == nil)
-        #expect(SocialCardRenderer.copyToPasteboard(empty) == false)
+        #expect(SocialCardRenderer.copyToPasteboardOutcome(empty) == .failed)
     }
 
     @Test func aHeadlineCardWithOnlyAnExcerptIsRefused() {
@@ -362,7 +362,7 @@ struct SocialCardRenderDimensionTests {
         #expect(SocialCardRenderer.renderCGImage(blankHeadline) == nil)
         #expect(SocialCardRenderer.renderNSImage(blankHeadline) == nil)
         #expect(SocialCardRenderer.pdfData(blankHeadline) == nil)
-        #expect(SocialCardRenderer.copyToPasteboard(blankHeadline) == false)
+        #expect(SocialCardRenderer.copyToPasteboardOutcome(blankHeadline) == .failed)
     }
 
     @Test func aCodeFocusCardWithNoExcerptStillRendersAtTheFixedSize() throws {
@@ -626,9 +626,9 @@ struct SocialCardClipboardTests {
         // scratch pasteboard: parallel suites must never race on the real clipboard.
         let pasteboard = NSPasteboard(
             name: NSPasteboard.Name("VitrineSocialCopy-\(UUID().uuidString)"))
-        let copied = SocialCardRenderer.copyToPasteboard(
+        let outcome = SocialCardRenderer.copyToPasteboardOutcome(
             SocialCardFixtures.defaultCard, scale: 1, pasteboard: pasteboard)
-        #expect(copied)
+        #expect(outcome == .copied)
         let data = try #require(pasteboard.data(forType: .png))
         #expect(data.prefix(8) == Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
     }

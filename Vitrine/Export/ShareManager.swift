@@ -73,7 +73,7 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
             // pasteboard — with nothing to paste, opening the browser and claiming
             // success would mislead the user.
             guard ClipboardWriter.write([image], concealed: concealed) else {
-                ExportFeedback.presentCopy(false)
+                CaptureHUDController.shared.present(ExportFeedback.copyOutcome(.failed))
                 return
             }
             NSWorkspace.shared.open(url)

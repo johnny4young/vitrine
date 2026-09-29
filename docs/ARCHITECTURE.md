@@ -208,8 +208,8 @@ platform allocation detail.
 
 ## Vector export
 
-The supported scalable format is **PDF**, not SVG. This is a deliberate decision
-from the  spike, not an omission.
+The supported scalable format is **PDF**, not SVG. This is a deliberate decision,
+not a partially implemented export feature.
 
 **Finding — there is no faithful full-canvas SVG path.** SwiftUI, `ImageRenderer`,
 and AppKit expose no API that emits the rendered code canvas as vector SVG. A code
@@ -220,30 +220,12 @@ back only a `cgImage`, an `nsImage`, or a `CGContext` it draws into — which is
 public path that re-emits that glyph layout as SVG `<text>`/`<path>` vectors. So:
 
 - **PDF is the vector format** offered in the export menu (`ExportFormat.pdf`,
-  `isVector == true`); PNG is the raster option. The picker labels this honestly
+  `isVector == true`); PNG, HEIC, and AVIF are the raster options. The picker labels this honestly
   (`ExportFormat.summary`).
 - **No fake SVG is shipped.** Vitrine never writes a `.svg` that is merely a raster
   PNG wrapped in an `<image>` element — that would be a raster file with a vector
   extension. PDF preserves a transparent background (real alpha, no matte), the
   same guarantee as the PNG path.
-
-**The one place SVG is honest — the deterministic simple-template subset.** The
-backgrounds of the social-card / simple templates are pure geometry and
-color with no text layout, so they *can* be emitted as native SVG primitives.
-`VectorTemplateSVG.background(_:size:)` serializes exactly that subset:
-
-| Background        | SVG output                                             |
-| ----------------- | ------------------------------------------------------ |
-| `.solid`          | a filled `<rect>`                                      |
-| `.gradient`       | an `objectBoundingBox` `<linearGradient>`              |
-| `.customGradient` | an `objectBoundingBox` `<linearGradient>` (user stops) |
-| `.transparent`    | no background rect (genuinely transparent, no matte)   |
-| `.image`          | unsupported → returns `nil` (never embeds a raster)    |
-
-Serialization is byte-for-byte deterministic (colors quantized through `RGBAColor`,
-fixed number formatting and attribute order), so the same template always produces
-identical bytes. This serializer is intentionally **not** wired up as a general
-export choice for the arbitrary code canvas; it exists for the template path only.
 
 ## Syntax-highlighting memory and responsiveness
 

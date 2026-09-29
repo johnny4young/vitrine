@@ -101,24 +101,8 @@ enum SocialCardRenderer {
 
     // MARK: - Clipboard / save flows
 
-    /// Renders the card and writes a PNG to the general pasteboard. Returns success.
-    ///
-    /// This is the clipboard flow: a single PNG representation, the same encode a
-    /// snapshot copy uses, so a social card pastes into any image well.
-    @discardableResult
-    static func copyToPasteboard(
-        _ model: SocialCardModel,
-        size: CGSize = SocialCardModel.defaultSize,
-        scale: CGFloat = 2,
-        profile: ColorProfile = .sRGB,
-        concealed: Bool = false,
-        pasteboard: NSPasteboard = .general
-    ) -> Bool {
-        copyToPasteboardOutcome(
-            model, size: size, scale: scale, profile: profile, concealed: concealed,
-            pasteboard: pasteboard) == .copied
-    }
-
+    /// Renders the card and writes a single PNG, the same encode a snapshot copy uses,
+    /// so a social card pastes into any image well.
     @discardableResult
     static func copyToPasteboardOutcome(
         _ model: SocialCardModel,

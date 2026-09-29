@@ -14,6 +14,12 @@ can never drift.
 
 ### Changed
 
+- Remove unused export presenters, clipboard and automation wrappers, shell-path
+  helpers, and visual tokens. Keep the active typed-outcome, rendering, and
+  user-granted shell-installation paths and their behavioral tests.
+- Remove the unconnected SVG background serializer and its implementation-only
+  tests. PNG, PDF, HEIC, and AVIF remain the export formats; no shipped export
+  capability is removed.
 - Capture history now removes explicit redactions before creating records or previews.
   Suspected secrets require a fresh choice to skip history, save sanitized text, or retain
   the flagged text deliberately; this never silently changes the requested export.
