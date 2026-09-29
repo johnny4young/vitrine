@@ -14,6 +14,8 @@ can never drift.
 
 ### Changed
 
+- Global capture shortcuts are opt-in for new installations. Existing assignments and
+  explicit disables are preserved; onboarding explains their system-wide scope.
 - Remove unused export presenters, clipboard and automation wrappers, shell-path
   helpers, and visual tokens. Keep the active typed-outcome, rendering, and
   user-granted shell-installation paths and their behavioral tests.
