@@ -1,20 +1,11 @@
 import Foundation
 import VitrineRendering
 
-/// The one place a copy/save/share outcome turns into transient feedback.
+/// The one place a copy/save/share outcome maps to transient feedback.
 ///
-/// The code editor, the social-card editor, and the web-snapshot editor expose
-/// the same three actions; each used to re-implement the outcome → HUD mapping
-/// (and its localized strings) inline, and the copies had drifted. Routing all
-/// three through one presenter keeps the strings, the cancelled-save-is-silent
-/// rule, and the feedback behavior in a single reviewable spot.
+/// Callers present the returned feedback themselves; keeping the mapping here keeps
+/// the localized strings and the cancelled-save-is-silent rule in one spot.
 enum ExportFeedback {
-    static func copyOutcome(_ copied: Bool) -> Notifier.CaptureFeedback {
-        copied
-            ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
-            : Notifier.failure(String(localized: "Couldn't copy the image"))
-    }
-
     static func copyOutcome(_ outcome: ExportManager.CopyOutcome) -> Notifier.CaptureFeedback {
         switch outcome {
         case .copied:
@@ -65,10 +56,5 @@ enum ExportFeedback {
 
     static func renderFailure(_ error: RenderBudgetError) -> Notifier.CaptureFeedback {
         Notifier.renderFailure(error)
-    }
-
-    /// Presents the copy outcome: a confirmation on success, a failure otherwise.
-    static func presentCopy(_ copied: Bool) {
-        CaptureHUDController.shared.present(copyOutcome(copied))
     }
 }

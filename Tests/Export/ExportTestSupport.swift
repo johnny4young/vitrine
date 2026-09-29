@@ -2,7 +2,7 @@ import VitrineRendering
 
 @testable import Vitrine
 
-/// Fixtures shared by the export suites, so a config or a card size is described once
+/// Fixtures shared by the export suites, so a sample config is described once
 /// rather than redefined per file. Mirrors `CLITestSupport` for the CLI suites.
 enum ExportTestFixtures {
     /// A minimal renderable config. `mutate` adjusts the one property a test is about,

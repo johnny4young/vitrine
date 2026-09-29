@@ -8,8 +8,8 @@ import VitrineRendering
 
 /// Clipboard delivery (`ExportManager+Pasteboard`).
 ///
-/// Scoped to the plain-source copy; the multi-representation rich clipboard has its own
-/// suite in `RichExportTests`. Serialized because pasteboard state is shared, and each
+/// Covers the plain-source and PNG copies; the multi-representation rich clipboard has
+/// its own suite in `RichExportTests`. Serialized because pasteboard state is shared, and each
 /// test uses a uniquely named scratch pasteboard so a parallel suite can never clobber
 /// the developer's real clipboard.
 @MainActor

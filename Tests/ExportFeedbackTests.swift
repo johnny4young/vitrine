@@ -9,12 +9,6 @@ import VitrineRendering
 struct ExportFeedbackTests {
     @Test func mapsImageCopyOutcomes() {
         #expect(
-            ExportFeedback.copyOutcome(true)
-                == Notifier.confirmation(String(localized: "Image copied to clipboard")))
-        #expect(
-            ExportFeedback.copyOutcome(false)
-                == Notifier.failure(String(localized: "Couldn't copy the image")))
-        #expect(
             ExportFeedback.copyOutcome(.copied)
                 == Notifier.confirmation(String(localized: "Image copied to clipboard")))
         #expect(

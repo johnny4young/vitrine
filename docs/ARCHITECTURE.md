@@ -208,7 +208,7 @@ platform allocation detail.
 
 ## Vector export
 
-The supported scalable format is **PDF**, not SVG. This is a deliberate decision
+The supported scalable format is **PDF**, not SVG. This is a deliberate decision,
 not a partially implemented export feature.
 
 **Finding — there is no faithful full-canvas SVG path.** SwiftUI, `ImageRenderer`,
@@ -220,7 +220,7 @@ back only a `cgImage`, an `nsImage`, or a `CGContext` it draws into — which is
 public path that re-emits that glyph layout as SVG `<text>`/`<path>` vectors. So:
 
 - **PDF is the vector format** offered in the export menu (`ExportFormat.pdf`,
-  `isVector == true`); PNG is the raster option. The picker labels this honestly
+  `isVector == true`); PNG, HEIC, and AVIF are the raster options. The picker labels this honestly
   (`ExportFormat.summary`).
 - **No fake SVG is shipped.** Vitrine never writes a `.svg` that is merely a raster
   PNG wrapped in an `<image>` element — that would be a raster file with a vector
