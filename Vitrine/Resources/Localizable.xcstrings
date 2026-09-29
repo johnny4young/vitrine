@@ -1,6 +1,50 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Couldn't copy text from the image" : {
+      "comment" : "HUD failure when recognized image text could not be written to the clipboard.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar el texto de la imagen"
+          }
+        }
+      }
+    },
+    "Cancel image processing" : {
+      "comment" : "Accessibility label for the button that cancels on-device image text recognition or secret redaction.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar el procesamiento de imagen"
+          }
+        }
+      }
+    },
+    "Redacting secrets…" : {
+      "comment" : "Progress status while Vitrine covers secrets detected in a beautified image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultando secretos…"
+          }
+        }
+      }
+    },
+    "Recognizing text…" : {
+      "comment" : "Progress status while Vitrine recognizes text in a beautified image on-device.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconociendo texto…"
+          }
+        }
+      }
+    },
     "Delete Preset?" : {
       "localizations" : {
         "es" : {
@@ -277,16 +321,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pide a los gestores de portapapeles compatibles que oculten las exportaciones. Otras apps aún pueden leerlas."
-          }
-        }
-      }
-    },
-    "Couldn't copy the recognized text" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo copiar el texto reconocido"
           }
         }
       }

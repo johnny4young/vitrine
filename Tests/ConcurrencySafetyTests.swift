@@ -82,9 +82,11 @@ struct ConcurrencySafetyTests {
             contentsOf: repositoryRoot.appendingPathComponent(
                 "Vitrine/Export/CarouselExportView.swift"), encoding: .utf8)
 
-        #expect(editor.contains("@State var imageProcessingTask: Task<Void, Never>?"))
-        #expect(stage.contains("imageProcessingTask?.cancel()"))
-        #expect(stage.contains("catch is CancellationError"))
+        // ImageProcessingControllerTests exercise stale results, cancellation, errors,
+        // and teardown behavior. This guard only keeps the view wired to that owner.
+        #expect(editor.contains("@State var imageProcessing = ImageProcessingController()"))
+        #expect(stage.contains("imageProcessing.cancel()"))
+        #expect(stage.contains(".onChange(of: settings.style.foregroundImage)"))
         #expect(background.contains("@State private var importTask: Task<Void, Never>?"))
         #expect(background.contains("importTask?.cancel()"))
         #expect(background.contains("@State private var downloadTask: Task<Void, Never>?"))

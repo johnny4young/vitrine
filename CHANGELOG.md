@@ -33,6 +33,11 @@ can never drift.
 
 ### Fixed
 
+- Image text recognition and secret redaction show cancellable progress. Replaced or
+  cancelled operations cannot publish stale results, errors, or progress changes.
+- Highlighted-code, image-text, and share-link copying report the actual pasteboard
+  outcome instead of silently failing or announcing success after a failed write.
+
 - Web capture sign-out now clears cached private responses and service worker data,
   closes the sign-in window, and refreshes the stored-site inventory. Temporary
   capture cookies are correctly documented as isolated, not disabled.
