@@ -231,6 +231,7 @@ struct EditorWindowSizingTests {
             Notification(name: NSWindow.willStartLiveResizeNotification, object: window))
         let minimum = window.contentMinSize
         let frame = Self.contentSizeAfterShrinking(window)
+        #expect(minimum.width > 0 && minimum.height > 0)
         #expect(minimum.width <= 980)
         #expect(minimum.height <= 620)
         #expect(frame.width <= 980)

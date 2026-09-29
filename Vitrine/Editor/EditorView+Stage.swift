@@ -224,15 +224,14 @@ extension EditorView {
             .help("Scan the image on-device and cover regions that look like secrets")
             .accessibilityIdentifier("redact-image-secrets-button")
             if let operation = imageProcessing.operation {
+                let status = Text(
+                    operation == .copyText ? "Recognizing text…" : "Redacting secrets…")
                 HStack(spacing: 8) {
                     ProgressView()
                         .controlSize(.small)
-                        .accessibilityLabel(
-                            Text(
-                                operation == .copyText ? "Recognizing text…" : "Redacting secrets…")
-                        )
+                        .accessibilityLabel(status)
                         .accessibilityIdentifier("image-processing-status")
-                    Text(operation == .copyText ? "Recognizing text…" : "Redacting secrets…")
+                    status
                         .font(.system(size: VitrineTokens.FontSize.caption))
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityHidden(true)

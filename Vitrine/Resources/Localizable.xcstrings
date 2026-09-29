@@ -2,6 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "Couldn't copy text from the image" : {
+      "comment" : "HUD failure when recognized image text could not be written to the clipboard.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -12,6 +13,7 @@
       }
     },
     "Cancel image processing" : {
+      "comment" : "Accessibility label for the button that cancels on-device image text recognition or secret redaction.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -22,6 +24,7 @@
       }
     },
     "Redacting secrets…" : {
+      "comment" : "Progress status while Vitrine covers secrets detected in a beautified image.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -32,6 +35,7 @@
       }
     },
     "Recognizing text…" : {
+      "comment" : "Progress status while Vitrine recognizes text in a beautified image on-device.",
       "localizations" : {
         "es" : {
           "stringUnit" : {

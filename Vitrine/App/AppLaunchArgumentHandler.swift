@@ -385,8 +385,11 @@ import VitrineRendering
                     $0.identifier == EditorWindowIdentity.primary.restorationIdentifier
                 }),
                 let visible = (window.screen ?? NSScreen.main)?.visibleFrame,
-                CGFloat(width) >= window.minSize.width,
-                CGFloat(height) >= window.minSize.height,
+                case let minimum = window.frameRect(
+                    forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
+                ).size,
+                CGFloat(width) >= max(window.minSize.width, minimum.width),
+                CGFloat(height) >= max(window.minSize.height, minimum.height),
                 CGFloat(width) <= visible.width, CGFloat(height) <= visible.height
             else { return }
             window.setFrame(
