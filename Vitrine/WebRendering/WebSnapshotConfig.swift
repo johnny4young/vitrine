@@ -9,14 +9,13 @@ import VitrineRendering
 /// URL screenshots are web capture, and they must preserve Vitrine's privacy
 /// promise: the requested page is loaded **locally** in a `WKWebView` on this Mac,
 /// never through a remote render service. This type carries the explicit network
-/// mode that makes that promise auditable — what is persisted, whether cookies are
-/// allowed, and the validated URL the renderer is permitted to load — so the policy
-/// is a value the tests drive directly rather than behavior buried in a web view.
+/// mode that makes that promise auditable: retention across captures and the validated
+/// URL the renderer may load. Tests drive this policy directly.
 ///
 /// ## What this owns
 ///
 /// - **The data-store policy** (`DataStoreMode`): `WKWebsiteDataStore.nonPersistent()`
-///   is the default, and cookies / persistent website data are opt-in only.
+///   is the default, and retaining cookies and website data across captures is opt-in only.
 /// - **The first-use disclosure** (`firstUseDisclosure`): the plain-language copy
 ///   that explains Vitrine will load the requested URL locally in WebKit, shown the
 ///   first time a user captures a URL.
@@ -87,8 +86,8 @@ struct WebSnapshotConfig: Equatable {
     var profile: ColorProfile = .sRGB
 
     /// What the web view is allowed to persist while loading the page. Defaults to
-    /// `.nonPersistent`, so nothing the page touches is written to disk or shared
-    /// with any other web view; cookies and persistent website data are opt-in only.
+    /// `.nonPersistent`, with a fresh store per render. Retaining cookies and website
+    /// data across captures is opt-in only.
     var dataStoreMode: DataStoreMode = .nonPersistent
 
     /// Whether this capture may reach the loopback interface on this Mac. The value
@@ -584,10 +583,9 @@ extension WebSnapshotConfig {
     ///
     /// The privacy default is `.nonPersistent`: the web view uses
     /// `WKWebsiteDataStore.nonPersistent()`, so cookies, caches, and local storage
-    /// live only for the single render and are never written to disk or shared with
-    /// any other web view. `.persistent` is an explicit opt-in for the rare case a
-    /// user needs a logged-in page; it is never the default, which is what keeps the
-    /// "cookies and persistent website data are opt-in only" contract true.
+    /// live only in the fresh per-render store, rather than being retained for the
+    /// next capture. A page may set and send cookies during that render. `.persistent`
+    /// is an explicit opt-in when a user needs a logged-in page.
     enum DataStoreMode: String, CaseIterable, Equatable, Sendable {
         /// The default: nothing the page touches is persisted (a per-render data
         /// store). Cookies are not sent or stored across renders.
@@ -601,11 +599,6 @@ extension WebSnapshotConfig {
         /// Whether this mode persists cookies and website data to disk. `false` for
         /// the default per-render store, `true` only for the explicit opt-in.
         var persistsWebsiteData: Bool { self == .persistent }
-
-        /// Whether cookies are available to the page. Cookies ride the persistent
-        /// store, so they are available only in the explicit opt-in mode — the
-        /// "cookies are opt-in only" guarantee expressed as a single accessor.
-        var allowsCookies: Bool { self == .persistent }
     }
 }
 

@@ -34,13 +34,17 @@ struct SettingsResetCoordinatorTests {
         brandKit.brandKit = BrandKit(handle: "@vitrine", project: "Example")
         brandKit.isEnabled = true
 
+        var closedSignIn = false
         SettingsResetCoordinator(
             settings: settings,
             presets: presets,
             themes: themes,
             brandKit: brandKit,
-            workspaceRecipes: workspaceRecipes
+            workspaceRecipes: workspaceRecipes,
+            closeWebSignIn: { closedSignIn = true }
         ).reset()
+
+        #expect(closedSignIn)
 
         #expect(!settings.treatURLsAsScreenshot)
         #expect(settings.config == SnapshotConfig())
