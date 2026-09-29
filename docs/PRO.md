@@ -150,8 +150,9 @@ qualification still require their own evidence; injected tests do not certify ei
 
 In-process surfaces gate on their injected `environment.entitlements.isUnlocked(.automation)`:
 `RenderCodeImageIntent.perform()` (→ `IntentRenderError`), `CodeImageService.process()`
-(→ `.failed`, injectable for tests). The CLI is out-of-process and applies capability policy
-before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
+(→ `.failed`, injectable for tests). `OpenCodeInEditorIntent` is a free handoff
+and does not render an image. The CLI is out-of-process and applies capability
+policy before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
 forces terminal language, requires clipboard copy or editor handoff, and accepts only terminal
 width plus filename/title context. The parser rejects every general style, output, sidecar, and
 automation flag on that command. `render --edit` is also free: it only hands text to the
