@@ -226,49 +226,18 @@ struct EditorWindowStateTests {
         #expect(restored == expectedAfterRestore(original))
     }
 
-    /// Structural guard against the drift that let five document fields go missing.
-    ///
-    /// `EditorWindowState` and `SettingsCodec.Keys.editorSessionSeed` are two hand-kept
-    /// lists of the same document/style surface, and nothing forced them to agree: a field
-    /// added to one and forgotten in the other silently stopped surviving relaunch. This
-    /// reads the archive's own JSON keys and requires every seeded key to be either
-    /// carried by the bridge or explicitly excused below, so the next field cannot land in
-    /// only one place without failing here.
-    @Test func archiveCoversEverySeededDocumentKey() throws {
-        let data = try #require(EditorWindowState(config: richConfig()).encoded())
-        let archived = Set(
-            try #require(
-                JSONSerialization.jsonObject(with: data) as? [String: Any]
-            ).keys)
-
-        // Keys a window seeds but the *draft archive* deliberately does not carry, each
-        // with the reason it is not drift. Adding a key here must be a decision, not an
-        // oversight.
-        let excused: [String: String] = [
-            // The bridge stores the whole `BackgroundStyle` under `background`, which
-            // subsumes both of these.
-            SettingsCodec.Keys.gradientPreset: "carried by `background`",
-            SettingsCodec.Keys.backgroundStyle: "carried by `background`",
-            // Output/export preferences, not document content: they belong to the export
-            // action, not to the draft being restored.
-            SettingsCodec.Keys.exportScale: "output preference, not document state",
-            SettingsCodec.Keys.exportFormat: "output preference, not document state",
-            SettingsCodec.Keys.colorProfile: "output preference, not document state",
-            SettingsCodec.Keys.richClipboard: "output preference, not document state",
-            SettingsCodec.Keys.textSidecar: "output preference, not document state",
-            SettingsCodec.Keys.selectedPreset: "output preference, not document state",
-        ]
-
-        let missing = SettingsCodec.Keys.editorSessionSeed
-            .filter { !archived.contains($0) && excused[$0] == nil }
-        #expect(
-            missing.isEmpty,
-            """
-            EditorWindowState does not archive these seeded document keys, so a window \
-            restoring after relaunch will overwrite them with type defaults: \
-            \(missing.sorted().joined(separator: ", ")). Add them to EditorWindowState, or \
-            excuse them in this test with the reason.
-            """)
+    /// Persist, seed a real independent session, then archive and reopen it. Whole
+    /// configuration equality catches missing fields without coupling two key lists.
+    @Test func seededPreferencesSurviveWindowRestoration() throws {
+        let defaults = testDefaults()
+        SettingsCodec.persistStyle(richConfig(), to: defaults)
+        let environment = AppEnvironment(
+            defaults: defaults, entitlements: Entitlements(provider: FreeProvider()))
+        let session = environment.makeEditorSessionSettings()
+        defer { session.discardEphemeralStore() }
+        let data = try #require(EditorWindowState(config: session.config).encoded())
+        let state = try #require(EditorWindowState.decoded(from: data))
+        #expect(state.config() == expectedAfterRestore(session.config))
     }
 
     @Test func defaultConfigRoundTripsToItself() {
@@ -645,14 +614,15 @@ struct EditorSessionIndependenceTests {
         }
 
         let staleSession = try plant(
-            "\(AppSettings.legacyEditorSessionSuitePrefix)AAAA.plist", ageDays: 30)
+            "\(EditorSessionMigration.legacyEditorSessionSuitePrefix)AAAA.plist", ageDays: 30)
         let freshSession = try plant(
-            "\(AppSettings.legacyEditorSessionSuitePrefix)BBBB.plist", ageDays: 0)
+            "\(EditorSessionMigration.legacyEditorSessionSuitePrefix)BBBB.plist", ageDays: 0)
         let unrelated = try plant("com.johnny4young.vitrine.plist", ageDays: 30)
         let nonPlist = try plant(
-            "\(AppSettings.legacyEditorSessionSuitePrefix)CCCC.backup", ageDays: 30)
+            "\(EditorSessionMigration.legacyEditorSessionSuitePrefix)CCCC.backup", ageDays: 30)
 
-        AppSettings.sweepStaleEditorSessionSuites(preferencesDirectory: directory, now: now)
+        EditorSessionMigration.sweepStaleEditorSessionSuites(
+            preferencesDirectory: directory, now: now)
 
         // Only the stale session file is collected: a fresh one may belong to a
         // concurrently running second instance, the app-wide store is untouchable, and
@@ -671,12 +641,13 @@ struct EditorSessionIndependenceTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let stale = directory.appendingPathComponent(
-            "\(AppSettings.legacyEditorSessionSuitePrefix)DDDD.plist")
+            "\(EditorSessionMigration.legacyEditorSessionSuitePrefix)DDDD.plist")
         try Data("stub".utf8).write(to: stale)
         try FileManager.default.setAttributes(
             [.modificationDate: Date().addingTimeInterval(-30 * 86_400)], ofItemAtPath: stale.path)
 
-        await AppSettings.sweepStaleEditorSessionSuitesInBackground(preferencesDirectory: directory)
+        await EditorSessionMigration.sweepStaleEditorSessionSuitesInBackground(
+            preferencesDirectory: directory)
 
         #expect(!FileManager.default.fileExists(atPath: stale.path))
 
@@ -687,15 +658,17 @@ struct EditorSessionIndependenceTests {
             try String(
                 contentsOf: root.appendingPathComponent("Vitrine/App/AppDelegate.swift"),
                 encoding: .utf8))
-        #expect(delegate.contains("await AppSettings.sweepStaleEditorSessionSuitesInBackground("))
         #expect(
-            !delegate.contains("AppSettings.sweepStaleEditorSessionSuites("),
+            delegate.contains(
+                "await EditorSessionMigration.sweepStaleEditorSessionSuitesInBackground("))
+        #expect(
+            !delegate.contains("EditorSessionMigration.sweepStaleEditorSessionSuites("),
             "launch must not run the sweep on the main actor")
     }
 
     @Test func sweepToleratesAMissingDirectory() {
         // First launch on a clean container: the Preferences directory may not exist.
-        AppSettings.sweepStaleEditorSessionSuites(
+        EditorSessionMigration.sweepStaleEditorSessionSuites(
             preferencesDirectory: URL(fileURLWithPath: "/nonexistent/vitrine-sweep-test"))
     }
 

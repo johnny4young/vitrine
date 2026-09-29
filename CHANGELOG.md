@@ -20,6 +20,108 @@ can never drift.
 - Remove the unconnected SVG background serializer and its implementation-only
   tests. PNG, PDF, HEIC, and AVIF remain the export formats; no shipped export
   capability is removed.
+- Capture history now removes explicit redactions before creating records or previews.
+  Suspected secrets require a fresh choice to skip history, save sanitized text, or retain
+  the flagged text deliberately; this never silently changes the requested export.
+- History can be disabled without deleting existing captures. Settings and Recents offer
+  explicit cleanup of older history and cached previews, with clear backup limitations.
+- Damaged history preserves its original archive and previews until the user recovers
+  readable entries or explicitly deletes it, rather than silently replacing it with an empty list.
+- Link app and CLI clipboard delivery and offline license verification from their shared modules instead of compiling app adapters twice. Keep Keychain, activation and purchase effects app-owned.
+- Exercise terminal state with a bounded, reproducible command corpus, including
+  sanitizer execution, and verify annotation drawing, selection, movement, resize
+  and keyboard routing on natural and fixed-size canvases. Await actual debounce
+  and formatting completion instead of arbitrary test delays.
+- Run heavy visual and timing suites once in their dedicated CI lanes, with
+  nonempty execution receipts, while keeping local full-suite commands complete.
+  UI tests compile in the job that executes them rather than in both platform jobs.
+  Universal Release, coverage floors and strict visual qualification are unchanged.
+
+### Fixed
+
+- Image text recognition and secret redaction show cancellable progress. Replaced or
+  cancelled operations cannot publish stale results, errors, or progress changes.
+- Highlighted-code, image-text, and share-link copying report the actual pasteboard
+  outcome instead of silently failing or announcing success after a failed write.
+
+- Web capture sign-out now clears cached private responses and service worker data,
+  closes the sign-in window, and refreshes the stored-site inventory. Temporary
+  capture cookies are correctly documented as isolated, not disabled.
+
+- Confirm named theme and preset deletions with Cancel as the safe default. Deleting
+  the active default theme explicitly falls back to One Dark without changing other
+  style settings or open editor snapshots.
+
+- New text captures, editor handoffs, and Shortcuts clear the previous document's
+  annotations, redactions, highlights, foreground image, and terminal width while keeping
+  reusable style. Shared snapshot links still restore their own annotations.
+- `render --edit` is a free editor-only handoff, consistent with Open Code in Editor.
+  Image rendering, output files, clipboard exports, and sidecars keep their existing gates.
+- Avoid flagging constructor calls such as `WordPieceTokenizer()` and
+  `NSSecureTextField()` as secret values, without exempting quoted literals or
+  provider tokens inside their arguments. Bound generic assignment scanning on
+  adversarial long identifiers and verify that megabyte-line tails are not skipped.
+
+- Register the macOS Services provider at application startup, using the same live
+  settings and PRO entitlement as the app. The advertised code-image service keeps
+  its PNG return contract and Free/PRO policy.
+
+- Website preview filenames follow the selected code theme for readable contrast.
+  CLI examples stay inside narrow viewports, and Reduce Motion disables smooth
+  anchor scrolling and decorative motion.
+- Website screenshots now reserve layout space and use responsive, lossless WebP
+  variants with the original PNG fallback. Generated assets have matching cache rules.
+- Download links validate published stable release assets rather than inferring
+  availability from the source version. Patched the transitive devalue dependency.
+
+- English and Spanish website pages now contain their complete localized content
+  before JavaScript runs. Language links work natively on the home and CLI pages;
+  accessible descriptions and installation feedback follow the selected language.
+- Native controls and previews respect Reduce Motion without changing export geometry.
+  Small chrome labels and white CTA text have measured contrast in light/dark appearances.
+  Selected labels adapt to the actual macOS accent without changing the user's color.
+  Code input retains its syntax theme background and readable caret, while preview status
+  uses an adaptive opaque fill in both appearances.
+- Segmented controls are a single keyboard stop whose arrow keys change the selection
+  when macOS keyboard navigation is on, and a mouse click no longer takes focus from the
+  editor. The command palette exposes selected results and announces search updates to
+  assistive technology.
+- Locked export controls announce their PRO requirement. The Store paywall displays
+  the localized StoreKit price with retry and restore paths; direct-download pricing
+  is never guessed.
+
+- Require qualified visual comparisons for every export scenario and the social
+  card, with exact environment provenance and fail-closed execution evidence.
+  Other environments retain explicitly labeled render smoke; baseline candidates
+  require review and cannot automatically turn a failed comparison green.
+
+- Select the terminal domain tests in the Address Sanitizer lane and verify that
+  every expected sanitizer suite actually executes passing tests. Empty, omitted,
+  skipped or failed selections now fail instead of accepting build-only success.
+  Sanitizers remain weekly/manual, non-required early-warning checks.
+
+- Preserve custom default themes in additional editor windows without copying shared
+  catalogs into draft storage. Keep per-window output preferences separate from global
+  behavior, and explain the scope of Style defaults. Settings now includes the Slide
+  destination instead of hiding it from the compact picker.
+
+- Apply terminal redactions to reconstructed screen rows in rich-text copies and
+  share links, including cursor movement, wrapping and alternate-screen output.
+  Visible rich-text rows retain their colors; redacted share links never include the
+  original ANSI transcript. Clarify that manual blur annotations are not source redaction.
+
+### Added
+
+- Optional confidential clipboard markers in Settings and CLI `--copy --conceal-clipboard`.
+  Compatible clipboard managers can conceal exports; this is not access control or
+  automatic clipboard expiration, and the preference is off by default.
+
+### Testing
+
+- Controlled WebKit integration tests exercise redirects, private subresources,
+  localhost opt-in, cancellation, timeouts, capture limits, and session removal.
+  Dedicated result validation rejects missing or skipped scenarios. Fixture startup
+  avoids reverse DNS, publishes readiness atomically, and retains failure logs.
 
 ## [1.2.3] - 2026-09-16
 
@@ -693,8 +795,8 @@ explicit, and understandable after the image leaves the Mac.
 - **Capture pages that are behind a login.** Turn on "Use my logged-in session" and the
   Web Snapshot window offers to sign you in to the site first, in a real browser window;
   the capture that follows sees the signed-in page. The session belongs to Vitrine alone
-  — nothing is read from Safari or Chrome — and Settings lists the sites you are signed
-  in to, with one button to sign out of all of them.
+  — nothing is read from Safari or Chrome — and Settings lists sites with saved WebKit
+  data, with one button to clear it. This does not revoke server-side sessions.
 
 ### Fixed
 

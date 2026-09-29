@@ -25,10 +25,16 @@ struct BrandKitSettingsSection: View {
     @State private var logoImportTask: Task<Void, Never>?
 
     var body: some View {
-        if entitlements.isUnlocked(.brandKit) {
-            controls
-        } else {
-            upsell
+        Group {
+            if entitlements.isUnlocked(.brandKit) {
+                controls
+            } else {
+                upsell
+            }
+        }
+        // Keep presentation alive if a partially persisted activation changes cached PRO.
+        .sheet(isPresented: $showingPaywall) {
+            PaywallSheet(feature: .brandKit, entitlements: entitlements)
         }
     }
 
@@ -162,9 +168,6 @@ struct BrandKitSettingsSection: View {
             }
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .sheet(isPresented: $showingPaywall) {
-            PaywallSheet(feature: .brandKit, entitlements: entitlements)
         }
         .accessibilityIdentifier("settings-brand-kit-upsell")
     }

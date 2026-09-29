@@ -31,6 +31,27 @@ import VitrineRendering
             self.showMenuBarPanel = showMenuBarPanel
         }
 
+        /// Seeds fixtures the stores must read at construction, so it runs before the
+        /// composition root builds them. Only an explicitly isolated UI-test suite is touched.
+        static func seedPreLaunchFixtures(
+            in defaults: UserDefaults,
+            arguments: [String] = ProcessInfo.processInfo.arguments,
+            environment: [String: String] = ProcessInfo.processInfo.environment
+        ) {
+            guard environment["VITRINE_USER_DEFAULTS_SUITE"]?.isEmpty == false,
+                arguments.contains("--history-recovery-demo"),
+                !defaults.bool(forKey: "historyRecoveryFixtureSeeded")
+            else { return }
+            let capture = Capture(
+                code: "Recovered sample", languageID: "swift", themeID: "one-dark")
+            guard let entry = try? JSONEncoder().encode(capture) else { return }
+            var archive = Data("[".utf8)
+            archive.append(entry)
+            archive.append(Data(", {\"unfinished\":".utf8))
+            defaults.set(archive, forKey: "recentCaptures")
+            defaults.set(true, forKey: "historyRecoveryFixtureSeeded")
+        }
+
         /// Development launch hooks (manual UI testing + the screenshot/UI-smoke tours);
         /// none of these run on a normal user launch. `--demo` preloads sample code;
         /// `--demo-large-document` preloads a source just above the interactive-highlighting ceiling;
@@ -176,6 +197,7 @@ import VitrineRendering
             }
             if arguments.contains("--open-editor") {
                 EditorWindowController.shared.show()
+                applyRequestedEditorViewportForUITesting()
                 didOpenWindow = true
             }
             if arguments.contains("--open-command-palette") {
@@ -196,6 +218,7 @@ import VitrineRendering
                     settings.config.foregroundImage = reference
                 }
                 EditorWindowController.shared.show()
+                applyRequestedEditorViewportForUITesting()
                 didOpenWindow = true
             }
             if arguments.contains("--open-settings") {
@@ -204,6 +227,21 @@ import VitrineRendering
             }
             if arguments.contains("--open-recents") {
                 RecentsGalleryWindowController.shared.show()
+                didOpenWindow = true
+            }
+            if arguments.contains("--history-consent-demo"),
+                ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"]?.isEmpty == false
+            {
+                // Synthetic UI fixture only: never read or overwrite the real clipboard.
+                settings.export.autoCopy = false
+                settings.export.alsoSaveToFile = false
+                Task { @MainActor [environment] in
+                    _ = QuickCapture.capture(
+                        settings: environment.appSettings, recents: environment.recents,
+                        clipboard: { "gh" + "p_" + String(repeating: "x", count: 36) },
+                        historyConsent: HistoryConsentPrompt.resolve)
+                    RecentsGalleryWindowController.shared.show()
+                }
                 didOpenWindow = true
             }
             if arguments.contains("--open-social-card") {
@@ -330,6 +368,36 @@ import VitrineRendering
             }
 
             return didOpenWindow
+        }
+
+        /// Sets a real compact frame for UI fixtures. A content minimum that rejects
+        /// it still fails the test's resulting-size assertion. Debug builds only.
+        private func applyRequestedEditorViewportForUITesting() {
+            guard
+                let requested = ProcessInfo.processInfo.environment[
+                    "VITRINE_UI_TEST_EDITOR_VIEWPORT"
+                ]
+            else { return }
+            let parts = requested.split(separator: "x", omittingEmptySubsequences: false)
+            guard parts.count == 2,
+                let width = Int(parts[0]), let height = Int(parts[1]),
+                let window = NSApp.windows.first(where: {
+                    $0.identifier == EditorWindowIdentity.primary.restorationIdentifier
+                }),
+                let visible = (window.screen ?? NSScreen.main)?.visibleFrame,
+                case let minimum = window.frameRect(
+                    forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
+                ).size,
+                CGFloat(width) >= max(window.minSize.width, minimum.width),
+                CGFloat(height) >= max(window.minSize.height, minimum.height),
+                CGFloat(width) <= visible.width, CGFloat(height) <= visible.height
+            else { return }
+            window.setFrame(
+                NSRect(
+                    x: visible.midX - CGFloat(width) / 2,
+                    y: visible.midY - CGFloat(height) / 2,
+                    width: CGFloat(width), height: CGFloat(height)),
+                display: true)
         }
 
         private func configuredMemoryIterationCount(

@@ -1,5 +1,6 @@
 import CryptoKit
 import Foundation
+import VitrineDomain
 import os
 
 #if VITRINE_DIRECT_DOWNLOAD
@@ -409,12 +410,9 @@ import os
             }
         }
 
-        /// A human-readable seat name for the Lemon Squeezy dashboard: the Mac's name, so a
-        /// user can recognize and deactivate a seat. Falls back to the product name.
-        static var defaultInstanceName: String {
-            let name = Host.current().localizedName ?? ""
-            return name.isEmpty ? "Vitrine" : name
-        }
+        /// New seats use a generic name rather than disclosing the user's computer name.
+        /// Existing provider instances are never renamed or reactivated by this default.
+        static let defaultInstanceName = "Vitrine"
     }
 
     /// The remote verdict surfaced to entitlement coordination and Settings.

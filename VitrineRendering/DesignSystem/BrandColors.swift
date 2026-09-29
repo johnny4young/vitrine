@@ -7,7 +7,7 @@ extension Brand {
     /// single `Color` from these (`BrandColor.color`) guarantees the right value
     /// for light, dark, and high-contrast appearances without relying on
     /// an asset-catalog lookup, which keeps the palette testable in isolation.
-    public struct BrandColor: Equatable {
+    public struct BrandColor: Equatable, Sendable {
         public let light: Color
         public let dark: Color
         /// Light + increased contrast.
@@ -30,7 +30,7 @@ extension Brand {
         }
 
         /// Resolves the variant for an appearance.
-        public func resolved(scheme: ColorScheme, highContrast: Bool) -> Color {
+        public nonisolated func resolved(scheme: ColorScheme, highContrast: Bool) -> Color {
             switch (scheme, highContrast) {
             case (.dark, true): darkHighContrast
             case (.dark, false): dark
@@ -41,21 +41,28 @@ extension Brand {
 
         /// A SwiftUI `Color` that adapts to the current appearance automatically.
         /// Use this in views; it reads the trait environment at draw time.
-        public var color: Color {
-            Color(
-                nsColor: NSColor(name: nil) { appearance in
-                    let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-                    let isHighContrast =
-                        appearance.bestMatch(from: [
-                            .accessibilityHighContrastAqua, .aqua,
-                        ]) == .accessibilityHighContrastAqua
-                        || appearance.bestMatch(from: [
-                            .accessibilityHighContrastDarkAqua, .darkAqua,
-                        ]) == .accessibilityHighContrastDarkAqua
-                    let resolved = self.resolved(
-                        scheme: isDark ? .dark : .light, highContrast: isHighContrast)
-                    return NSColor(resolved)
-                })
+        public var color: Color { Color(nsColor: nsColor) }
+
+        var nsColor: NSColor { NSColor(name: nil, dynamicProvider: Self.provider(for: self)) }
+
+        /// SwiftUI's asynchronous renderer resolves dynamic colors off the main thread, so
+        /// the provider must not inherit the module's main-actor isolation.
+        private nonisolated static func provider(
+            for variants: BrandColor
+        ) -> @Sendable (NSAppearance) -> NSColor {
+            { appearance in
+                let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                let isHighContrast =
+                    appearance.bestMatch(from: [
+                        .accessibilityHighContrastAqua, .aqua,
+                    ]) == .accessibilityHighContrastAqua
+                    || appearance.bestMatch(from: [
+                        .accessibilityHighContrastDarkAqua, .darkAqua,
+                    ]) == .accessibilityHighContrastDarkAqua
+                return NSColor(
+                    variants.resolved(scheme: isDark ? .dark : .light, highContrast: isHighContrast)
+                )
+            }
         }
     }
 
