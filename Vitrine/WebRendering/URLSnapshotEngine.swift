@@ -41,9 +41,11 @@ import WebKit
 /// `WKWebView` is main-actor bound, so the whole type runs on the main actor (the
 /// module's default isolation).
 struct URLSnapshotEngine {
-    /// A caller may supply an isolated store for controlled integration tests. Normal
-    /// captures select a fresh or saved-session store exclusively from their config.
-    var websiteDataStore: WKWebsiteDataStore?
+    #if DEBUG
+        /// A caller may supply an isolated store for controlled integration tests. Normal
+        /// captures select a fresh or saved-session store exclusively from their config.
+        var websiteDataStore: WKWebsiteDataStore?
+    #endif
 
     /// The maximum number of viewport-sized scroll steps the bounded lazy-load pass
     /// performs for a full-page capture. Caps the work for an infinite-scroll page:
@@ -74,7 +76,12 @@ struct URLSnapshotEngine {
         // The data store is the explicit network mode: a per-render nonpersistent
         // store by default (nothing written to disk, no cookies across renders), or
         // the persistent store only when the user opted in.
-        configuration.websiteDataStore = websiteDataStore ?? dataStore(for: config.dataStoreMode)
+        #if DEBUG
+            configuration.websiteDataStore =
+                websiteDataStore ?? dataStore(for: config.dataStoreMode)
+        #else
+            configuration.websiteDataStore = dataStore(for: config.dataStoreMode)
+        #endif
         // A navigation delegate sees documents and frames, not images, style sheets,
         // scripts, fonts, media, fetch/XHR, or WebSockets. Install the compiled
         // literal-private-host rule list before creating the web view so those
@@ -103,14 +110,18 @@ struct URLSnapshotEngine {
             webView.stopLoading()
         }
 
-        if config.url.isFileURL {
-            // The file URL is only constructible through the Debug fixture hook.
-            // WebKit's sandboxed process needs an explicit read grant for it.
-            webView.loadFileURL(
-                config.url, allowingReadAccessTo: config.url.deletingLastPathComponent())
-        } else {
+        #if DEBUG
+            if config.url.isFileURL {
+                // The file URL is only constructible through the Debug fixture hook.
+                // WebKit's sandboxed process needs an explicit read grant for it.
+                webView.loadFileURL(
+                    config.url, allowingReadAccessTo: config.url.deletingLastPathComponent())
+            } else {
+                webView.load(URLRequest(url: config.url))
+            }
+        #else
             webView.load(URLRequest(url: config.url))
-        }
+        #endif
 
         // Every wait below shares one absolute deadline. The timeout is no longer
         // only a navigation timeout; it bounds navigation, post-load settling, and

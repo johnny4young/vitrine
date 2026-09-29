@@ -32,6 +32,8 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
                 alert.informativeText = String(
                     localized: "Vitrine could not establish safe web access. Try again later.")
                 alert.alertStyle = .warning
+                // An accessory app would otherwise show the alert behind other apps.
+                NSApp.activate(ignoringOtherApps: true)
                 alert.runModal()
             }
         }

@@ -62,6 +62,8 @@ struct URLDataStoreModeTests {
         let engine = URLSnapshotEngine()
         let store = engine.dataStore(for: .nonPersistent)
         #expect(store.isPersistent == false)
+        // Each render gets its own store, so no cookie reaches the next capture.
+        #expect(engine.dataStore(for: .nonPersistent) !== store)
     }
 
     @MainActor

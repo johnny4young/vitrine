@@ -217,7 +217,10 @@ def loopback_fixture(output, *, script=None, startup_timeout=10):
 
 
 def run(output, diagnostic_host, require_direct_sandbox):
-    output.mkdir(parents=True, exist_ok=False)
+    if output.exists():
+        # Never mix a new receipt with evidence from an earlier run.
+        raise RuntimeError(f"{output} already exists; remove it or set WEB_CAPTURE_OUTPUT")
+    output.mkdir(parents=True)
     with loopback_fixture(output) as port:
         bundle = output / "tests.xcresult"
         command = [

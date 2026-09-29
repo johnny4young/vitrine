@@ -6,6 +6,8 @@ on:
       - '.github/workflows/web-capture.yml'
       - '.github/actions/setup-macos-toolchain/**'
       - 'Vitrine/WebRendering/**'
+      - 'VitrineDomain/Policies/PrivateHostPolicy.swift'
+      - 'Vitrine/Resources/Vitrine.DirectDownload.entitlements'
       - 'Vitrine/Settings/InputSettingsView.swift'
       - 'Vitrine/Settings/WebCaptureSettings.swift'
       - 'Tests/URLRenderer/**'

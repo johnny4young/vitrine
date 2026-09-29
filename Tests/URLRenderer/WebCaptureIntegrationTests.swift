@@ -10,7 +10,7 @@ import WebKit
 /// including URLs that name other hosts. No system proxy or DNS settings change.
 @MainActor
 @Suite(
-    "Controlled WebKit capture",
+    "Controlled WebKit capture", .serialized,
     .enabled(
         if: ProcessInfo.processInfo.environment["VITRINE_WEB_FIXTURE_PORT"].flatMap(UInt16.init)
             != nil))
@@ -303,10 +303,7 @@ struct WebCaptureIntegrationTests {
     @Test func pendingLoadHonorsItsTimeout() async throws {
         let key = UUID().uuidString
         var request = try config("hold/\(key)")
-        // A cold WebKit process on the hosted Sequoia runner can consume a one-second
-        // budget before dispatching any request. Keep the real-load assertion and use
-        // the same startup allowance as the cancellation journey, not a blind sleep.
-        // The unit waiter tests independently cover short timer expiration.
+        // Allow for cold WebKit startup; unit waiter tests cover short expirations.
         request.safetyCaps.maxTimeout = .seconds(5)
         let started = ContinuousClock.now
         do {
@@ -361,6 +358,7 @@ struct WebCaptureIntegrationTests {
         #expect(seeded as? Bool == true)
         #expect((await store.httpCookieStore.allCookies()).contains { $0.name == "fixture" })
         let nextCapture = URLSnapshotEngine().dataStore(for: .nonPersistent)
+        #expect(nextCapture !== store)
         #expect((await nextCapture.httpCookieStore.allCookies()).isEmpty)
         #expect(!(await WebSessionStore.storedSiteLabels(in: store)).isEmpty)
         await WebSessionStore.clearSessions(in: store)
