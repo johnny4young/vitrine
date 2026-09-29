@@ -191,13 +191,19 @@ extension EditorView {
             .accessibilityIdentifier("pin-snapshot-button")
 
             Button(action: presentMultiSizeExport) {
-                Label("Export sizes", systemImage: "square.grid.2x2")
+                Label(
+                    entitlements.isUnlocked(.multiSizeExport)
+                        ? "Export sizes" : "Export sizes — Requires PRO",
+                    systemImage: "square.grid.2x2")
             }
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("export-sizes-button")
 
             Button(action: presentCarouselExport) {
-                Label("Export carousel", systemImage: "rectangle.stack")
+                Label(
+                    entitlements.isUnlocked(.carouselExport)
+                        ? "Export carousel" : "Export carousel — Requires PRO",
+                    systemImage: "rectangle.stack")
             }
             .disabled(!settings.hasRenderableContent || settings.style.usesImageContent)
             .accessibilityIdentifier("export-carousel-button")
@@ -239,7 +245,8 @@ extension EditorView {
         let outcome = ExportManager.copyToPasteboardOutcome(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar)
+            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
+            concealed: environment.appSettings.export.concealClipboard)
         session.feedback(ExportFeedback.copyOutcome(outcome))
         // `closeAfterCopy` is an app-global behavior preference, so it is read from the
         // environment's app-wide settings (what the Settings toggle edits) rather than
@@ -353,6 +360,7 @@ extension EditorView {
             .help("Export this snapshot to several platform sizes at once")
             .disabled(!settings.hasRenderableContent)
             .accessibilityLabel(Text("Export sizes"))
+            .accessibilityValue(entitlements.proRequirementValue(for: .multiSizeExport))
             .accessibilityIdentifier("export-sizes-button")
     }
 
@@ -371,6 +379,7 @@ extension EditorView {
                 !settings.hasRenderableContent || settings.style.usesImageContent
             )
             .accessibilityLabel(Text("Export carousel"))
+            .accessibilityValue(entitlements.proRequirementValue(for: .carouselExport))
             .accessibilityIdentifier("export-carousel-button")
     }
 
@@ -537,7 +546,8 @@ extension EditorView {
                     for: settings.exportConfig,
                     scale: CGFloat(settings.effectiveExportScale),
                     fixedSize: settings.effectiveFixedSize,
-                    profile: settings.export.colorProfile)))
+                    profile: settings.export.colorProfile,
+                    concealed: environment.appSettings.export.concealClipboard)))
     }
 
     /// Copies a self-contained Markdown image embed followed by the visible,
@@ -549,7 +559,8 @@ extension EditorView {
                     for: settings.exportConfig,
                     scale: CGFloat(settings.effectiveExportScale),
                     fixedSize: settings.effectiveFixedSize,
-                    profile: settings.export.colorProfile)))
+                    profile: settings.export.colorProfile,
+                    concealed: environment.appSettings.export.concealClipboard)))
     }
 
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
@@ -557,7 +568,9 @@ extension EditorView {
     func copyHighlightedCode() {
         session.feedback(
             ExportFeedback.sourceCopyOutcome(
-                RichPasteboard.copyHighlightedCode(for: settings.config)))
+                RichPasteboard.copyHighlightedCode(
+                    for: settings.config,
+                    concealed: environment.appSettings.export.concealClipboard)))
     }
 
     /// Copies a self-contained `vitrine://open` link that reproduces this snapshot. The
@@ -566,9 +579,8 @@ extension EditorView {
     func copyShareLink() {
         do {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            let copied = pasteboard.setString(url.absoluteString, forType: .string)
+            let copied = ClipboardWriter.copy(
+                url.absoluteString, concealed: environment.appSettings.export.concealClipboard)
             session.feedback(ExportFeedback.shareLinkCopyOutcome(copied))
         } catch SnapshotShareLink.ShareLinkError.tooLarge {
             session.feedback(

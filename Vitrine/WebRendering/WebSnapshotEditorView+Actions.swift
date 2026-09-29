@@ -45,7 +45,8 @@ extension WebSnapshotEditorView {
                 captureURLString: model.urlText,
                 allowLoopback: settings.webCapture.allowsLoopbackCapture)
         else { return }
-        presentation.showSignIn(for: url)
+        presentation.showSignIn(
+            for: url, allowsLoopback: settings.webCapture.allowsLoopbackCapture)
     }
 
     func capture() async {
@@ -86,7 +87,8 @@ extension WebSnapshotEditorView {
         guard let asset = model.renderedAsset else { return }
         feedback(
             ExportFeedback.copyOutcome(
-                ExportManager.copyPNGToPasteboardOutcome(asset.cgImage)))
+                ExportManager.copyPNGToPasteboardOutcome(
+                    asset.cgImage, concealed: settings.export.concealClipboard)))
     }
 
     func saveImage() {

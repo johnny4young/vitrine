@@ -5,8 +5,11 @@
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
 
-/_astro/*
+/static/*
   Cache-Control: public, max-age=31536000, immutable
 
 /screenshots/*
   Cache-Control: public, max-age=604800
+
+/responsive/*
+  Cache-Control: public, max-age=31536000, immutable

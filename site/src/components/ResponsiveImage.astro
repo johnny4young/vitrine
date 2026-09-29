@@ -1,0 +1,20 @@
+---
+import images from '~/generated/images.json';
+
+interface Props {
+  src: keyof typeof images;
+  alt: string;
+  sizes: string;
+  loading?: 'eager' | 'lazy';
+  width?: number;
+  height?: number;
+}
+const { src, alt, sizes, loading = 'lazy', width, height } = Astro.props;
+const image = images[src];
+const srcset = image.candidates.map((candidate) => `${candidate.src} ${candidate.width}w`).join(', ');
+---
+<picture>
+  <source type="image/webp" srcset={srcset} sizes={sizes} />
+  <img src={src} alt={alt} width={width ?? image.width} height={height ?? image.height}
+    loading={loading} decoding="async" />
+</picture>

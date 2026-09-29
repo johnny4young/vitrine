@@ -267,6 +267,7 @@ extension EditorView {
         else { return }
         let settings = self.settings
         let feedback = session.feedback
+        let export = environment.appSettings.export
         imageProcessing.start(
             .copyText,
             work: {
@@ -278,9 +279,7 @@ extension EditorView {
                     feedback(Notifier.confirmation(String(localized: "No text found in the image")))
                     return
                 }
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                let copied = pasteboard.setString(text, forType: .string)
+                let copied = ClipboardWriter.copy(text, concealed: export.concealClipboard)
                 if copied {
                     Log.export.notice(
                         "Copied recognized image text (\(text.count, privacy: .public) chars)")
@@ -500,7 +499,7 @@ extension EditorView {
                         endRadius: max(proxy.size.width, proxy.size.height) * 0.55)
                 }
             }
-            .animation(.easeInOut(duration: 0.6), value: settings.style.background)
+            .motionSensitiveAnimation(.easeInOut(duration: 0.6), value: settings.style.background)
         }
         .accessibilityHidden(true)
     }
@@ -601,7 +600,7 @@ extension EditorView {
         settings.style.language = language
         // Pasting fresh code is a new capture, so drop content-bound marks (annotations,
         // highlighted lines) that were positioned over whatever was here before.
-        settings.style.clearContentMarks()
+        settings.style.resetForNewContent()
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
         settings.documentCode =
@@ -641,7 +640,7 @@ private struct PreviewCardStage<Content: View>: View {
             // inside the stage at every window size (usability fix).
             .frame(width: cardSize.width * scale, height: cardSize.height * scale)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .animation(.easeInOut(duration: 0.25), value: scale)
+            .motionSensitiveAnimation(.easeInOut(duration: 0.25), value: scale)
     }
 }
 
@@ -700,7 +699,7 @@ private struct CodeDocumentEditor: View {
             fontSize: settings.style.fontSize,
             fontLigatures: settings.style.fontLigatures,
             reindentOnPaste: reindentOnPaste,
-            onReplaceAllPaste: { settings.style.clearContentMarks() }
+            onReplaceAllPaste: { settings.style.resetForNewContent() }
         )
         .overlay {
             if settings.documentIsEmpty {
