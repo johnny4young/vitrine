@@ -35,12 +35,67 @@ npm test
 
 The build validator checks both language routes, canonical and alternate-language
 metadata, structured data, core gallery sections, browser-script syntax, crawl files,
-internal links, and the social-card dimensions.
-The displayed release version and structured data come from the repository's authoritative
-`project.yml`, so a release version bump cannot leave static website metadata behind.
+internal links, and the social-card dimensions. Both home pages render all 93 marketing
+messages from `src/i18n/content.ts` at build time; navigation, accessible labels and image
+descriptions share the typed locale catalog. Rich-text messages are trusted repository
+content only, never user input or release API data.
+
+Language switches are native links on both the home and CLI pages, including when
+JavaScript is disabled. Browser scripts handle only optional interactions and release
+lookup; `/download` retains its manual release link without JavaScript. The postbuild
+tests reject English fallback in Spanish sections, omitted or duplicated messages, and
+JavaScript-only or incorrectly routed language controls. Product names and source-code
+samples are intentionally not translated.
+Static release highlights and structured data track `project.yml`; they do not authorize a
+download. The optional release lookup accepts only a published stable GitHub release and
+its uploaded, nonempty, matching Vitrine DMG from this repository. Missing assets fall back
+to that release page; offline, invalid, or rate-limited responses preserve `/download` and
+its manual link. Both routes share `public/scripts/release.js` and its adversarial tests.
+
+## Images and caching
+
+`npm run images` generates content-addressed WebP variants from the original PNGs in
+`public/`; development, checking, and build scripts run it automatically, reusing outputs
+for unchanged sources. Original paths
+remain available for README links and PNG fallback. Generated files are ignored, not
+hand-edited. `ResponsiveImage.astro` emits native `picture`, responsive source widths,
+explicit geometry and localized alt text without a client framework.
+
+WebP compression is lossless at each selected resolution. Postbuild tests compare decoded
+visible pixels against the resized original, check every emitted file and content hash,
+and enforce a byte reduction. Smaller candidates that cost more bytes than a larger one
+are omitted. Screenshots retain their native-resolution candidate; browser-selected sizes
+still need visual review at desktop/mobile widths and Retina density. The CLI hero loads
+eagerly; below-the-fold screenshots remain lazy.
+
+`_headers` applies immutable caching only to generated `/static/*` and `/responsive/*`
+assets. Original screenshot URLs retain a bounded cache and mutable scripts/HTML are not
+marked immutable. Tests validate the built rules and actual asset paths, **not deployed
+response headers**. Confirm those separately after an approved deployment.
+
+The lockfile updates transitive `devalue` to 5.9.4 for
+[GHSA-9rgm-9g3h-6x36](https://github.com/sveltejs/devalue/security/advisories/GHSA-9rgm-9g3h-6x36).
+This static site has no Astro Actions/server runtime accepting untrusted devalue payloads;
+the dependency is patched regardless. No public vulnerability exception is required.
 
 ## Deployment
 
 `.github/workflows/deploy-site.yml` builds this package and deploys `dist/` to the
 `vitrine-web` Cloudflare Pages project. Deployments run when `site/` changes, when a
 GitHub release is published, or through a manual workflow dispatch.
+
+### Visual accessibility checks
+
+The preview filename follows the selected snippet foreground, independently of the
+page appearance. Script regression tests exercise each theme and language and check
+normal-text contrast; this DOM double does not prove browser layout. A stylesheet contract
+test requires every hover or press transform to be neutralized under Reduce Motion and
+keeps CLI examples shrinkable in narrow grids.
+
+Before integrating visual changes, inspect EN/ES home and CLI in a real browser at
+390 px and 1280×800, with JavaScript enabled and disabled. Check that CLI examples
+stay within the page while long code remains locally scrollable, preview filenames
+remain readable in every theme/page-appearance combination, and keyboard focus is
+visible. With Reduce Motion enabled, anchor navigation must not smooth-scroll and
+hover and press states must not move controls. Keep screenshots and measured computed styles with
+the exact commit under review; automated source checks are not a screen-reader audit.

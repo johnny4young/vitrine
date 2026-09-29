@@ -36,13 +36,21 @@ private struct ProGateModifier: ViewModifier {
             }
         } label: {
             content.overlay(alignment: .topTrailing) {
-                if !entitlements.isUnlocked(feature) { ProBadge() }
+                if !entitlements.isUnlocked(feature) { ProBadge().accessibilityHidden(true) }
             }
         }
         .buttonStyle(.plain)
+        .accessibilityValue(entitlements.proRequirementValue(for: feature))
         .sheet(isPresented: $showingPaywall) {
             PaywallSheet(feature: feature, entitlements: entitlements)
         }
+    }
+}
+
+extension Entitlements {
+    /// Accessibility value for a gated control: announces the PRO requirement until unlocked.
+    func proRequirementValue(for feature: ProFeature) -> Text {
+        isUnlocked(feature) ? Text(verbatim: "") : Text("Requires PRO")
     }
 }
 
@@ -67,13 +75,16 @@ struct PaywallSheet: View {
     let feature: ProFeature
     let entitlements: Entitlements
     @Environment(\.dismiss) private var dismiss
-    @State private var working = false
 
     #if VITRINE_DIRECT_DOWNLOAD
         @State private var licenseKey = ""
-        @State private var activationFailed = false
+        @State private var activation = PaywallActivationState()
     #else
+        @State private var working = false
         @State private var purchaseFailed = false
+        @State private var displayPrice: String?
+        @State private var loadingPrice = true
+        @State private var priceRequest = 0
     #endif
 
     var body: some View {
@@ -117,13 +128,25 @@ struct PaywallSheet: View {
         .frame(width: 380)
         .background(VitrineTokens.Surface.window)
         .onChange(of: entitlements.isPro) {
-            // Unlocked (a purchase or activation landed) → close the paywall.
-            if entitlements.isPro { dismiss() }
+            #if VITRINE_DIRECT_DOWNLOAD
+                if activation.dismissesOnUnlock(isPro: entitlements.isPro) { dismiss() }
+            #else
+                if entitlements.isPro { dismiss() }
+            #endif
         }
         // `.contain` keeps the children's identifiers reachable under the root id. An
         // identifier on a bare VStack propagates down and hides the stable child controls.
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("pro-paywall-sheet")
+        #if !VITRINE_DIRECT_DOWNLOAD
+            .task(id: priceRequest) {
+                loadingPrice = true
+                let price = await entitlements.purchaseDisplayPrice()
+                guard !Task.isCancelled else { return }
+                displayPrice = price
+                loadingPrice = false
+            }
+        #endif
     }
 
     @ViewBuilder
@@ -148,19 +171,22 @@ struct PaywallSheet: View {
                     .accessibilityIdentifier("pro-license-field")
                 Button {
                     Task {
-                        working = true
+                        activation.begin()
                         let ok = await entitlements.activate(licenseKey: licenseKey)
-                        activationFailed = !ok
-                        working = false
+                        activation.finish(succeeded: ok, isPro: entitlements.isPro)
+                        if ok { dismiss() }
                     }
                 } label: {
                     Text("Activate").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .disabled(working || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty)
+                .disabled(
+                    activation.isWorking
+                        || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty
+                )
                 .accessibilityIdentifier("pro-activate-button")
                 .keyboardShortcut(.defaultAction)
-                if activationFailed {
+                if activation.failed {
                     Text("That license key couldn't be activated. Check it and try again.")
                         .font(.system(size: VitrineTokens.FontSize.caption))
                         .foregroundStyle(.red)
@@ -169,6 +195,22 @@ struct PaywallSheet: View {
             }
         #else
             VStack(spacing: 8) {
+                if loadingPrice {
+                    ProgressView("Loading price…")
+                        .controlSize(.small)
+                        .accessibilityIdentifier("pro-price-loading")
+                } else if let displayPrice {
+                    Text(verbatim: displayPrice)
+                        .font(.headline)
+                        .accessibilityIdentifier("pro-display-price")
+                } else {
+                    Text("Price unavailable. Try again or restore a previous purchase.")
+                        .font(.caption)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("pro-price-unavailable")
+                    Button("Retry") { priceRequest += 1 }
+                        .accessibilityIdentifier("pro-price-retry")
+                }
                 Button {
                     Task {
                         working = true
@@ -180,7 +222,7 @@ struct PaywallSheet: View {
                     Text("Get Vitrine PRO").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(working)
+                .disabled(working || loadingPrice || displayPrice == nil)
                 .accessibilityIdentifier("pro-buy-button")
                 .keyboardShortcut(.defaultAction)
                 Button {
@@ -205,3 +247,29 @@ struct PaywallSheet: View {
         #endif
     }
 }
+
+#if VITRINE_DIRECT_DOWNLOAD
+    /// A token can survive a failed persistence rollback, so that attempt's own result keeps the
+    /// paywall open. Any other unlock, including one from another window, closes it.
+    struct PaywallActivationState {
+        private(set) var isWorking = false
+        private(set) var failed = false
+        private var retainsPartialActivation = false
+
+        mutating func begin() {
+            isWorking = true
+            failed = false
+            retainsPartialActivation = false
+        }
+
+        mutating func finish(succeeded: Bool, isPro: Bool) {
+            isWorking = false
+            failed = !succeeded
+            retainsPartialActivation = !succeeded && isPro
+        }
+
+        func dismissesOnUnlock(isPro: Bool) -> Bool {
+            isPro && !isWorking && !retainsPartialActivation
+        }
+    }
+#endif

@@ -21,10 +21,6 @@ import VitrineRendering
 /// `NSServices` Info.plist declaration live in `ServiceRegistration` and the app's
 /// Info.plist; this type is only the provider object the runtime calls.
 final class CodeImageService: NSObject {
-    /// The shared provider instance the app registers with `NSApp.servicesProvider`,
-    /// composed over the app-wide data graph.
-    static let shared = CodeImageService(environment: .shared)
-
     /// The graph that supplies the automation entitlement and the exported user style.
     /// Retaining it here keeps the gate and the render request on the same dependencies.
     let environment: AppEnvironment
@@ -109,19 +105,16 @@ final class CodeImageService: NSObject {
             return .failed(message: "Vitrine could not render an image from that code.")
         }
 
-        // Hand the image back on the same pasteboard. Write both an `NSImage` object
-        // (for image wells) and explicit PNG bytes for apps that read raw PNG. The
-        // bytes go through the color-managed ImageIO path (`ExportManager.pngData`),
-        // not a legacy TIFF/`NSBitmapImageRep` round-trip — the latter double-encodes
-        // on the main actor and can drop the deliberate sRGB tagging the exporter
-        // guarantees.
+        // Hand the image back on the same pasteboard as one item: the `NSImage`
+        // representations (for image wells) plus explicit PNG bytes for apps that read
+        // raw PNG. The bytes go through the color-managed ImageIO path
+        // (`ExportManager.pngData`), which keeps the exporter's sRGB tagging.
         let image = NSImage(
             cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-        pasteboard.clearContents()
-        var wroteImage = pasteboard.writeObjects([image])
-        if let png = ExportManager.pngData(from: cgImage) {
-            wroteImage = pasteboard.setData(png, forType: .png) || wroteImage
-        }
+        let item = ClipboardWriter.item(from: image, for: pasteboard)
+        if let png = ExportManager.pngData(from: cgImage) { item.setData(png, forType: .png) }
+        let wroteImage = ClipboardWriter.write(
+            [item], concealed: environment.appSettings.export.concealClipboard, to: pasteboard)
 
         guard wroteImage else {
             Log.capture.error("Services could not place the rendered image on the pasteboard")
