@@ -38,6 +38,7 @@ struct StylePresetsSection: View {
     /// applying is an explicit button so a preset never silently overwrites the
     /// live style on selection.
     @State private var selectedID: String?
+    @State private var pendingDeletion: StylePreset?
     @State private var showSavePrompt = false
     @State private var saveName = ""
     @State private var showRenamePrompt = false
@@ -110,6 +111,24 @@ struct StylePresetsSection: View {
             }
 
             presetRowActions
+        }
+        .confirmationDialog(
+            "Delete Preset?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }),
+            titleVisibility: .visible, presenting: pendingDeletion
+        ) { preset in
+            Button("Delete Preset", role: .destructive) {
+                if store.delete(id: preset.id), selectedID == preset.id { selectedID = nil }
+                pendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeletion = nil }
+                .keyboardShortcut(.defaultAction)
+        } message: { preset in
+            Text(
+                "Delete “\(preset.name)”? This cannot be undone. Your current style will not change."
+            )
         }
         .alert("Save Preset", isPresented: $showSavePrompt) {
             TextField("Name", text: $saveName)
@@ -184,8 +203,7 @@ struct StylePresetsSection: View {
                 .accessibilityIdentifier("rename-style-preset-button")
                 Button("Delete", role: .destructive) {
                     if let preset {
-                        store.delete(id: preset.id)
-                        selectedID = nil
+                        pendingDeletion = preset
                     }
                 }
                 .help("Delete this saved preset. Built-in presets can't be deleted.")
@@ -251,6 +269,7 @@ struct CustomThemesSection: View {
 
     /// The custom theme id selected for management, or `nil` before the user picks.
     @State private var selectedID: String?
+    @State private var pendingDeletion: Theme?
     @State private var editorDraft: CustomThemeDraft?
     @State private var showRenamePrompt = false
     @State private var renameName = ""
@@ -307,6 +326,26 @@ struct CustomThemesSection: View {
                     editorDraft = nil
                 },
                 onCancel: { editorDraft = nil })
+        }
+        .confirmationDialog(
+            "Delete Theme?",
+            isPresented: Binding(
+                get: { pendingDeletion != nil },
+                set: { if !$0 { pendingDeletion = nil } }),
+            titleVisibility: .visible, presenting: pendingDeletion
+        ) { theme in
+            Button("Delete Theme", role: .destructive) {
+                if settings.deleteCustomTheme(id: theme.id, from: store), selectedID == theme.id {
+                    selectedID = nil
+                }
+                pendingDeletion = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeletion = nil }
+                .keyboardShortcut(.defaultAction)
+        } message: { theme in
+            Text(
+                "Delete “\(theme.displayName)”? This cannot be undone. If this is your default theme, One Dark will replace it. Other style settings and open editor snapshots will not change."
+            )
         }
         .alert("Rename Theme", isPresented: $showRenamePrompt) {
             TextField("Name", text: $renameName)
@@ -394,8 +433,7 @@ struct CustomThemesSection: View {
                 .accessibilityIdentifier("rename-custom-theme-button")
                 Button("Delete", role: .destructive) {
                     if let theme {
-                        store.delete(id: theme.id)
-                        selectedID = nil
+                        pendingDeletion = theme
                     }
                 }
                 .help("Delete this custom theme.")

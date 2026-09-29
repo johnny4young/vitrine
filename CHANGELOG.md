@@ -33,6 +33,10 @@ can never drift.
 
 ### Fixed
 
+- Confirm named theme and preset deletions with Cancel as the safe default. Deleting
+  the active default theme explicitly falls back to One Dark without changing other
+  style settings or open editor snapshots.
+
 - New text captures, editor handoffs, and Shortcuts clear the previous document's
   annotations, redactions, highlights, foreground image, and terminal width while keeping
   reusable style. Shared snapshot links still restore their own annotations.

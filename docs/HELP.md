@@ -32,7 +32,14 @@ numbers. Copy, save, or share the result from the toolbar or the **File** menu.
   card, or a slide.
 - **Style presets** save a look you like so you can reapply it in one click.
 
-Manage both in **Settings ▸ Style**.
+Choose destination presets in **Settings ▸ Style**. Manage saved style presets and
+custom themes in **Settings ▸ Library**.
+
+Deleting a saved preset or custom theme asks for confirmation and names the item.
+**Cancel** (also Return or Escape) leaves it unchanged. Preset deletion does not alter
+your current style. Deleting your active default custom theme replaces only that theme
+with One Dark, as the confirmation explains; other style settings and open editor
+snapshots stay unchanged. Built-in presets and themes cannot be deleted.
 
 ## Privacy
 
