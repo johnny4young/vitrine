@@ -18,8 +18,9 @@ The menu-bar action remains available without a shortcut.
 
 Copy code anywhere, choose **New Capture from Clipboard** from Vitrine's
 menu-bar panel (or use your enabled hotkey), and Vitrine renders it with your
-current style. A successful copy places the image on your clipboard; paste it
-into a document, chat, or pull request. If copying fails, Vitrine reports the
+current style. With **Copy to clipboard automatically** on (the default), a
+successful copy places the image on your clipboard; paste it into a document,
+chat, or pull request. If copying fails, Vitrine reports the
 failure instead of claiming success.
 
 ## The editor

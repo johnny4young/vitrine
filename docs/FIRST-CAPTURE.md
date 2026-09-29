@@ -42,22 +42,25 @@ struct ReleaseNote {
    Keynote, or another app that accepts images. You should see a code image,
    not the text of the snippet.
 
-If you prefer a file, use **File ▸ Save Image…** instead and choose a destination.
+If you prefer a file, use the editor's **Save Image** action (⌘S) instead and
+choose a destination.
 No PRO purchase is needed for this single image. The
 [capability reference](CAPABILITIES.md) shows which later actions are PRO or
 channel-specific.
 
 ## Optional next steps
 
-- Try the menu-bar quick capture with the same copied snippet. A global shortcut
-  is optional and can be enabled or reassigned in Settings; it is not required
-  for this tutorial.
+- Copy the sample again (Copy image replaced it on the clipboard), then try the
+  menu-bar quick capture. A global shortcut is optional and can be enabled or
+  reassigned in Settings; it is not required for this tutorial.
 - Before sharing real content, inspect the preview and use **Redact secrets**
   when needed. Heuristic detection is not a guarantee; see the
   [privacy contract](CAPABILITIES.md#privacy-and-retention).
-- On the direct-download/Homebrew channel, the free CLI handoff
-  `vitrine render docs/examples/first-capture.swift --edit` opens content in
-  the editor. Rendering to a file with `--out` is a separate PRO operation.
+- On the direct-download/Homebrew channel, save the sample as
+  `first-capture.swift`; the free CLI handoff `vitrine render first-capture.swift --edit`
+  opens it in the editor. Homebrew puts `vitrine` on `PATH`; for a DMG install, use
+  **Settings ▸ General ▸ Command-line tool** first. Rendering to a file with
+  `--out` is a separate PRO operation.
   The Mac App Store build does not ship the CLI.
 
 For a visual orientation, see the

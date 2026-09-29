@@ -3430,13 +3430,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "The global hotkey is optional and works across apps when enabled. Set, change, or clear it below or in Settings ▸ General. The menu-bar action always remains available."
+            "value" : "Use it to capture the code on your clipboard without opening the menu bar. You can also manage it in Settings ▸ General; the menu-bar action always remains available."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El atajo global es opcional y funciona en todas las apps al activarlo. Asígnalo, cámbialo o bórralo aquí o en Ajustes ▸ General. La acción de la barra de menús siempre está disponible."
+            "value" : "Úsalo para capturar el código del portapapeles sin abrir la barra de menús. También puedes gestionarlo en Ajustes ▸ General; la acción de la barra de menús siempre está disponible."
           }
         }
       }
@@ -3538,13 +3538,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy code anywhere, choose New Capture from Clipboard from the menu bar (or use your enabled hotkey), and Vitrine renders it with your current style. A successful copy places the image on your clipboard; a failed copy reports an error."
+            "value" : "Copy code anywhere, choose New Capture from Clipboard from the menu bar (or use your enabled hotkey), and Vitrine renders it with your current style. With Copy to clipboard automatically on (the default), a successful copy places the image on your clipboard; a failed copy reports an error."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia código en cualquier parte y elige Nueva captura desde el portapapeles en la barra de menús (o usa tu atajo activado). Vitrine lo procesa con tu estilo actual. Si la copia funciona, la imagen queda en el portapapeles; si falla, se informa el error."
+            "value" : "Copia código en cualquier parte y elige Nueva captura desde el portapapeles en la barra de menús (o usa tu atajo activado). Vitrine lo procesa con tu estilo actual. Con Copiar al portapapeles automáticamente activado (el valor predeterminado), si la copia funciona, la imagen queda en el portapapeles; si falla, se informa el error."
           }
         }
       }

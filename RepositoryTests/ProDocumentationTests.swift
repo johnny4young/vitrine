@@ -84,4 +84,30 @@ struct ProDocumentationTests {
                     && document.contains("App Store"))
         }
     }
+
+    /// A new `ProFeature` case must be named in the capability reference, which has no
+    /// other link to the entitlement source.
+    @Test func capabilityReferenceNamesEveryProFeature() throws {
+        let source = try Self.text("Vitrine/Pro/Entitlements.swift")
+        let capabilities = try Self.text("docs/CAPABILITIES.md")
+        let enumBody = try #require(
+            source.components(separatedBy: "enum ProFeature").dropFirst().first?
+                .components(separatedBy: "var paywallTitle").first)
+        let cases = enumBody.split(separator: "\n").compactMap { line -> String? in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("case ") else { return nil }
+            return String(trimmed.dropFirst("case ".count))
+        }
+        let documentedPhrases = [
+            "brandKit": "Brand Kit", "multiSizeExport": "multi-size export",
+            "carouselExport": "carousel", "automation": "rendering automation",
+            "advancedFrames": "advanced frames",
+        ]
+        #expect(!cases.isEmpty)
+        for feature in cases {
+            let phrase = try #require(
+                documentedPhrases[feature], "Map \(feature) to its docs/CAPABILITIES.md wording")
+            #expect(capabilities.contains(phrase), "docs/CAPABILITIES.md must mention \(phrase)")
+        }
+    }
 }
