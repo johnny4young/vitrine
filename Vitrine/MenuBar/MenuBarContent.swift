@@ -195,7 +195,7 @@ struct MenuBarContent: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("No recent captures")
                         .foregroundStyle(VitrineTokens.Text.secondary)
-                    Text("Copy some code and choose New Capture from the menu bar.")
+                    Text("Copy some code, then choose New Capture from Clipboard.")
                         .foregroundStyle(VitrineTokens.Text.tertiary)
                 }
                 .font(.system(size: VitrineTokens.FontSize.caption))

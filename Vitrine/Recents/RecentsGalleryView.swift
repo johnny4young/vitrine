@@ -320,7 +320,7 @@ struct RecentsGalleryView: View {
         EmptyStateView(
             title: "No recent captures",
             message:
-                "Captures you make appear here as previews. Copy some code and choose New Capture from the menu bar to get started.",
+                "Captures you make appear here as previews. Copy some code, then choose New Capture from Clipboard in the menu bar to get started.",
             actionTitle: "Open Editor",
             action: open
         )

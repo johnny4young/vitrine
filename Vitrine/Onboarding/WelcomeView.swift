@@ -90,6 +90,12 @@ struct WelcomeView: View {
         .background(VitrineTokens.Surface.window)
         .tint(VitrineTokens.Accent.system)
         .accessibilityContainerIdentifier("welcome-view")
+        // Help and Settings have their own recorders; re-read when returning here.
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)
+        ) { _ in
+            captureShortcut = KeyboardShortcuts.getShortcut(for: .quickCapture)
+        }
     }
 
     /// The complete first-run journey. The enclosing scroll view remains visually

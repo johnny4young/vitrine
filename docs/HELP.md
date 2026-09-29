@@ -9,16 +9,18 @@ Open Help from the **Help ▸ Vitrine Help** menu (or press `⌘?`).
 
 ## The global hotkey
 
-Press the global hotkey from any app to capture whatever code is on your clipboard
-as an image. The default is `⌘⇧S`. Set or change it from the Help window, or in
-**Settings ▸ General**.
+The global hotkey is optional. New installations start without one; existing
+choices and explicit deactivations are preserved. Set, change, or clear it from
+the Help window or **Settings ▸ General**. It works across apps when enabled.
+The menu-bar action remains available without a shortcut.
 
 ## Quick capture
 
-Copy code anywhere, press the hotkey, and Vitrine renders it with your current
-style. The image is placed on your clipboard automatically — paste it straight into
-a document, chat, or pull request. You can also start a capture from the menu-bar
-icon.
+Copy code anywhere, choose **New Capture from Clipboard** from Vitrine's
+menu-bar panel (or use your enabled hotkey), and Vitrine renders it with your
+current style. A successful copy places the image on your clipboard; paste it
+into a document, chat, or pull request. If copying fails, Vitrine reports the
+failure instead of claiming success.
 
 ## The editor
 

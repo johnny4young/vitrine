@@ -760,7 +760,7 @@ does not link `AppIntents`.
 ## User flow (happy path)
 
 ```
-Copy code in any app  →  ⌘⇧S
+Copy code in any app  →  New Capture from Clipboard (or the optional global hotkey)
     ↓
 NSStatusItem (menu bar) → quick mode or editor
     ↓
@@ -790,7 +790,7 @@ calls `WelcomeWindowController.presentIfFirstRun()` after its launch hooks, so t
 gate lives in one place.
 
 - **Compact, one screen.** No multi-page tutorial: identity, the three-step loop
-  ("copy code → press the hotkey → paste the image"), a sample snippet, a starting
+  ("copy code → trigger a capture → paste the image"), a sample snippet, a starting
   style picker, the hotkey recorder, a launch-at-login toggle, a local-only privacy
   badge, and a clear **Skip / Get Started**. Both buttons mark the flow seen and
   close; skipping unlocks nothing because every feature is already reachable from the
@@ -828,7 +828,7 @@ another application window.
              ┌────────────────────────────┐
              │ Main app — SwiftUI popover │
              └─────────────┬──────────────┘
-                           │ Commands or global hotkey (⌘⇧S)
+                           │ Commands or optional global hotkey
              ┌─────────────┴──────────────┐
              ▼                            ▼
    ┌─────────────────┐          ┌──────────────────────────┐
