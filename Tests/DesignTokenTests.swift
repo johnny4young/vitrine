@@ -171,18 +171,17 @@ struct ContrastTests {
             "primary text contrast \(ratio) below AA in \(scheme)/\(highContrast)")
     }
 
-    /// Secondary text is allowed the large-text threshold but must still be
-    /// comfortably legible on the stage.
+    /// Captions are normal-size text and must meet the normal-text threshold.
     @Test(arguments: [
         (ColorScheme.light, false), (.light, true), (.dark, false), (.dark, true),
     ])
-    func secondaryTextOnStageMeetsLargeTextAA(_ scheme: ColorScheme, _ highContrast: Bool) {
+    func secondaryTextOnStageMeetsAA(_ scheme: ColorScheme, _ highContrast: Bool) {
         let text = Brand.Palette.textSecondary.resolved(scheme: scheme, highContrast: highContrast)
         let bg = Brand.Palette.stage.resolved(scheme: scheme, highContrast: highContrast)
         let ratio = Brand.Contrast.ratio(text, on: bg)
         #expect(
-            ratio >= Brand.Contrast.aaLarge,
-            "secondary text contrast \(ratio) below AA-large in \(scheme)/\(highContrast)")
+            ratio >= Brand.Contrast.aaNormal,
+            "secondary text contrast \(ratio) below AA in \(scheme)/\(highContrast)")
     }
 
     @Test func highContrastImprovesPrimaryTextRatio() {

@@ -351,7 +351,7 @@ struct SocialCardRenderDimensionTests {
         #expect(SocialCardRenderer.renderCGImage(empty) == nil)
         #expect(SocialCardRenderer.renderNSImage(empty) == nil)
         #expect(SocialCardRenderer.pdfData(empty) == nil)
-        #expect(SocialCardRenderer.copyToPasteboard(empty) == false)
+        #expect(SocialCardRenderer.copyToPasteboardOutcome(empty) == .failed)
     }
 
     @Test func aHeadlineCardWithOnlyAnExcerptIsRefused() {
@@ -362,7 +362,7 @@ struct SocialCardRenderDimensionTests {
         #expect(SocialCardRenderer.renderCGImage(blankHeadline) == nil)
         #expect(SocialCardRenderer.renderNSImage(blankHeadline) == nil)
         #expect(SocialCardRenderer.pdfData(blankHeadline) == nil)
-        #expect(SocialCardRenderer.copyToPasteboard(blankHeadline) == false)
+        #expect(SocialCardRenderer.copyToPasteboardOutcome(blankHeadline) == .failed)
     }
 
     @Test func aCodeFocusCardWithNoExcerptStillRendersAtTheFixedSize() throws {
@@ -626,9 +626,9 @@ struct SocialCardClipboardTests {
         // scratch pasteboard: parallel suites must never race on the real clipboard.
         let pasteboard = NSPasteboard(
             name: NSPasteboard.Name("VitrineSocialCopy-\(UUID().uuidString)"))
-        let copied = SocialCardRenderer.copyToPasteboard(
+        let outcome = SocialCardRenderer.copyToPasteboardOutcome(
             SocialCardFixtures.defaultCard, scale: 1, pasteboard: pasteboard)
-        #expect(copied)
+        #expect(outcome == .copied)
         let data = try #require(pasteboard.data(forType: .png))
         #expect(data.prefix(8) == Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]))
     }
@@ -678,13 +678,6 @@ struct SocialCardGoldenTests {
     /// The committed manifest, or `nil` if none has been recorded yet.
     static let manifest = GoldenManifest.load(from: SocialCardGoldenPaths.fixturesDirectory)
 
-    /// Whether the live runner matches the manifest's pinned image, gating the
-    /// strict pixel comparison exactly like the golden-image suite.
-    static var isPinnedImage: Bool {
-        guard let manifest else { return false }
-        return manifest.pinnedImage == .current()
-    }
-
     @Test func defaultTemplateMatchesGoldenOrRendersCleanly() throws {
         let card = SocialCardFixtures.defaultCard
         let image = try #require(
@@ -695,10 +688,12 @@ struct SocialCardGoldenTests {
 
         let goldenURL = SocialCardGoldenPaths.defaultFixtureURL
         let goldenExists = FileManager.default.fileExists(atPath: goldenURL.path)
-        guard Self.isPinnedImage, goldenExists else {
+        guard
+            try GoldenValidation.shouldCompare(manifest: Self.manifest, fixtureExists: goldenExists)
+        else {
             print(
-                "SOCIAL CARD GOLDEN SKIP default-card "
-                    + "(runner is not the pinned image or no fixture); render-only check passed")
+                "SOCIAL CARD GOLDEN SMOKE default-card "
+                    + "(explicit smoke mode); render-only check passed")
             return
         }
 
@@ -719,7 +714,15 @@ struct SocialCardGoldenTests {
                 pixels exceeded the per-channel tolerance (max channel delta \
                 \(result.maxChannelDelta)).
                 """)
+            if result.matches {
+                try GoldenValidation.recordComparison(kind: "social", scenario: "default-card")
+            } else {
+                _ = GoldenImageTests.writeDiffArtifacts(
+                    label: "social-default-card", actual: image, golden: golden)
+            }
         case .failure(let failure):
+            _ = GoldenImageTests.writeDiffArtifacts(
+                label: "social-default-card", actual: image, golden: golden)
             Issue.record("Social-card golden comparison failed: \(failure)")
         }
     }
@@ -742,29 +745,25 @@ struct SocialCardGoldenTests {
             "default-card config changed since recording; re-record the social-card fixture")
     }
 
-    /// Records the default-template fixture and its manifest into the staging
-    /// directory. Opt-in: armed only by `VITRINE_RECORD_SOCIAL_CARD`, it
-    /// stages into the sandbox-writable temp dir and prints the path, which is then
-    /// copied into `Tests/Fixtures/SocialCards/` from outside the sandbox.
+}
+
+/// Recording is opt-in and never part of the comparison lane.
+@MainActor
+@Suite("Social card recorder")
+struct SocialCardRecorderTests {
+    /// Attach the opt-in baseline and provenance to the result bundle. The script
+    /// validates both recorder sets before exporting any candidate files.
     @Test(
         .enabled(
             if: SocialCardRecording.isActive,
             "set VITRINE_RECORD_SOCIAL_CARD=1 to (re)generate the social-card fixture"))
     func recordDefaultFixture() throws {
-        let directory = GoldenPaths.recordingOutputDirectory
-            .deletingLastPathComponent()
-            .appendingPathComponent("vitrine-social-card-record", isDirectory: true)
-        try? FileManager.default.removeItem(at: directory)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        print("SOCIAL CARD OUTPUT \(directory.path)")
-
         let card = SocialCardFixtures.defaultCard
         let image = try #require(
             SocialCardRenderer.renderCGImage(card, scale: 1), "recording render failed")
         let png = try #require(ExportManager.pngData(from: image), "PNG encode failed")
-        let pngURL = directory.appendingPathComponent(SocialCardGoldenPaths.defaultFixtureName)
-        try png.write(to: pngURL)
-        print("SOCIAL CARD RECORD default-card \(image.width)x\(image.height) \(pngURL.path)")
+        Attachment.record(png, named: "social-default-card.png")
+        print("SOCIAL CARD RECORD default-card \(image.width)x\(image.height)")
 
         let manifest = GoldenManifest(
             schema: GoldenManifest.currentSchema,
@@ -774,7 +773,7 @@ struct SocialCardGoldenTests {
                     width: image.width, height: image.height,
                     configFingerprint: card.fingerprint)
             ])
-        try manifest.encoded().write(to: GoldenManifest.url(in: directory))
+        Attachment.record(try manifest.encoded(), named: "social-manifest.json")
         print(
             "SOCIAL CARD RECORD manifest pinned to "
                 + "\(manifest.pinnedImage.osVersion)/\(manifest.pinnedImage.architecture)/"

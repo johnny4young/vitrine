@@ -55,8 +55,17 @@ jobs:
       - name: Check repository hygiene
         run: make hygiene
 
+      - name: Check strict golden execution guard
+        run: make golden-check
+
+      - name: Check disjoint test lane execution
+        run: make test-lanes-check
+
       - name: Check strict screenshot-tour contract
         run: make screenshot-tour-check
+
+      - name: Check sanitizer execution guard
+        run: make sanitizer-check
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
@@ -199,10 +208,12 @@ jobs:
             platform: Sequoia 15
             artifact: sequoia-15
             coverage: sequoia
+            golden-mode: smoke
           - runner: macos-26
             platform: Tahoe 26
             artifact: tahoe-26
             coverage: tahoe
+            golden-mode: strict
     runs-on: ${{ matrix.runner }}
     # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
@@ -248,9 +259,6 @@ jobs:
       - name: Build (universal Release)
         run: make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult"
 
-      - name: Build UI tests
-        run: make build-ui-tests RESULT_BUNDLE="${RUNNER_TEMP}/build-ui-tests.xcresult"
-
       - name: Test with code coverage (Swift Testing)
         run: |
           change_base="${{ github.event.pull_request.base.sha || github.event.before }}"
@@ -258,7 +266,7 @@ jobs:
             change_base="${GITHUB_SHA}^"
           fi
           git rev-parse --verify "${change_base}^{commit}" >/dev/null
-          make test-coverage \
+          make test-ci-coverage \
             COVERAGE_PLATFORM="${{ matrix.coverage }}" \
             COVERAGE_BASE_REF="$change_base" \
             RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
@@ -288,8 +296,8 @@ jobs:
           path: |
             ${{ runner.temp }}/build.xcresult
             ${{ runner.temp }}/build-release.xcresult
-            ${{ runner.temp }}/build-ui-tests.xcresult
             ${{ runner.temp }}/test.xcresult
+            ${{ runner.temp }}/test.xcresult.lane.json
           if-no-files-found: ignore
 
       # Launch-gallery design-QA artifacts. The unit suite already renders
@@ -331,9 +339,20 @@ jobs:
       # annotations so a drift toward the limit is visible on the PR without
       # red-flagging noisy shared CI hardware.
       - name: Performance budget
+        id: perf
         run: |
           set -o pipefail
-          make perf 2>&1 | tee perf.log
+          make perf RESULT_BUNDLE="${RUNNER_TEMP}/perf.xcresult" 2>&1 | tee perf.log
+      - name: Upload performance test evidence
+        if: ${{ !cancelled() && steps.perf.outcome != 'skipped' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: performance-tests-${{ matrix.artifact }}
+          path: |
+            ${{ runner.temp }}/perf.xcresult
+            ${{ runner.temp }}/perf.xcresult.lane.json
+          if-no-files-found: error
+
         # Promote any `PERF WARN` lines the run logged into GitHub annotations.
         # `if: always()` so warnings still surface even when the hard ceiling
         # tripped and the step above failed.
@@ -377,40 +396,61 @@ jobs:
         if: always()
         run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/${{ matrix.coverage }}.json"
 
-      # Golden-image regression suite. The strict pixel comparison runs
-      # only on the pinned runner image recorded in Tests/Fixtures/Golden/
-      # manifest.json; on any other image each scenario logs `GOLDEN SKIP` and the
-      # render is still exercised end to end, so this step stays green off the pin
-      # while a real regression on the pinned image fails it. A `GOLDEN SKIP` line
-      # is promoted to an annotation so it is visible that the strict diff did not
-      # run here.
-      # SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 mirrors `make test`: the
-      # golden suite is the most CoreText-heavy in the repo, and concurrent
-      # typesetting intermittently crashes the harness (see the Makefile's `test`
-      # target for the full rationale).
+      # Tahoe must compare every scenario, including the social card, on the
+      # qualified image. Sequoia runs explicit smoke without claiming pixel coverage.
+      # Strict comparisons need the exact Xcode build that recorded the baselines;
+      # every other step keeps the latest stable toolchain selected above.
+      - name: Select the baseline's Xcode
+        id: golden-xcode
+        if: ${{ !cancelled() && matrix.golden-mode == 'strict' }}
+        run: |
+          set -euo pipefail
+          build="$(python3 -c 'import json; print(json.load(open("Tests/Fixtures/Golden/manifest.json"))["pinnedImage"]["xcodeBuild"])')"
+          for app in /Applications/Xcode*.app; do
+            plist="${app}/Contents/version.plist"
+            [ -f "${plist}" ] || continue
+            if [ "$(/usr/libexec/PlistBuddy -c 'Print :ProductBuildVersion' "${plist}")" = "${build}" ]; then
+              developer="${app}/Contents/Developer"
+              echo "developer-dir=${developer}" >> "${GITHUB_OUTPUT}"
+              { echo "### Golden Xcode"; echo '```'; DEVELOPER_DIR="${developer}" xcodebuild -version; echo '```'; } >> "${GITHUB_STEP_SUMMARY}"
+              exit 0
+            fi
+          done
+          echo "::error title=Baseline Xcode unavailable::No installed Xcode has build ${build}; record and review a baseline on an available Xcode."
+          exit 1
+
       - name: Golden-image suite
-        run: |
-          set -o pipefail
-          env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
-            xcodebuild -project Vitrine.xcodeproj -scheme Vitrine -configuration Debug \
-            -destination 'platform=macOS' \
-            -only-testing:VitrineTests/GoldenImageTests test 2>&1 | tee golden.log
-      - name: Annotate skipped golden comparison
-        if: always()
-        run: |
-          if [ -f golden.log ] && grep -q 'GOLDEN SKIP' golden.log; then
-            echo "::warning title=Golden pixel diff skipped::This runner is not the pinned image; strict golden comparison was skipped (render coverage still ran)."
-          fi
-      # Upload the rendered "actual" images and diff masks for inspection when a
-      # golden comparison fails on the pinned image. The suite writes them under a
-      # stable temp directory; collect that path on failure.
-      - name: Upload golden diff artifacts
-        if: failure()
+        id: goldens
+        if: ${{ !cancelled() && steps.golden-xcode.outcome != 'failure' }}
+        env:
+          GOLDEN_DEVELOPER_DIR: ${{ steps.golden-xcode.outputs.developer-dir }}
+        run: make test-goldens GOLDEN_MODE=${{ matrix.golden-mode }} RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult" DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
+
+      - name: Upload golden evidence
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: golden-diffs-${{ matrix.artifact }}
-          path: ${{ runner.temp }}/vitrine-golden-diffs
-          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/goldens.xcresult
+            ${{ runner.temp }}/goldens.xcresult.log
+          if-no-files-found: warn
+
+      # Candidates never replace committed fixtures or make a failed comparison
+      # green. They are separate artifacts for explicit baseline review on drift.
+      - name: Record review-only baseline candidates
+        if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure') && matrix.golden-mode == 'strict'
+        env:
+          GOLDEN_DEVELOPER_DIR: ${{ steps.golden-xcode.outputs.developer-dir }}
+        run: GOLDEN_DEST_ROOT="${RUNNER_TEMP}/golden-candidates" make record-goldens DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
+
+      - name: Upload baseline candidates for review
+        if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure') && matrix.golden-mode == 'strict'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: golden-candidates-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/golden-candidates
+          if-no-files-found: warn
 
       # Artifact smoke for the standalone comparator: prove
       # scripts/compare-goldens.swift can diff a committed golden against an exact
@@ -505,7 +545,48 @@ jobs:
       - name: Run UI tests
         run: |
           set -o pipefail
+          touch "${RUNNER_TEMP}/ui-test-started"
           make test-ui RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
+
+      # Keep the four privacy-settings states available for visual review on green
+      # runs too, without retaining the entire successful UI result bundle/video.
+      - name: Export clipboard privacy UI evidence
+        run: |
+          xcrun xcresulttool export attachments \
+            --test-id 'VitrineUITests/testClipboardPrivacyIsOptInAndPersists()' \
+            --path "${RUNNER_TEMP}/test-ui.xcresult" \
+            --output-path "${RUNNER_TEMP}/clipboard-privacy-raw"
+          python3 - <<'PYTHON'
+          import json, os, pathlib, re, shutil
+          root = pathlib.Path(os.environ["RUNNER_TEMP"])
+          raw = root / "clipboard-privacy-raw"
+          output = root / "clipboard-privacy-ui"
+          expected = {f"confidential-clipboard-{language}-{appearance}"
+                      for language in ("en", "es") for appearance in ("light", "dark")}
+          found = {}
+          for group in json.loads((raw / "manifest.json").read_text()):
+              for attachment in group["attachments"]:
+                  name = attachment.get("suggestedHumanReadableName", "")
+                  match = re.fullmatch(r"(confidential-clipboard-(?:en|es)-(?:light|dark))(?:_\d+_[0-9A-F-]+)?\.png", name)
+                  if match:
+                      key = match.group(1)
+                      if key in found:
+                          raise SystemExit(f"Duplicate clipboard UI state: {key}")
+                      found[key] = raw / attachment["exportedFileName"]
+          if set(found) != expected:
+              raise SystemExit(f"Missing clipboard UI states: {sorted(expected - set(found))}")
+          output.mkdir(parents=True, exist_ok=True)
+          for key, source in found.items():
+              shutil.copyfile(source, output / f"{key}.png")
+          PYTHON
+
+      - name: Upload clipboard privacy UI evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: clipboard-privacy-ui-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/clipboard-privacy-ui
+          if-no-files-found: warn
 
       # The ordinary UI suite intentionally skips the expensive screenshot tour.
       # Run it separately with its opt-in environment, retain every image in the
@@ -530,6 +611,25 @@ jobs:
             echo "::error title=UI automation blocked on this image::The XCUITest session could not initialize. The runner image has likely lost its pre-authorized automation state (cf. actions/runner-images#7621) — an infrastructure regression, not a test failure. See docs/RELEASING.md (Running the UI tests)."
           fi
 
+      # xcresult diagnostics can mention an app crash without retaining its stack.
+      # Keep only reports from this UI run and this app, never unrelated host reports.
+      - name: Collect UI crash reports
+        if: failure()
+        run: |
+          python3 - <<'PYTHON'
+          import os, pathlib, shutil
+          temporary = pathlib.Path(os.environ["RUNNER_TEMP"])
+          marker = temporary / "ui-test-started"
+          if marker.exists():
+              output = temporary / "ui-crash-reports"
+              for scope, root in [("user", pathlib.Path.home() / "Library/Logs/DiagnosticReports"),
+                                  ("system", pathlib.Path("/Library/Logs/DiagnosticReports"))]:
+                  for report in root.glob("Vitrine*.ips"):
+                      if report.is_file() and report.stat().st_mtime >= marker.stat().st_mtime:
+                          output.mkdir(parents=True, exist_ok=True)
+                          shutil.copy2(report, output / f"{scope}-{report.name}")
+          PYTHON
+
       - name: Upload .xcresult bundle
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -538,6 +638,7 @@ jobs:
           path: |
             ${{ runner.temp }}/test-ui.xcresult
             ${{ runner.temp }}/screenshot-tour.xcresult
+            ${{ runner.temp }}/ui-crash-reports
           if-no-files-found: ignore
 
       - name: Upload strict visual evidence

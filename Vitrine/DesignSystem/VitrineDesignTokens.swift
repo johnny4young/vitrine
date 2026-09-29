@@ -32,10 +32,11 @@ enum VitrineTokens {
         /// `AccentColor` asset, and `.controlAccentColor` reports the macOS *default blue*
         /// on Multicolor, which would silently drop the brand identity for everyone who
         /// never chose an accent.
-        static var system: Color {
+        static var system: Color { system(brand: base) }
+        nonisolated static func system(brand: Color) -> Color {
             usesSystemAccentOverride(
                 accentColorValue: UserDefaults.standard.object(forKey: "AppleAccentColor"))
-                ? Color(nsColor: .controlAccentColor) : base
+                ? Color(nsColor: .controlAccentColor) : brand
         }
         /// Whether a stored `AppleAccentColor` value means the user chose a specific
         /// macOS accent (vs. the default "Multicolor", where the key is absent → `nil`).
@@ -43,13 +44,28 @@ enum VitrineTokens {
         /// function of the value so it is unit-testable — a `UserDefaults(suiteName:)`
         /// still cascades to the global domain, so the real key cannot be hidden in a
         /// test by removing it from a suite.
-        static func usesSystemAccentOverride(accentColorValue: Any?) -> Bool {
+        nonisolated static func usesSystemAccentOverride(accentColorValue: Any?) -> Bool {
             accentColorValue != nil
         }
-        /// Text/glyph color that AppKit pairs with a selected-control/system-accent
-        /// fill. This keeps custom accent-filled chips readable for every macOS
-        /// accent, including yellow/graphite and high-contrast appearances.
-        static let systemContrast = Color(nsColor: .selectedControlTextColor)
+        /// Resolve against the actual custom-control fill, not AppKit's native
+        /// selected-control material. A system-selected white label can have low
+        /// contrast on a bright, flat accent fill in dark appearance.
+        static let systemContrast = Color(
+            nsColor: NSColor(name: nil, dynamicProvider: systemContrastProvider(brand: base)))
+
+        /// SwiftUI's asynchronous renderer resolves dynamic colors off the main thread.
+        private nonisolated static func systemContrastProvider(
+            brand: Color
+        ) -> @Sendable (NSAppearance) -> NSColor {
+            { appearance in
+                var label = NSColor.black
+                appearance.performAsCurrentDrawingAppearance {
+                    label = NSColor(Text.readable(on: system(brand: brand)))
+                }
+                return label
+            }
+        }
+
         /// `--accent-hover` — one step brighter on hover.
         static let hover = Brand.BrandColor(
             light: Color(hex: "#4339D4"),
@@ -105,11 +121,20 @@ enum VitrineTokens {
         static let primary = Brand.Palette.textPrimary.color
         /// `--text-secondary` — captions, secondary labels (re-exported).
         static let secondary = Brand.Palette.textSecondary.color
-        /// `--text-tertiary` — placeholders and disabled labels.
-        static let tertiary = Brand.BrandColor(
-            light: Color(hex: "#8A8C99"),
-            dark: Color(hex: "#6F7180")
-        ).color
+        /// Quiet labels and placeholders still need normal-text contrast on chrome.
+        static let tertiaryPalette = Brand.BrandColor(
+            light: Color(hex: "#636673"),
+            dark: Color(hex: "#9A9DAD"),
+            lightHighContrast: Color(hex: "#454855"),
+            darkHighContrast: Color(hex: "#CBD0DE")
+        )
+        static let tertiary = tertiaryPalette.color
+
+        /// A readable label or caret without changing its opaque sRGB background.
+        nonisolated static func readable(on fill: Color) -> Color {
+            Brand.Contrast.ratio(.black, on: fill) >= Brand.Contrast.ratio(.white, on: fill)
+                ? .black : .white
+        }
     }
 
     // MARK: - Hairlines & separators
@@ -142,6 +167,11 @@ enum VitrineTokens {
     enum Gradients {
         /// `--grad-signature` — the violet→azure brand identity.
         static let signature = Brand.Gradient.signature
+        /// Deeper brand stops behind a fixed white label in either appearance.
+        /// Export presets and decorative brand fills keep the original gradient.
+        static let callToAction = LinearGradient(
+            colors: [Brand.Palette.accent.lightHighContrast, Color(hex: "#06566D")],
+            startPoint: .topLeading, endPoint: .bottomTrailing)
         /// `--grad-signature-wash` — 18 % wash for hero backgrounds.
         static let signatureWash = Brand.Gradient.signatureWash()
         /// `--grad-aurora` … `--grad-carbon` — the built-in canvas presets.
@@ -205,6 +235,9 @@ enum VitrineTokens {
     /// These are the low-opacity washes the current designed chrome layers over
     /// `Surface.window` — kept here so views never spell out a raw rgba.
     enum Chrome {
+        /// A small hover lift that keeps white CTA labels above normal-text contrast.
+        static let ctaHoverBrightness = 0.02
+
         /// `.tile` — the grouped-form card fill.
         static let tile = Brand.BrandColor(
             light: Color(hex: "#1A1B22").opacity(0.035),
@@ -219,11 +252,6 @@ enum VitrineTokens {
         static let segmentTrack = Brand.BrandColor(
             light: Color(hex: "#1A1B22").opacity(0.06),
             dark: Color(hex: "#FFFFFF").opacity(0.06)
-        ).color
-        /// `.kbd-chip` — keyboard-glyph chip fill.
-        static let keyChip = Brand.BrandColor(
-            light: Color(hex: "#1A1B22").opacity(0.06),
-            dark: Color(hex: "#FFFFFF").opacity(0.07)
         ).color
         /// `.dfield` — bordered inline text-field fill.
         static let fieldFill = Brand.BrandColor(
@@ -246,9 +274,9 @@ enum VitrineTokens {
         /// The gradient CTA's accent halo (`0 4px 14px rgba(79,70,229,0.45)`).
         static let ctaShadow = Brand.ShadowStyle(
             color: Color(hex: "#4F46E5").opacity(0.45), radius: 7, x: 0, y: 4)
-        /// The stage's floating status capsule — a fixed dark wash in both
-        /// appearances (`rgba(34,35,43,0.7)` in the editor).
-        static let statusCapsule = Color(hex: "#22232B").opacity(0.7)
+        /// Pair with adaptive chrome text; an opaque fill keeps the contrast
+        /// independent of the preview's user-selected ambient background.
+        static let statusCapsule = Surface.card
         /// The sticky style-header drop (`0 10px 18px -14px rgba(0,0,0,0.55)`);
         /// SwiftUI has no shadow spread, so this is the closest tight underline.
         static let stickyHeaderShadow = Brand.ShadowStyle(

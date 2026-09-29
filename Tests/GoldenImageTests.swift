@@ -7,21 +7,9 @@ import VitrineRendering
 
 @testable import Vitrine
 
-/// The golden-image regression suite.
-///
-/// Each `GoldenScenario` is rendered through the production export path and
-/// compared against its committed PNG fixture under a documented per-channel
-/// tolerance. Because text rasterization differs across macOS/Xcode versions, the
-/// strict pixel comparison runs **only on the pinned runner image** recorded in
-/// `Tests/Fixtures/Golden/manifest.json`. On any other image — including the
-/// default GitHub `macos-latest` runner — each scenario logs `GOLDEN SKIP` and
-/// still asserts the render produced a non-nil image of the expected dimensions,
-/// so the render path is exercised end to end everywhere while the byte-exact
-/// guard fires only where it is meaningful.
-///
-/// On a strict mismatch the suite writes the freshly rendered "actual" PNG and a
-/// visual diff mask into a stable directory (`vitrine-golden-diffs` under the
-/// runner temp), which CI uploads as an artifact for triage.
+/// Production-render regression scenarios. `make test-goldens` requires strict
+/// comparison on the qualified image; normal unit runs emit render-only smoke.
+/// A missing fixture or mismatched environment can never downgrade strict mode.
 @MainActor
 @Suite("Golden image regression")
 struct GoldenImageTests {
@@ -30,31 +18,16 @@ struct GoldenImageTests {
     /// The committed manifest, or `nil` if none has been recorded yet.
     static let manifest = GoldenManifest.load(from: GoldenPaths.fixturesDirectory)
 
-    /// Whether the live runner matches the manifest's pinned image, gating the
-    /// strict pixel comparison. A missing manifest means "no pin recorded", so the
-    /// strict diff is skipped (render coverage still runs).
+    /// Dimension checks are meaningful on the matching image. Strict pixel
+    /// qualification is separately fail-closed through GoldenValidation.
     static var isPinnedImage: Bool {
         guard let manifest else { return false }
         return manifest.pinnedImage == .current()
     }
 
-    /// The directory diff artifacts are written to on a strict mismatch. Honors the
-    /// CI runner temp (`RUNNER_TEMP`), falling back to the process temp directory
-    /// locally; the path is the one the CI workflow uploads on failure.
-    static let diffArtifactDirectory: URL = {
-        let base =
-            ProcessInfo.processInfo.environment["RUNNER_TEMP"].map {
-                URL(fileURLWithPath: $0, isDirectory: true)
-            } ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-        return base.appendingPathComponent("vitrine-golden-diffs", isDirectory: true)
-    }()
-
     // MARK: - Per-scenario coverage / comparison
 
-    /// Every scenario is rendered on every runner. When the runner is the pinned
-    /// image and a fixture exists, the render is pixel-diffed against it; otherwise
-    /// the render is only checked for existence and expected dimensions, and a
-    /// `GOLDEN SKIP` line records that the strict diff did not run here.
+    /// Strict comparison emits a receipt only after a successful pixel match.
     @Test(arguments: GoldenScenario.allCases)
     func scenarioMatchesGoldenOrRendersCleanly(_ scenario: GoldenScenario) throws {
         let image = try #require(
@@ -64,8 +37,10 @@ struct GoldenImageTests {
         let goldenURL = GoldenPaths.goldenURL(for: scenario)
         let goldenExists = FileManager.default.fileExists(atPath: goldenURL.path)
 
-        guard Self.isPinnedImage, goldenExists else {
-            // Off the pin (or before a baseline exists): exercise the render only.
+        guard
+            try GoldenValidation.shouldCompare(manifest: Self.manifest, fixtureExists: goldenExists)
+        else {
+            // Explicit smoke exercises the render without pixel qualification.
             // A *fixed-size* scenario (OpenGraph) renders at a contractually
             // guaranteed pixel size on any OS, so its dimensions are still asserted;
             // a content-hugging scenario's size derives from text layout, which can
@@ -77,8 +52,8 @@ struct GoldenImageTests {
                 )
             }
             print(
-                "GOLDEN SKIP \(scenario.label) "
-                    + "(runner is not the pinned image or no fixture); render-only check passed")
+                "GOLDEN SMOKE \(scenario.label) "
+                    + "(explicit smoke mode); render-only check passed")
             return
         }
 
@@ -98,7 +73,9 @@ struct GoldenImageTests {
                     + "maxDelta=\(result.maxChannelDelta) "
                     + "fraction=\(String(format: "%.5f", result.differingFraction)) "
                     + "attempts=\(attempts)")
-            if !result.matches {
+            if result.matches {
+                try GoldenValidation.recordComparison(kind: "export", scenario: scenario.rawValue)
+            } else {
                 let artifacts = Self.writeDiffArtifacts(scenario, actual: settled, golden: golden)
                 Issue.record(
                     """
@@ -116,30 +93,27 @@ struct GoldenImageTests {
         }
     }
 
-    /// Writes the rendered "actual" image, the committed "golden", and a visual diff
-    /// mask into the artifact directory, returning the directory path for the
-    /// failure message. Best-effort: a write failure here must not mask the real
-    /// assertion failure, so errors are swallowed.
+    /// Retain actual, baseline and diff as test attachments, without requiring
+    /// the runner to read the sandboxed app's container directory.
     static func writeDiffArtifacts(
         _ scenario: GoldenScenario, actual: CGImage, golden: CGImage
     ) -> String {
-        try? FileManager.default.createDirectory(
-            at: diffArtifactDirectory, withIntermediateDirectories: true)
+        writeDiffArtifacts(label: scenario.rawValue, actual: actual, golden: golden)
+    }
+
+    static func writeDiffArtifacts(label: String, actual: CGImage, golden: CGImage) -> String {
         if let png = ExportManager.pngData(from: actual) {
-            try? png.write(
-                to: diffArtifactDirectory.appendingPathComponent("\(scenario.rawValue).actual.png"))
+            Attachment.record(png, named: "\(label).actual.png")
         }
         if let png = ExportManager.pngData(from: golden) {
-            try? png.write(
-                to: diffArtifactDirectory.appendingPathComponent("\(scenario.rawValue).golden.png"))
+            Attachment.record(png, named: "\(label).golden.png")
         }
         if let mask = diffMask(golden: golden, actual: actual),
             let png = ExportManager.pngData(from: mask)
         {
-            try? png.write(
-                to: diffArtifactDirectory.appendingPathComponent("\(scenario.rawValue).diff.png"))
+            Attachment.record(png, named: "\(label).diff.png")
         }
-        return diffArtifactDirectory.path
+        return "xcresult attachments for \(label)"
     }
 
     /// Builds a black image with differing pixels painted red, so a reviewer can
@@ -248,6 +222,7 @@ struct GoldenImageTests {
         // the scenario that produces it (the baseline is stale) and must be
         // re-recorded — caught from the manifest alone, independent of pixels.
         let manifest = try #require(Self.manifest)
+        #expect(Set(manifest.scenarios.keys) == Set(GoldenScenario.allCases.map(\.rawValue)))
         for scenario in GoldenScenario.allCases {
             let record = try #require(
                 manifest.scenarios[scenario.rawValue],
@@ -354,10 +329,12 @@ struct GoldenImageTests {
     @Test func recordedDimensionsMatchAFreshRenderOnThePinnedImage() throws {
         // For content-hugging scenarios the rendered size derives from text layout,
         // which can shift across OS versions — so the recorded-vs-fresh dimension
-        // check only holds on the pinned image. Off the pin it is a no-op (the
-        // strict pixel comparison is gated the same way and would not run either).
-        guard Self.isPinnedImage else {
-            print("GOLDEN SKIP recordedDimensions (runner is not the pinned image)")
+        // check only holds on the pinned image. Strict mode throws off the pin;
+        // smoke mode reports the check as not applicable.
+        let strict = try GoldenValidation.shouldCompare(
+            manifest: Self.manifest, fixtureExists: true)
+        guard strict || Self.isPinnedImage else {
+            print("GOLDEN SMOKE recordedDimensions (runner is not the pinned image)")
             return
         }
         let manifest = try #require(Self.manifest)

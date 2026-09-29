@@ -15,7 +15,7 @@ extension Brand {
 
         /// The WCAG contrast ratio (1...21) between two opaque colors, computed
         /// from their relative luminance.
-        public static func ratio(_ a: Color, on b: Color) -> Double {
+        public nonisolated static func ratio(_ a: Color, on b: Color) -> Double {
             let la = relativeLuminance(a)
             let lb = relativeLuminance(b)
             let lighter = max(la, lb)
@@ -24,7 +24,7 @@ extension Brand {
         }
 
         /// WCAG relative luminance of a color, resolved in sRGB.
-        public static func relativeLuminance(_ color: Color) -> Double {
+        public nonisolated static func relativeLuminance(_ color: Color) -> Double {
             guard let srgb = NSColor(color).usingColorSpace(.sRGB) else { return 0 }
             func linear(_ channel: Double) -> Double {
                 channel <= 0.039_28 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)

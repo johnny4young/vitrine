@@ -42,6 +42,9 @@ final class AppEnvironment {
     ) {
         self.defaults = defaults
         GlobalShortcutMigration.prepare(in: defaults)
+        #if DEBUG
+            AppLaunchArgumentHandler.seedPreLaunchFixtures(in: defaults)
+        #endif
         self.entitlements = entitlements ?? Entitlements.makeDefault()
         brandKit = BrandKitStore(defaults: defaults)
         appSettings = AppSettings(

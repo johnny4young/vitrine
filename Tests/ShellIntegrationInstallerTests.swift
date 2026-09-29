@@ -26,19 +26,6 @@ struct ShellIntegrationInstallerTests {
             ShellIntegrationInstaller.evalLine(for: .fish) == "vitrine shell-init fish | source")
     }
 
-    @Test func startupFileMapsTheShellToItsRCFile() {
-        let home = URL(fileURLWithPath: "/Users/test", isDirectory: true)
-        #expect(
-            ShellIntegrationInstaller.startupFile(for: .zsh, home: home).path
-                == "/Users/test/.zshrc")
-        #expect(
-            ShellIntegrationInstaller.startupFile(for: .bash, home: home).path
-                == "/Users/test/.bashrc")
-        #expect(
-            ShellIntegrationInstaller.startupFile(for: .fish, home: home).path
-                == "/Users/test/.config/fish/config.fish")
-    }
-
     @Test func installAppendsTheBlockToAnExistingFile() throws {
         let file = try makeStartupFile("export PATH=/usr/bin\n")
         defer { try? FileManager.default.removeItem(at: file) }

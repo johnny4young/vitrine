@@ -101,29 +101,15 @@ enum SocialCardRenderer {
 
     // MARK: - Clipboard / save flows
 
-    /// Renders the card and writes a PNG to the general pasteboard. Returns success.
-    ///
-    /// This is the clipboard flow: a single PNG representation, the same encode a
-    /// snapshot copy uses, so a social card pastes into any image well.
-    @discardableResult
-    static func copyToPasteboard(
-        _ model: SocialCardModel,
-        size: CGSize = SocialCardModel.defaultSize,
-        scale: CGFloat = 2,
-        profile: ColorProfile = .sRGB,
-        pasteboard: NSPasteboard = .general
-    ) -> Bool {
-        copyToPasteboardOutcome(
-            model, size: size, scale: scale, profile: profile,
-            pasteboard: pasteboard) == .copied
-    }
-
+    /// Renders the card and writes a single PNG, the same encode a snapshot copy uses,
+    /// so a social card pastes into any image well.
     @discardableResult
     static func copyToPasteboardOutcome(
         _ model: SocialCardModel,
         size: CGSize = SocialCardModel.defaultSize,
         scale: CGFloat = 2,
         profile: ColorProfile = .sRGB,
+        concealed: Bool = false,
         pasteboard: NSPasteboard = .general
     ) -> ExportManager.CopyOutcome {
         guard model.isRenderable else { return .failed }
@@ -138,8 +124,7 @@ enum SocialCardRenderer {
             Log.export.error("Social card copy failed: PNG encode failed")
             return .renderFailed(.encodingFailed)
         }
-        pasteboard.clearContents()
-        let copied = pasteboard.setData(png, forType: .png)
+        let copied = ClipboardWriter.copy(png, type: .png, concealed: concealed, to: pasteboard)
         Log.export.info("Copied social card to pasteboard (success \(copied, privacy: .public))")
         return copied ? .copied : .failed
     }

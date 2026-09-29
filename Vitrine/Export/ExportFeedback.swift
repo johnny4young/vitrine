@@ -1,20 +1,11 @@
 import Foundation
 import VitrineRendering
 
-/// The one place a copy/save/share outcome turns into transient feedback.
+/// The one place a copy/save/share outcome maps to transient feedback.
 ///
-/// The code editor, the social-card editor, and the web-snapshot editor expose
-/// the same three actions; each used to re-implement the outcome → HUD mapping
-/// (and its localized strings) inline, and the copies had drifted. Routing all
-/// three through one presenter keeps the strings, the cancelled-save-is-silent
-/// rule, and the feedback behavior in a single reviewable spot.
+/// Callers present the returned feedback themselves; keeping the mapping here keeps
+/// the localized strings and the cancelled-save-is-silent rule in one spot.
 enum ExportFeedback {
-    static func copyOutcome(_ copied: Bool) -> Notifier.CaptureFeedback {
-        copied
-            ? Notifier.confirmation(String(localized: "Image copied to clipboard"))
-            : Notifier.failure(String(localized: "Couldn't copy the image"))
-    }
-
     static func copyOutcome(_ outcome: ExportManager.CopyOutcome) -> Notifier.CaptureFeedback {
         switch outcome {
         case .copied:
@@ -30,6 +21,18 @@ enum ExportFeedback {
         copied
             ? Notifier.confirmation(String(localized: "Source copied to clipboard"))
             : Notifier.failure(String(localized: "Couldn't copy the source"))
+    }
+
+    static func imageTextCopyOutcome(_ copied: Bool) -> Notifier.CaptureFeedback {
+        copied
+            ? Notifier.confirmation(String(localized: "Text copied from image"))
+            : Notifier.failure(String(localized: "Couldn't copy text from the image"))
+    }
+
+    static func shareLinkCopyOutcome(_ copied: Bool) -> Notifier.CaptureFeedback {
+        copied
+            ? Notifier.confirmation(String(localized: "Share link copied"))
+            : Notifier.failure(String(localized: "Couldn't copy the share link"))
     }
 
     static func saveOutcome(
@@ -53,28 +56,5 @@ enum ExportFeedback {
 
     static func renderFailure(_ error: RenderBudgetError) -> Notifier.CaptureFeedback {
         Notifier.renderFailure(error)
-    }
-
-    /// Presents the copy outcome: a confirmation on success, a failure otherwise.
-    static func presentCopy(_ copied: Bool) {
-        CaptureHUDController.shared.present(copyOutcome(copied))
-    }
-
-    /// Presents the source-copy outcome without describing plain text as an image.
-    static func presentSourceCopy(_ copied: Bool) {
-        CaptureHUDController.shared.present(sourceCopyOutcome(copied))
-    }
-
-    /// Presents the save outcome. A cancelled panel is deliberately silent — the
-    /// user changed their mind; there is nothing to confirm or apologize for.
-    static func presentSave(_ outcome: ExportManager.SaveOutcome) {
-        guard let feedback = saveOutcome(outcome) else { return }
-        CaptureHUDController.shared.present(feedback)
-    }
-
-    /// Presents a share failure. Success needs no HUD — the share sheet itself
-    /// is the feedback.
-    static func presentShareFailure() {
-        CaptureHUDController.shared.present(shareFailure)
     }
 }

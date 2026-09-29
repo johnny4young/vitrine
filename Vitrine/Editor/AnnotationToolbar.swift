@@ -103,8 +103,8 @@ struct AnnotationToolbar: View {
         // tracking (tooltips keep working); the surrounding title bar stays draggable
         // so the window can still be moved.
         .background(NonDraggableArea())
-        .animation(.easeInOut(duration: 0.15), value: showsColor)
-        .animation(.easeInOut(duration: 0.15), value: showsThickness)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.15), value: showsColor)
+        .motionSensitiveAnimation(.easeInOut(duration: 0.15), value: showsThickness)
     }
 
     @ViewBuilder private var selectionActionButtons: some View {
@@ -225,9 +225,9 @@ struct AnnotationToolbar: View {
         return Group {
             if let key = tool.keyEquivalent {
                 button
-                    .help(Text(tool.label) + Text(verbatim: " (⌘\(key.character))"))
+                    .help(Text(tool.helpText) + Text(verbatim: " (⌘\(key.character))"))
             } else {
-                button.help(tool.label)
+                button.help(tool.helpText)
             }
         }
     }

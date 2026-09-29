@@ -12,7 +12,8 @@ output and unlocks *new* surfaces.
 | --- | --- |
 | Entitlement state | `Vitrine/Pro/Entitlements.swift` — `Entitlements` (`@MainActor @Observable`, `isPro`), `ProFeature`, `EntitlementProvider`, `FreeProvider`, `#if DEBUG DebugUnlockProvider`; `Vitrine/App/AppEnvironment.swift` owns the app-wide instance |
 | App Store provider | `Vitrine/Pro/StoreKitProvider.swift` — non-consumable IAP `com.johnny4young.vitrine.pro` |
-| Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — Ed25519 `LicenseToken`/`LicenseVerifier`/`LicenseSigner`, device-only `LicenseActivationRecord`, `#if VITRINE_DIRECT_DOWNLOAD LicenseKeyProvider` |
+| Signed license token | `VitrineDomain/Licensing/LicenseToken.swift` — Ed25519 `LicenseToken`/`LicenseVerifier`/`LicenseSigner`, shared by the app and CLI |
+| Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — device-only `LicenseActivationRecord`, `#if VITRINE_DIRECT_DOWNLOAD LicenseKeyProvider` |
 | CLI entitlement (out-of-process) | `Vitrine/CLI/CLIEntitlement.swift` — offline token verify + Debug bypass |
 | Gating UI | `Vitrine/Pro/ProGate.swift` — `View.proGated(_:action:)`, `ProBadge`, `PaywallSheet` |
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `VitrineRendering/Models/SnapshotConfig.swift` (`Watermark`), `VitrineRendering/Canvas/WatermarkBadge.swift` |
@@ -62,8 +63,11 @@ The official direct-download build validates a Lemon Squeezy license key once, c
 response belongs to the source-pinned Vitrine store/product (and is not a test-mode key), then signs the
 offline `LicenseToken` **locally** with the build-injected Ed25519 private key
 (`LicenseSigningKey.embedded`). This is a deliberate honor/convenience model, not server-side
-DRM: the private key is injected only into the signed release binary, never committed, while a
-from-source build has no key and cannot mint a token.
+DRM: the private key is injected into the signed release binary and can be extracted from it.
+It is not committed to source, but distribution means it is not a trusted-server secret.
+A signature does not exclusively attest a purchase; tokens are not hardware-bound and do not
+implement refund revocation. An unmodified from-source build without injection cannot mint a
+token. No backend, obfuscation, or client-key migration is part of this model.
 
 The app embeds the matching public key in `LicenseVerifier.embedded` and verifies the stored
 token **offline** at every launch (`LicenseKeyProvider.cachedIsPro = storedValidToken != nil`).
@@ -71,6 +75,11 @@ Tamper / wrong-key / malformed tokens all fail closed. The CLI is a separate pro
 re-verifies the same token itself via `CLIEntitlement` (no StoreKit↔CLI bridge, no App Group) —
 this is why `LicenseVerifier` is compiled unconditionally while `LicenseKeyProvider` is
 `#if VITRINE_DIRECT_DOWNLOAD`.
+
+New activations send the generic seat name **Vitrine**, not the computer name. Existing seats
+keep their names and instance ids; there is no renaming or reactivation migration.
+Only one activation request can run at a time, and a recoverable record blocks a new seat.
+See [ACTIVATION.md](ACTIVATION.md#concurrency-and-partial-persistence) for partial-write recovery.
 
 New activations also store the validated raw key, license id, and Lemon Squeezy instance id in a
 separate device-only Keychain `LicenseActivationRecord`. That record never enters defaults, the
@@ -112,7 +121,30 @@ otherwise presents `PaywallSheet` and shows a discreet `ProBadge`. It is **non-n
 paywall appears only on a tap of a gated action, never on launch. Settings panes that hold many
 controls (the Brand Kit sub-tab) use an explicit locked→upsell / unlocked→controls split instead
 of the modifier. `PaywallSheet` reads its copy from the `ProFeature` and shows the per-build
-unlock path (StoreKit buy + Restore, or a license-key field).
+unlock path (StoreKit buy + Restore, or a license-key field). Locked controls expose a
+localized `Requires PRO` accessibility value. Compact toolbar menus include the same
+requirement in their native menu-item title, which AppKit exposes instead of a button
+value. Decorative badges are hidden from the control's accessibility label to avoid
+duplicate speech. The requested feature's benefit
+and the Escape/Not now exit remain available in the sheet.
+
+The Store paywall loads `Product.displayPrice` through the injected `StoreKitClient` and
+shows that storefront-localized string unchanged. A failed or missing offer shows Retry;
+Buy stays disabled until a price is available, while Restore and Not now remain usable.
+Cancelled or replaced price tasks cannot update a dismissed/newer sheet. Direct-download
+builds do not show a guessed checkout price.
+
+For account-free Store UI qualification, Debug Store builds have an explicit isolated
+`VITRINE_MANAGED_STORE_UI_TEST` fixture (`price-available`, `price-retry`, or
+`price-unavailable`) which also requires `VITRINE_USER_DEFAULTS_SUITE`. Its synthetic
+price and local restore do not contact StoreKit or make a purchase; the fixture is absent
+from Release. Both Debug channels compile and exercise the fixture's provider graph in
+unit tests; only the Store app entry point can select it from the environment. This keeps
+its isolation and price behavior covered in the default CI lane too. Run Store tests with
+`VITRINE_CHANNEL_CONDITIONS=` rather than replacing
+`SWIFT_ACTIVE_COMPILATION_CONDITIONS`, which would erase target-specific hostless test
+flags. The default channel remains direct download. Real storefront and assistive-technology
+qualification still require their own evidence; injected tests do not certify either.
 
 ## Automation gating
 
@@ -122,10 +154,14 @@ In-process surfaces gate on their injected `environment.entitlements.isUnlocked(
 before file I/O. `terminal-capture` is the constrained free operation emitted by `vgrab`: it
 forces terminal language, requires clipboard copy or editor handoff, and accepts only terminal
 width plus filename/title context. The parser rejects every general style, output, sidecar, and
-automation flag on that command. `render`, `multi-size`, and `batch` remain PRO; `CLICommandLine`
-calls `CLIEntitlement.isProUnlocked()` for those commands before dispatch, so the unchanged
-`CLIRenderer` operations stay ungated and fully testable. `vpane` deliberately uses general
-`render` and remains PRO. `vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
+automation flag on that command. `render --edit` is also free: it only hands text to the
+editor, matching the free Open Code in Editor intent. It cannot copy, save an image, emit
+sidecars, or accept render-only style options. Closing the editor does not create an export.
+`render` image output, `multi-size`, and `batch` remain PRO. `CLICommandLine` authorizes the
+validated operation before AppKit initialization or input reads; free handoffs never inspect
+the activation token. `CLIRenderer` stays independently testable. `vpane` uses `render`, so its
+image output requires PRO while `vpane -e` only opens the editor and is free.
+`vitrine batch <dir> --out <dir>` fans the per-file render over a folder;
 `--recursive` opts into nested folders while preserving their relative output paths, and
 `--fail-on-skipped` turns any skipped file into a non-zero automation exit after the
 readable files are rendered. `--skipped-report <json>` can be paired with either mode
