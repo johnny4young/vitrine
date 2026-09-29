@@ -58,7 +58,7 @@ recent captures, theme shortcuts, and explicit command rows:
 
 ```
 📸  [menu-bar icon]
-├── 📋 New capture from clipboard            ⌘⇧S
+├── 📋 New capture from clipboard            optional global shortcut
 ├── 🖼️  Render clipboard as…                 ▸
 ├── 🕘 Recent captures
 ├── 🎨 Theme shortcuts
@@ -122,8 +122,15 @@ handles the cancel command, backed by a local AppKit key monitor when no control
 focus. All close paths converge on the popover delegate lifecycle so monitor and anchor
 cleanup cannot drift between input mechanisms. The large editor remains a separate
 AppKit-hosted window. The global hotkey triggers quick mode or the editor depending on
-the user's preference. Development and UI-automation runs can open that same popover at
-a validated current-screen anchor through an explicit launch hook. Panel behavior tests
+the user's preference. New installations have no global shortcut until the user records
+one in Welcome, Help, or Settings → General. Clearing the recorder disables it. A
+machine-local, idempotent migration runs in `AppEnvironment` before the style schema
+is stamped: existing assignments and explicit disabled values are preserved; legacy
+installs with no saved value retain their former ⇧⌘S behavior. Resetting or importing
+appearance settings does not reset this policy. The focused app’s local File-menu
+⇧⌘S command remains independent of global registration. Development and UI-automation
+runs can open that same popover at a validated current-screen anchor through an explicit
+launch hook. Panel behavior tests
 and screenshot tours therefore exercise the production content and dismissal lifecycle
 without depending on whether the status item has usable accessibility geometry.
 
@@ -753,7 +760,7 @@ does not link `AppIntents`.
 ## User flow (happy path)
 
 ```
-Copy code in any app  →  ⌘⇧S
+Copy code in any app  →  New Capture from Clipboard (or the optional global hotkey)
     ↓
 NSStatusItem (menu bar) → quick mode or editor
     ↓
@@ -783,7 +790,7 @@ calls `WelcomeWindowController.presentIfFirstRun()` after its launch hooks, so t
 gate lives in one place.
 
 - **Compact, one screen.** No multi-page tutorial: identity, the three-step loop
-  ("copy code → press the hotkey → paste the image"), a sample snippet, a starting
+  ("copy code → trigger a capture → paste the image"), a sample snippet, a starting
   style picker, the hotkey recorder, a launch-at-login toggle, a local-only privacy
   badge, and a clear **Skip / Get Started**. Both buttons mark the flow seen and
   close; skipping unlocks nothing because every feature is already reachable from the
@@ -821,7 +828,7 @@ another application window.
              ┌────────────────────────────┐
              │ Main app — SwiftUI popover │
              └─────────────┬──────────────┘
-                           │ Commands or global hotkey (⌘⇧S)
+                           │ Commands or optional global hotkey
              ┌─────────────┴──────────────┐
              ▼                            ▼
    ┌─────────────────┐          ┌──────────────────────────┐

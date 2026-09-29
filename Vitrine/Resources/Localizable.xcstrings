@@ -1,6 +1,108 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Copy some code, then choose New Capture from Clipboard." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy some code, then choose New Capture from Clipboard."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia código y elige Nueva captura desde el portapapeles."
+          }
+        }
+      }
+    },
+    "Captures you make appear here as previews. Copy some code, then choose New Capture from Clipboard in the menu bar to get started." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captures you make appear here as previews. Copy some code, then choose New Capture from Clipboard in the menu bar to get started."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus capturas aparecen aquí como vistas previas. Para empezar, copia código y elige Nueva captura desde el portapapeles en la barra de menús."
+          }
+        }
+      }
+    },
+    "How it works: copy code, trigger a capture, paste the image." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How it works: copy code, trigger a capture, paste the image."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo funciona: copia código, inicia una captura y pega la imagen."
+          }
+        }
+      }
+    },
+    "shortcut.scope.help" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional. Works across all apps. Choose a shortcut to enable it; clear the recorder to disable it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opcional. Funciona en todas las apps. Asigna un atajo para activarlo; bórralo del control para desactivarlo."
+          }
+        }
+      }
+    },
+    "Trigger a capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger a capture"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia una captura"
+          }
+        }
+      }
+    },
+    "use the menu bar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "use the menu bar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "usa la barra de menús"
+          }
+        }
+      }
+    },
     "Couldn't copy text from the image" : {
       "comment" : "HUD failure when recognized image text could not be written to the clipboard.",
       "localizations" : {
@@ -1777,17 +1879,6 @@
         }
       }
     },
-    "Copy some code and press the capture hotkey." : {
-      "comment" : "Menu-bar panel empty-recents hint teaching the capture loop.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copia código y presiona el atajo de captura."
-          }
-        }
-      }
-    },
     "Captures exactly the viewport size. URL capture loads the page locally in WebKit on this Mac." : {
       "comment" : "Input pane footer for the visible-area web capture mode.",
       "localizations" : {
@@ -1807,18 +1898,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Captura la página completa con el ancho del viewport, hasta una altura máxima acotada. Al contenido de carga diferida se le da la oportunidad de aparecer desplazando la página un número limitado de veces."
-          }
-        }
-      }
-    },
-    "Captures you make appear here as previews. Copy some code and press the capture hotkey to get started." : {
-      "comment" : "Recents gallery empty-state message.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las capturas que hagas aparecerán aquí como vistas previas. Copia algo de código y presiona el atajo de captura para empezar."
           }
         }
       }
@@ -3551,18 +3630,6 @@
         }
       }
     },
-    "How it works: copy code, press the hotkey, paste the image." : {
-      "comment" : "Accessibility label for the welcome step row.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cómo funciona: copia el código, presiona el atajo, pega la imagen."
-          }
-        }
-      }
-    },
     "Idle" : {
       "comment" : "Web capture wait-strategy segment.",
       "localizations" : {
@@ -4781,18 +4848,6 @@
         }
       }
     },
-    "Press the hotkey" : {
-      "comment" : "Onboarding step 2 title.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Presiona el atajo"
-          }
-        }
-      }
-    },
     "Preview" : {
       "comment" : "Section header / label: preview.",
       "localizations" : {
@@ -5354,18 +5409,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Establecido como el estilo predeterminado"
-          }
-        }
-      }
-    },
-    "set one below" : {
-      "comment" : "Onboarding step 2 caption when no hotkey is set yet.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "configura uno abajo"
           }
         }
       }

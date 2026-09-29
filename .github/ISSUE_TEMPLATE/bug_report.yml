@@ -16,7 +16,7 @@ body:
       description: What did you do, what did you expect, and what happened instead?
       placeholder: |
         1. Copied a Swift snippet
-        2. Pressed ⇧⌘S
+        2. Chose New Capture from Clipboard
         3. Expected a PNG on the clipboard, got …
     validations:
       required: true
