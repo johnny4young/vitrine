@@ -56,14 +56,17 @@ telemetry. The direct-download build uses the network for Sparkle updates, licen
 activation, and URL content you explicitly ask it to load. MIT-licensed — with an
 optional [**PRO**](#vitrine-pro) tier for people who publish professionally.
 
-> ray.so (built by Raycast) is open source and is exactly the bar we hold ourselves
-> to for UX and design. The difference: Vitrine is **native and always one shortcut
-> away in the menu bar** — not a web page, not a Raycast command.
+The [Ray.so source](https://github.com/raycast/ray-so) documents a polished web
+code-image tool. Vitrine takes a different route: a native Mac editor and menu-bar
+workflow. A global shortcut is optional, not required for the first image. This
+is a workflow distinction, not a claim that other tools lack offline use or
+native integrations.
 
 ## The flow you'll actually use
 
 1. **Copy** what you want to share — a snippet of code, terminal output, or a URL.
-2. **Trigger Vitrine** — the menu-bar icon, or a global hotkey you choose in Settings.
+2. **Trigger Vitrine** — use the menu-bar icon, or enable and assign a global
+   hotkey in Settings if you want one.
 3. **Vitrine detects the content type** and picks the renderer:
    - **Code** → format + syntax highlight → a beautiful image, using the theme and
      style you preset in **Settings** (no questions asked).
@@ -80,6 +83,10 @@ Two modes, one engine:
 - **Quick mode** — trigger → detect → render code with your saved settings → clipboard.
   URL input opens Web Snapshot instead of silently pretending it is a code capture.
 - **Editor mode** — opens a window with live preview and controls when you want to tweak before exporting.
+
+New here? [Create your first image from a synthetic Swift snippet](docs/FIRST-CAPTURE.md).
+For Free/PRO and direct-download/App Store differences, see the
+[capability reference](docs/CAPABILITIES.md).
 
 ## Install
 
@@ -192,9 +199,9 @@ and render it locally in WebKit.
 
 Lives in the menu bar (`LSUIElement`, no Dock icon) and opens from anywhere with an
 optional global hotkey (configure it in Settings → General). It reads the clipboard,
-detects **code, terminal output, or a URL**, and picks the matching workflow — one-step Quick mode for code using your saved
-style, or the editor when you want to fine-tune. Pasted HTML opens the dedicated Web
-Snapshot editor.
+detects **code, terminal output, or a URL**, and picks the matching workflow —
+one-step Quick mode for code using your saved style, or the editor when you want
+to fine-tune. Pasted HTML opens the dedicated Web Snapshot editor.
 
 ### Live files
 
@@ -279,7 +286,7 @@ Shortcuts and App Intents.
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
 | **Export** | Retina PNG/PDF/HEIC, AVIF where ImageIO supports it, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets, 2–4 capture comparison boards |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
-| **PRO** | Brand Kit watermark · multi-size one-pass export · advanced automation (general `vitrine` CLI, Shortcuts/App Intents, folder batch) — optional one-time license |
+| **PRO** | Brand Kit watermark · multi-size one-pass export · rendering automation (general `vitrine` CLI, Shortcuts image render, Services image render, folder batch); editor handoffs remain free — optional one-time license |
 
 <details>
 <summary>Everything, in detail</summary>
@@ -308,7 +315,7 @@ Shortcuts and App Intents.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
 - 🕘 **Recents gallery** — a local history of quick captures, one click from the menu bar. Disable new writes without deleting existing captures; suspected secrets require a per-capture retention decision. → [`docs/HISTORY.md`](docs/HISTORY.md). Enter **Compare** to select two to four captures in order and compose a labelled, path-free board for before/after reviews or release notes. → [`docs/COMPARISON-BOARDS.md`](docs/COMPARISON-BOARDS.md).
 - 🚀 **First-run quick-start**, offline in-app **Help**, and a **What's New** window on upgrades.
-- ⚡ **Shortcuts / App Intents** — render a code image *(PRO)* or open code in the editor (free) from Shortcuts and Spotlight.
+- ⚡ **Shortcuts / App Intents** — open code in the editor (free) or render a code image *(PRO)* from Shortcuts and Spotlight. Rendering through macOS Services also requires PRO.
 - 🔁 **Sparkle auto-updates** on the direct-download (DMG) channel — "Check for Updates…" in the menu.
 - 🌍 **Localized** in English and Spanish (String Catalog), with pseudolocale and RTL layout tests.
 - 🖥️ **Command-line tools** — basic `vgrab <command>` terminal capture and `vitrine render --edit` editor handoff are free. The general `vitrine render input.swift --out image.png`, multi-size, batch, and `vpane` image-output automation surfaces are direct-download PRO, with output pixel-identical to the app's local render path (no URL capture, network, screen recording, or Accessibility needed).
@@ -472,8 +479,10 @@ and option with copyable examples, practical workflows, and troubleshooting.
 Basic `vgrab <command>` terminal capture is **free**. It uses a deliberately constrained
 CLI capability: terminal input can be copied or opened in the editor, with optional width
 and context, but it cannot opt into general styling, sidecars, file output, or batch work.
-General `render`, `multi-size`, `batch`, and `vpane` automation require an **activated
-direct-download PRO license**. Inspection commands — `--version`, `list`, and `recipe
+`vitrine render INPUT --edit` is also free **only as an editor handoff**; adding a
+render, save, copy, or sidecar operation still needs PRO. General `render`, `multi-size`,
+`batch`, and `vpane` automation require an **activated direct-download PRO license**.
+Inspection commands — `--version`, `list`, and `recipe
 validate/show` — also remain available without PRO. A Debug source build can use
 `VITRINE_PRO_UNLOCK=1` for local QA; release builds ignore that variable.
 
@@ -670,6 +679,8 @@ in [`docs/`](docs/):
 
 - [**CHANGELOG.md**](CHANGELOG.md) — the complete, versioned change history ([Keep a Changelog](https://keepachangelog.com)).
 - [**docs/PROJECT.md**](docs/PROJECT.md) — vision, positioning, naming, distribution, risks.
+- [**docs/FIRST-CAPTURE.md**](docs/FIRST-CAPTURE.md) — a first free image using only synthetic source.
+- [**docs/CAPABILITIES.md**](docs/CAPABILITIES.md) — channel, Free/PRO, privacy, and release boundaries.
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
 - [**docs/PRO.md**](docs/PRO.md) — the PRO subsystem: the open-core gate, per-build providers, Brand Kit, multi-size export, and automation.
 - [**docs/ACTIVATION.md**](docs/ACTIVATION.md) — direct-download PRO activation runbook: keypair generation, build-time key injection, and the Lemon Squeezy product.
