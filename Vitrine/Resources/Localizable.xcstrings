@@ -6786,13 +6786,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Code rendering stays on your Mac. No account. Only Direct download uses the network: updates, license activation, and requested web content."
+            "value" : "Code rendering stays on your Mac, without an account. Direct download uses the network for updates, license activation, and requested web content."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El código se renderiza en tu Mac. Sin cuenta. Solo la descarga directa usa la red: actualizaciones, activación de licencia y contenido web solicitado."
+            "value" : "El código se renderiza en tu Mac, sin cuenta. La descarga directa usa la red para actualizaciones, activación de licencia y contenido web solicitado."
           }
         }
       }
