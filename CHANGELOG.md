@@ -14,6 +14,14 @@ can never drift.
 
 ### Changed
 
+- Global capture shortcuts are opt-in for new installations. Existing assignments and
+  explicit disables are preserved; onboarding explains their system-wide scope.
+- Remove unused export presenters, clipboard and automation wrappers, shell-path
+  helpers, and visual tokens. Keep the active typed-outcome, rendering, and
+  user-granted shell-installation paths and their behavioral tests.
+- Remove the unconnected SVG background serializer and its implementation-only
+  tests. PNG, PDF, HEIC, and AVIF remain the export formats; no shipped export
+  capability is removed.
 - Capture history now removes explicit redactions before creating records or previews.
   Suspected secrets require a fresh choice to skip history, save sanitized text, or retain
   the flagged text deliberately; this never silently changes the requested export.
@@ -32,6 +40,33 @@ can never drift.
   Universal Release, coverage floors and strict visual qualification are unchanged.
 
 ### Fixed
+
+- Image text recognition and secret redaction show cancellable progress. Replaced or
+  cancelled operations cannot publish stale results, errors, or progress changes.
+- Highlighted-code, image-text, and share-link copying report the actual pasteboard
+  outcome instead of silently failing or announcing success after a failed write.
+
+- Web capture sign-out now clears cached private responses and service worker data,
+  closes the sign-in window, and refreshes the stored-site inventory. Temporary
+  capture cookies are correctly documented as isolated, not disabled.
+
+- Confirm named theme and preset deletions with Cancel as the safe default. Deleting
+  the active default theme explicitly falls back to One Dark without changing other
+  style settings or open editor snapshots.
+
+- New text captures, editor handoffs, and Shortcuts clear the previous document's
+  annotations, redactions, highlights, foreground image, and terminal width while keeping
+  reusable style. Shared snapshot links still restore their own annotations.
+- `render --edit` is a free editor-only handoff, consistent with Open Code in Editor.
+  Image rendering, output files, clipboard exports, and sidecars keep their existing gates.
+- Avoid flagging constructor calls such as `WordPieceTokenizer()` and
+  `NSSecureTextField()` as secret values, without exempting quoted literals or
+  provider tokens inside their arguments. Bound generic assignment scanning on
+  adversarial long identifiers and verify that megabyte-line tails are not skipped.
+
+- Register the macOS Services provider at application startup, using the same live
+  settings and PRO entitlement as the app. The advertised code-image service keeps
+  its PNG return contract and Free/PRO policy.
 
 - Website preview filenames follow the selected code theme for readable contrast.
   CLI examples stay inside narrow viewports, and Reduce Motion disables smooth
@@ -82,6 +117,13 @@ can never drift.
 - Optional confidential clipboard markers in Settings and CLI `--copy --conceal-clipboard`.
   Compatible clipboard managers can conceal exports; this is not access control or
   automatic clipboard expiration, and the preference is off by default.
+
+### Testing
+
+- Controlled WebKit integration tests exercise redirects, private subresources,
+  localhost opt-in, cancellation, timeouts, capture limits, and session removal.
+  Dedicated result validation rejects missing or skipped scenarios. Fixture startup
+  avoids reverse DNS, publishes readiness atomically, and retains failure logs.
 
 ## [1.2.3] - 2026-09-16
 
@@ -755,8 +797,8 @@ explicit, and understandable after the image leaves the Mac.
 - **Capture pages that are behind a login.** Turn on "Use my logged-in session" and the
   Web Snapshot window offers to sign you in to the site first, in a real browser window;
   the capture that follows sees the signed-in page. The session belongs to Vitrine alone
-  — nothing is read from Safari or Chrome — and Settings lists the sites you are signed
-  in to, with one button to sign out of all of them.
+  — nothing is read from Safari or Chrome — and Settings lists sites with saved WebKit
+  data, with one button to clear it. This does not revoke server-side sessions.
 
 ### Fixed
 

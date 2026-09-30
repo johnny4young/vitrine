@@ -369,9 +369,18 @@ final class AppSettings {
     func makeDefault(from session: AppSettings) {
         var preferences = EditorPreferencesSnapshot(settings: session)
         preferences.configuration.code = ""
-        preferences.configuration.clearContentMarks()
+        preferences.configuration.resetForNewContent()
         applyEditorPreferences(preferences)
         Log.settings.info("Adopted an editor window's configuration as the app default")
+    }
+
+    /// Commits an explicitly confirmed library deletion. Only a deleted active
+    /// default needs replacement; unrelated styles and editor sessions remain intact.
+    @discardableResult
+    func deleteCustomTheme(id: String, from themes: CustomThemeStore) -> Bool {
+        guard themes.delete(id: id) else { return false }
+        if style.theme.id == id { style.theme = themes.theme(withID: id) }
+        return true
     }
 
     /// Apply through existing observable properties: typing remains independent from

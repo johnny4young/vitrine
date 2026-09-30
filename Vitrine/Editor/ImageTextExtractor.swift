@@ -13,8 +13,8 @@ enum ImageTextExtractor {
     /// Accurate mode (not fast): a code screenshot is dense, small type where the
     /// extra pass visibly pays for itself, and the user explicitly asked.
     ///
-    /// `@concurrent` so the recognition (a CPU-bound, blocking `perform`) runs off the
-    /// main actor; `CGImage` is `Sendable`, so the hop is sound.
+    /// Recognition uses Vision's async request API off the main actor. Cancellation
+    /// is checked before recognition and before returning text to the editor.
     @concurrent
     nonisolated static func recognizeText(in cgImage: CGImage) async throws -> String {
         try await recognizeLines(in: cgImage).map(\.text).joined(separator: "\n")
@@ -25,26 +25,33 @@ enum ImageTextExtractor {
     /// in a beautified image. Boxes are in Vision's space
     /// (normalized, origin bottom-left); the redactor flips them.
     ///
-    /// `@concurrent` so the CPU-bound `perform` runs off the main actor; `CGImage` is
-    /// `Sendable` and the returned value type carries no Vision object across the hop.
+    /// `CGImage` is Sendable and the result carries no Vision objects across the
+    /// concurrent hop. Boxes keep the same normalized bottom-left geometry.
     @concurrent
     nonisolated static func recognizeLines(
         in cgImage: CGImage
     ) async throws -> [ImageSecretRedactor.RecognizedLine] {
-        let request = VNRecognizeTextRequest()
+        try Task.checkCancellation()
+        #if DEBUG
+            if ManagedImageUITestFixture.isRequested(
+                environment: ProcessInfo.processInfo.environment)
+            {
+                try await ManagedImageUITestFixture.waitForCancellation()
+            }
+        #endif
+        var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = false
 
-        let handler = VNImageRequestHandler(cgImage: cgImage)
-        try handler.perform([request])
-
+        let observations = try await request.perform(on: cgImage)
+        try Task.checkCancellation()
         return
-            (request.results ?? [])
-            .sorted { $0.boundingBox.minY > $1.boundingBox.minY }
+            observations
+            .sorted { $0.boundingBox.cgRect.minY > $1.boundingBox.cgRect.minY }
             .compactMap { observation in
                 guard let text = observation.topCandidates(1).first?.string else { return nil }
                 return ImageSecretRedactor.RecognizedLine(
-                    text: text, boundingBox: observation.boundingBox)
+                    text: text, boundingBox: observation.boundingBox.cgRect)
             }
     }
 }

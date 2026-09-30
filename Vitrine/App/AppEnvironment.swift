@@ -41,6 +41,7 @@ final class AppEnvironment {
         entitlements: Entitlements? = nil
     ) {
         self.defaults = defaults
+        GlobalShortcutMigration.prepare(in: defaults)
         #if DEBUG
             AppLaunchArgumentHandler.seedPreLaunchFixtures(in: defaults)
         #endif

@@ -77,8 +77,8 @@ final class WebCaptureSettings {
 
     /// Whether a URL capture uses the persistent website data store — i.e. your existing
     /// cookies/logged-in session — so a page behind a login can be captured. Off
-    /// by default: the default per-render store sends no cookies and persists nothing, so
-    /// this is a deliberate, privacy-widening opt-in. Drives `dataStoreMode`.
+    /// by default: each render starts without saved cookies and retains nothing for
+    /// the next capture. This privacy-widening opt-in drives `dataStoreMode`.
     var usesLoggedInSession: Bool {
         didSet { defaults.set(usesLoggedInSession, forKey: Keys.webUsesLoggedInSession) }
     }
@@ -153,7 +153,7 @@ final class WebCaptureSettings {
         // Off on a fresh suite, so the first URL capture always shows the privacy
         // disclosure before reaching the network.
         consentGiven = defaults.object(forKey: Keys.urlCaptureConsent) as? Bool ?? false
-        // Off by default: cookies/persistent data are opt-in only.
+        // Off by default: retaining cookies and website data is opt-in only.
         usesLoggedInSession =
             defaults.object(forKey: Keys.webUsesLoggedInSession) as? Bool ?? false
         allowsLoopbackCapture =

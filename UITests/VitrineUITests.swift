@@ -362,6 +362,65 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testImageProcessingShowsProgressAndCanCancelOrRemoveItsSource() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        for (language, appearance) in [
+            ("en", "Light"), ("en", "Dark"), ("es", "Light"), ("es", "Dark"),
+        ] {
+            let app = launch(
+                arguments: [
+                    "--demo-beautify-image", "-AppleLanguages", "(\(language))", "-AppleLocale",
+                    language == "es" ? "es_ES" : "en_US",
+                    appearance == "Dark" ? "--appearance-dark" : "--appearance-light",
+                ],
+                environment: [
+                    "VITRINE_MANAGED_IMAGE_UI_TEST": "pending",
+                    "VITRINE_UI_TEST_EDITOR_VIEWPORT": "960x600",
+                ])
+            defer { app.terminate() }
+            let copy = element("copy-image-text-button", in: app)
+            let redact = element("redact-image-secrets-button", in: app)
+            let status = element("image-processing-status", in: app)
+            let cancel = element("cancel-image-processing-button", in: app)
+            assertExists(copy, in: app, timeout: 8)
+            let window = element("editor-window", in: app)
+            // The Debug launch hook requests a real compact AppKit frame; assert the
+            // resulting size so the test fails if the editor's minimum grows too large.
+            XCTAssertLessThanOrEqual(window.frame.width, 980)
+            XCTAssertLessThanOrEqual(window.frame.height, 620)
+            copy.click()
+            assertExists(status, in: app, timeout: 3)
+            XCTAssertEqual(
+                status.label, language == "es" ? "Reconociendo texto…" : "Recognizing text…")
+            XCTAssertFalse(copy.isEnabled)
+            XCTAssertFalse(redact.isEnabled)
+            XCTAssertTrue(cancel.isHittable)
+            XCTAssertTrue(element("editor-window", in: app).frame.contains(cancel.frame))
+            let screenshot = XCTAttachment(
+                screenshot: element("editor-window", in: app).screenshot())
+            screenshot.name = "image-processing-\(language)-\(appearance)"
+            screenshot.lifetime = .keepAlways
+            add(screenshot)
+            cancel.click()
+            XCTAssertTrue(status.waitForNonExistence(timeout: 3))
+            XCTAssertTrue(copy.isEnabled)
+            XCTAssertTrue(redact.isEnabled)
+
+            // Starting a different operation immediately must not let the cancelled
+            // task clear its progress. Removal cancels the new job and restores code mode.
+            redact.click()
+            assertExists(status, in: app, timeout: 3)
+            XCTAssertEqual(
+                status.label, language == "es" ? "Ocultando secretos…" : "Redacting secrets…")
+            element("remove-image-button", in: app).click()
+            assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
+            XCTAssertTrue(status.waitForNonExistence(timeout: 3))
+            XCTAssertFalse(copy.exists)
+        }
+    }
+
+    @MainActor
     func testImagePanelExposesRedactAndCopyTextActions() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
@@ -1109,6 +1168,109 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testLibraryPresetDeletionRequiresNamedConfirmationAndPersists() {
+        for language in ["en", "es"] {
+            continueAfterFailure = false
+            let app = launch(
+                arguments: VitrineLaunchArguments.settings + [
+                    "-AppleLanguages", "(\(language))", "-AppleLocale",
+                    language == "es" ? "es_ES" : "en_US",
+                ])
+            defer { app.terminate() }
+            let settings = SettingsRobot(testCase: self, app: app)
+            assertExists(settings.generalPane, in: app, timeout: 8)
+            settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+            element("save-style-preset-button", in: app).click()
+            let name = app.windows.firstMatch.sheets.textFields.firstMatch
+            assertExists(name, in: app, timeout: 3)
+            name.click()
+            name.typeKey("a", modifierFlags: .command)
+            name.typeText("Deletion example")
+            app.windows.firstMatch.sheets.buttons[language == "es" ? "Guardar" : "Save"].click()
+            element("apply-style-preset-button", in: app).click()
+            element("delete-style-preset-button", in: app).click()
+            let sheet = app.windows.firstMatch.sheets.firstMatch
+            XCTAssertTrue(sheet.waitForExistence(timeout: 3))
+            XCTAssertTrue(
+                sheet.staticTexts.matching(
+                    NSPredicate(
+                        format: "value CONTAINS %@ OR label CONTAINS %@", "Deletion example",
+                        "Deletion example")
+                ).firstMatch.exists)
+            // Return is deliberately the safe choice, not implicit deletion.
+            app.typeKey(.return, modifierFlags: [])
+            XCTAssertEqual(
+                element("style-preset-picker", in: app).value as? String, "Deletion example")
+            element("delete-style-preset-button", in: app).click()
+            app.typeKey(.escape, modifierFlags: [])
+            XCTAssertEqual(
+                element("style-preset-picker", in: app).value as? String, "Deletion example")
+            element("delete-style-preset-button", in: app).click()
+            app.windows.firstMatch.sheets.buttons[
+                language == "es" ? "Eliminar preajuste" : "Delete Preset"
+            ].click()
+            XCTAssertFalse(element("delete-style-preset-button", in: app).isEnabled)
+            app.terminate()
+            app.launch()
+            app.activate()
+            assertExists(app.windows.firstMatch, in: app, timeout: 8)
+            settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+            let picker = element("style-preset-picker", in: app)
+            picker.click()
+            XCTAssertTrue(picker.menuItems.firstMatch.waitForExistence(timeout: 3))
+            XCTAssertFalse(picker.menuItems["Deletion example"].exists)
+            app.typeKey(.escape, modifierFlags: [])
+        }
+    }
+
+    @MainActor
+    func testLibraryThemeDeletionCancelsThenReplacesActiveDefaultOnRelaunch() {
+        for language in ["en", "es"] {
+            continueAfterFailure = false
+            let app = launch(
+                arguments: VitrineLaunchArguments.settings + [
+                    "-AppleLanguages", "(\(language))", "-AppleLocale",
+                    language == "es" ? "es_ES" : "en_US",
+                ])
+            defer { app.terminate() }
+            let settings = SettingsRobot(testCase: self, app: app)
+            assertExists(settings.generalPane, in: app, timeout: 8)
+            settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+            element("new-custom-theme-button", in: app).click()
+            let name = element("custom-theme-name-field", in: app)
+            assertExists(name, in: app, timeout: 3)
+            name.click()
+            name.typeKey("a", modifierFlags: .command)
+            name.typeText("Theme deletion example")
+            app.windows.firstMatch.sheets.buttons[language == "es" ? "Guardar" : "Save"].click()
+            element("delete-custom-theme-button", in: app).click()
+            let sheet = app.windows.firstMatch.sheets.firstMatch
+            XCTAssertTrue(sheet.waitForExistence(timeout: 3))
+            XCTAssertTrue(
+                sheet.staticTexts.matching(
+                    NSPredicate(
+                        format: "value CONTAINS %@ OR label CONTAINS %@", "Theme deletion example",
+                        "Theme deletion example")
+                ).firstMatch.exists)
+            sheet.buttons[language == "es" ? "Cancelar" : "Cancel"].click()
+            XCTAssertEqual(
+                element("custom-theme-picker", in: app).value as? String, "Theme deletion example")
+            element("delete-custom-theme-button", in: app).click()
+            app.windows.firstMatch.sheets.buttons[
+                language == "es" ? "Eliminar tema" : "Delete Theme"
+            ].click()
+            app.terminate()
+            app.launch()
+            app.activate()
+            assertExists(app.windows.firstMatch, in: app, timeout: 8)
+            settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+            XCTAssertFalse(element("custom-theme-picker", in: app).exists)
+            settings.open(navigation: "settings-nav-style", pane: "settings-style-pane")
+            XCTAssertTrue(app.buttons["One Dark"].isSelected)
+        }
+    }
+
+    @MainActor
     func testStylePaneShowsFreeBrandKitDragHandle() {
         continueAfterFailure = false
         let app = launch(
@@ -1315,6 +1477,54 @@ final class VitrineUITests: XCTestCase {
     }
 
     // MARK: - Web Snapshot
+
+    @MainActor
+    func testWebSignInAffordanceRequiresExplicitSessionOptIn() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.webSnapshot)
+        defer { app.terminate() }
+
+        assertExists(element("web-snapshot-window", in: app), in: app, timeout: 8)
+        let urlField = app.textFields["web-snapshot-url-field"]
+        assertExists(urlField, in: app, timeout: 3)
+        urlField.click()
+        // Entering a URL must not load it. This test never captures or opens the
+        // sign-in window, so it needs neither a website nor credentials.
+        urlField.typeText("https://example.com")
+
+        let unavailable = element("web-snapshot-url-unavailable-note", in: app)
+        let hint = element("web-snapshot-sign-in-hint", in: app)
+        let signIn = element("web-snapshot-sign-in-button", in: app)
+        let requiresDirect =
+            ProcessInfo.processInfo.environment["VITRINE_REQUIRE_DIRECT_WEB_SESSION"] == "1"
+        if !requiresDirect {
+            // The ordinary UI suite uses App Store-compatible entitlements. It must
+            // not offer sign-in merely because the Debug binary was compiled with
+            // VITRINE_DIRECT_DOWNLOAD; runtime capability is the signed entitlement.
+            assertExists(unavailable, in: app, timeout: 3)
+            XCTAssertFalse(hint.exists)
+            XCTAssertFalse(signIn.exists)
+            return
+        }
+
+        XCTAssertFalse(unavailable.exists, "The signed Direct lane lost network capability")
+        assertExists(hint, in: app, timeout: 3)
+        XCTAssertFalse(signIn.exists, "The default-off session must not offer sign-in")
+
+        hittableElement("web-advanced-disclosure", in: app).click()
+        let toggle = element("web-logged-in-session-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 0, "Persistent sessions must default to off")
+
+        toggle.click()
+        assertExists(signIn, in: app, timeout: 3)
+        XCTAssertTrue(signIn.label.contains("example.com"))
+        XCTAssertFalse(hint.exists)
+
+        toggle.click()
+        assertExists(hint, in: app, timeout: 3)
+        XCTAssertFalse(signIn.exists, "Turning off persistence must withdraw sign-in")
+    }
 
     @MainActor
     func testWebSnapshotRendersAndCopiesMultipleLocalHTMLViewports() throws {

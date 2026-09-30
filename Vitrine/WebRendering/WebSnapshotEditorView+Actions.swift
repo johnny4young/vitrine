@@ -45,7 +45,8 @@ extension WebSnapshotEditorView {
                 captureURLString: model.urlText,
                 allowLoopback: settings.webCapture.allowsLoopbackCapture)
         else { return }
-        presentation.showSignIn(for: url)
+        presentation.showSignIn(
+            for: url, allowsLoopback: settings.webCapture.allowsLoopbackCapture)
     }
 
     func capture() async {

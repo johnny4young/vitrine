@@ -12,7 +12,7 @@ import AppKit
 ///    the send/return types so the menu item enables for a text selection and offers
 ///    to return an image.
 ///
-/// `register()` performs step 2; `AppDelegate` calls it once at launch. Keeping it
+/// `register(provider:)` performs step 2; `AppDelegate` calls it once at launch. Keeping it
 /// here keeps `AppDelegate` thin and makes the registration unit-coverable by reading
 /// the same declared types the Info.plist promises.
 enum ServiceRegistration {
@@ -26,7 +26,7 @@ enum ServiceRegistration {
 
     /// Installs the provider and advertises the send/return types so the Services
     /// menu item appears and enables for a text selection.
-    static func register(provider: CodeImageService = .shared) {
+    static func register(provider: CodeImageService) {
         NSApp.servicesProvider = provider
         NSApp.registerServicesMenuSendTypes(sendTypes, returnTypes: returnTypes)
         // Refresh the system Services cache so the freshly registered action is

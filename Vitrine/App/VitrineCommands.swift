@@ -117,7 +117,7 @@ enum VitrineCommand: String, CaseIterable {
     /// convention; AppKit renders the glyph (e.g. ⌘E) automatically.
     var keyEquivalent: String? {
         switch self {
-        case .newCapture: "s"  // ⇧⌘S — global quick capture
+        case .newCapture: "s"  // ⇧⌘S — local menu command, independent of the global hotkey
         case .openEditor: "e"  // ⌘E — open the editor
         case .newEditorWindow: "n"  // ⌘N — open an additional editor window
         case .settings: ","  // ⌘, — the standard Settings shortcut

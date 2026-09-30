@@ -1,6 +1,212 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Copy some code, then choose New Capture from Clipboard." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copy some code, then choose New Capture from Clipboard."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia código y elige Nueva captura desde el portapapeles."
+          }
+        }
+      }
+    },
+    "Captures you make appear here as previews. Copy some code, then choose New Capture from Clipboard in the menu bar to get started." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captures you make appear here as previews. Copy some code, then choose New Capture from Clipboard in the menu bar to get started."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus capturas aparecen aquí como vistas previas. Para empezar, copia código y elige Nueva captura desde el portapapeles en la barra de menús."
+          }
+        }
+      }
+    },
+    "How it works: copy code, trigger a capture, paste the image." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "How it works: copy code, trigger a capture, paste the image."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cómo funciona: copia código, inicia una captura y pega la imagen."
+          }
+        }
+      }
+    },
+    "shortcut.scope.help" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Optional. Works across all apps. Choose a shortcut to enable it; clear the recorder to disable it."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opcional. Funciona en todas las apps. Asigna un atajo para activarlo; bórralo del control para desactivarlo."
+          }
+        }
+      }
+    },
+    "Trigger a capture" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger a capture"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia una captura"
+          }
+        }
+      }
+    },
+    "use the menu bar" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "use the menu bar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "usa la barra de menús"
+          }
+        }
+      }
+    },
+    "Couldn't copy text from the image" : {
+      "comment" : "HUD failure when recognized image text could not be written to the clipboard.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar el texto de la imagen"
+          }
+        }
+      }
+    },
+    "Cancel image processing" : {
+      "comment" : "Accessibility label for the button that cancels on-device image text recognition or secret redaction.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar el procesamiento de imagen"
+          }
+        }
+      }
+    },
+    "Redacting secrets…" : {
+      "comment" : "Progress status while Vitrine covers secrets detected in a beautified image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultando secretos…"
+          }
+        }
+      }
+    },
+    "Recognizing text…" : {
+      "comment" : "Progress status while Vitrine recognizes text in a beautified image on-device.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconociendo texto…"
+          }
+        }
+      }
+    },
+    "Delete Preset?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar preajuste?"
+          }
+        }
+      }
+    },
+    "Delete Preset" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar preajuste"
+          }
+        }
+      }
+    },
+    "Delete Theme?" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar tema?"
+          }
+        }
+      }
+    },
+    "Delete Theme" : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar tema"
+          }
+        }
+      }
+    },
+    "Delete “%@”? This cannot be undone. Your current style will not change." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar «%@»? Esta acción no se puede deshacer. Tu estilo actual no cambiará."
+          }
+        }
+      }
+    },
+    "Delete “%@”? This cannot be undone. If this is your default theme, One Dark will replace it. Other style settings and open editor snapshots will not change." : {
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar «%@»? Esta acción no se puede deshacer. Si es tu tema predeterminado, se sustituirá por One Dark. Los demás ajustes de estilo y las capturas abiertas en el editor no cambiarán."
+          }
+        }
+      }
+    },
     "Defaults for new windows and captures. Open editors keep their own style." : {
       "localizations" : {
         "es" : {
@@ -217,16 +423,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pide a los gestores de portapapeles compatibles que oculten las exportaciones. Otras apps aún pueden leerlas."
-          }
-        }
-      }
-    },
-    "Couldn't copy the recognized text" : {
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo copiar el texto reconocido"
           }
         }
       }
@@ -504,6 +700,28 @@
         }
       }
     },
+    "Could Not Open Sign-In Window" : {
+      "comment" : "Alert title when safe WebKit network rules cannot be established for sign-in.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo abrir la ventana de inicio de sesión"
+          }
+        }
+      }
+    },
+    "Vitrine could not establish safe web access. Try again later." : {
+      "comment" : "Alert detail when the sign-in window refuses to load without private-host protection.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine no pudo establecer un acceso web seguro. Inténtalo de nuevo más tarde."
+          }
+        }
+      }
+    },
     "Sign In for Web Capture" : {
       "comment" : "Title of the window where the user signs in to a site before capturing it.",
       "localizations" : {
@@ -515,13 +733,13 @@
         }
       }
     },
-    "Sign Out of All" : {
-      "comment" : "Button that clears every stored web session.",
+    "Clear All Web Data" : {
+      "comment" : "Button that clears all website data stored by Vitrine without claiming to revoke server-side sessions.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cerrar todas las sesiones"
+            "value" : "Borrar todos los datos web"
           }
         }
       }
@@ -537,13 +755,24 @@
         }
       }
     },
-    "Signed-in sites" : {
-      "comment" : "Label listing the sites Vitrine holds a web session for.",
+    "Sites with saved data" : {
+      "comment" : "Label listing WebKit site labels with stored data, not proof of an active login.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sitios con sesión iniciada"
+            "value" : "Sitios con datos guardados"
+          }
+        }
+      }
+    },
+    "Removes website data saved by Vitrine; it does not end server-side sessions." : {
+      "comment" : "Accessibility hint for clearing Vitrine's own WebKit data without promising server-side logout.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Borra los datos web guardados por Vitrine; no cierra las sesiones en el servidor del sitio."
           }
         }
       }
@@ -1650,17 +1879,6 @@
         }
       }
     },
-    "Copy some code and press the capture hotkey." : {
-      "comment" : "Menu-bar panel empty-recents hint teaching the capture loop.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copia código y presiona el atajo de captura."
-          }
-        }
-      }
-    },
     "Captures exactly the viewport size. URL capture loads the page locally in WebKit on this Mac." : {
       "comment" : "Input pane footer for the visible-area web capture mode.",
       "localizations" : {
@@ -1680,18 +1898,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Captura la página completa con el ancho del viewport, hasta una altura máxima acotada. Al contenido de carga diferida se le da la oportunidad de aparecer desplazando la página un número limitado de veces."
-          }
-        }
-      }
-    },
-    "Captures you make appear here as previews. Copy some code and press the capture hotkey to get started." : {
-      "comment" : "Recents gallery empty-state message.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las capturas que hagas aparecerán aquí como vistas previas. Copia algo de código y presiona el atajo de captura para empezar."
           }
         }
       }
@@ -3224,13 +3430,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Press the global hotkey from any app to capture whatever code is on your clipboard as an image. Set or change the hotkey below, or in Settings ▸ General."
+            "value" : "Use it to capture the code on your clipboard without opening the menu bar. You can also manage it in Settings ▸ General; the menu-bar action always remains available."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Presiona el atajo global desde cualquier app para capturar como imagen el código que tengas en el portapapeles. Configura o cambia el atajo abajo, o en Ajustes ▸ General."
+            "value" : "Úsalo para capturar el código del portapapeles sin abrir la barra de menús. También puedes gestionarlo en Ajustes ▸ General; la acción de la barra de menús siempre está disponible."
           }
         }
       }
@@ -3296,13 +3502,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vitrine is private by design: your code never leaves your Mac. There is no account and no network access, and rendering needs no screen-recording or Accessibility permission."
+            "value" : "Code rendering stays on your Mac and needs no account, Screen Recording, or Accessibility-control permission. The direct-download build uses the network only for requested web content, updates, or license activation; the App Store build has no network-client entitlement."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vitrine es privado por diseño: tu código nunca sale de tu Mac. No hay cuenta ni acceso a la red, y la generación no necesita permiso de grabación de pantalla ni de Accesibilidad."
+            "value" : "El código se procesa en tu Mac sin cuenta ni permisos de grabación de pantalla o control de Accesibilidad. La versión de descarga directa usa la red solo para contenido web solicitado, actualizaciones o activación; la de App Store no tiene permiso de cliente de red."
           }
         }
       }
@@ -3332,13 +3538,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy code anywhere, press the hotkey, and Vitrine renders it with your current style. The image is placed on your clipboard automatically — paste it straight into a doc, chat, or pull request."
+            "value" : "Copy code anywhere, choose New Capture from Clipboard from the menu bar (or use your enabled hotkey), and Vitrine renders it with your current style. With Copy to clipboard automatically on (the default), a successful copy places the image on your clipboard; a failed copy reports an error."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia código en cualquier parte, presiona el atajo y Vitrine lo genera con tu estilo actual. La imagen se coloca en el portapapeles automáticamente; pégala directamente en un documento, chat o pull request."
+            "value" : "Copia código en cualquier parte y elige Nueva captura desde el portapapeles en la barra de menús (o usa tu atajo activado). Vitrine lo procesa con tu estilo actual. Con Copiar al portapapeles automáticamente activado (el valor predeterminado), si la copia funciona, la imagen queda en el portapapeles; si falla, se informa el error."
           }
         }
       }
@@ -3420,18 +3626,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "El atajo ejecuta"
-          }
-        }
-      }
-    },
-    "How it works: copy code, press the hotkey, paste the image." : {
-      "comment" : "Accessibility label for the welcome step row.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cómo funciona: copia el código, presiona el atajo, pega la imagen."
           }
         }
       }
@@ -4654,18 +4848,6 @@
         }
       }
     },
-    "Press the hotkey" : {
-      "comment" : "Onboarding step 2 title.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Presiona el atajo"
-          }
-        }
-      }
-    },
     "Preview" : {
       "comment" : "Section header / label: preview.",
       "localizations" : {
@@ -5227,18 +5409,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Establecido como el estilo predeterminado"
-          }
-        }
-      }
-    },
-    "set one below" : {
-      "comment" : "Onboarding step 2 caption when no hotkey is set yet.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "configura uno abajo"
           }
         }
       }

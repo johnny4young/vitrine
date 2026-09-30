@@ -21,12 +21,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let feedback: CaptureFeedbackPresenter
     let launchArguments: AppLaunchArgumentHandler
     let mainMenu: AppMenu
+    private let loadEditor: @MainActor (SnapshotConfig) -> Void
 
     override init() {
         let environment = AppEnvironment.shared
         let feedback = CaptureFeedbackPresenter.shared
         self.environment = environment
         self.feedback = feedback
+        loadEditor = Self.presentEditor
         launchArguments = AppLaunchArgumentHandler(environment: environment)
         mainMenu = AppMenu(
             environment: environment,
@@ -38,10 +40,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     init(
         environment: AppEnvironment,
         feedback: CaptureFeedbackPresenter,
-        editorPresentation: EditorPresentation
+        editorPresentation: EditorPresentation,
+        loadEditor: @escaping @MainActor (SnapshotConfig) -> Void = AppDelegate.presentEditor
     ) {
         self.environment = environment
         self.feedback = feedback
+        self.loadEditor = loadEditor
         launchArguments = AppLaunchArgumentHandler(environment: environment)
         mainMenu = AppMenu(
             environment: environment,
@@ -170,11 +174,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Intent do, seeded on the user's current style. A no-op for an empty payload.
     private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
-        var config = environment.appSettings.config
-        config.code = handoff.content
-        if let language = handoff.language { config.language = language }
-        EditorWindowController.shared.loadIntoPrimary(config)
-        NSApp.activate(ignoringOtherApps: true)
+        let language = handoff.language ?? LanguageDetector.interpret(handoff.content).language
+        let config = environment.appSettings.config.replacingContent(
+            with: handoff.content, language: language)
+        loadEditor(config)
         Log.app.notice("Opened a CLI --edit handoff in the editor")
     }
 
@@ -188,9 +191,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let snapshot = try? SnapshotShareLink.snapshot(from: url) else { return }
         var config = SnapshotConfig()
         snapshot.apply(to: &config)
+        loadEditor(config)
+        Log.app.notice("Opened a shared snapshot link in the editor")
+    }
+
+    static func presentEditor(_ config: SnapshotConfig) {
         EditorWindowController.shared.loadIntoPrimary(config)
         NSApp.activate(ignoringOtherApps: true)
-        Log.app.notice("Opened a shared snapshot link in the editor")
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -236,6 +243,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // re-locks/unlocks PRO without a relaunch.
         environment.entitlements.startLiveUpdates()
 
+        // Services may arrive as soon as the provider is installed. Each request reads
+        // this graph's current style and entitlement (cached until the first refresh).
+        ServiceRegistration.register(provider: CodeImageService(environment: environment))
+
         // First-run surfaces on a normal launch: onboarding owns the
         // first launch; once it has been seen, What's New surfaces on a version
         // upgrade — never both. Skipped when a dev launch hook already opened a window
@@ -264,7 +275,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Pay the syntax highlighter's one-time cold start now, off the render path, so
-        // a user whose first interaction is a ⇧⌘S quick capture doesn't eat the
+        // a user whose first interaction is a quick capture doesn't eat the
         // JavaScriptCore + theme-CSS warm-up inside the "instant" gesture. Low priority
         // so it never contends with the menu bar coming up or a hotkey already firing.
         Task(priority: .utility) { HighlightManager.shared.prewarm() }

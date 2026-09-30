@@ -58,7 +58,7 @@ recent captures, theme shortcuts, and explicit command rows:
 
 ```
 📸  [menu-bar icon]
-├── 📋 New capture from clipboard            ⌘⇧S
+├── 📋 New capture from clipboard            optional global shortcut
 ├── 🖼️  Render clipboard as…                 ▸
 ├── 🕘 Recent captures
 ├── 🎨 Theme shortcuts
@@ -122,8 +122,15 @@ handles the cancel command, backed by a local AppKit key monitor when no control
 focus. All close paths converge on the popover delegate lifecycle so monitor and anchor
 cleanup cannot drift between input mechanisms. The large editor remains a separate
 AppKit-hosted window. The global hotkey triggers quick mode or the editor depending on
-the user's preference. Development and UI-automation runs can open that same popover at
-a validated current-screen anchor through an explicit launch hook. Panel behavior tests
+the user's preference. New installations have no global shortcut until the user records
+one in Welcome, Help, or Settings → General. Clearing the recorder disables it. A
+machine-local, idempotent migration runs in `AppEnvironment` before the style schema
+is stamped: existing assignments and explicit disabled values are preserved; legacy
+installs with no saved value retain their former ⇧⌘S behavior. Resetting or importing
+appearance settings does not reset this policy. The focused app’s local File-menu
+⇧⌘S command remains independent of global registration. Development and UI-automation
+runs can open that same popover at a validated current-screen anchor through an explicit
+launch hook. Panel behavior tests
 and screenshot tours therefore exercise the production content and dismissal lifecycle
 without depending on whether the status item has usable accessibility geometry.
 
@@ -208,8 +215,8 @@ platform allocation detail.
 
 ## Vector export
 
-The supported scalable format is **PDF**, not SVG. This is a deliberate decision
-from the  spike, not an omission.
+The supported scalable format is **PDF**, not SVG. This is a deliberate decision,
+not a partially implemented export feature.
 
 **Finding — there is no faithful full-canvas SVG path.** SwiftUI, `ImageRenderer`,
 and AppKit expose no API that emits the rendered code canvas as vector SVG. A code
@@ -220,30 +227,12 @@ back only a `cgImage`, an `nsImage`, or a `CGContext` it draws into — which is
 public path that re-emits that glyph layout as SVG `<text>`/`<path>` vectors. So:
 
 - **PDF is the vector format** offered in the export menu (`ExportFormat.pdf`,
-  `isVector == true`); PNG is the raster option. The picker labels this honestly
+  `isVector == true`); PNG, HEIC, and AVIF are the raster options. The picker labels this honestly
   (`ExportFormat.summary`).
 - **No fake SVG is shipped.** Vitrine never writes a `.svg` that is merely a raster
   PNG wrapped in an `<image>` element — that would be a raster file with a vector
   extension. PDF preserves a transparent background (real alpha, no matte), the
   same guarantee as the PNG path.
-
-**The one place SVG is honest — the deterministic simple-template subset.** The
-backgrounds of the social-card / simple templates are pure geometry and
-color with no text layout, so they *can* be emitted as native SVG primitives.
-`VectorTemplateSVG.background(_:size:)` serializes exactly that subset:
-
-| Background        | SVG output                                             |
-| ----------------- | ------------------------------------------------------ |
-| `.solid`          | a filled `<rect>`                                      |
-| `.gradient`       | an `objectBoundingBox` `<linearGradient>`              |
-| `.customGradient` | an `objectBoundingBox` `<linearGradient>` (user stops) |
-| `.transparent`    | no background rect (genuinely transparent, no matte)   |
-| `.image`          | unsupported → returns `nil` (never embeds a raster)    |
-
-Serialization is byte-for-byte deterministic (colors quantized through `RGBAColor`,
-fixed number formatting and attribute order), so the same template always produces
-identical bytes. This serializer is intentionally **not** wired up as a general
-export choice for the arbitrary code canvas; it exists for the template path only.
 
 ## Syntax-highlighting memory and responsiveness
 
@@ -530,7 +519,17 @@ Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation
 loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
 same deterministic `SecretScanner` as the editor and merges detected rows with any
 manual `--redact-lines` ranges. Redacted rows are replaced with `[redacted]` before
-copyable sidecars are written. For single-file renders, known output extensions
+copyable sidecars are written. The scanner is a conservative line-based heuristic,
+not a guarantee that all credentials are detected. Provider patterns run independently
+of generic assignment parsing; the latter excludes constructor calls, a type name
+directly followed by `(` such as `passwordField = NSSecureTextField()`, only when no
+later quoted content needs protection. Quoted values, other bare values and a value
+followed by a spaced parenthetical remain detected. A word-boundary assignment scan
+and separate name check avoid nested greedy rescans. No line-length cutoff is used. A
+deterministic positive/negative corpus covers issuer tokens, PEM blocks, Unicode/CRLF
+and call-expression false positives; megabyte-scale adversarial cases enforce a
+three-second hard ceiling and assert that secrets at the end of long lines are still
+found. For single-file renders, known output extensions
 (`.png`, `.pdf`, `.heic`, `.avif`) infer the export format when `--format` is omitted; if an
 explicit `--format` is present, the extension must match so automation never receives
 mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
@@ -698,6 +697,11 @@ recording, or Accessibility, and the actions write nothing to disk on their own.
 
 **Composition boundary.** The Services provider retains the `AppEnvironment` supplied
 when it is constructed, so its PRO gate and exported style resolve from the same graph.
+`AppDelegate.applicationDidFinishLaunching` installs that provider after starting
+entitlement updates. Each request reads the graph's current entitlement, so one that
+arrives before the first refresh completes uses the cached value. A hosted
+regression checks the actual registered provider after launch; external cold/warm
+Services invocation remains a separate integration check, not a direct method call.
 App Intents are constructed by the system rather than by an app-owned controller; each
 `perform()` adapter therefore binds once to `AppEnvironment.shared` and uses that graph
 for entitlement checks, Brand Kit watermarking, saved language history, and editor
@@ -756,7 +760,7 @@ does not link `AppIntents`.
 ## User flow (happy path)
 
 ```
-Copy code in any app  →  ⌘⇧S
+Copy code in any app  →  New Capture from Clipboard (or the optional global hotkey)
     ↓
 NSStatusItem (menu bar) → quick mode or editor
     ↓
@@ -786,7 +790,7 @@ calls `WelcomeWindowController.presentIfFirstRun()` after its launch hooks, so t
 gate lives in one place.
 
 - **Compact, one screen.** No multi-page tutorial: identity, the three-step loop
-  ("copy code → press the hotkey → paste the image"), a sample snippet, a starting
+  ("copy code → trigger a capture → paste the image"), a sample snippet, a starting
   style picker, the hotkey recorder, a launch-at-login toggle, a local-only privacy
   badge, and a clear **Skip / Get Started**. Both buttons mark the flow seen and
   close; skipping unlocks nothing because every feature is already reachable from the
@@ -824,7 +828,7 @@ another application window.
              ┌────────────────────────────┐
              │ Main app — SwiftUI popover │
              └─────────────┬──────────────┘
-                           │ Commands or global hotkey (⌘⇧S)
+                           │ Commands or optional global hotkey
              ┌─────────────┴──────────────┐
              ▼                            ▼
    ┌─────────────────┐          ┌──────────────────────────┐
@@ -1267,6 +1271,32 @@ struct Theme: Identifiable, Hashable {
 }
 ```
 
+## New text versus restored documents
+
+`SnapshotConfig.replacingContent(with:language:)` starts a new text document over an
+existing style. It drops annotations, highlighted/redacted rows, foreground images,
+and invocation-only terminal width. A missing language hint preserves the caller's
+language; adapters that promise detection resolve it before replacement. CLI handoff,
+Open Code in Editor, quick capture (including URL-as-text recovery), loaded files, and
+recent captures use this boundary; editor paste and Make Default clear the same state with
+`resetForNewContent()`. File append remains distinct and keeps existing marks.
+
+A shared snapshot is already a complete document: its decoder applies its own validated
+annotations and style, and `loadIntoPrimary` does not clear them. That window operation
+stops live-file watching and loads exactly the supplied document. It must not become an
+implicit new-content sanitizer.
+
+| Entry | Free/PRO contract | Channel |
+| --- | --- | --- |
+| Editor text ingress / Open Code in Editor | Free handoff; no export performed | Direct download and App Store |
+| `render --edit`, `vpane -e` | Free handoff; no image, output file, sidecar, or general clipboard write | Direct-download CLI |
+| `terminal-capture` / basic `vgrab` | Existing constrained free terminal copy or handoff | Direct-download CLI |
+| General CLI render/copy/save, multi-size, batch | PRO; authorized before input reads | Direct-download CLI |
+| Render Code Image intent / macOS image Service | PRO automation | Direct download and App Store |
+
+The CLI has no StoreKit bridge. Parser validation rejects handoff/output combinations
+before operation-based authorization, so `--edit` cannot turn a PRO output into a free one.
+
 ## UI/UX decisions
 
 - **Native components:** SwiftUI/AppKit Picker, Slider, Toggle — they look native because they are.
@@ -1276,3 +1306,24 @@ struct Theme: Identifiable, Hashable {
   posture, and a sample capture, but it must stay skippable and compact. Empty state:
   "Paste or type code…".
 - **Perceived speed:** highlight with a debounce of ≤100ms; `Copy` < 300ms.
+
+### Image-operation ownership
+
+Each editor view owns one `ImageProcessingController`. It publishes the operation kind
+for progress, cancels on image replacement/removal and view disappearance, and checks an
+operation identity before publishing a result or clearing state. A cancelled recognizer
+may finish internally, but it cannot replace a newer job's progress, modify its image, or
+announce an obsolete error. The view also rechecks the source-image reference at publication.
+The controller's task does not retain the editor owner across suspension.
+
+`ImageTextExtractor` uses Vision's async `RecognizeTextRequest` on the concurrent executor,
+with accurate recognition, language correction disabled, and normalized bottom-left boxes.
+Recognition stays on-device. Cancellation discards pending results; it does not promise that
+all system compute stops instantaneously. Clipboard feedback uses the actual write result.
+
+Lifecycle regressions use controlled continuations, not sleeps. Separate synthetic Core Text
+fixtures exercise real Vision reading order, boxes, blank images, and cancellation. For UI
+qualification only, Debug builds accept `VITRINE_MANAGED_IMAGE_UI_TEST=pending` together with
+an explicit `VITRINE_USER_DEFAULTS_SUITE`. That recognizer waits on a cancellable stream so
+progress, Cancel, restart, and Remove can be exercised deterministically in EN/ES. It never
+runs on normal launches and is absent from Release; this fixture does not certify OCR accuracy.

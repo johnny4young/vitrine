@@ -311,7 +311,7 @@ struct SnapshotRenderServiceTests {
             try SnapshotRenderService.renderData(request)
         }
         #expect(throws: SnapshotRenderService.RenderError.emptyCode) {
-            try SnapshotRenderService.renderImage(request)
+            try SnapshotRenderService.renderCGImage(request)
         }
     }
 
@@ -331,10 +331,10 @@ struct SnapshotRenderServiceTests {
         #expect(SnapshotRenderService.RenderError.tooLarge.description.contains("Reduce"))
     }
 
-    @Test func renderImageProducesANonEmptyImage() throws {
+    @Test func renderCGImageProducesANonEmptyRaster() throws {
         let request = SnapshotRenderRequest(code: "print(1)", language: .python)
-        let image = try SnapshotRenderService.renderImage(request)
-        #expect(image.size.width > 0 && image.size.height > 0)
+        let image = try SnapshotRenderService.renderCGImage(request)
+        #expect(image.width > 0 && image.height > 0)
     }
 
     @Test func openGraphPresetRendersExactPinnedPixels() throws {
@@ -447,6 +447,11 @@ struct AutomationCompositionTests {
 @MainActor
 @Suite("Services registration")
 struct ServiceRegistrationTests {
+    @Test func launchRegistersTheProviderWithTheLiveEnvironment() throws {
+        let provider = try #require(NSApp.servicesProvider as? CodeImageService)
+        #expect(provider.environment === AppEnvironment.shared)
+    }
+
     @Test func acceptsPlainTextAndReturnsImageTypes() {
         // The service takes a text selection and returns an image, matching the
         // NSSendTypes/NSReturnTypes declared in the Info.plist.
@@ -459,7 +464,7 @@ struct ServiceRegistrationTests {
         // `renderCodeImage:userData:error:`; the provider must expose exactly that
         // selector regardless of the Swift argument label.
         let selector = NSSelectorFromString("renderCodeImage:userData:error:")
-        #expect(CodeImageService.shared.responds(to: selector))
+        #expect(CodeImageService(environment: .shared).responds(to: selector))
     }
 
     @Test func emptySelectionIsRejectedWithAMessageAndWritesNoImage() throws {
