@@ -41,6 +41,8 @@ can never drift.
 
 ### Fixed
 
+- Align first-capture guidance with the optional global shortcut, explain menu-shortcut conflicts, and distinguish local rendering from Direct network features in English and Spanish.
+
 - Image text recognition and secret redaction show cancellable progress. Replaced or
   cancelled operations cannot publish stale results, errors, or progress changes.
 - Highlighted-code, image-text, and share-link copying report the actual pasteboard

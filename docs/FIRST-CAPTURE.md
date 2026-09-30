@@ -67,3 +67,8 @@ For a visual orientation, see the
 [first-run quick-start screenshot](../site/public/screenshots/welcome.png).
 The screenshot is illustrative; the steps above use the checked-in sample rather
 than a real capture.
+
+The shortcut recorder keeps the library's conflict validation: combinations already
+used by Vitrine's app menus, including ⇧⌘S, cannot be assigned there. Choose an
+available combination instead. Existing assignments and disabled shortcuts are
+preserved; Vitrine never remaps or re-enables them automatically.
