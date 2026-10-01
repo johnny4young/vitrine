@@ -86,7 +86,7 @@ extension EditorView {
     }
 
     /// The export/copy actions the toolbar also offers, reachable by name.
-    private var exportCommands: [EditorCommand] {
+    var exportCommands: [EditorCommand] {
         [
             EditorCommand(
                 id: "export.copy", title: VitrineCommand.copyImage.title,

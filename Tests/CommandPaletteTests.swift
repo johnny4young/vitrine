@@ -15,6 +15,18 @@ struct CommandPaletteTests {
 
     private func ids(_ commands: [EditorCommand]) -> [String] { commands.map(\.id) }
 
+    @Test func documentationExportIsDiscoverableInTheRealFreeCommandCatalog() {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let commands = EditorView(environment: environment).exportCommands
+        #expect(!environment.entitlements.isPro)
+        for query in ["docs", "package", "markdown", "html"] {
+            #expect(
+                CommandPaletteFilter.rank(commands, query: query).contains {
+                    $0.id == "export.documentation"
+                })
+        }
+    }
+
     @Test func emptyQueryReturnsEverythingInAuthorOrder() {
         let catalog = [command("a", "One Dark"), command("b", "Dracula"), command("c", "Nord")]
         #expect(ids(CommandPaletteFilter.rank(catalog, query: "")) == ["a", "b", "c"])

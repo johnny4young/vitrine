@@ -57,11 +57,20 @@ final class DocumentationExportUITests: XCTestCase {
                     reveal("alternative-text-field", in: app)
                     description.click()
                     description.typeText("Documentation example")
-                    app.typeKey("k", modifierFlags: [.command])
-                    let search = element("command-palette-field", in: app)
-                    XCTAssertTrue(search.waitForExistence(timeout: 3))
-                    search.typeText("docs")
-                    let action = element("command-palette-command-export.documentation", in: app)
+                    let descriptionAccepted = NSPredicate { _, _ in
+                        (description.value as? String) == "Documentation example"
+                    }
+                    XCTAssertEqual(
+                        XCTWaiter.wait(
+                            for: [
+                                XCTNSPredicateExpectation(
+                                    predicate: descriptionAccepted, object: nil)
+                            ], timeout: 3), .completed,
+                        "The description must be entered in its own field")
+                    let options = element("copy-options-menu", in: app)
+                    XCTAssertTrue(options.wait(for: \.isHittable, toEqual: true, timeout: 3))
+                    options.click()
+                    let action = element("documentation-action", in: app)
                     XCTAssertTrue(action.waitForExistence(timeout: 3), app.debugDescription)
                     action.click()
                     let folder = element("documentation-folder-name", in: app)
@@ -93,8 +102,14 @@ final class DocumentationExportUITests: XCTestCase {
                         ["image.png", "README.md", "index.html", "source.txt"])
                     let markdown = try String(
                         contentsOf: directory.appendingPathComponent("README.md"), encoding: .utf8)
-                    XCTAssertTrue(markdown.contains("Documentation example"))
-                    XCTAssertTrue(markdown.contains("](image.png)"))
+                    XCTAssertTrue(
+                        markdown.hasPrefix("![Documentation example](image.png)\n"), markdown)
+                    let html = try String(
+                        contentsOf: directory.appendingPathComponent("index.html"), encoding: .utf8)
+                    XCTAssertTrue(html.contains("alt=\"Documentation example\""), html)
+                    let source = try String(
+                        contentsOf: directory.appendingPathComponent("source.txt"), encoding: .utf8)
+                    XCTAssertFalse(source.contains("Documentation example"), source)
                     app.terminate()
                 }
             }
@@ -120,8 +135,13 @@ final class DocumentationExportUITests: XCTestCase {
         defer { app.terminate() }
         let search = element("command-palette-field", in: app)
         XCTAssertTrue(search.waitForExistence(timeout: 8))
-        search.typeText("docs")
-        element("command-palette-command-export.documentation", in: app).click()
+        search.click()
+        search.typeText("package")
+        let action = element("command-palette-command-export.documentation", in: app)
+        XCTAssertTrue(action.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(
+            action.wait(for: \.isHittable, toEqual: true, timeout: 3), app.debugDescription)
+        action.click()
         let cancel = element("documentation-cancel", in: app)
         XCTAssertTrue(cancel.waitForExistence(timeout: 3))
         cancel.click()
