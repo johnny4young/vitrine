@@ -53,6 +53,9 @@ NONVISUAL_WEB_FILES = {
 # Files xccov reports no entry for, because they declare nothing executable. The guard fails
 # when xccov starts measuring one of them, so an exemption cannot outlive the file's lack of code.
 DATA_ONLY_FILES = {
+    # Declaration-only representation enum. xccov emits no file entry; the measured-file
+    # guard below revokes the exemption if executable behavior is introduced.
+    "VitrineDomain/Models/DocumentationRepresentation.swift",
     # Two static Logger declarations, with no app-owned function body. xccov emits
     # no file entry; the measured-data-only check below revokes this exemption if
     # executable logging policy is introduced later.
