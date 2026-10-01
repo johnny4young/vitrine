@@ -17,7 +17,11 @@ struct CommandPaletteTests {
 
     @Test func documentationExportIsDiscoverableInTheRealFreeCommandCatalog() {
         let environment = AppEnvironment(defaults: testDefaults())
-        let commands = EditorView(environment: environment).commandPaletteCommands
+        // Export metadata does not read SwiftUI environment values outside a hosted view.
+        // An unrelated leading row covers a query changing the first result's identity.
+        let commands =
+            [command("theme.dracula", "Theme: Dracula", group: "Theme")]
+            + EditorView(environment: environment).exportCommands
         #expect(!environment.entitlements.isPro)
         #expect(Set(commands.map(\.id)).count == commands.count)
         #expect(
