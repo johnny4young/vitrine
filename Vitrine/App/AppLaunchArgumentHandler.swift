@@ -378,25 +378,26 @@ import VitrineRendering
                     "VITRINE_UI_TEST_EDITOR_VIEWPORT"
                 ]
             else { return }
-            let parts = requested.split(separator: "x", omittingEmptySubsequences: false)
-            guard parts.count == 2,
-                let width = Int(parts[0]), let height = Int(parts[1]),
+            guard
                 let window = NSApp.windows.first(where: {
                     $0.identifier == EditorWindowIdentity.primary.restorationIdentifier
-                }),
-                let visible = (window.screen ?? NSScreen.main)?.visibleFrame,
-                case let minimum = window.frameRect(
-                    forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
-                ).size,
-                CGFloat(width) >= max(window.minSize.width, minimum.width),
-                CGFloat(height) >= max(window.minSize.height, minimum.height),
-                CGFloat(width) <= visible.width, CGFloat(height) <= visible.height
+                }), let visible = (window.screen ?? NSScreen.main)?.visibleFrame
+            else { return }
+            let contentMinimum = window.frameRect(
+                forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
+            ).size
+            let minimum = CGSize(
+                width: max(window.minSize.width, contentMinimum.width),
+                height: max(window.minSize.height, contentMinimum.height))
+            guard
+                let size = WindowFrameSolver.requestedViewportSize(
+                    requested, minimum: minimum, available: visible.size)
             else { return }
             window.setFrame(
                 NSRect(
-                    x: visible.midX - CGFloat(width) / 2,
-                    y: visible.midY - CGFloat(height) / 2,
-                    width: CGFloat(width), height: CGFloat(height)),
+                    x: visible.midX - size.width / 2,
+                    y: visible.midY - size.height / 2,
+                    width: size.width, height: size.height),
                 display: true)
         }
 
