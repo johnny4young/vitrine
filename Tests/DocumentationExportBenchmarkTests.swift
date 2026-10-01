@@ -56,11 +56,28 @@ struct DocumentationExportBenchmarkTests {
             for (name, data) in payload.files {
                 #expect(try Data(contentsOf: result.appendingPathComponent(name)) == data)
             }
+            let recovery = clock.now
+            let retryName = "retry-\(label)"
+            await #expect(throws: CocoaError.self) {
+                try await DocumentationPackageWriter.write(
+                    payload, parent: directory, name: retryName,
+                    writeFile: { _, _ in throw CocoaError(.fileWriteNoPermission) })
+            }
+            #expect(
+                !FileManager.default.fileExists(
+                    atPath: directory.appendingPathComponent(retryName).path))
+            let retried = try await DocumentationPackageWriter.write(
+                payload, parent: directory, name: retryName)
+            for (name, data) in payload.files {
+                #expect(try Data(contentsOf: retried.appendingPathComponent(name)) == data)
+            }
+            let recoveryTime = milliseconds(recovery.duration(to: clock.now))
             var usage = rusage()
             getrusage(RUSAGE_SELF, &usage)
             rows.append([
                 "task": label, "render_ms": renderTime, "separate_write_ms": beforeTime,
-                "transaction_ms": afterTime, "separate_assembly_calls": payload.files.count,
+                "transaction_ms": afterTime, "failure_and_retry_ms": recoveryTime,
+                "separate_assembly_calls": payload.files.count,
                 "transaction_calls": 1, "rasterizations": 1, "max_rss_bytes": usage.ru_maxrss,
             ])
         }

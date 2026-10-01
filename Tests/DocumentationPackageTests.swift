@@ -45,7 +45,7 @@ struct DocumentationPackageTests {
         config.altText = try SnapshotAltText.normalized(
             "[label] \"quoted\"\r\n<script>alert(1)</script> & Unicode 👩🏽‍💻")
         let markdown = MarkdownExport.document(for: config, imageSource: "image.png")
-        #expect(markdown.hasPrefix("![\\[label\\] \"quoted\" <script>"))
+        #expect(markdown.hasPrefix("![\\[label\\] \"quoted\" \\<script\\>"))
         #expect(!markdown.contains("\r"))
         #expect(markdown.contains("````swift"))
         let html = HTMLExport.document(for: config, imageSource: "image.png")

@@ -46,7 +46,7 @@ public enum MarkdownExport {
             switch character {
             case "\\":
                 escaped += "\\\\"
-            case "[", "]":
+            case "[", "]", "<", ">", "`", "*", "_", "!":
                 escaped += "\\\(character)"
             case "\n", "\r", "\r\n":
                 escaped += " "
