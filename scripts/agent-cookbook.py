@@ -5,9 +5,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import struct
 import subprocess
 import sys
+import tempfile
 import zlib
 from pathlib import Path
 
@@ -76,6 +78,22 @@ def verify_render(payload: dict, output: Path) -> None:
     for sidecar in expected_sidecars:
         if not regular_file(sidecar).read_text(encoding="utf-8").strip():
             raise WorkflowError("An expected sidecar is empty")
+
+
+def publish_completion(directory: Path, workflow_name: str) -> None:
+    """Publish a fully written receipt exclusively; failed writes leave no partial marker."""
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", prefix=".vitrine-complete-", dir=directory, delete=False
+        ) as stream:
+            temporary = Path(stream.name)
+            stream.write(workflow_name + "\n")
+        # Hard-link publication is atomic and never overwrites a competing marker.
+        os.link(temporary, directory / "COMPLETE")
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
 
 
 def workflow(args: argparse.Namespace) -> Path:
@@ -148,8 +166,7 @@ def workflow(args: argparse.Namespace) -> Path:
             json.dump(payload, stream, indent=2, ensure_ascii=False)
             stream.write("\n")
         # This marker means every required result was checked, not merely that the process exited.
-        with (directory / "COMPLETE").open("x", encoding="utf-8") as stream:
-            stream.write(args.workflow + "\n")
+        publish_completion(directory, args.workflow)
         return directory
     except Exception:
         # Do not erase files that a concurrent caller might have added. Retain failed runs

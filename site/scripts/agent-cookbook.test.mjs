@@ -108,3 +108,41 @@ for (const mode of ['invalid-schema', 'invalid-name']) {
     } finally { rmSync(f.dir, { recursive: true }); }
   });
 }
+
+for (const failure of ['write', 'publication']) {
+  test(`completion receipt ${failure} failure leaves no partial marker or owned temporary`, () => {
+    const f = fixture();
+    try {
+      const code = `
+import importlib.util, pathlib, sys, tempfile
+from unittest.mock import patch
+spec = importlib.util.spec_from_file_location('cookbook', sys.argv[1])
+module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+root = pathlib.Path(sys.argv[2]); failure = sys.argv[3]
+original = tempfile.NamedTemporaryFile
+class FailedWrite:
+    def __init__(self, **kwargs): self.stream = original(**kwargs)
+    def __enter__(self): return self
+    @property
+    def name(self): return self.stream.name
+    def write(self, content): self.stream.write('partial'); raise OSError('injected write failure')
+    def __exit__(self, *args): self.stream.close()
+context = patch.object(module.tempfile, 'NamedTemporaryFile', FailedWrite) if failure == 'write' else patch.object(module.os, 'link', side_effect=OSError('injected publication failure'))
+with context:
+    try: module.publish_completion(root, 'discover')
+    except OSError: pass
+    else: raise AssertionError('failure was ignored')
+assert not (root / 'COMPLETE').exists()
+assert not list(root.glob('.vitrine-complete-*'))
+(root / 'COMPLETE').write_text('foreign')
+try: module.publish_completion(root, 'discover')
+except FileExistsError: pass
+else: raise AssertionError('foreign marker was replaced')
+assert (root / 'COMPLETE').read_text() == 'foreign'
+assert not list(root.glob('.vitrine-complete-*'))
+`;
+      const result = spawnSync('python3', ['-c', code, script, f.dir, failure], { encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+    } finally { rmSync(f.dir, { recursive: true }); }
+  });
+}
