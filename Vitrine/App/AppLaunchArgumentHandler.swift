@@ -197,7 +197,6 @@ import VitrineRendering
             }
             if arguments.contains("--open-editor") {
                 EditorWindowController.shared.show()
-                applyRequestedEditorViewportForUITesting()
                 didOpenWindow = true
             }
             if arguments.contains("--open-command-palette") {
@@ -218,7 +217,6 @@ import VitrineRendering
                     settings.config.foregroundImage = reference
                 }
                 EditorWindowController.shared.show()
-                applyRequestedEditorViewportForUITesting()
                 didOpenWindow = true
             }
             if arguments.contains("--open-settings") {
@@ -368,37 +366,6 @@ import VitrineRendering
             }
 
             return didOpenWindow
-        }
-
-        /// Sets a real compact frame for UI fixtures. A content minimum that rejects
-        /// it still fails the test's resulting-size assertion. Debug builds only.
-        private func applyRequestedEditorViewportForUITesting() {
-            guard
-                let requested = ProcessInfo.processInfo.environment[
-                    "VITRINE_UI_TEST_EDITOR_VIEWPORT"
-                ]
-            else { return }
-            guard
-                let window = NSApp.windows.first(where: {
-                    $0.identifier == EditorWindowIdentity.primary.restorationIdentifier
-                }), let visible = (window.screen ?? NSScreen.main)?.visibleFrame
-            else { return }
-            let contentMinimum = window.frameRect(
-                forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
-            ).size
-            let minimum = CGSize(
-                width: max(window.minSize.width, contentMinimum.width),
-                height: max(window.minSize.height, contentMinimum.height))
-            guard
-                let size = WindowFrameSolver.requestedViewportSize(
-                    requested, minimum: minimum, available: visible.size)
-            else { return }
-            window.setFrame(
-                NSRect(
-                    x: visible.midX - size.width / 2,
-                    y: visible.midY - size.height / 2,
-                    width: size.width, height: size.height),
-                display: true)
         }
 
         private func configuredMemoryIterationCount(
