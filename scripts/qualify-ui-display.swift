@@ -13,8 +13,10 @@ struct DisplaySize {
     var area: Int { width * height }
 }
 
+// Tahoe's visible Dock/menu chrome exceeded 100 points at 900p. Leave real headroom;
+// the independent AppKit check still decides whether a chosen mode qualifies.
 func candidateIndices(_ sizes: [DisplaySize]) -> [Int] {
-    sizes.indices.filter { sizes[$0].width >= 1440 && sizes[$0].height >= 900 }
+    sizes.indices.filter { sizes[$0].width >= 1440 && sizes[$0].height >= 1080 }
         .sorted { sizes[$0].area < sizes[$1].area }
 }
 
@@ -29,7 +31,7 @@ if arguments == ["--self-test"] {
         DisplaySize(width: 1024, height: 768), DisplaySize(width: 1920, height: 1080),
         DisplaySize(width: 1440, height: 900), DisplaySize(width: 1280, height: 800),
     ]
-    guard candidateIndices(sizes) == [2, 1], candidateIndices([]).isEmpty,
+    guard candidateIndices(sizes) == [1], candidateIndices([]).isEmpty,
         qualificationLifetime == .forSession
     else {
         fail("Display selection self-test failed")
@@ -75,7 +77,7 @@ for index in candidateIndices(sizes) {
         continue
     }
     guard CGCompleteDisplayConfiguration(transaction, qualificationLifetime) == .success,
-        let actual = CGDisplayCopyDisplayMode(display), actual.width >= 1440, actual.height >= 900
+        let actual = CGDisplayCopyDisplayMode(display), actual.width >= 1440, actual.height >= 1080
     else { continue }
     print("Selected hosted session display mode: \(actual.width)x\(actual.height)")
     // A fresh --check process must independently measure AppKit's usable frame before UI tests.

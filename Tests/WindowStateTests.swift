@@ -328,6 +328,26 @@ struct EditorWindowStateTests {
 
 @Suite("Window frame off-screen recovery")
 struct WindowFrameSolverTests {
+    @Test func uiViewportRequestsUseTheActualFrameMinimumAndRejectClipping() {
+        let minimum = CGSize(width: 940, height: 548)
+        let available = CGSize(width: 1600, height: 806)
+        #expect(
+            WindowFrameSolver.requestedViewportSize(
+                "minimum", minimum: minimum, available: available) == minimum)
+        #expect(
+            WindowFrameSolver.requestedViewportSize(
+                "1280x800", minimum: minimum, available: available)
+                == CGSize(width: 1280, height: 800))
+        for invalid in ["940x520", "0x0", "-1x800", "1280x900", "minimumx", "1280", "1280x800x1"] {
+            #expect(
+                WindowFrameSolver.requestedViewportSize(
+                    invalid, minimum: minimum, available: available) == nil)
+        }
+        #expect(
+            WindowFrameSolver.requestedViewportSize(
+                "minimum", minimum: minimum, available: CGSize(width: 800, height: 600)) == nil)
+    }
+
     /// A single 1440×900 main screen at the origin (a common laptop layout).
     private let laptop = CGRect(x: 0, y: 0, width: 1440, height: 900)
 

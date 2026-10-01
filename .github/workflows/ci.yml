@@ -608,12 +608,12 @@ jobs:
           output = root / "documentation-ui"
           expected = {f"package-{language}-{dark}-{width}"
                       for language in ("en", "es") for dark in ("false", "true")
-                      for width in (940, 1280)}
+                      for width in ("minimum", "1280")}
           found = {}
           for group in json.loads((raw / "manifest.json").read_text()):
               for attachment in group["attachments"]:
                   name = attachment.get("suggestedHumanReadableName", "")
-                  match = re.fullmatch(r"(package-(?:en|es)-(?:false|true)-(?:940|1280))(?:_\d+_[0-9A-F-]+)?\.png", name)
+                  match = re.fullmatch(r"(package-(?:en|es)-(?:false|true)-(?:minimum|1280))(?:_\d+_[0-9A-F-]+)?\.png", name)
                   if match:
                       key = match.group(1)
                       if key in found:

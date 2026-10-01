@@ -6,7 +6,9 @@ final class DocumentationExportUITests: XCTestCase {
     @MainActor
     func testDocumentationPackageInBothLocalesAppearancesAndWindowSizes() throws {
         continueAfterFailure = false
-        let sizes = [CGSize(width: 940, height: 520), CGSize(width: 1280, height: 800)]
+        let requests = [
+            (viewport: "minimum", label: "minimum"), (viewport: "1280x800", label: "1280"),
+        ]
         let visible = try XCTUnwrap(NSScreen.main).visibleFrame.size
         XCTAssertGreaterThanOrEqual(
             visible.width, 1280, "Required documentation UI lane needs a qualified display")
@@ -18,7 +20,7 @@ final class DocumentationExportUITests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: parent) }
         for language in ["en", "es"] {
             for dark in [false, true] {
-                for size in sizes {
+                for request in requests {
                     let robot = VitrineAppRobot(testCase: self, suitePrefix: "documentation-export")
                     let app = robot.launch(
                         arguments: VitrineLaunchArguments.editor + [
@@ -26,10 +28,26 @@ final class DocumentationExportUITests: XCTestCase {
                             dark ? "--appearance-dark" : "--appearance-light",
                         ],
                         environment: [
-                            "VITRINE_UI_TEST_EDITOR_VIEWPORT":
-                                "\(Int(size.width))x\(Int(size.height))"
+                            "VITRINE_UI_TEST_EDITOR_VIEWPORT": request.viewport
                         ])
                     defer { app.terminate() }
+                    let window = element("editor-window", in: app)
+                    XCTAssertTrue(window.waitForExistence(timeout: 8), app.debugDescription)
+                    let geometry = NSPredicate { _, _ in
+                        let frame = window.frame
+                        if request.viewport == "minimum" {
+                            return abs(frame.width - 940) <= 2 && frame.height >= 520
+                                && frame.height < 600
+                        }
+                        return abs(frame.width - 1280) <= 2 && abs(frame.height - 800) <= 2
+                    }
+                    XCTAssertEqual(
+                        XCTWaiter.wait(
+                            for: [
+                                XCTNSPredicateExpectation(
+                                    predicate: geometry, object: nil)
+                            ], timeout: 5), .completed,
+                        "Requested viewport was ignored or clipped: \(window.frame)")
                     let output = element("inspector-disclosure-output", in: app)
                     XCTAssertTrue(output.waitForExistence(timeout: 8), app.debugDescription)
                     reveal("inspector-disclosure-output", in: app)
@@ -48,7 +66,7 @@ final class DocumentationExportUITests: XCTestCase {
                     action.click()
                     let folder = element("documentation-folder-name", in: app)
                     XCTAssertTrue(folder.waitForExistence(timeout: 3))
-                    let name = "package-\(language)-\(dark)-\(Int(size.width))"
+                    let name = "package-\(language)-\(dark)-\(request.label)"
                     folder.click()
                     app.typeKey("a", modifierFlags: [.command])
                     folder.typeText(name)

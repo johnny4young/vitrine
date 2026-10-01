@@ -288,6 +288,28 @@ struct EditorWindowState: Codable, Equatable {
 /// plain `CGRect`s (the screens' `visibleFrame`s) keeps the whole policy testable
 /// without a window server.
 enum WindowFrameSolver {
+    #if DEBUG
+        /// Exact UI-fixture frame requests. Never clamp a requested viewport into false evidence.
+        static func requestedViewportSize(
+            _ request: String, minimum: CGSize, available: CGSize
+        ) -> CGSize? {
+            let size: CGSize
+            if request == "minimum" {
+                size = minimum
+            } else {
+                let parts = request.split(separator: "x", omittingEmptySubsequences: false)
+                guard parts.count == 2, let width = Int(parts[0]), let height = Int(parts[1])
+                else { return nil }
+                size = CGSize(width: width, height: height)
+            }
+            guard size.width >= minimum.width, size.height >= minimum.height,
+                size.width > 0, size.height > 0,
+                size.width <= available.width, size.height <= available.height
+            else { return nil }
+            return size
+        }
+    #endif
+
     /// The minimum width and height of a window's frame that must remain inside a
     /// visible screen for the window to count as reachable. Generous enough to keep a
     /// grabbable strip of title bar on screen even when a window straddles an edge.
