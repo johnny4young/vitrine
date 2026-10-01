@@ -7,8 +7,8 @@ import argparse
 import json
 import struct
 import subprocess
-import zlib
 import sys
+import zlib
 from pathlib import Path
 
 
@@ -108,16 +108,20 @@ def workflow(args: argparse.Namespace) -> Path:
                     raise WorkflowError(f"Missing or incomplete catalog: {catalog}")
         elif args.workflow == "recipe":
             validation = invoke(cli, ["recipe", "validate", str(recipe), "--json"])
-            payload = invoke(cli, ["recipe", "show", str(recipe), "--json"])
             if (validation.get("valid") is not True
                     or validation.get("format") != "vitrine.workspace-recipe"
-                    or validation.get("schemaVersion") != 1
-                    or payload.get("format") != "vitrine.workspace-recipe"
-                    or payload.get("schemaVersion") != 1
+                    or type(validation.get("schemaVersion")) is not int
+                    or validation["schemaVersion"] != 1
+                    or not isinstance(validation.get("name"), str)
+                    or not validation["name"].strip()):
+                raise WorkflowError("Recipe validation is incomplete")
+            payload = invoke(cli, ["recipe", "show", str(recipe), "--json"])
+            if (payload.get("format") != "vitrine.workspace-recipe"
+                    or type(payload.get("schemaVersion")) is not int
+                    or payload["schemaVersion"] != 1
                     or not isinstance(payload.get("recipe"), dict)
-                    or not payload["recipe"].get("name")
-                    or payload["recipe"]["name"] != validation.get("name")):
-                raise WorkflowError("Recipe validation or inspection is incomplete")
+                    or payload["recipe"].get("name") != validation["name"]):
+                raise WorkflowError("Recipe inspection is incomplete")
         elif args.workflow == "edit":
             payload = invoke(cli, ["render", str(input_path), "--edit", "--json"])
             if (payload.get("command") != "render" or payload.get("status") != "opened_editor"

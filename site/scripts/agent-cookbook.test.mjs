@@ -11,6 +11,7 @@ const fakeSource = `#!/usr/bin/env python3
 import json, pathlib, struct, sys, zlib
 args = sys.argv[1:]
 mode = pathlib.Path(__file__).with_suffix('.mode').read_text().strip()
+with pathlib.Path(__file__).with_suffix('.calls').open('a') as stream: stream.write(json.dumps(args) + '\\n')
 if mode == 'denied': sys.exit(3)
 if mode == 'bad-json': print('{'); sys.exit(0)
 if args[0] == 'list':
@@ -35,6 +36,8 @@ else:
     if mode == 'wrong-output': data['output'] = '/outside/foreign.png'
     if mode == 'empty': out.with_suffix('.md').write_text('')
 if mode == 'incomplete': data = {}
+if mode == 'invalid-schema': data['schemaVersion'] = True
+if mode == 'invalid-name': data['name'] = 42
 print(json.dumps(data))
 `;
 
@@ -91,3 +94,17 @@ test('cookbook refuses existing paths and symlinks without changing foreign file
     assert.equal(readFileSync(join(f.dir, 'existing/sentinel'), 'utf8'), 'foreign');
   } finally { rmSync(f.dir, { recursive: true }); }
 });
+
+for (const mode of ['invalid-schema', 'invalid-name']) {
+  test(`recipe ${mode} stops before the next CLI operation`, () => {
+    const f = fixture();
+    try {
+      const result = run(f, 'recipe', 'run', mode);
+      assert.notEqual(result.status, 0);
+      assert.equal(existsSync(join(f.dir, 'run/COMPLETE')), false);
+      const calls = readFileSync(join(f.dir, 'fake-cli.calls'), 'utf8').trim().split('\n').map(JSON.parse);
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0][1], 'validate');
+    } finally { rmSync(f.dir, { recursive: true }); }
+  });
+}
