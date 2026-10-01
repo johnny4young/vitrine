@@ -28,6 +28,21 @@ struct DocumentationPackageWriterTests {
         }
     }
 
+    @Test func committedFolderUsesTheDefaultDirectoryMode() async throws {
+        let parent = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: parent) }
+        let reference = parent.appendingPathComponent("reference")
+        try FileManager.default.createDirectory(at: reference, withIntermediateDirectories: false)
+        let package = DocumentationPackage(
+            config: SnapshotConfig(), png: Data([7]), representations: [])
+        let final = try await DocumentationPackageWriter.write(
+            package, parent: parent, name: "docs")
+        let mode = { (url: URL) in
+            try FileManager.default.attributesOfItem(atPath: url.path)[.posixPermissions] as? Int
+        }
+        #expect(try mode(final) == mode(reference))
+    }
+
     @Test(arguments: [
         "", ".", "..", "../escape", "nested/file", "nested\\file", "bad\0name",
         String(repeating: "x", count: 256),

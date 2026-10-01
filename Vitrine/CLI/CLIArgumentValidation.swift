@@ -285,13 +285,13 @@ extension CLIArgumentParser {
             }
         }
 
-        // `--edit` hands the source to the running editor instead of rendering, so it
-        // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
         if openInEditor, seenOptionIDs.contains(.altText) {
             throw CLIError.incompatibleOptions(
                 "Cannot combine --edit with --alt-text; editor handoff carries text and language only."
             )
         }
+        // `--edit` hands the source to the running editor instead of rendering, so it
+        // produces no image: pairing it with `--copy` or `--out` would be ambiguous.
         if openInEditor {
             if copyToClipboard {
                 throw CLIError.incompatibleOptions("Cannot combine --edit with --copy.")
