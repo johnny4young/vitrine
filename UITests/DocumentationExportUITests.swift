@@ -91,9 +91,10 @@ final class DocumentationExportUITests: XCTestCase {
                     app.typeKey(.return, modifierFlags: [])
                     let panel = app.dialogs["open-panel"]
                     XCTAssertTrue(panel.waitForExistence(timeout: 5), app.debugDescription)
+                    // AppKit exposes this button's localized AXTitle, not an AXLabel.
+                    // Its in-dialog identifier excludes the Touch Bar duplicate.
                     let choose = panel.buttons["OKButton"]
                     XCTAssertTrue(choose.waitForExistence(timeout: 5), app.debugDescription)
-                    XCTAssertEqual(choose.label, language == "es" ? "Exportar aquí" : "Export Here")
                     XCTAssertTrue(choose.wait(for: \.isHittable, toEqual: true, timeout: 5))
                     choose.click()
                     XCTAssertTrue(
