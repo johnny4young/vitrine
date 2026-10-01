@@ -69,11 +69,8 @@ available combination instead. Existing assignments and disabled shortcuts are
 preserved; Vitrine never remaps or re-enables them automatically.
 
 For a visual orientation, see the
-[first-run quick-start screenshot](../site/public/screenshots/welcome.png).
-The screenshot is illustrative; the steps above use the checked-in sample rather
-than a real capture.
-
-The quick-start image is an unmodified native screenshot from the
+[first-run quick-start screenshot](../site/public/screenshots/welcome.png). It is an
+unmodified native screenshot of the welcome window from the
 [qualified macOS UI tour](https://github.com/johnny4young/vitrine/actions/runs/36627727922)
 on commit `e166d57d759e887c768ca6742e0f599803c7d00d`, with a fresh isolated
-installation and no assigned global shortcut.
+installation and no assigned global shortcut. It does not show the sample above.
