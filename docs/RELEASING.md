@@ -423,7 +423,8 @@ infrastructure failure rather than a product bug.
 
 The documentation-package journey requires an actual usable 1280×800 viewport,
 not a clamped approximation. Before running the UI suite, CI qualifies the display
-using public CoreGraphics display modes and independently checks AppKit's usable
+using a public CoreGraphics session transaction (not an app-lifetime mode switch)
+and independently checks AppKit's usable
 frame in a fresh process. Mode switching is restricted to disposable GitHub-hosted
 runners; local and self-hosted invocations are rejected. An unsupported display
 fails the lane rather than skipping the journey. The `documentation-ui` artifact

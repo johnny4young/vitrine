@@ -4,6 +4,9 @@ import Darwin
 import Foundation
 
 // No local display changes. Mode switching is restricted to disposable GitHub-hosted runners.
+// CGDisplaySetDisplayMode is app-lifetime-only and reverts before the next CI process starts.
+// A session transaction survives this process without writing permanent display preferences.
+let qualificationLifetime: CGConfigureOption = .forSession
 struct DisplaySize {
     let width: Int
     let height: Int
@@ -26,7 +29,9 @@ if arguments == ["--self-test"] {
         DisplaySize(width: 1024, height: 768), DisplaySize(width: 1920, height: 1080),
         DisplaySize(width: 1440, height: 900), DisplaySize(width: 1280, height: 800),
     ]
-    guard candidateIndices(sizes) == [2, 1], candidateIndices([]).isEmpty else {
+    guard candidateIndices(sizes) == [2, 1], candidateIndices([]).isEmpty,
+        qualificationLifetime == .forSession
+    else {
         fail("Display selection self-test failed")
     }
     print("Display selection self-test passed; local preferences unchanged")
@@ -62,12 +67,18 @@ guard let modes = CGDisplayCopyAllDisplayModes(display, nil) as? [CGDisplayMode]
 }
 let sizes = modes.map { DisplaySize(width: $0.width, height: $0.height) }
 for index in candidateIndices(sizes) {
-    if CGDisplaySetDisplayMode(display, modes[index], nil) == .success,
-        let actual = CGDisplayCopyDisplayMode(display), actual.width >= 1440, actual.height >= 900
-    {
-        print("Selected hosted display mode: \(actual.width)x\(actual.height)")
-        // A fresh --check process must independently measure AppKit's usable frame before UI tests.
-        exit(0)
+    var transaction: CGDisplayConfigRef?
+    guard CGBeginDisplayConfiguration(&transaction) == .success, let transaction else { continue }
+    guard CGConfigureDisplayWithDisplayMode(transaction, display, modes[index], nil) == .success
+    else {
+        CGCancelDisplayConfiguration(transaction)
+        continue
     }
+    guard CGCompleteDisplayConfiguration(transaction, qualificationLifetime) == .success,
+        let actual = CGDisplayCopyDisplayMode(display), actual.width >= 1440, actual.height >= 900
+    else { continue }
+    print("Selected hosted session display mode: \(actual.width)x\(actual.height)")
+    // A fresh --check process must independently measure AppKit's usable frame before UI tests.
+    exit(0)
 }
 fail("No supported hosted mode qualifies; refusing clipped or skipped UI evidence")
