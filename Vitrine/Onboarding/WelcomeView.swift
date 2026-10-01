@@ -14,8 +14,8 @@ import VitrineRendering
 /// it and unlocks nothing — every feature is already reachable from the menu bar.
 ///
 /// The copy here is deliberately aligned with the privacy posture documented in
-/// `docs/ARCHITECTURE.md` and the README: rendering is fully local, with no network,
-/// screen recording, or Accessibility permission. That promise is shown *before* the
+/// `docs/ARCHITECTURE.md` and the README: code rendering is local without screen recording or
+/// Accessibility permission; Direct network features are named separately. This is shown before the
 /// first capture so the user learns it up front.
 struct WelcomeView: View {
     @Bindable var settings: AppSettings
@@ -330,7 +330,7 @@ struct WelcomeView: View {
         return ExportManager.renderNSImage(config, scale: 2, profile: .sRGB, budget: .preview)
     }
 
-    /// The local-only privacy promise, shown before the first capture. The
+    /// The local-rendering privacy boundary, shown before the first capture. The
     /// wording matches the privacy posture in `docs/ARCHITECTURE.md` and the README.
     private var privacyLine: some View {
         HStack(spacing: 10) {
@@ -340,6 +340,7 @@ struct WelcomeView: View {
             // Long copy lives in the String Catalog under a stable key so
             // it localizes and does not push the source past the line limit.
             Text("welcome.privacy.badge")
+                .fixedSize(horizontal: false, vertical: true)
                 .font(.system(size: VitrineTokens.FontSize.subhead))
                 .foregroundStyle(VitrineTokens.Text.tertiary)
         }

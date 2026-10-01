@@ -153,7 +153,7 @@ light and dark.
 
 | First-run quick-start | Settings | Menu-bar panel |
 | --- | --- | --- |
-| <img src="site/public/screenshots/welcome.png" alt="Onboarding quick-start: numbered steps, a live sample card you can restyle, and the privacy promise" width="250"> | <img src="site/public/screenshots/settings.png" alt="Settings — Style pane with the pinned live preview, sub-tabs, and theme and font chip pickers" width="250"> | <img src="site/public/screenshots/menu-bar.png" alt="The menu-bar panel: gradient capture action, recent captures, theme chips, and explicit command rows" width="250"> |
+| <img src="site/public/screenshots/welcome.png" alt="Onboarding quick-start: the welcome header and three numbered steps, with capture triggered from the menu bar" width="250"> | <img src="site/public/screenshots/settings.png" alt="Settings — Style pane with the pinned live preview, sub-tabs, and theme and font chip pickers" width="250"> | <img src="site/public/screenshots/menu-bar.png" alt="The menu-bar panel: gradient capture action, recent captures, theme chips, and explicit command rows" width="250"> |
 
 <img src="site/public/screenshots/comparison-board.png" alt="The comparison-board editor with two recent captures, editable Before and After captions, layout choices, and copy, save, and share actions" width="760">
 
