@@ -1,0 +1,24 @@
+---
+import type { SiteCopy } from '~/i18n/content';
+interface Props { copy: SiteCopy }
+const { copy } = Astro.props;
+---
+<section class="availability" aria-labelledby="availability-title">
+  <h2 id="availability-title" data-copy="availability.title">{copy.home['availability.title']}</h2>
+  <p data-copy="availability.body">{copy.home['availability.body']}</p>
+  <ul>
+    <li data-copy="availability.shortcuts">{copy.home['availability.shortcuts']}</li>
+    <li data-copy="availability.privacy">{copy.home['availability.privacy']}</li>
+    <li data-copy="availability.automation">{copy.home['availability.automation']}</li>
+  </ul>
+  <a href="https://github.com/johnny4young/vitrine/blob/main/CHANGELOG.md#unreleased" data-copy="availability.link">{copy.home['availability.link']}</a>
+</section>
+<style>
+  .availability { max-width: 72rem; margin: 1rem auto 4rem; padding: 1.5rem; border: 1px solid currentColor; border-radius: 1rem; }
+  h2 { font-size: 1.25rem; line-height: 1.4; }
+  p, li { line-height: 1.65; }
+  ul { padding-inline-start: 1.25rem; }
+  li + li { margin-top: .75rem; }
+  a { text-underline-offset: .2em; }
+  @media (max-width: 76rem) { .availability { margin-inline: 1rem; } }
+</style>
