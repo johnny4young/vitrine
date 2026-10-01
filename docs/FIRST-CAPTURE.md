@@ -63,7 +63,14 @@ channel-specific.
   `--out` is a separate PRO operation.
   The Mac App Store build does not ship the CLI.
 
+The shortcut recorder keeps the library's conflict validation: combinations already
+used by Vitrine's app menus, including ⇧⌘S, cannot be assigned there. Choose an
+available combination instead. Existing assignments and disabled shortcuts are
+preserved; Vitrine never remaps or re-enables them automatically.
+
 For a visual orientation, see the
-[first-run quick-start screenshot](../site/public/screenshots/welcome.png).
-The screenshot is illustrative; the steps above use the checked-in sample rather
-than a real capture.
+[first-run quick-start screenshot](../site/public/screenshots/welcome.png). It is an
+unmodified native screenshot of the welcome window from the
+[qualified macOS UI tour](https://github.com/johnny4young/vitrine/actions/runs/36627727922)
+on commit `e166d57d759e887c768ca6742e0f599803c7d00d`, with a fresh isolated
+installation and no assigned global shortcut. It does not show the sample above.

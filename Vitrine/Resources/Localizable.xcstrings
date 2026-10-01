@@ -58,13 +58,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Optional. Works across all apps. Choose a shortcut to enable it; clear the recorder to disable it."
+            "value" : "Optional. Works across all apps. Choose a shortcut to enable it; clear the recorder to disable it. App-menu shortcuts are reserved."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Opcional. Funciona en todas las apps. Asigna un atajo para activarlo; bórralo del control para desactivarlo."
+            "value" : "Opcional. Funciona en todas las apps. Asigna un atajo para activarlo; bórralo del control para desactivarlo. Los atajos del menú de la app están reservados."
           }
         }
       }
@@ -6786,13 +6786,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Private by design — your code never leaves your Mac. No account, no network."
+            "value" : "Code rendering stays on your Mac, without an account. Direct download uses the network for updates, license activation, and requested web content."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Privado por diseño: tu código nunca sale de tu Mac. Sin cuenta y sin red."
+            "value" : "El código se renderiza en tu Mac, sin cuenta. La descarga directa usa la red para actualizaciones, activación de licencia y contenido web solicitado."
           }
         }
       }
