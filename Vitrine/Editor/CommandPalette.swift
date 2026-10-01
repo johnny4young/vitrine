@@ -220,15 +220,23 @@ struct CommandPaletteView: View {
                                 .buttonStyle(.plain)
                                 .accessibilityAddTraits(index == selection ? [.isSelected] : [])
                                 .accessibilityIdentifier("command-palette-command-\(command.id)")
-                                .id(index)
+                                // Filtered positions are not identity: reusing index zero
+                                // kept the old theme row when a query matched only export.
+                                .id(command.id)
                             }
                         }
                         .padding(6)
                     }
                     .frame(maxHeight: 320)
                     .onChange(of: selection) { _, new in
+                        guard results.indices.contains(new) else { return }
                         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.1)) {
-                            proxy.scrollTo(new, anchor: .center)
+                            proxy.scrollTo(results[new].id, anchor: .center)
+                        }
+                    }
+                    .onChange(of: query) { _, _ in
+                        if let first = results.first {
+                            proxy.scrollTo(first.id, anchor: .top)
                         }
                     }
                 }

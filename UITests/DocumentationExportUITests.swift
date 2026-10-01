@@ -89,9 +89,12 @@ final class DocumentationExportUITests: XCTestCase {
                     app.typeKey("g", modifierFlags: [.command, .shift])
                     app.typeText(parent.path)
                     app.typeKey(.return, modifierFlags: [])
-                    let choose = app.buttons[language == "es" ? "Exportar aquí" : "Export Here"]
-                        .firstMatch
+                    let panel = app.dialogs["open-panel"]
+                    XCTAssertTrue(panel.waitForExistence(timeout: 5), app.debugDescription)
+                    let choose = panel.buttons["OKButton"]
                     XCTAssertTrue(choose.waitForExistence(timeout: 5), app.debugDescription)
+                    XCTAssertEqual(choose.label, language == "es" ? "Exportar aquí" : "Export Here")
+                    XCTAssertTrue(choose.wait(for: \.isHittable, toEqual: true, timeout: 5))
                     choose.click()
                     XCTAssertTrue(
                         element("documentation-cancel", in: app).waitForNonExistence(timeout: 10),
@@ -130,6 +133,7 @@ final class DocumentationExportUITests: XCTestCase {
 
     @MainActor
     func testCancelPackageSheetWritesNothingAndKeepsEditor() throws {
+        continueAfterFailure = false
         let app = VitrineAppRobot(testCase: self, suitePrefix: "documentation-cancel").launch(
             arguments: VitrineLaunchArguments.editor + ["--open-command-palette"])
         defer { app.terminate() }
@@ -137,10 +141,17 @@ final class DocumentationExportUITests: XCTestCase {
         XCTAssertTrue(search.waitForExistence(timeout: 8))
         search.click()
         search.typeText("package")
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [
+                    XCTNSPredicateExpectation(
+                        predicate: NSPredicate(format: "value == %@", "package"), object: search)
+                ], timeout: 3), .completed)
         let action = element("command-palette-command-export.documentation", in: app)
         XCTAssertTrue(action.waitForExistence(timeout: 5), app.debugDescription)
         XCTAssertTrue(
             action.wait(for: \.isHittable, toEqual: true, timeout: 3), app.debugDescription)
+        XCTAssertTrue(action.label.contains("Export for Documentation"), action.label)
         action.click()
         let cancel = element("documentation-cancel", in: app)
         XCTAssertTrue(cancel.waitForExistence(timeout: 3))
