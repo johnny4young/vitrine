@@ -21,6 +21,9 @@ can never drift.
 
 ### Changed
 
+- Distinguish current-source privacy, history, shortcut, and free editor-handoff
+  improvements from the published v1.2.3 download in the website and capability docs.
+
 - Global capture shortcuts are opt-in for new installations. Existing assignments and
   explicit disables are preserved; onboarding explains their system-wide scope.
 - Remove unused export presenters, clipboard and automation wrappers, shell-path
