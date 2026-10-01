@@ -17,8 +17,11 @@ struct CommandPaletteTests {
 
     @Test func documentationExportIsDiscoverableInTheRealFreeCommandCatalog() {
         let environment = AppEnvironment(defaults: testDefaults())
-        let commands = EditorView(environment: environment).exportCommands
+        let commands = EditorView(environment: environment).commandPaletteCommands
         #expect(!environment.entitlements.isPro)
+        #expect(Set(commands.map(\.id)).count == commands.count)
+        #expect(
+            ids(CommandPaletteFilter.rank(commands, query: "package")) == ["export.documentation"])
         for query in ["docs", "package", "markdown", "html"] {
             #expect(
                 CommandPaletteFilter.rank(commands, query: query).contains {
