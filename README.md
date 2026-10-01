@@ -698,7 +698,7 @@ in [`docs/`](docs/):
 **Feature descriptions in this README cover current source, including Unreleased changes.**
 The published **v1.2.3 (build 38)** download predates the post-release review fixes:
 
-- It assigns Cmd-Shift-S initially; new-source installations instead opt into global shortcuts.
+- It assigns ⇧⌘S initially; new-source installations instead opt into global shortcuts.
 - It lacks the new redaction-safe history, per-capture secret-retention consent, and history-off
   control. Avoid retaining sensitive captures in that download; source improvements do not
   retrofit older stored captures or installed binaries.
@@ -720,8 +720,9 @@ also ships an in-app **What's New**.
 Bumping the version in source does not publish an app. Homebrew, the Sparkle appcast,
 and GitHub Release artifacts change through the separately authorized promotion of
 qualified candidate bytes. The website can deploy from main independently, so its
-source-feature descriptions are not proof of availability in a downloadable binary. Anything added under **Unreleased** in the
-changelog belongs to a future build and is not part of the v1.2.3 release line.
+source-feature descriptions are not proof of availability in a downloadable binary.
+Anything added under **Unreleased** in the changelog belongs to a future build and is
+not part of the v1.2.3 release line.
 
 Two explicit product boundaries — no arbitrary screen/window capture and no dependency
 on a hosted web-render service — are documented in
