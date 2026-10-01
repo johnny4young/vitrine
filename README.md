@@ -680,6 +680,7 @@ in [`docs/`](docs/):
 - [**CHANGELOG.md**](CHANGELOG.md) — the complete, versioned change history ([Keep a Changelog](https://keepachangelog.com)).
 - [**docs/PROJECT.md**](docs/PROJECT.md) — vision, positioning, naming, distribution, risks.
 - [**docs/FIRST-CAPTURE.md**](docs/FIRST-CAPTURE.md) — a first free image using only synthetic source.
+- [**docs/DOCUMENTATION-EXPORT.md**](docs/DOCUMENTATION-EXPORT.md) — current-source documentation packages and content-bound alternative text.
 - [**docs/CAPABILITIES.md**](docs/CAPABILITIES.md) — channel, Free/PRO, privacy, and release boundaries.
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
 - [**docs/PRO.md**](docs/PRO.md) — the PRO subsystem: the open-core gate, per-build providers, Brand Kit, multi-size export, and automation.

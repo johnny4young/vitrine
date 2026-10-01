@@ -4,6 +4,7 @@
 /// this value so presentation ownership does not change when the toolbar changes
 /// density.
 enum EditorExportSheet: String, Hashable, Identifiable {
+    case documentationExport
     case multiSizeExport
     case multiSizePaywall
     case carouselExport

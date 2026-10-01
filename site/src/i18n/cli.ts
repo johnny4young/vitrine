@@ -318,6 +318,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--window-title', value: '<text>', description: both('Title in rendered window or browser chrome.', 'Título en el marco de ventana o navegador.') },
       { flags: '--filename', value: '<text>', description: both('Filename chip in the metadata header.', 'Etiqueta de archivo en la cabecera.') },
       { flags: '--title', value: '<text>', description: both('Primary metadata title.', 'Título principal de metadatos.') },
+      { flags: '--alt-text', value: '<text>', description: both('Current source: image alternative text for Markdown/HTML, at most 1024 characters. Not drawn or sent by --edit.', 'Código actual: texto alternativo para Markdown/HTML, hasta 1024 caracteres. No se dibuja ni se entrega con --edit.') },
       { flags: '--caption', value: '<text>', description: both('Supporting caption below the title.', 'Texto de apoyo bajo el título.') },
       { flags: '--language-badge, --no-language-badge', description: both('Show or hide the detected language badge.', 'Muestra u oculta la etiqueta del lenguaje.') },
     ],

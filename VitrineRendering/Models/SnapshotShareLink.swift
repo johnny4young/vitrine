@@ -26,6 +26,7 @@ public struct SharedSnapshot: Codable, Equatable {
     var annotations: [Annotation]
     var windowTitle: String
     var metadata: SnapshotMetadata
+    var altText: SnapshotAltText?
     var shadowRadius: Double
     var highlightedLineRanges: [ClosedRange<Int>]
     var focusHighlightedLines: Bool
@@ -50,6 +51,7 @@ public struct SharedSnapshot: Codable, Equatable {
         self.annotations = Self.sanitizedAnnotations(config.annotations)
         self.windowTitle = config.windowTitle
         self.metadata = config.metadata
+        self.altText = config.altText
         self.shadowRadius = SettingsDefaults.clampShadowRadius(config.shadowRadius)
         self.highlightedLineRanges = Self.sanitizedLineRanges(
             config.highlightedLineRanges, lineCount: Self.lineCount(in: code))
@@ -69,6 +71,7 @@ public struct SharedSnapshot: Codable, Equatable {
         config.annotations = annotations
         config.windowTitle = windowTitle
         config.metadata = metadata
+        config.altText = altText
         config.shadowRadius = SettingsDefaults.clampShadowRadius(shadowRadius)
         config.highlightedLineRanges = highlightedLineRanges
         config.focusHighlightedLines = focusHighlightedLines
@@ -79,7 +82,7 @@ public struct SharedSnapshot: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case version, code, languageID, style, annotations, windowTitle, metadata
         case shadowRadius, highlightedLineRanges, focusHighlightedLines, diffDecorations
-        case terminalColumns
+        case terminalColumns, altText
     }
 
     public init(from decoder: Decoder) throws {
@@ -94,6 +97,8 @@ public struct SharedSnapshot: Codable, Equatable {
         metadata =
             (try? container.decode(SnapshotMetadata.self, forKey: .metadata))
             ?? SnapshotMetadata()
+        altText = try SnapshotAltText.normalized(
+            container.decodeIfPresent(String.self, forKey: .altText))
         shadowRadius = SettingsDefaults.clampShadowRadius(
             (try? container.decode(Double.self, forKey: .shadowRadius))
                 ?? SnapshotConfig().shadowRadius)

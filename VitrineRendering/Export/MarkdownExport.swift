@@ -12,8 +12,12 @@ public enum MarkdownExport {
         let body = config.sidecarText
         let fenceLanguage = config.language == .terminal ? "text" : config.language.rawValue
         let fence = codeFence(for: body)
-        let alt = altText(config.metadata.filename ?? "Code rendered with Vitrine")
+        let alt = altText(
+            config.altText?.text ?? config.metadata.filename
+                ?? (config.usesImageContent
+                    ? "Image styled with Vitrine" : "Code rendered with Vitrine"))
         let destination = imageDestination(imageSource)
+        if config.usesImageContent { return "![\(alt)](\(destination))\n" }
         let trailingNewline = body.hasSuffix("\n") ? "" : "\n"
         return """
             ![\(alt)](\(destination))
@@ -44,7 +48,7 @@ public enum MarkdownExport {
                 escaped += "\\\\"
             case "[", "]":
                 escaped += "\\\(character)"
-            case "\n", "\r":
+            case "\n", "\r", "\r\n":
                 escaped += " "
             default:
                 escaped.append(character)

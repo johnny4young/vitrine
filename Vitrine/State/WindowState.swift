@@ -121,6 +121,7 @@ struct EditorWindowState: Codable, Equatable {
     var redactedLines: String
     var background: BackgroundStyle
     var metadata: SnapshotMetadata
+    var altText: SnapshotAltText?
     var foregroundImageFileName: String?
     var imageFrameID: String
     var imageFrameAppearanceID: String
@@ -150,6 +151,7 @@ struct EditorWindowState: Codable, Equatable {
         redactedLines = LineHighlight.describe(config.redactedLineRanges)
         background = config.background
         metadata = config.metadata
+        altText = config.altText
         foregroundImageFileName = config.foregroundImage?.fileName
         imageFrameID = config.imageFrame.rawValue
         imageFrameAppearanceID = config.imageFrameAppearance.rawValue
@@ -183,6 +185,7 @@ struct EditorWindowState: Codable, Equatable {
         config.redactedLineRanges = LineHighlight.parse(redactedLines)
         config.background = background
         config.metadata = metadata
+        config.altText = altText
         if let foregroundImageFileName, !foregroundImageFileName.isEmpty {
             config.foregroundImage = ImageReference(fileName: foregroundImageFileName)
         }
@@ -199,7 +202,7 @@ struct EditorWindowState: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case code, languageID, themeID, fontName, fontSize, fontLigatures
         case padding, cornerRadius, shadowRadius, showChrome, showShadow
-        case showLineNumbers, highlightedLines, redactedLines, background, metadata
+        case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
     }
@@ -238,6 +241,8 @@ struct EditorWindowState: Codable, Equatable {
             ?? fallback.background
         metadata =
             (try? container.decode(SnapshotMetadata.self, forKey: .metadata)) ?? fallback.metadata
+        altText = try? SnapshotAltText.normalized(
+            container.decodeIfPresent(String.self, forKey: .altText))
         foregroundImageFileName =
             try? container.decodeIfPresent(String.self, forKey: .foregroundImageFileName)
         imageFrameID =

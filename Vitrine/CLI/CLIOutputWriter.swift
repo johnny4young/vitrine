@@ -239,72 +239,7 @@ enum CLIOutputWriter {
     /// when the source filename, output name, or code contains HTML markup.
     /// Internal (not private) so the exact escaping contract is unit-testable.
     static func htmlSidecarContents(for config: SnapshotConfig, imageName: String) -> String {
-        let body = htmlText(config.sidecarText)
-        let title = htmlText(config.metadata.title ?? config.metadata.filename ?? "Vitrine render")
-        let alt = htmlAttribute(config.metadata.filename ?? "Code rendered with Vitrine")
-        let imageSource = htmlAttribute(imageName)
-        let language = config.language == .terminal ? "text" : config.language.rawValue
-        let codeClass = htmlAttribute("language-\(language)")
-        return """
-            <!doctype html>
-            <html lang="en">
-            <head>
-              <meta charset="utf-8">
-              <title>\(title)</title>
-            </head>
-            <body>
-              <figure>
-                <img src="\(imageSource)" alt="\(alt)">
-                <pre><code class="\(codeClass)">\(body)</code></pre>
-              </figure>
-            </body>
-            </html>
-            """ + "\n"
-    }
-
-    /// Escapes text-node content for HTML sidecars.
-    private static func htmlText(_ text: String) -> String {
-        var escaped = ""
-        escaped.reserveCapacity(text.count)
-        for character in text {
-            switch character {
-            case "&":
-                escaped += "&amp;"
-            case "<":
-                escaped += "&lt;"
-            case ">":
-                escaped += "&gt;"
-            default:
-                escaped.append(character)
-            }
-        }
-        return escaped
-    }
-
-    /// Escapes attribute values for HTML sidecars, also flattening line breaks so a
-    /// user-controlled filename cannot create surprising multi-line attributes.
-    private static func htmlAttribute(_ text: String) -> String {
-        var escaped = ""
-        escaped.reserveCapacity(text.count)
-        for character in text {
-            switch character {
-            case "&":
-                escaped += "&amp;"
-            case "\"":
-                escaped += "&quot;"
-            case "'":
-                escaped += "&#39;"
-            case "<":
-                escaped += "&lt;"
-            case ">":
-                escaped += "&gt;"
-            case "\n", "\r":
-                escaped += " "
-            default:
-                escaped.append(character)
-            }
-        }
-        return escaped
+        HTMLExport.document(for: config, imageSource: imageName)
     }
 
     /// Writes `data` to `url`, mapping any I/O failure to `CLIError.writeFailed`.

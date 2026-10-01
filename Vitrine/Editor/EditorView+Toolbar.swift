@@ -176,6 +176,10 @@ extension EditorView {
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("save-button")
 
+            Button("Export for Documentation") { exportSheet = .documentationExport }
+                .disabled(!settings.hasRenderableContent)
+                .accessibilityIdentifier("documentation-action")
+
             Button(action: share) {
                 Label(VitrineCommand.shareImage.title, systemImage: "square.and.arrow.up")
             }
@@ -290,6 +294,10 @@ extension EditorView {
     /// formats stay clearly labeled, one click away.
     var copyOptionsMenu: some View {
         Menu {
+            Button("Export for Documentation") { exportSheet = .documentationExport }
+                .disabled(!settings.hasRenderableContent)
+                .accessibilityIdentifier("documentation-action")
+
             if !settings.style.usesImageContent {
                 Button {
                     copyHighlightedCode()
@@ -395,6 +403,12 @@ extension EditorView {
     @ViewBuilder
     func editorExportSheet(_ sheet: EditorExportSheet) -> some View {
         switch sheet {
+        case .documentationExport:
+            DocumentationExportSheet(
+                config: settings.exportConfig,
+                scale: CGFloat(settings.effectiveExportScale),
+                fixedSize: settings.effectiveFixedSize,
+                profile: settings.export.colorProfile, feedback: session.feedback)
         case .multiSizeExport:
             MultiSizeExportView(
                 baseConfig: settings.exportConfig, format: settings.export.format,

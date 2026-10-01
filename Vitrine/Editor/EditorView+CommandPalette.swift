@@ -99,6 +99,11 @@ extension EditorView {
                 keywords: ["png", "pdf", "heic", "disk"], symbol: "square.and.arrow.down"
             ) { saveImage() },
             EditorCommand(
+                id: "export.documentation", title: String(localized: "Export for Documentation"),
+                group: String(localized: "Export"),
+                keywords: ["docs", "package", "markdown", "html"], symbol: "folder"
+            ) { exportSheet = .documentationExport },
+            EditorCommand(
                 id: "export.markdown", title: VitrineCommand.copyMarkdown.title,
                 group: String(localized: "Export"),
                 keywords: ["md", "fenced", "readme"],

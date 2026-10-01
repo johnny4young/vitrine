@@ -85,6 +85,7 @@ struct EditorWindowStateTests {
     /// mistyped key surfaces as a round-trip mismatch.
     private func richConfig() -> SnapshotConfig {
         var config = SnapshotConfig()
+        config.altText = try! SnapshotAltText.normalized("This document only")
         config.code = "let answer = 42\nprint(answer)"
         config.language = .python
         config.theme = .dracula
@@ -251,6 +252,16 @@ struct EditorWindowStateTests {
         #expect(EditorWindowState.decoded(from: nil) == nil)
         #expect(EditorWindowState.decoded(from: Data("not json".utf8)) == nil)
         #expect(EditorWindowState.decoded(from: Data()) == nil)
+    }
+
+    @Test func legacyAndInvalidDescriptionsRestoreWithoutLeakingAcrossDocuments() throws {
+        for input in [
+            "{}", #"{"altText":42}"#, #"{"altText":"  "}"#,
+            "{\"altText\":\"" + String(repeating: "a", count: 1025) + "\"}",
+        ] {
+            let state = try #require(EditorWindowState.decoded(from: Data(input.utf8)))
+            #expect(state.config().altText == nil)
+        }
     }
 
     @Test func aPartialPayloadDecodesToFieldDefaults() throws {
