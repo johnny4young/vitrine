@@ -57,7 +57,7 @@ SITES=(
     'README.md' 'version badge'
     '(version-v)[0-9][^-]*(-blue)' '\1@V@\2'
     'README.md' 'status sentence'
-    '([*][*]v)[0-9][0-9.]*( [(]build )[0-9]+([)] is the newest version in source)' '\1@V@\2@B@\3'
+    '([*][*]v)[0-9][0-9.]*( [(]build )[0-9]+([)] remains the version identifier in source)' '\1@V@\2@B@\3'
     'README.md' 'release-line sentence'
     '(not part of the v)[0-9][0-9.]*( release line)' '\1@V@\2'
 )
@@ -224,7 +224,7 @@ self_test() {
     grep -q '| Marketing version | `9.9.9`' "$dir/docs/APP-STORE.md" || fail "app store version"
     grep -q '| Build number | `999`' "$dir/docs/APP-STORE.md" || fail "app store build"
     grep -q 'version-v9.9.9-blue' "$dir/README.md" || fail "badge"
-    grep -q '\*\*v9.9.9 (build 999) is the newest version in source' "$dir/README.md" || fail "status sentence"
+    grep -q '\*\*v9.9.9 (build 999) remains the version identifier in source' "$dir/README.md" || fail "status sentence"
     grep -q 'not part of the v9.9.9 release line' "$dir/README.md" || fail "release-line sentence"
 
     # A resubmission keeps the marketing version and moves only the build.

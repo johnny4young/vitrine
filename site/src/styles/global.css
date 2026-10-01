@@ -243,6 +243,16 @@
   .keys { display: inline-flex; gap: 5px; margin-top: 16px; }
   .keycap { font-family: var(--font-ui); font-size: 15px; font-weight: var(--weight-semibold); min-width: 34px; height: 34px; padding: 0 9px; display: grid; place-items: center; border-radius: var(--radius-sm); background: var(--surface-inset); border: 1px solid var(--border); box-shadow: 0 1.5px 0 var(--border); }
 
+  /* source-versus-download notice */
+  .availability { padding: 0 0 24px; }
+  .availability-card { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px 28px; box-shadow: var(--shadow-card); }
+  .availability h2 { margin: 0; font-size: 20px; letter-spacing: -0.01em; }
+  .availability p, .availability li { color: var(--text-secondary); line-height: 1.65; }
+  .availability ul { padding-left: 20px; margin: 12px 0 0; }
+  .availability li + li { margin-top: 10px; }
+  .availability code { font-family: var(--font-mono); font-size: 13px; background: var(--surface-inset); padding: 1px 6px; border-radius: var(--radius-sm); }
+  .availability a.more { display: inline-block; margin-top: 16px; color: var(--accent); font-weight: var(--weight-medium); }
+
   /* changelog */
   .changelog { background: var(--surface-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 8px 28px 26px; margin-top: 30px; box-shadow: var(--shadow-card); }
   .changelog .ver { font-size: 17px; font-weight: var(--weight-semibold); margin: 22px 0 2px; }
