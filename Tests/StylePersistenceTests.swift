@@ -52,6 +52,7 @@ struct StyleCodecCompletenessTests {
         // The deliberately unpersisted fields carry non-default values too. Resetting them
         // in `expected` below is only an assertion if they differ here: left at their
         // defaults, every one of those lines is a no-op and the exclusion goes untested.
+        config.altText = try! SnapshotAltText.normalized("This document only")
         config.code = "print('hello')"
         config.redactedLineRanges = [2...3]
         config.watermark = Watermark(text: "@vitrine")
@@ -80,6 +81,7 @@ struct StyleCodecCompletenessTests {
     private func persisted(_ config: SnapshotConfig) -> SnapshotConfig {
         var expected = config
         // Deliberately unpersisted, each with its reason:
+        expected.altText = nil  // authored document description, never style
         expected.code = ""  // document text, never style
         expected.redactedLineRanges = []  // secret marks on a specific document (see persistStyle)
         expected.watermark = nil  // Brand Kit owns its own persistence

@@ -1327,3 +1327,13 @@ qualification only, Debug builds accept `VITRINE_MANAGED_IMAGE_UI_TEST=pending` 
 an explicit `VITRINE_USER_DEFAULTS_SUITE`. That recognizer waits on a cancellable stream so
 progress, Cancel, restart, and Remove can be exercised deterministically in EN/ES. It never
 runs on normal launches and is absent from Release; this fixture does not certify OCR accuracy.
+
+### Documentation packages
+
+`SnapshotAltText` is bounded, document-bound semantic text in Domain. It is not header
+style, a recipe, a default, or a Recents field. Shared text snapshots encode it as an
+optional string; content replacement clears it. Rendering owns escaped Markdown/HTML
+and the immutable package payload. The app owns parent-directory consent, security
+scope, cancellation, and exclusive directory commit. CLI keeps its established
+neighboring-sidecar IO contract while reusing the same markup builders. The editor
+routes documentation, multi-size, carousel, and their paywalls through one sheet host.

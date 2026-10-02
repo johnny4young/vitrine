@@ -121,6 +121,7 @@ struct EditorWindowState: Codable, Equatable {
     var redactedLines: String
     var background: BackgroundStyle
     var metadata: SnapshotMetadata
+    var altText: SnapshotAltText?
     var foregroundImageFileName: String?
     var imageFrameID: String
     var imageFrameAppearanceID: String
@@ -150,6 +151,7 @@ struct EditorWindowState: Codable, Equatable {
         redactedLines = LineHighlight.describe(config.redactedLineRanges)
         background = config.background
         metadata = config.metadata
+        altText = config.altText
         foregroundImageFileName = config.foregroundImage?.fileName
         imageFrameID = config.imageFrame.rawValue
         imageFrameAppearanceID = config.imageFrameAppearance.rawValue
@@ -183,6 +185,7 @@ struct EditorWindowState: Codable, Equatable {
         config.redactedLineRanges = LineHighlight.parse(redactedLines)
         config.background = background
         config.metadata = metadata
+        config.altText = altText
         if let foregroundImageFileName, !foregroundImageFileName.isEmpty {
             config.foregroundImage = ImageReference(fileName: foregroundImageFileName)
         }
@@ -199,7 +202,7 @@ struct EditorWindowState: Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case code, languageID, themeID, fontName, fontSize, fontLigatures
         case padding, cornerRadius, shadowRadius, showChrome, showShadow
-        case showLineNumbers, highlightedLines, redactedLines, background, metadata
+        case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
     }
@@ -238,6 +241,8 @@ struct EditorWindowState: Codable, Equatable {
             ?? fallback.background
         metadata =
             (try? container.decode(SnapshotMetadata.self, forKey: .metadata)) ?? fallback.metadata
+        altText = try? SnapshotAltText.normalized(
+            container.decodeIfPresent(String.self, forKey: .altText))
         foregroundImageFileName =
             try? container.decodeIfPresent(String.self, forKey: .foregroundImageFileName)
         imageFrameID =
@@ -283,6 +288,28 @@ struct EditorWindowState: Codable, Equatable {
 /// plain `CGRect`s (the screens' `visibleFrame`s) keeps the whole policy testable
 /// without a window server.
 enum WindowFrameSolver {
+    #if DEBUG
+        /// Exact UI-fixture frame requests. Never clamp a requested viewport into false evidence.
+        static func requestedViewportSize(
+            _ request: String, minimum: CGSize, available: CGSize
+        ) -> CGSize? {
+            let size: CGSize
+            if request == "minimum" {
+                size = minimum
+            } else {
+                let parts = request.split(separator: "x", omittingEmptySubsequences: false)
+                guard parts.count == 2, let width = Int(parts[0]), let height = Int(parts[1])
+                else { return nil }
+                size = CGSize(width: width, height: height)
+            }
+            guard size.width >= minimum.width, size.height >= minimum.height,
+                size.width > 0, size.height > 0,
+                size.width <= available.width, size.height <= available.height
+            else { return nil }
+            return size
+        }
+    #endif
+
     /// The minimum width and height of a window's frame that must remain inside a
     /// visible screen for the window to count as reachable. Generous enough to keep a
     /// grabbable strip of title bar on screen even when a window straddles an edge.

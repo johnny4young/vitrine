@@ -261,6 +261,9 @@ final class EditorWindowController: NSObject {
         windows[identity.index] = window
         recoverIfOffScreen(window)
         window.makeKeyAndOrderFront(nil)
+        #if DEBUG
+            Self.applyRequestedViewportForUITesting(to: window)
+        #endif
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -494,6 +497,46 @@ extension EditorWindowController {
         hosting.sizingOptions = []
         return hosting
     }
+
+    #if DEBUG
+        /// Resolve the fixture against the controller-owned, attached window. AppKit
+        /// can update the content minimum when its hosting tree first joins a window;
+        /// measuring before that transition must not turn "minimum" into a zero size.
+        static func applyRequestedViewportForUITesting(
+            to window: NSWindow,
+            requested: String? = ProcessInfo.processInfo.environment[
+                "VITRINE_UI_TEST_EDITOR_VIEWPORT"]
+        ) {
+            guard let requested,
+                let visible = (window.screen ?? NSScreen.main)?.visibleFrame
+            else { return }
+            window.layoutIfNeeded()
+            pinMinimumContentSize(of: window)
+            let contentMinimum = window.frameRect(
+                forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
+            ).size
+            let minimum = CGSize(
+                width: max(window.minSize.width, contentMinimum.width),
+                height: max(window.minSize.height, contentMinimum.height))
+            guard
+                let size = WindowFrameSolver.requestedViewportSize(
+                    requested, minimum: minimum, available: visible.size)
+            else {
+                Log.app.error(
+                    "Rejected UI viewport \(requested, privacy: .public); minimum \(String(describing: minimum), privacy: .public), available \(String(describing: visible.size), privacy: .public)"
+                )
+                return
+            }
+            window.setFrame(
+                NSRect(
+                    x: visible.midX - size.width / 2, y: visible.midY - size.height / 2,
+                    width: size.width, height: size.height), display: true)
+            window.layoutIfNeeded()
+            Log.app.notice(
+                "Applied UI viewport \(requested, privacy: .public); minimum \(String(describing: minimum), privacy: .public), resulting frame \(String(describing: window.frame), privacy: .public)"
+            )
+        }
+    #endif
 
     /// Holds `window` to the smallest content size its editor supports.
     ///

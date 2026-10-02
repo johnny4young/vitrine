@@ -9,12 +9,15 @@
     "VitrineTests/FileInputLoaderDecodeTests",
     "VitrineTests/FileInputLoaderDecodeTextTests",
     "VitrineTests/ImageSecretRedactorTests",
-    "VitrineTests/PrivateNetworkBlockRulesTests"
+    "VitrineTests/PrivateNetworkBlockRulesTests",
+    "VitrineDomainTests/SnapshotAltTextTests",
+    "VitrineTests/DocumentationPackageWriterTests"
   ],
   "tsan": [
     "VitrineTests/DebouncerTests",
     "VitrineTests/ItemProviderLoadWaiterTests",
     "VitrineTests/WebLoadWaiterTests",
-    "VitrineTests/MemoryWebSnapshotCycleJourneyTests"
+    "VitrineTests/MemoryWebSnapshotCycleJourneyTests",
+    "VitrineTests/DocumentationPackageWriterTests"
   ]
 }

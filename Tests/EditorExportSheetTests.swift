@@ -16,6 +16,7 @@ struct EditorExportSheetTests {
 
     @Test func everyDestinationHasAStableDistinctIdentity() {
         let destinations: [EditorExportSheet] = [
+            .documentationExport,
             .multiSizeExport,
             .multiSizePaywall,
             .carouselExport,

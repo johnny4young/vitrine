@@ -158,6 +158,7 @@ struct EditorInspectorView: View {
                         label: Text("Output"), identifier: "inspector-disclosure-output",
                         isExpanded: $showOutput
                     ) {
+                        AlternativeTextField(settings: settings)
                         outputControls
                     }
                 }

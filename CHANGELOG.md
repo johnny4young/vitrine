@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- Export one editor document as a PNG documentation package with selected relative-link
+  Markdown, static HTML, and safe plain text. Imported images never fabricate source.
+- Add bounded, content-bound alternative text to documentation, shared snapshots, and
+  CLI Markdown/HTML sidecars through `--alt-text`, without changing render pixels or gates.
+
 ### Changed
 
 - Distinguish current-source privacy, history, shortcut, and free editor-handoff

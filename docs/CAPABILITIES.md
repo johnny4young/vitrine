@@ -23,6 +23,7 @@ export. PRO adds specific workflows, not a different rendering engine.
 | --- | --- | --- |
 | Editor, menu-bar capture, code/terminal/imported-image/HTML and social-card rendering | Free | Free |
 | Single-image copy, save, and Share Sheet | Free | Free |
+| One-document GUI PNG documentation package and authored alternative text | Free | Free |
 | Recents and comparison boards | Free; history can be disabled | Free; history can be disabled |
 | Requested webpage URL capture and opt-in logged-in WebKit session | Available after disclosure | Not available: no network-client entitlement |
 | Basic `vgrab` terminal capture | Free CLI | No bundled CLI |

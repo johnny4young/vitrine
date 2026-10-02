@@ -81,6 +81,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case filename
     case title
     case caption
+    case altText
     case languageBadge
     case noLanguageBadge
     case lineNumbers
@@ -424,6 +425,11 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .title, ["--title"], .value("text"), synopsis: "--title <text>",
             description: "Title shown in the metadata header.", terminalCaptureAllowed: true),
+        definition(
+            .altText, ["--alt-text"], .value("text"), synopsis: "--alt-text <text>",
+            description:
+                "Alternative text for Markdown/HTML exports; at most 1024 characters, not drawn on the image."
+        ),
         definition(
             .caption, ["--caption"], .value("text"), synopsis: "--caption <text>",
             description: "Caption shown below the metadata title."),

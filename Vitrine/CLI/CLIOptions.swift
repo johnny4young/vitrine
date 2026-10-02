@@ -229,6 +229,7 @@ struct CLIOptions: Equatable {
     var metadataTitle: String?
     /// Optional caption shown below the metadata title.
     var metadataCaption: String?
+    var altText: SnapshotAltText?
     /// Whether to show the language badge in the metadata header.
     var showLanguageBadge: Bool = false
     /// Optional line-number override. Nil preserves the app/preset default.
@@ -514,6 +515,7 @@ struct CLIOptions: Equatable {
             } else {
                 nil
             }
+        config.altText = altText
         config.metadata = SnapshotMetadata(
             filename: metadataFilename ?? inferredMetadataFilename
                 ?? recipe?.metadata.header.filename,

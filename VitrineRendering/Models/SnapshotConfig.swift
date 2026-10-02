@@ -81,6 +81,9 @@ public struct SnapshotConfig: Equatable {
     /// is unchanged until the user adds context.
     public var metadata = SnapshotMetadata()
 
+    /// Semantic description of this content, not a visible header or persisted style.
+    public var altText: SnapshotAltText?
+
     /// An optional brand watermark composited onto the exported image — the PRO
     /// Brand Kit. `nil` by default, so the default render and every golden
     /// are byte-for-byte unchanged; the canvas only adds the overlay when a
@@ -194,12 +197,13 @@ public struct SnapshotConfig: Equatable {
         terminalColumns = nil
     }
 
-    /// Clears the marks tied to *this specific content* — free-form annotations
+    /// Clears the marks tied to *this specific content* — alternative text, free-form annotations
     /// (arrows / text / blur), highlighted/redacted line ranges, and any beautified
     /// foreground image — so loading new content (paste, drop, quick capture) starts
     /// clean instead of stranding marks or an image from unrelated content. Style
     /// (theme, font, background, header text, frame choice) is reusable and kept.
     public mutating func clearContentMarks() {
+        altText = nil
         annotations = []
         highlightedLineRanges = []
         redactedLineRanges = []

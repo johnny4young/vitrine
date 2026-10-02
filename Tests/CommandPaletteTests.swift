@@ -15,6 +15,25 @@ struct CommandPaletteTests {
 
     private func ids(_ commands: [EditorCommand]) -> [String] { commands.map(\.id) }
 
+    @Test func documentationExportIsDiscoverableInTheRealFreeCommandCatalog() {
+        let environment = AppEnvironment(defaults: testDefaults())
+        // Export metadata does not read SwiftUI environment values outside a hosted view.
+        // An unrelated leading row covers a query changing the first result's identity.
+        let commands =
+            [command("theme.dracula", "Theme: Dracula", group: "Theme")]
+            + EditorView(environment: environment).exportCommands
+        #expect(!environment.entitlements.isPro)
+        #expect(Set(commands.map(\.id)).count == commands.count)
+        #expect(
+            ids(CommandPaletteFilter.rank(commands, query: "package")) == ["export.documentation"])
+        for query in ["docs", "package", "markdown", "html"] {
+            #expect(
+                CommandPaletteFilter.rank(commands, query: query).contains {
+                    $0.id == "export.documentation"
+                })
+        }
+    }
+
     @Test func emptyQueryReturnsEverythingInAuthorOrder() {
         let catalog = [command("a", "One Dark"), command("b", "Dracula"), command("c", "Nord")]
         #expect(ids(CommandPaletteFilter.rank(catalog, query: "")) == ["a", "b", "c"])
