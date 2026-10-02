@@ -18,8 +18,19 @@ class WorkflowError(RuntimeError):
     """A denied, failed, or incomplete CLI invocation is not a completed workflow."""
 
 
+TIMEOUT_SECONDS = 120
+# Options each workflow forwards; anything else would be silently dropped, so it is refused.
+WORKFLOW_OPTIONS = {
+    "discover": set(),
+    "recipe": {"recipe"},
+    "edit": {"input"},
+    "render": {"input", "recipe", "alt_text"},
+    "terminal": {"input", "alt_text"},
+}
+
+
 def invoke(cli: Path, arguments: list[str]) -> dict:
-    result = subprocess.run([str(cli), *arguments], capture_output=True, text=True, check=True, timeout=120)
+    result = subprocess.run([str(cli), *arguments], capture_output=True, text=True, check=True, timeout=TIMEOUT_SECONDS)
     try:
         payload = json.loads(result.stdout)
     except json.JSONDecodeError as error:
@@ -103,6 +114,10 @@ def workflow(args: argparse.Namespace) -> Path:
         char in args.name for char in ("/", "\\", "\0")
     ):
         raise WorkflowError("Choose an existing parent and a single new folder name")
+    for option in ("input", "recipe", "alt_text"):
+        if getattr(args, option) is not None and option not in WORKFLOW_OPTIONS[args.workflow]:
+            flag = "--" + option.replace("_", "-")
+            raise WorkflowError(f"The {args.workflow} workflow does not use {flag}")
     input_path = regular_file(Path(args.input).expanduser().absolute()) if args.input else None
     recipe = regular_file(Path(args.recipe).expanduser().absolute()) if args.recipe else None
     if args.workflow in ("edit", "render", "terminal") and input_path is None:
@@ -187,10 +202,13 @@ def main() -> int:
     try:
         print(json.dumps({"status": "complete", "directory": str(workflow(parser.parse_args()))}))
         return 0
+    except subprocess.TimeoutExpired:
+        print(f"Workflow stopped: CLI timed out after {TIMEOUT_SECONDS} seconds", file=sys.stderr)
+        return 1
     except subprocess.SubprocessError as error:
         # Do not echo argv or captured stderr: descriptions and filenames may be private.
         status = getattr(error, "returncode", None)
-        print(f"Workflow stopped: CLI timed out or failed (exit {status})", file=sys.stderr)
+        print(f"Workflow stopped: CLI failed (exit {status})", file=sys.stderr)
         return 1
     except ValueError:
         print("Workflow stopped: result data is unreadable", file=sys.stderr)

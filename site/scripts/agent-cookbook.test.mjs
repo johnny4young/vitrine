@@ -20,6 +20,7 @@ elif args[0] == 'recipe':
     data = {'valid': True, 'format': 'vitrine.workspace-recipe', 'schemaVersion': 1, 'name': 'Synthetic'} if args[1] == 'validate' else {'format': 'vitrine.workspace-recipe', 'schemaVersion': 1, 'recipe': {'name': 'Synthetic'}}
 elif '--edit' in args:
     data = {'command':'render','status':'opened_editor','copied':False,'sidecars':[]}
+    if mode == 'edit-output': data['output'] = '/outside/foreign.png'
 else:
     out = pathlib.Path(args[args.index('--out')+1])
     def chunk(kind, data):
@@ -35,6 +36,8 @@ else:
     if mode == 'symlink': out.with_suffix('.txt').unlink(); out.with_suffix('.txt').symlink_to(pathlib.Path(__file__).with_suffix('.input'))
     if mode == 'wrong-output': data['output'] = '/outside/foreign.png'
     if mode == 'empty': out.with_suffix('.md').write_text('')
+    if mode == 'wrong-dimensions': data['width'] = 101
+    if mode == 'leak': out.with_suffix('.txt').write_text('PRIVATE_REDACTED_SENTINEL')
 if mode == 'incomplete': data = {}
 if mode == 'invalid-schema': data['schemaVersion'] = True
 if mode == 'invalid-name': data['name'] = 42
@@ -52,10 +55,27 @@ function fixture() {
   writeFileSync(recipe, '{}');
   return { dir, cli, input, recipe };
 }
-function run(f, workflow = 'render', name = 'run', mode = 'success') {
+const workflowOptions = {
+  discover: [],
+  recipe: ['recipe'],
+  edit: ['input'],
+  render: ['input', 'recipe', 'alt-text'],
+  terminal: ['input', 'alt-text'],
+};
+function optionArguments(f, names) {
+  const values = { input: f.input, recipe: f.recipe, 'alt-text': 'Authored synthetic description' };
+  return names.flatMap((name) => [`--${name}`, values[name]]);
+}
+function run(f, workflow = 'render', name = 'run', mode = 'success', options = workflowOptions[workflow]) {
   writeFileSync(join(f.dir, 'fake-cli.mode'), mode);
   return spawnSync('python3', [script, workflow, '--cli', f.cli, '--parent', f.dir, '--name', name,
-    '--input', f.input, '--recipe', f.recipe, '--alt-text', 'Authored synthetic description'], { encoding: 'utf8' });
+    ...optionArguments(f, options)], { encoding: 'utf8' });
+}
+function expectStopped(f, result) {
+  assert.notEqual(result.status, 0);
+  assert.equal(result.stdout, '');
+  assert.equal(existsSync(join(f.dir, 'run/COMPLETE')), false);
+  assert.match(result.stderr, /Workflow stopped/);
 }
 
 for (const mode of ['discover', 'recipe', 'edit', 'render', 'terminal']) {
@@ -69,7 +89,7 @@ for (const mode of ['discover', 'recipe', 'edit', 'render', 'terminal']) {
     } finally { rmSync(f.dir, { recursive: true }); }
   });
 }
-for (const mode of ['denied', 'bad-json', 'incomplete', 'missing', 'wrong-output', 'symlink', 'empty', 'truncated-png', 'bad-checksum']) {
+for (const mode of ['denied', 'bad-json', 'incomplete', 'missing', 'wrong-output', 'symlink', 'empty', 'truncated-png', 'bad-checksum', 'wrong-dimensions']) {
   test(`cookbook stops on ${mode}, preserves incomplete work, and never reports success`, () => {
     const f = fixture();
     try {
@@ -82,6 +102,47 @@ for (const mode of ['denied', 'bad-json', 'incomplete', 'missing', 'wrong-output
     } finally { rmSync(f.dir, { recursive: true }); }
   });
 }
+for (const [workflow, mode] of [['terminal', 'leak'], ['edit', 'edit-output']]) {
+  test(`cookbook ${workflow} stops on ${mode}`, () => {
+    const f = fixture();
+    try {
+      expectStopped(f, run(f, workflow, 'run', mode));
+    } finally { rmSync(f.dir, { recursive: true }); }
+  });
+}
+
+for (const [workflow, extra] of [['discover', 'input'], ['recipe', 'alt-text'], ['edit', 'alt-text'], ['edit', 'recipe'], ['terminal', 'recipe']]) {
+  test(`cookbook ${workflow} refuses an ignored --${extra} before calling the CLI`, () => {
+    const f = fixture();
+    try {
+      const result = run(f, workflow, 'run', 'success', [...workflowOptions[workflow], extra]);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, new RegExp(`--${extra}`));
+      assert.equal(existsSync(join(f.dir, 'run')), false);
+      assert.equal(existsSync(join(f.dir, 'fake-cli.calls')), false);
+    } finally { rmSync(f.dir, { recursive: true }); }
+  });
+}
+
+test('cookbook reports a CLI timeout as a timeout', () => {
+  const f = fixture();
+  try {
+    const code = `
+import importlib.util, subprocess, sys
+from unittest.mock import patch
+spec = importlib.util.spec_from_file_location('cookbook', sys.argv[1])
+module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+sys.argv = ['agent-cookbook.py', 'discover', '--cli', sys.argv[2], '--parent', sys.argv[3], '--name', 'run']
+with patch.object(module.subprocess, 'run', side_effect=subprocess.TimeoutExpired(['cli'], 120)):
+    sys.exit(module.main())
+`;
+    const result = spawnSync('python3', ['-c', code, script, f.cli, f.dir], { encoding: 'utf8' });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /timed out after 120 seconds/);
+    assert.doesNotMatch(result.stderr, /exit None/);
+  } finally { rmSync(f.dir, { recursive: true }); }
+});
+
 test('cookbook refuses existing paths and symlinks without changing foreign files', () => {
   const f = fixture();
   try {

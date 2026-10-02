@@ -127,7 +127,9 @@ remains a separate terminal-capture workflow, not a Free sidecar/automation unlo
 Each run reserves a new directory with private permissions. Existing files,
 directories, and output symlinks are never replaced. Failed CLI status, malformed or
 incomplete JSON, missing/empty sidecars, output symlinks, or an unexpected path stop
-with nonzero status. A two-minute process timeout also stops the workflow.
+with nonzero status. A two-minute process timeout also stops the workflow. Options a
+workflow does not forward, such as `--alt-text` for the editor handoff, are refused
+before any CLI call instead of being silently dropped.
 
 A run is complete only when the runner exits zero, its stdout reports `complete`,
 `result.json` is valid, and `COMPLETE` contains the requested workflow name. Mere
