@@ -169,8 +169,10 @@ public enum CLICommandLine {
                 exit(0)
             }
             printError("error: " + error.message)
-            printError("")
-            printError(CLIUsage.text)
+            if error.isUsageError {
+                printError("")
+                printError(CLIUsage.text)
+            }
             exit(error.exitCode)
         } catch {
             printError("error: \(error)")

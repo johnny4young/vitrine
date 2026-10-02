@@ -7,9 +7,12 @@ import VitrineRendering
 
 /// Owns artifact preflight, shared encoding, sidecar generation, and file output.
 enum CLIOutputWriter {
-    static func requireOutputURL(_ outputURL: URL?) throws -> URL {
-        guard let outputURL else { throw CLIError.missingRequired("--out output path") }
-        return outputURL
+    /// A written image: its reported dimensions and, for raster formats, the exact
+    /// pixels encoded, so `--copy` can reuse them instead of rendering twice.
+    struct WrittenArtifact {
+        var width: Int
+        var height: Int
+        var raster: CGImage?
     }
 
     static func encodedJSON<T: Encodable>(_ value: T) -> String {
@@ -40,26 +43,29 @@ enum CLIOutputWriter {
         return targets
     }
 
-    /// Rejects a run whose sidecars would be written on top of one of its own inputs.
+    /// Rejects a run whose image or sidecars would be written on top of one of its own
+    /// inputs, including a local background image or watermark logo.
     ///
-    /// Sidecar names are derived from `--out` alone (`base.txt`/`.md`/`.html`), so a run
-    /// whose output shares a basename with a source file — `render notes.md --out
-    /// notes.png --markdown-sidecar`, or any batch rendering a folder into itself —
-    /// silently replaces the source with generated content and still exits 0. With
-    /// `--redact-lines`/`--redact-secrets` the original text is not recoverable.
-    ///
-    /// This is deliberately **not** gated on `--no-overwrite`: that flag protects
-    /// *artifacts* from being replaced, and defaults to off. Destroying an input is never
-    /// the intent, so it fails the run regardless of the flag, before anything is written.
-    static func guardSidecarsDoNotOverwriteInputs(
+    /// Sidecar names derive from `--out` (`base.txt`/`.md`/`.html`), and an unknown `--out`
+    /// extension falls back to PNG, so `render notes.md --out notes.md` or a folder batch
+    /// rendered into itself could silently replace a source and still exit 0. Destroying an
+    /// input is never the intent, so this fails regardless of `--no-overwrite`.
+    static func guardOutputsDoNotOverwriteInputs(
         beside imageURL: URL,
         options: CLIOptions,
         inputs: [URL]
     ) throws {
-        let sidecars = sidecarURLs(options, beside: imageURL)
-        guard !sidecars.isEmpty, !inputs.isEmpty else { return }
-        let claimed = Set(inputs.map(canonicalPath))
-        for sidecar in sidecars where claimed.contains(canonicalPath(sidecar)) {
+        let resources = [options.backgroundImagePath, options.watermarkLogoPath]
+            .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
+        let claimed = Set((inputs + resources).map(canonicalPath))
+        guard !claimed.isEmpty else { return }
+        if claimed.contains(canonicalPath(imageURL)) {
+            throw CLIError.incompatibleOptions(
+                "The output would overwrite the input file at \"\(imageURL.path)\". "
+                    + "Choose an --out path that differs from the source.")
+        }
+        for sidecar in sidecarURLs(options, beside: imageURL)
+        where claimed.contains(canonicalPath(sidecar)) {
             throw CLIError.incompatibleOptions(
                 "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
                     + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
@@ -109,6 +115,17 @@ enum CLIOutputWriter {
         backgroundStore: BackgroundImageStore = .container,
         foregroundStore: BackgroundImageStore = .foregroundContainer, to url: URL
     ) throws -> (width: Int, height: Int) {
+        let artifact = try renderAndWriteArtifact(
+            config, options: options, backgroundStore: backgroundStore,
+            foregroundStore: foregroundStore, to: url)
+        return (artifact.width, artifact.height)
+    }
+
+    static func renderAndWriteArtifact(
+        _ config: SnapshotConfig, options: CLIOptions,
+        backgroundStore: BackgroundImageStore = .container,
+        foregroundStore: BackgroundImageStore = .foregroundContainer, to url: URL
+    ) throws -> WrittenArtifact {
         guard options.format.isEncodingAvailable else {
             throw CLIError.unsupportedOutputFormat(options.format.displayName)
         }
@@ -145,13 +162,16 @@ enum CLIOutputWriter {
         case .png, .heic, .avif:
             // Every raster format encodes the CGImage rendered above, so `rasterImage`
             // is non-nil whenever a payload was produced.
-            return (rasterImage?.width ?? 0, rasterImage?.height ?? 0)
+            return WrittenArtifact(
+                width: rasterImage?.width ?? 0, height: rasterImage?.height ?? 0,
+                raster: rasterImage)
         case .pdf:
             // A PDF is a vector document; report the logical point size it was laid
             // out at (the fixed preset size when one is pinned, else the hugged size
             // read back from the page).
             let size = options.fixedSize ?? pdfPointSize(of: payload.data) ?? .zero
-            return (Int(size.width.rounded()), Int(size.height.rounded()))
+            return WrittenArtifact(
+                width: Int(size.width.rounded()), height: Int(size.height.rounded()), raster: nil)
         }
     }
 

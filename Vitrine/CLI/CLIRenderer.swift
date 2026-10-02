@@ -61,7 +61,8 @@ enum CLIRenderer {
         _ options: CLIOptions,
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile = {
             try FileInputLoader.load(from: $0)
-        }
+        },
+        pasteboard: NSPasteboard = .general
     ) throws -> String {
         let background = try CLIRenderResources.prepareBackground(options)
         defer { background.removeTemporaryFiles() }
@@ -80,10 +81,11 @@ enum CLIRenderer {
             config.watermark?.logoImage = watermarkLogo?.image
             return try render(
                 config, options: options, backgroundStore: background.store,
-                foregroundStore: .foregroundContainer)
+                foregroundStore: .foregroundContainer, pasteboard: pasteboard)
         case .image:
             return try renderImageInput(
-                options, background: background, watermarkLogo: watermarkLogo)
+                options, background: background, watermarkLogo: watermarkLogo,
+                pasteboard: pasteboard)
         }
     }
 
@@ -123,7 +125,7 @@ enum CLIRenderer {
         // Preflight every target before creating the directory or rendering anything,
         // so --no-overwrite cannot leave a partially updated preset set.
         for outputURL in outputURLs {
-            try CLIOutputWriter.guardSidecarsDoNotOverwriteInputs(
+            try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
                 beside: outputURL, options: options, inputs: options.sourceFileURLs)
             try CLIOutputWriter.guardNoOverwriteTargetsAvailable(
                 beside: outputURL, options: options)
@@ -180,7 +182,8 @@ enum CLIRenderer {
     /// user's persistent foreground-image library.
     private static func renderImageInput(
         _ options: CLIOptions, background: CLIRenderResources.PreparedBackground,
-        watermarkLogo: CLIRenderResources.PreparedWatermarkLogo?
+        watermarkLogo: CLIRenderResources.PreparedWatermarkLogo?,
+        pasteboard: NSPasteboard
     ) throws -> String {
         let sourceURL = URL(fileURLWithPath: options.inputPath)
         let directory = CLIRenderResources.temporaryImageDirectory()
@@ -206,34 +209,51 @@ enum CLIRenderer {
         config.watermark?.logoImage = watermarkLogo?.image
         config.foregroundImage = reference
         return try render(
-            config, options: options, backgroundStore: background.store, foregroundStore: store)
+            config, options: options, backgroundStore: background.store, foregroundStore: store,
+            pasteboard: pasteboard)
     }
 
     /// Performs the common copy/write/report path once code or image input has produced
     /// a render-ready config and the store that resolves any foreground image.
+    ///
+    /// With both `--copy` and `--out`, the file is written first and the clipboard receives
+    /// that same raster, so a failed write never replaces what the user had copied.
     private static func render(
         _ config: SnapshotConfig, options: CLIOptions,
         backgroundStore: BackgroundImageStore,
-        foregroundStore: BackgroundImageStore
+        foregroundStore: BackgroundImageStore,
+        pasteboard: NSPasteboard
     ) throws -> String {
-
         let optionalOutputURL =
             options.outputPath.isEmpty ? nil : URL(fileURLWithPath: options.outputPath)
         if let optionalOutputURL {
-            try CLIOutputWriter.guardSidecarsDoNotOverwriteInputs(
+            try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
                 beside: optionalOutputURL, options: options, inputs: options.sourceFileURLs)
             try CLIOutputWriter.guardNoOverwriteTargetsAvailable(
                 beside: optionalOutputURL, options: options)
         }
 
+        var artifact: CLIOutputWriter.WrittenArtifact?
+        if let outputURL = optionalOutputURL {
+            artifact = try CLIOutputWriter.renderAndWriteArtifact(
+                config, options: options, backgroundStore: backgroundStore,
+                foregroundStore: foregroundStore, to: outputURL)
+        }
+
         // `--copy`: put the rendered image on the clipboard (the share-now flow). A
-        // `--out` given alongside still writes the file too.
+        // raster `--out` is reused; a PDF output still needs its own PNG render.
         if options.copyToClipboard {
-            let copyOutcome = ExportManager.copyToPasteboardOutcome(
-                config, scale: options.effectiveScale, fixedSize: options.fixedSize,
-                profile: options.profile, concealed: options.concealClipboard,
-                backgroundImageStore: backgroundStore,
-                foregroundImageStore: foregroundStore)
+            let copyOutcome: ExportManager.CopyOutcome
+            if let raster = artifact?.raster {
+                copyOutcome = ExportManager.copyPNGToPasteboardOutcome(
+                    raster, concealed: options.concealClipboard, to: pasteboard)
+            } else {
+                copyOutcome = ExportManager.copyToPasteboardOutcome(
+                    config, scale: options.effectiveScale, fixedSize: options.fixedSize,
+                    profile: options.profile, concealed: options.concealClipboard,
+                    backgroundImageStore: backgroundStore,
+                    foregroundImageStore: foregroundStore, pasteboard: pasteboard)
+            }
             switch copyOutcome {
             case .copied:
                 break
@@ -243,61 +263,41 @@ enum CLIRenderer {
                 throw CLIError.renderFailure(error)
             }
             Log.export.notice("CLI copied an image to the clipboard")
-            if let outputURL = optionalOutputURL {
-                let dimensions = try CLIOutputWriter.renderAndWrite(
-                    config, options: options, backgroundStore: backgroundStore,
-                    foregroundStore: foregroundStore, to: outputURL)
-                if options.jsonOutput {
-                    return CLIOutputWriter.encodedJSON(
-                        RenderSummary(
-                            status: "copied_and_rendered",
-                            output: outputURL.path,
-                            format: options.format.rawValue,
-                            width: dimensions.width,
-                            height: dimensions.height,
-                            copied: true,
-                            sidecars: CLIOutputWriter.sidecarURLs(options, beside: outputURL).map(
-                                \.path)))
-                }
-                return
-                    "Copied the image to the clipboard and wrote \(outputURL.path) "
-                    + "(\(dimensions.width)×\(dimensions.height))\(CLIOutputWriter.sidecarNote(options, beside: outputURL))"
+        }
+
+        guard let outputURL = optionalOutputURL, let artifact else {
+            guard options.copyToClipboard else {
+                throw CLIError.missingRequired("--out output path")
             }
             if options.jsonOutput {
                 return CLIOutputWriter.encodedJSON(
                     RenderSummary(
-                        status: "copied",
-                        output: nil,
-                        format: options.format.rawValue,
-                        width: nil,
-                        height: nil,
-                        copied: true,
-                        sidecars: []))
+                        status: "copied", output: nil,
+                        format: ExportFormat.png.rawValue, width: nil, height: nil,
+                        copied: true, sidecars: []))
             }
             return "Copied the image to the clipboard"
         }
 
-        let outputURL = try CLIOutputWriter.requireOutputURL(optionalOutputURL)
-        let dimensions = try CLIOutputWriter.renderAndWrite(
-            config, options: options, backgroundStore: backgroundStore,
-            foregroundStore: foregroundStore, to: outputURL)
-
         Log.export.notice(
             "CLI rendered an image (\(options.format.rawValue, privacy: .public))")
+        let sidecarNote = CLIOutputWriter.sidecarNote(options, beside: outputURL)
         if options.jsonOutput {
             return CLIOutputWriter.encodedJSON(
                 RenderSummary(
-                    status: "rendered",
+                    status: options.copyToClipboard ? "copied_and_rendered" : "rendered",
                     output: outputURL.path,
                     format: options.format.rawValue,
-                    width: dimensions.width,
-                    height: dimensions.height,
-                    copied: false,
+                    width: artifact.width,
+                    height: artifact.height,
+                    copied: options.copyToClipboard,
                     sidecars: CLIOutputWriter.sidecarURLs(options, beside: outputURL).map(\.path)))
         }
-        return
-            "Rendered \(outputURL.path) "
-            + "(\(dimensions.width)×\(dimensions.height))\(CLIOutputWriter.sidecarNote(options, beside: outputURL))"
+        let dimensions = "(\(artifact.width)×\(artifact.height))\(sidecarNote)"
+        if options.copyToClipboard {
+            return "Copied the image to the clipboard and wrote \(outputURL.path) " + dimensions
+        }
+        return "Rendered \(outputURL.path) " + dimensions
     }
 
     /// Hands the loaded source to the running app's editor (`--edit`) instead of
@@ -317,14 +317,15 @@ enum CLIRenderer {
         fileLoader: (URL) throws -> FileInputLoader.LoadedFile = {
             try FileInputLoader.load(from: $0)
         },
-        stage: (String, Language?) -> URL? = {
-            EditorHandoff.stage(content: $0, language: $1)
-        },
+        stage: (EditorHandoff.Payload) -> URL? = { EditorHandoff.stage($0) },
         open: (URL) -> Bool = { NSWorkspace.shared.open($0) }
     ) throws -> String {
         let loaded = try loadInput(options, fileLoader: fileLoader)
-        let language = options.language ?? loaded.language
-        guard let url = stage(loaded.text, language) else {
+        guard !loaded.text.isEmpty else { throw CLIError.editorHandoffEmpty }
+        let payload = EditorHandoff.Payload(
+            content: loaded.text, language: options.language ?? loaded.language,
+            columns: options.terminalColumns)
+        guard let url = stage(payload) else {
             throw CLIError.editorHandoffFailed
         }
         guard open(url) else { throw CLIError.editorOpenFailed }
@@ -405,13 +406,17 @@ enum CLIRenderer {
         // terminal output here). A user-supplied stdin name is only a hint: it is
         // never read from disk, but it lets extension-based inference match file input.
         if options.readStdin {
-            let data = FileHandle.standardInput.readDataToEndOfFile()
+            let data = try readBoundedStandardInput {
+                try FileHandle.standardInput.read(upToCount: $0)
+            }
             do {
                 return try FileInputLoader.decode(data: data, filename: options.stdinFilename ?? "")
             } catch FileInputLoader.LoadError.binaryFile {
-                throw CLIError.inputNotText(path: "<stdin>")
+                throw CLIError.inputNotText(path: stdinPath)
+            } catch FileInputLoader.LoadError.tooLarge {
+                throw CLIError.inputTooLarge(path: stdinPath)
             } catch {
-                throw CLIError.inputUnreadable(path: "<stdin>")
+                throw CLIError.inputUnreadable(path: stdinPath)
             }
         }
         let inputURL = URL(fileURLWithPath: options.inputPath)
@@ -419,11 +424,37 @@ enum CLIRenderer {
             return try fileLoader(inputURL)
         } catch FileInputLoader.LoadError.binaryFile {
             throw CLIError.inputNotText(path: options.inputPath)
+        } catch FileInputLoader.LoadError.tooLarge {
+            throw CLIError.inputTooLarge(path: options.inputPath)
         } catch {
-            // `.unreadable`, `.tooLarge`, and any unexpected error all surface as an
-            // unreadable input; the CLI never leaks a raw error string.
+            // `.unreadable` and any unexpected error surface as an unreadable input;
+            // the CLI never leaks a raw error string.
             throw CLIError.inputUnreadable(path: options.inputPath)
         }
+    }
+
+    private static let stdinPath = "<stdin>"
+
+    /// Reads standard input in chunks and stops one byte past the shared source limit, so
+    /// an endless pipe (`yes | vitrine render --stdin`) fails fast instead of exhausting
+    /// memory. `read` returns at most the requested count, or nil/empty at end of input.
+    static func readBoundedStandardInput(
+        limit: Int = FileInputLoader.maximumByteCount,
+        read: (Int) throws -> Data?
+    ) throws -> Data {
+        var data = Data()
+        do {
+            while data.count <= limit {
+                guard let chunk = try read(min(64 * 1024, limit + 1 - data.count)),
+                    !chunk.isEmpty
+                else { break }
+                data.append(chunk)
+            }
+        } catch {
+            throw CLIError.inputUnreadable(path: stdinPath)
+        }
+        guard data.count <= limit else { throw CLIError.inputTooLarge(path: stdinPath) }
+        return data
     }
 
 }
