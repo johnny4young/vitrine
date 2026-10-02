@@ -37,7 +37,7 @@ export const cliCommands: CLICommandDoc[] = [
   {
     id: 'terminal-capture',
     name: 'terminal-capture',
-    syntax: 'vitrine terminal-capture <capture-file> (--copy | --edit)',
+    syntax: 'vitrine terminal-capture <capture-file> (--copy [--filename <text>] [--title <text>] | --edit) [--terminal-width <n>]',
     summary: both('Free path behind vgrab', 'Ruta gratuita de vgrab'),
     detail: both(
       'The constrained local command emitted by vgrab. It accepts terminal width and context, but no general styling, file output, sidecars, or batch automation.',
@@ -232,14 +232,14 @@ export const cliOptionGroups: CLIOptionGroup[] = [
     title: both('Input and editor handoff', 'Entrada y envío al editor'),
     intro: both('Choose exactly one source, then optionally narrow or name it.', 'Elige una fuente y, si hace falta, limítala o asígnale un nombre.'),
     options: [
-      { flags: '--stdin', description: both('Read source text from standard input.', 'Lee texto desde la entrada estándar.') },
+      { flags: '--stdin', description: both('Read source text from standard input, up to 5 MB.', 'Lee texto desde la entrada estándar, hasta 5 MB.') },
       { flags: '--stdin-name', value: '<name>', description: both('Infer language and default metadata from a filename hint without reading that file.', 'Infiere lenguaje y metadatos desde un nombre sin leer ese archivo.') },
       { flags: '--image', value: '<path>', description: both('Beautify one local image instead of rendering text.', 'Embellece una imagen local en lugar de renderizar texto.') },
       { flags: '--git-diff', value: '<range>', description: both('Load a local revision or range with /usr/bin/git, without a shell or network fetch.', 'Carga una revisión o rango local con /usr/bin/git, sin shell ni descarga de red.') },
       { flags: '--git-staged', description: both('Load only changes staged in the current repository.', 'Carga solo los cambios preparados en el repositorio actual.') },
       { flags: '--git-path', value: '<path>', description: both('Limit a Git source to a literal path; repeat for several paths.', 'Limita una fuente Git a una ruta literal; repítelo para varias rutas.') },
       { flags: '--git-context', value: '<0...100>', description: both('Set unchanged lines around each hunk; the default is 3.', 'Define líneas sin cambios alrededor de cada bloque; el valor predeterminado es 3.') },
-      { flags: '-e, --edit', description: both('Open the source in Vitrine instead of writing or copying an image.', 'Abre la fuente en Vitrine en vez de escribir o copiar una imagen.') },
+      { flags: '-e, --edit', description: both('Open the source in Vitrine instead of writing or copying an image. Render-only options (--out, --copy, sidecars, --theme, --preset, --scale, --format, --profile, --no-overwrite) are rejected.', 'Abre la fuente en Vitrine en vez de escribir o copiar una imagen. Se rechazan las opciones exclusivas del renderizado (--out, --copy, archivos complementarios, --theme, --preset, --scale, --format, --profile, --no-overwrite).') },
     ],
   },
   {
@@ -248,7 +248,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
     intro: both('Choose where the result goes and how scripts observe success.', 'Elige el destino y cómo las automatizaciones comprueban el resultado.'),
     options: [
       { flags: '-o, --out', value: '<path>', description: both('Image path, or output folder for multi-size and batch.', 'Ruta de imagen o carpeta para multi-size y batch.') },
-      { flags: '--copy', description: both('Copy the rendered image to the macOS clipboard.', 'Copia la imagen al portapapeles de macOS.') },
+      { flags: '--copy', description: both('Copy the rendered image to the macOS clipboard. With --out, the file is written first and the same image is copied; without --out, only PNG is accepted.', 'Copia la imagen al portapapeles de macOS. Con --out, primero se escribe el archivo y se copia la misma imagen; sin --out, solo se acepta PNG.') },
       { flags: '--conceal-clipboard', description: both('Current source: with --copy, ask compatible clipboard managers to treat the export as confidential. Other apps can still read it; this does not sanitize content or expire the clipboard.', 'Código actual: con --copy, pide a los gestores compatibles que traten la exportación como confidencial. Otras apps aún pueden leerla; no elimina contenido ni vacía el portapapeles.') },
       { flags: '--format', value: '<png|pdf|heic|avif>', description: both('Select output encoding. A known file extension selects it automatically when omitted; AVIF requires a system ImageIO writer (Tahoe or newer).', 'Selecciona la codificación. Una extensión conocida la elige automáticamente; AVIF requiere un codificador ImageIO del sistema (Tahoe o posterior).') },
       { flags: '--profile', value: '<srgb|p3>', description: both('Select the color profile for PNG, HEIC, AVIF, and clipboard images; sRGB is the default.', 'Selecciona el perfil de color de las imágenes PNG, HEIC, AVIF y del portapapeles; sRGB es el predeterminado.') },
@@ -317,7 +317,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--window-title', value: '<text>', description: both('Title in rendered window or browser chrome.', 'Título en el marco de ventana o navegador.') },
       { flags: '--filename', value: '<text>', description: both('Filename chip in the metadata header.', 'Etiqueta de archivo en la cabecera.') },
       { flags: '--title', value: '<text>', description: both('Primary metadata title.', 'Título principal de metadatos.') },
-      { flags: '--alt-text', value: '<text>', description: both('Current source: image alternative text for Markdown/HTML, at most 1024 characters. Not drawn, and cannot be combined with --edit.', 'Código actual: texto alternativo para Markdown/HTML, hasta 1024 caracteres. No se dibuja y no se puede combinar con --edit.') },
+      { flags: '--alt-text', value: '<text>', description: both('Current source: alternative text for the Markdown/HTML sidecars, at most 1024 characters. Requires --markdown-sidecar or --html-sidecar; not drawn on the image and not accepted with --edit.', 'Código actual: texto alternativo para los archivos complementarios Markdown/HTML, hasta 1024 caracteres. Requiere --markdown-sidecar o --html-sidecar; no se dibuja en la imagen y no se admite con --edit.') },
       { flags: '--caption', value: '<text>', description: both('Supporting caption below the title.', 'Texto de apoyo bajo el título.') },
       { flags: '--language-badge, --no-language-badge', description: both('Show or hide the detected language badge.', 'Muestra u oculta la etiqueta del lenguaje.') },
     ],
