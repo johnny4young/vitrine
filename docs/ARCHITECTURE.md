@@ -11,7 +11,7 @@ implementations. The CLI target does not compile app adapters as an allowlist.
 
 | Responsibility | Owner | Effects and boundaries |
 | --- | --- | --- |
-| Signed license payload, codec, signing and verification | `VitrineDomain/Licensing/LicenseToken.swift` | Pure byte/value transformations using CryptoKit; callers supply keys. No Keychain, provider, purchase, environment or file access. Wire format and production public key are unchanged. |
+| Signed license payload, codec, signing and verification | `VitrineDomain/Licensing/LicenseToken.swift` | Pure byte/value transformations using CryptoKit; callers supply keys. No Keychain, provider, purchase, environment or file access. |
 | License storage, injected signing key and activation | `Vitrine/Pro/` | App-owned Keychain/provider and bundle configuration adapters. CLI reads its existing bounded token file and calls the shared verifier; it never activates a license. |
 | Image rendering, safe rich representations and clipboard delivery | `VitrineRendering/Export/` | AppKit effects stay outside Domain. Payload construction is separate from clipboard mutation. App and CLI link one implementation, including sanitization, size limits and cooperative privacy markers. |
 | Logging | Each process/module | App, CLI and rendering own their loggers; `LogCategory` in Domain owns the subsystem/category vocabulary. No app lifecycle code compiles into CLI. |
@@ -22,8 +22,6 @@ The Domain import guard permits CryptoKit only for pure signed-token operations,
 Security or StoreKit. Hostless token tests pin the wire format and rejection behavior;
 app/CLI entitlement tests continue to exercise each consumer. The source-ownership guard
 checks the CLI source roots, while compilation proves it links the shared public APIs.
-Moving a source file is not evidence of faster runtime or lower memory: those claims
-require measurements, and this change does not make either claim.
 
 ## Product and distribution boundaries
 
@@ -57,27 +55,29 @@ application-defined `NSPopover` whose SwiftUI content provides the capture actio
 recent captures, theme shortcuts, and explicit command rows:
 
 ```
-📸  [menu-bar icon]
-├── 📋 New capture from clipboard            optional global shortcut
-├── 🖼️  Render clipboard as…                 ▸
-├── 🕘 Recent captures
+<>  [menu-bar icon: code glyph inside viewfinder corners]
+├── 📋 New Capture from Clipboard            (optional global shortcut)
+├── 🖼️  Render Clipboard As…                 ▸
+├── 🕘 Recents                               View history →
 ├── 🎨 Theme shortcuts
-├── ✏️  Open editor…
-├── 🌐 New web snapshot…
-├── 🪪 New social card…
 ├── ───────────────
-├── ⚙️  Preferences…                          ⌘,
-├── ℹ️  About
-└── ⏻  Quit                                   ⌘Q
+├── ✏️  Open Editor                           ⌘E
+├── 🌐 New Web Snapshot
+├── 🪪 New Social Card
+├── ⚙️  Settings…                             ⌘,
+├── ❓ Vitrine Help                           ⌘?
+├── ℹ️  About Vitrine
+└── ⏻  Quit Vitrine                          ⌘Q
 ```
 
-- **Primary action — "New capture from clipboard"** (quick mode): reads `NSPasteboard`,
+- **Primary action — "New Capture from Clipboard"** (quick mode): reads `NSPasteboard`,
   detects code vs URL, detects the language for code, renders code with **your saved
   settings**, and leaves the result on the clipboard (**auto-copy configurable**) or
-  saves it — **without opening any UI**. When URL capture is enabled, URL input opens
-  Web Snapshot prefilled with the URL; the direct-download build then renders it locally
-  with `WKWebView` after the first-use privacy disclosure.
-- **"Open editor…"** opens the window with live preview and controls (theme, padding,
+  saves it — **without opening any UI**. When the user turns on URL screenshots in
+  Settings ▸ Input (off by default), URL input opens Web Snapshot prefilled with the URL;
+  the direct-download build then renders it locally with `WKWebView` after the first-use
+  privacy disclosure.
+- **"Open Editor"** opens the window with live preview and controls (theme, padding,
   font, background) to tweak before exporting.
 - **Recent rows** reopen or re-copy the latest captures; the history link opens the full
   gallery.
@@ -183,7 +183,7 @@ Core Graphics context in the chosen ICC space, so the embedded profile travels
 with the file. sRGB is the safe choice because browsers, Slack, X, Keynote, and
 non–color-managed viewers all assume it, so a screenshot looks the same
 everywhere; **Display P3** is offered only as an explicit advanced option in
-*Settings → Output → Advanced* — it keeps the wider gamut of a P3 display, but a
+*Settings → Export → Advanced* — it keeps the wider gamut of a P3 display, but a
 viewer that ignores the embedded profile renders P3 values as if they were sRGB,
 which oversaturates the image, so it is opt-in rather than the default. Both
 profiles preserve a real alpha channel: a transparent background exports with
@@ -308,7 +308,7 @@ appending *lines*:
 | Sequence                      | Meaning                       | Why it is a trigger                        |
 | ----------------------------- | ----------------------------- | ------------------------------------------ |
 | `ESC[?1049h` / `?47h` / `?1047h` | enter the alternate screen | the unambiguous signature of a TUI         |
-| `ESC[…J` (`ED`)               | erase display                 | only a full-screen redraw erases the screen |
+| a second `ESC[2J` (`ED 2`)    | erase whole display, twice    | one is the `clear` idiom; two mean a repaint loop |
 | `ESC[…d` (`VPA`)              | absolute row                  | positioning implies a fixed screen          |
 | `ESC[…r` (`DECSTBM`)          | scroll region                 | only a screen model has regions             |
 | `ESC[…H` / `f` (`CUP`) past home | absolute cell               | home alone is ambiguous, so it is excluded  |
@@ -605,8 +605,9 @@ rendered dimensions when available. Same-stem inputs that would collide (`Widget
 and `Widget.ts` → `Widget.png`) are disambiguated only for that group by preserving the
 input extension, so non-colliding legacy output names stay unchanged.
 
-**Catalog discovery.** `vitrine list <themes|languages|presets|fonts|backgrounds|formats|profiles>
-[--json]` prints the same local catalog ids the parser validates for `--theme`,
+**Catalog discovery.** `vitrine list <themes|languages|presets|style-presets|fonts|backgrounds|
+background-fits|frames|frame-appearances|watermark-positions|formats|profiles> [--json]`
+prints the same local catalog ids the parser validates for options such as `--theme`,
 `--language`, `--preset`, `--font`, `--background`, `--format`, and `--profile`;
 `vitrine list all --json` returns one keyed object with every catalog for setup scripts that want a single
 metadata call. It runs before AppKit initialization and before the capability gate
@@ -807,7 +808,7 @@ gate lives in one place.
   and in the README.
 - **Reset returns to first run.** `AppSettings.resetToDefaults()` clears the flag, so
   "Reset All Settings" brings the quick-start back. UI tests drive it deterministically
-  through launch hooks (`--show-welcome`, `--skip-onboarding`, `--reset-onboarding`)
+  through launch hooks (`--show-welcome`, `--skip-onboarding`)
   while isolating the flag via `VITRINE_USER_DEFAULTS_SUITE`.
 
 `WelcomeWindowController` supplies `WelcomeNavigation` to the SwiftUI root, keeping the
@@ -854,6 +855,7 @@ VitrineDomain/                # static Foundation/CoreGraphics value and policy 
 ├── Policies/                  # pure host/input safety classification
 ├── Settings/                  # typed defaults/schema and pure migrations
 ├── Support/                   # bounded local/transport reads and decode helpers
+├── Text/                      # CodeFormatter (+JSON/Markup/Reindent/SQL/LanguageStrategy), LanguageDetector
 └── Terminal/                  # portable ANSI and terminal-screen policy
     ├── TerminalGrid.swift      # cells and bounded screen state
     ├── TerminalScreen+Scanner.swift # addressing detection and geometry inference
@@ -895,13 +897,7 @@ Vitrine/
 │   │                         # focused editor regions and interactions
 │   ├── CodeEditorView.swift   # NSViewRepresentable over NSTextView
 │   ├── LivingSnapshotSession.swift # volatile explicit-file refresh + conflict policy
-│   ├── CodeFormatter.swift    # stable tidy/trim/dedent facade
-│   ├── CodeFormatter+JSON.swift
-│   ├── CodeFormatter+Markup.swift
-│   ├── CodeFormatter+Reindent.swift
-│   ├── CodeFormatter+SQL.swift # dependency-free language-family transforms
-│   ├── CodeFormatter+LanguageStrategy.swift # Language → safe formatter route
-│   └── LanguageDetector.swift # detection by extension / heuristic
+│   └── CodeFormatOperation.swift # editor-side formatting command
 ├── Canvas/
 │   └── BackgroundEditor.swift # app-owned image/gradient editing controls
 ├── Export/
@@ -1003,6 +999,8 @@ VitrineCLI/                    # the `vitrine` executable: main.swift; the rest 
 ├── CLICommandLine.swift       # minimal accessory NSApplication host → CLIRenderer
 └── CLIEnvironment.swift       # locates the Fonts/ folder staged next to the binary
 
+Tests/                        # Swift Testing unit suite (hosted by the app)
+UITests/                      # XCTest UI smokes + opt-in screenshot tour
 DomainTests/                  # hostless VitrineDomain contract tests
 RenderingTests/               # direct VitrineRendering facade and policy contracts
 RepositoryTests/              # hostless repository contracts: workflows, packaging, docs
@@ -1102,7 +1100,7 @@ Tree-sitter infrastructure is not treated as a drop-in dependency update.
 
 ## Data model
 
-`Models/SnapshotConfig.swift` is the render contract — everything that defines the
+`VitrineRendering/Models/SnapshotConfig.swift` is the render contract — everything that defines the
 final image (code, language, theme, typography, padding, background, chrome, line
 numbers, annotations, watermark, redacted ranges, wrap columns, terminal geometry,
 foreground image, …). The struct has outgrown any snippet that could live here
@@ -1251,7 +1249,10 @@ in-content bar: `ViewThatFits` uses one row at desktop widths and two rows on co
 windows. This avoids AppKit toolbar overflow dropping actions from the accessibility tree.
 
 ```swift
-enum BackgroundStyle { case solid(Color); case gradient(GradientPreset); case transparent }
+enum BackgroundStyle {
+    case solid(RGBAColor), gradient(GradientPreset), customGradient(CustomGradient)
+    case image(ImageBackground), transparent
+}
 
 enum GradientPreset: String, CaseIterable {
     // `aurora` is the signature default; see docs/DESIGN-SYSTEM.md.

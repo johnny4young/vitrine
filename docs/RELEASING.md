@@ -1,10 +1,9 @@
 # Releasing Vitrine
 
-> **First time shipping?** Opening the Apple Developer account, generating the signing
-> certificate and notary/Sparkle keys, picking the names, and creating the GitHub
-> Pages/Homebrew-tap infra is a one-time **manual** job, kept in a maintainer-only local
-> runbook. This file assumes those credentials already exist and covers running the
-> pipeline.
+> **First time shipping?** One-time account and credential setup (the Apple Developer
+> account, signing certificate, notary/Sparkle keys, and the GitHub Pages/Homebrew-tap
+> infra) is out of scope here; this file assumes those credentials exist and covers
+> running the pipeline.
 
 Vitrine's canonical distribution channels are a Developer ID-signed, notarized DMG
 attached to a GitHub release and the Homebrew cask that consumes it. The Mac App Store
@@ -99,8 +98,9 @@ attached artifacts cannot be altered or replaced. If a published artifact is wro
 fix the source and publish a new patch version instead of rewriting release history.
 
 After a release is published, update the notes that describe current source against
-the previous download: `git grep -n 'v<previous> download'` covers `docs/` (for example
-the agent cookbook, capabilities, and documentation export) and the README status.
+the previous download: run `git grep -n 'v<previous>'` and review `docs/` (for example
+the agent cookbook, capabilities, and documentation export), the README Status section,
+and the EN/ES availability messages in `site/src/i18n/content.ts`.
 
 ## Continuous integration
 
@@ -272,8 +272,10 @@ change `project.yml`, Debug/Release product builds, packaged entitlements, or th
 selected by the lane; they only make the local profile transport observable to Xcode.
 
 The same guard requires at least 80% of changed executable lines in critical logic to be
-covered. Its unit-coverage scope is `Models`, `CLI`, `Pro`, `Terminal`, `Rendering`, and
-the explicit non-visual policy/renderer files in `WebRendering`. SwiftUI/AppKit views and
+covered. Its unit-coverage scope is all of `VitrineDomain/`; the `Editor`, `Export`,
+`Models`, `Rendering`, `Support`, and `Terminal` folders of `VitrineRendering/`; the
+`Models`, `CLI`, and `Pro` folders of `Vitrine/`; and the explicit non-visual
+policy/renderer files in `Vitrine/WebRendering` named in `scripts/check-coverage.py`. SwiftUI/AppKit views and
 window controllers are deliberately outside that calculation: XCUITest and the strict
 visual tour protect those surfaces. Baselines live under
 `scripts/coverage-baselines/`; they are GitHub-hosted runner baselines because WebKit
@@ -478,10 +480,10 @@ geometry for diagnosis. Targeted UI selectors also choose a hittable match when 
 exposes one identifier on both a wrapper and its nested control, which keeps the same
 assertions valid across Sequoia and Tahoe accessibility trees.
 
-The release gate (`release.yml`) still only *compiles* the UI tests: every commit
-on `main` has already had the full suite executed by `ci.yml`, and a UI-level
-flake should not block an urgent tag. Run `make test-ui` locally before tagging if
-the release includes UI changes that never went through a PR.
+The release gate neither builds nor runs UI tests: `verify` requires the
+`UI tests · Sequoia 15` and `UI tests · Tahoe 26` checks to have passed on the tagged
+commit, which `ci.yml` ran when that commit landed on `main`. Run `make test-ui` locally
+before tagging if the release includes UI changes that never went through a PR.
 
 ### Running the strict visual tour
 
@@ -641,10 +643,8 @@ There are two copies of the cask, and the distinction matters:
 
   > The `binary` stanza points at `Contents/MacOS/vitrine-cli` (named so it
   > cannot collide with the `Vitrine` app executable on case-insensitive APFS;
-  > `target:` surfaces it on PATH as `vitrine`). The file exists in DMGs from
-  > **v0.5.0** onward (embedded by the app target's post-build script and
-  > signed by `build-dmg.sh`). Do not sync that stanza into the tap while it
-  > still serves an older DMG — the install would fail on the missing file.
+  > `target:` surfaces it on PATH as `vitrine`). The app target's post-build script
+  > embeds it and `build-dmg.sh` signs it.
 - **`Casks/vitrine.rb`** in the tap (`johnny4young/homebrew-tap`) is what users install.
   It is this template with `version` bumped and `sha256` set to the **published DMG's**
   checksum.
@@ -1144,16 +1144,17 @@ license again.
 - [ ] Tag pushed **after the bump pull request merges**, never on the pre-bump commit:
       the release workflow compares the tag against `MARKETING_VERSION` and aborts when
       they disagree, leaving the DMG job skipped
-- [ ] Tag pushed; release workflow `verify` gate and DMG publish both green
-- [ ] Tap PR opened: cask `version` + `sha256` set from the release's
-      `vitrine-cask-update.txt`, `brew audit --cask --strict` green in the tap, and
-      `brew install`/`brew uninstall --cask` smoke-tested on a clean Mac
+- [ ] Tag pushed; the tag run's `verify`, `candidate`, and `candidate-qa` jobs green
 - [ ] **Release artifact QA on a clean Mac** done: `scripts/qa-release.sh` run against
-      the published DMG, its environment header + manual checklist recorded in the
+      the candidate DMG, its environment header + manual checklist recorded in the
       release QA log (including secret-safe online activation, offline relaunch,
       PRO-only CLI multi-size, `0600` token proof, and all installed-candidate WebKit
       fixtures), the structured Sequoia and Tahoe entries completed, and any failure
       triaged as app bug vs. signing/notarization
+- [ ] Promotion dispatched with `candidate_run_id`, `expected_sha256`, and
+      `qa_confirmation`; the `publish`, `published-qa`, `distribute`, and `deploy-site`
+      jobs green (the tap cask update is automated; open a tap PR only as the incident
+      fallback above)
 
 ## Strict export-image comparisons
 
