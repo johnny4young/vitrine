@@ -16,7 +16,7 @@ import WebKit
 /// capture sends. Nothing is scraped from another browser: WebKit isolates website data
 /// per application, so this is Vitrine signing in on its own behalf, with the user
 /// driving it.
-final class WebSessionWindowController: NSObject, NSWindowDelegate {
+final class WebSessionWindowController: NSObject, NSWindowDelegate, WKUIDelegate {
     static let shared = WebSessionWindowController()
 
     /// Bridges the synchronous presentation action to the fail-closed async WebKit
@@ -52,6 +52,13 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
     private var webView: WKWebView?
     private var navigationCoordinator: URLLoadCoordinator?
     private var presentationGeneration = UUID()
+    private var allowsLoopback = false
+    private var locationObservations: [NSKeyValueObservation] = []
+    /// Sign-in popups (`window.open`, `target=_blank`) hosted in their own windows so
+    /// SSO flows that report back through `window.opener` can finish.
+    private var popups: [(window: NSWindow, webView: WKWebView, coordinator: URLLoadCoordinator)] =
+        []
+    private var popupObservations: [NSKeyValueObservation] = []
     /// Whether the sign-in window is currently open.
     var isPresented: Bool { window != nil }
 
@@ -74,14 +81,18 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
             allowsLoopback: allowsLoopback)
         guard generation == presentationGeneration else { return }
 
+        self.allowsLoopback = allowsLoopback
         let webView = makeWebView(ruleList: ruleList, allowsLoopback: allowsLoopback)
         self.webView?.stopLoading()
         self.webView?.navigationDelegate = nil
+        self.webView?.uiDelegate = nil
+        closePopups()
         self.webView = webView
 
         let window = self.window ?? makeWindow(hosting: webView)
         self.window = window
         if window.contentView !== webView { window.contentView = webView }
+        observeLocation(of: webView, in: window)
 
         webView.load(URLRequest(url: checkedURL))
         // An accessory app gets no activation from the caller's click, and this window
@@ -103,11 +114,135 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
         configuration.websiteDataStore = websiteDataStore
         configuration.userContentController.add(ruleList)
         let webView = WKWebView(frame: .zero, configuration: configuration)
-        let coordinator = URLLoadCoordinator(allowsLoopbackCapture: allowsLoopback)
+        let coordinator = makeCoordinator()
         webView.navigationDelegate = coordinator
+        webView.uiDelegate = self
         navigationCoordinator = coordinator
         webView.allowsBackForwardNavigationGestures = true
         return webView
+    }
+
+    /// The capture's navigation policy, plus a credential sheet for HTTP authentication
+    /// that only this interactive window can answer.
+    private func makeCoordinator() -> URLLoadCoordinator {
+        let coordinator = URLLoadCoordinator(allowsLoopbackCapture: allowsLoopback)
+        coordinator.credentialProvider = { [weak self] space, webView in
+            guard let self, let window = webView.window ?? self.window else { return nil }
+            return await Self.requestCredential(for: space, in: window)
+        }
+        return coordinator
+    }
+
+    /// Keeps the window subtitle on the page's real host and transport security, so the
+    /// user can see where they are typing credentials after cross-site redirects.
+    private func observeLocation(of webView: WKWebView, in window: NSWindow) {
+        locationObservations = Self.subtitleObservations(of: webView, in: window)
+    }
+
+    /// WebKit posts these KVO changes on the main thread.
+    private static func subtitleObservations(
+        of webView: WKWebView, in window: NSWindow
+    ) -> [NSKeyValueObservation] {
+        [
+            webView.observe(\.url, options: [.initial]) { [weak window] webView, _ in
+                MainActor.assumeIsolated { updateSubtitle(of: window, for: webView) }
+            },
+            webView.observe(\.hasOnlySecureContent) { [weak window] webView, _ in
+                MainActor.assumeIsolated { updateSubtitle(of: window, for: webView) }
+            },
+        ]
+    }
+
+    private static func updateSubtitle(of window: NSWindow?, for webView: WKWebView) {
+        window?.subtitle = locationSubtitle(
+            url: webView.url, hasOnlySecureContent: webView.hasOnlySecureContent)
+    }
+
+    /// The host shown under the window title, flagged when the page is not served
+    /// entirely over HTTPS.
+    static func locationSubtitle(url: URL?, hasOnlySecureContent: Bool) -> String {
+        guard let host = url?.host(), !host.isEmpty else { return "" }
+        if url?.scheme?.lowercased() == "https", hasOnlySecureContent { return host }
+        return String(localized: "\(host) — Not Secure")
+    }
+
+    /// Asks for a user name and password in a sheet on `window`; nil when cancelled.
+    private static func requestCredential(
+        for space: URLProtectionSpace, in window: NSWindow
+    ) async -> URLCredential? {
+        let alert = NSAlert()
+        alert.messageText = String(localized: "Sign in to \(space.host)")
+        alert.informativeText = String(
+            localized: "\(space.host) requires a user name and password.")
+        alert.addButton(withTitle: String(localized: "Sign In"))
+        alert.addButton(withTitle: String(localized: "Cancel"))
+        let user = NSTextField()
+        user.placeholderString = String(localized: "User name")
+        let password = NSSecureTextField()
+        password.placeholderString = String(localized: "Password")
+        let fields = NSStackView(views: [user, password])
+        fields.orientation = .vertical
+        fields.spacing = 8
+        fields.frame = NSRect(x: 0, y: 0, width: 260, height: 52)
+        user.frame.size.width = 260
+        password.frame.size.width = 260
+        alert.accessoryView = fields
+        alert.window.initialFirstResponder = user
+        guard await alert.beginSheetModal(for: window) == .alertFirstButtonReturn else {
+            return nil
+        }
+        return URLCredential(
+            user: user.stringValue, password: password.stringValue, persistence: .forSession)
+    }
+
+    // MARK: WKUIDelegate
+
+    /// Hosts a popup in its own window on the same configuration WebKit hands over, so it
+    /// shares the session store, the private-host rules, and `window.opener`.
+    func webView(
+        _ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration,
+        for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures
+    ) -> WKWebView? {
+        guard self.webView != nil else { return nil }
+        let width = windowFeatures.width.map { CGFloat($0.doubleValue) } ?? 520
+        let height = windowFeatures.height.map { CGFloat($0.doubleValue) } ?? 680
+        let popup = WKWebView(
+            frame: NSRect(x: 0, y: 0, width: width, height: height), configuration: configuration)
+        let coordinator = makeCoordinator()
+        popup.navigationDelegate = coordinator
+        popup.uiDelegate = self
+        let popupWindow = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: width, height: height),
+            styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
+        popupWindow.title = String(localized: "Sign In for Web Capture")
+        popupWindow.contentView = popup
+        popupWindow.isReleasedWhenClosed = false
+        popupWindow.delegate = self
+        popupWindow.center()
+        popups.append((popupWindow, popup, coordinator))
+        observePopupLocation(popup, in: popupWindow)
+        popupWindow.makeKeyAndOrderFront(nil)
+        return popup
+    }
+
+    func webViewDidClose(_ webView: WKWebView) {
+        popups.first { $0.webView === webView }?.window.close()
+    }
+
+    private func observePopupLocation(_ webView: WKWebView, in window: NSWindow) {
+        popupObservations += Self.subtitleObservations(of: webView, in: window)
+    }
+
+    private func closePopups() {
+        let open = popups
+        popups = []
+        popupObservations = []
+        for popup in open {
+            popup.webView.stopLoading()
+            popup.webView.navigationDelegate = nil
+            popup.webView.uiDelegate = nil
+            popup.window.close()
+        }
     }
 
     private func makeWindow(hosting webView: WKWebView) -> NSWindow {
@@ -126,11 +261,23 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
+        if let closing = notification.object as? NSWindow, closing !== window {
+            if let index = popups.firstIndex(where: { $0.window === closing }) {
+                let popup = popups.remove(at: index)
+                popup.webView.stopLoading()
+                popup.webView.navigationDelegate = nil
+                popup.webView.uiDelegate = nil
+            }
+            return
+        }
         presentationGeneration = UUID()
+        closePopups()
+        locationObservations = []
         // Drop the web view with the window: a signed-in page left loaded off-screen
         // would keep running timers and network activity for a window the user closed.
         webView?.stopLoading()
         webView?.navigationDelegate = nil
+        webView?.uiDelegate = nil
         webView = nil
         navigationCoordinator = nil
         window = nil

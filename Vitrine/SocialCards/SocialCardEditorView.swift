@@ -63,12 +63,13 @@ struct SocialCardEditorView: View {
             Spacer(minLength: 0)
 
             iconButton(
-                "social-card-save-button", label: VitrineCommand.saveImage.accessibilityLabel,
+                "social-card-save-button", label: Text(VitrineCommand.saveImage.accessibilityLabel),
                 help: "Render and save the card as a file", systemImage: "square.and.arrow.down",
                 shortcut: KeyboardShortcut("s", modifiers: .command), action: saveCard)
             iconButton(
-                "social-card-share-button", label: VitrineCommand.shareImage.accessibilityLabel,
-                help: "Share the rendered card", systemImage: "square.and.arrow.up",
+                "social-card-share-button",
+                label: Text(VitrineCommand.shareImage.accessibilityLabel),
+                help: "Render and share the card", systemImage: "square.and.arrow.up",
                 action: shareCard)
 
             copyCardCTA
@@ -111,7 +112,7 @@ struct SocialCardEditorView: View {
     /// windows, so this window provides its own).
     @ViewBuilder
     private func iconButton(
-        _ identifier: String, label: String, help: String, systemImage: String,
+        _ identifier: String, label: Text, help: LocalizedStringKey, systemImage: String,
         shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void
     ) -> some View {
         let button = GlassIconButton(systemImage: systemImage, action: action)

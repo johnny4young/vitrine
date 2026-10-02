@@ -384,6 +384,20 @@ struct WebCaptureConfigCompositionTests {
         #expect(renderer.scale == 1)
     }
 
+    @Test func aBatchViewportKeepsEverySettingFromTheSharedMapping() {
+        let settings = AppSettings(defaults: Self.isolatedDefaults())
+        settings.webCapture.viewportKind = .fullHD
+        settings.webCapture.captureMode = .fullPage
+        settings.webCapture.allowsLoopbackCapture = true
+        settings.export.scale = 3
+
+        let renderer = URLRenderer.configured(from: settings, viewportPreset: .openGraph)
+        #expect(renderer.viewportPreset == .openGraph)
+        #expect(renderer.captureMode == .fullPage)
+        #expect(renderer.allowsLoopbackCapture)
+        #expect(renderer.scale == 3)
+    }
+
     @Test func aCustomViewportFromSettingsIsClampedIntoTheSafeRange() {
         // A hand-edited out-of-range custom size persisted in settings can never reach
         // the renderer as a degenerate viewport.

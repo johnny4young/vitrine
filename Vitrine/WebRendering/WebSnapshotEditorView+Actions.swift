@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 import VitrineRendering
 
@@ -18,13 +17,9 @@ extension WebSnapshotEditorView {
         // triggers could both clear an `isRendering` guard and the second would overwrite
         // the handle, leaving Cancel pointed at a no-op task while the real render runs.
         guard !model.isCapturing else { return }
-        // Show the privacy disclosure only when URL capture is actually available and the
-        // user hasn't consented yet. On a build that can't reach the network the disclosure's
-        // confirm button is permanently disabled, so routing through it strands the user in a
-        // dismiss-and-retry dead end; instead fall through to the capture, which fails fast
-        // with `RenderError.urlCaptureDisabled` and its clear message.
-        if model.mode == .url,
-            !settings.webCapture.consentGiven, NetworkCapability.isURLCaptureEnabled
+        if WebSnapshotModel.needsDisclosure(
+            mode: model.mode, consentGiven: settings.webCapture.consentGiven,
+            urlCaptureEnabled: NetworkCapability.isURLCaptureEnabled)
         {
             showDisclosure = true
             return
@@ -100,7 +95,7 @@ extension WebSnapshotEditorView {
             let payload = ExportManager.encodedPayload(
                 settings.export.format,
                 png: { asset.cgImage },
-                pdf: { ExportManager.pdfData(from: asset.cgImage) })
+                pdf: { ExportManager.pdfData(from: asset.cgImage, scale: model.captureScale) })
         else {
             if let feedbackOutcome = ExportFeedback.saveOutcome(.failed) {
                 feedback(feedbackOutcome)
@@ -114,18 +109,23 @@ extension WebSnapshotEditorView {
         }
     }
 
-    /// Exports every captured viewport plus the composite board as PNGs into a folder
-    /// the user picks (multi-resolution) — a ready-to-share set in one action.
+    /// Exports every captured viewport plus the composite board into a folder the user
+    /// picks, in the chosen export format, encoding off the main actor. Files are named
+    /// from each capture's actual size, so a full-page capture is not labeled by its
+    /// viewport height.
     func exportAll() {
-        var items: [(name: String, image: CGImage)] = model.results.map { result in
-            let size = result.preset.size
-            return (
-                "vitrine-web-\(result.kind.rawValue)-\(Int(size.width))x\(Int(size.height))",
-                result.asset.cgImage
-            )
+        Task { await exportAllSizes() }
+    }
+
+    func exportAllSizes() async {
+        let scale = model.captureScale
+        var items = model.results.map {
+            ExportManager.NamedRaster(
+                name: WebSnapshotModel.exportName(for: $0, scale: scale), image: $0.asset.cgImage)
         }
         if let board = model.boardAsset?.cgImage {
-            items.append(("vitrine-web-responsive-board", board))
+            items.append(
+                ExportManager.NamedRaster(name: "vitrine-web-responsive-board", image: board))
         }
         guard !items.isEmpty else { return }
         guard
@@ -133,26 +133,17 @@ extension WebSnapshotEditorView {
                 message: String(localized: "Choose a folder for the exported images."))
         else { return }
 
-        var written = 0
-        for item in items {
-            guard let data = ExportManager.pngData(from: item.image) else { continue }
-            if (try? data.write(to: directory.appendingPathComponent("\(item.name).png"))) != nil {
-                written += 1
-            }
-        }
-
+        let result = await ExportManager.exportRasters(
+            items, to: directory, format: settings.export.format, scale: scale)
         let completion = BatchExportCompletion(
-            written: written,
-            failed: items.count - written,
-            expected: items.count)
+            written: result.written, failed: result.failed, expected: items.count)
         if completion.isComplete {
             feedback(Notifier.confirmation(String(localized: "Images exported")))
             presentation.batchExport.reveal(directory)
         } else {
             feedback(
                 Notifier.failure(
-                    completion.failureNote
-                        ?? String(localized: "Couldn't export the images")))
+                    completion.failureNote ?? String(localized: "Couldn't export the images")))
         }
     }
 
