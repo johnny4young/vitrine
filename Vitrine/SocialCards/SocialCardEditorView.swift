@@ -388,94 +388,10 @@ private struct SocialCardInspector: View {
             label: Text("Background"), identifier: "social-card-background-disclosure",
             isExpanded: $showBackground
         ) {
-            ChipScroll(topPadding: 2, bottomPadding: 6) {
-                ForEach(GradientPreset.allCases) { preset in
-                    GradientSwatch(preset: preset, isSelected: selectedGradient == preset, size: 28)
-                    {
-                        settings.socialCard.background = .gradient(preset)
-                    }
-                }
-                CustomBackgroundSwatch(size: 28) {
-                    settings.socialCard.background = BackgroundKind.solid.makeDefault(
-                        from: card.background, imageStore: .container)
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Background")
-            .accessibilityIdentifier("social-card-background-swatches")
-
-            // Once the background is no longer a stock gradient preset, expose the full
-            // kind picker (custom gradient, solid, image, transparent) and its controls.
-            if selectedGradient == nil {
-                row("Kind") {
-                    TokenSegmentedPicker(
-                        options: [
-                            (BackgroundKind.gradient, Text("Gradient")),
-                            (.customGradient, Text("Custom")),
-                            (.solid, Text("Solid")),
-                            (.image, Text("Image")),
-                            (.transparent, Text("Transparent")),
-                        ],
-                        selection: backgroundKindBinding
-                    )
-                    .accessibilityLabel("Kind")
-                    .accessibilityIdentifier("social-card-background-kind-picker")
-                }
-                backgroundDetail
-            }
+            BackgroundControls(
+                background: $settings.socialCard.background, layout: .inspector,
+                identifierPrefix: "social-card-")
         }
-    }
-
-    /// The control for the active non-gradient-preset background, mirroring the editor
-    /// inspector: a custom gradient editor, a color well, an image picker, or the
-    /// transparent note.
-    @ViewBuilder private var backgroundDetail: some View {
-        switch card.background {
-        case .gradient:
-            EmptyView()
-        case .customGradient(let gradient):
-            CustomGradientEditor(
-                gradient: Binding(
-                    get: { gradient },
-                    set: { settings.socialCard.background = .customGradient($0) }))
-        case .solid(let color):
-            row("Color") {
-                ColorPicker(
-                    "Color",
-                    selection: Binding(
-                        get: { color.color },
-                        set: { settings.socialCard.background = .solid(RGBAColor($0)) }),
-                    supportsOpacity: true
-                )
-                .labelsHidden()
-                .accessibilityIdentifier("social-card-background-color")
-            }
-        case .image(let image):
-            ImageBackgroundEditor(
-                image: Binding(
-                    get: { image }, set: { settings.socialCard.background = .image($0) }),
-                imageStore: .container)
-        case .transparent:
-            Text("Exports with a real transparent (alpha) background.")
-                .font(.system(size: VitrineTokens.FontSize.caption))
-                .foregroundStyle(VitrineTokens.Text.tertiary)
-        }
-    }
-
-    /// The active background kind; switching seeds a sensible default from the current
-    /// style, mirroring the editor inspector.
-    private var backgroundKindBinding: Binding<BackgroundKind> {
-        Binding(
-            get: { BackgroundKind(card.background) },
-            set: {
-                settings.socialCard.background = $0.makeDefault(
-                    from: card.background, imageStore: .container)
-            })
-    }
-
-    private var selectedGradient: GradientPreset? {
-        if case .gradient(let preset) = card.background { return preset }
-        return nil
     }
 
     // MARK: Chrome helpers

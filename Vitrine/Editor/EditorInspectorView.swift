@@ -200,46 +200,13 @@ struct EditorInspectorView: View {
             .accessibilityIdentifier("inspector-scope-note")
     }
 
-    /// Background: the gradient preset swatches plus the dashed "+" leading to
-    /// the custom kinds. The kind picker and per-kind controls appear only once
-    /// the background is no longer a stock gradient, keeping the section as
-    /// small as the design's by default.
+    /// Background: the shared preset swatches, with the kind picker and per-kind
+    /// controls once the background is no longer a stock gradient.
     private var backgroundSection: some View {
         InspectorSection(title: Text("Background")) {
-            ChipScroll(topPadding: 2, bottomPadding: 6) {
-                ForEach(GradientPreset.allCases) { preset in
-                    GradientSwatch(
-                        preset: preset, isSelected: selectedGradientPreset == preset, size: 28
-                    ) {
-                        settings.style.background = .gradient(preset)
-                    }
-                }
-                CustomBackgroundSwatch(size: 28) {
-                    settings.style.background = BackgroundKind.solid.makeDefault(
-                        from: settings.style.background, imageStore: .container)
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Background")
-            .accessibilityIdentifier("inspector-background-swatches")
-
-            if selectedGradientPreset == nil {
-                InspectorRow(label: Text("Kind")) {
-                    TokenSegmentedPicker(
-                        options: [
-                            (BackgroundKind.gradient, Text("Gradient")),
-                            (.customGradient, Text("Custom")),
-                            (.solid, Text("Solid")),
-                            (.image, Text("Image")),
-                            (.transparent, Text("Transparent")),
-                        ],
-                        selection: backgroundKindBinding
-                    )
-                    .accessibilityLabel("Kind")
-                    .accessibilityIdentifier("background-kind-picker")
-                }
-                backgroundDetail
-            }
+            BackgroundControls(
+                background: $settings.style.background, layout: .inspector,
+                identifierPrefix: "inspector-")
         }
     }
 
@@ -328,10 +295,10 @@ struct EditorInspectorView: View {
                     .accessibilityIdentifier("ligatures-toggle")
             }
             InspectorRow(label: Text("Font size")) {
-                valueSlider(
-                    "Font size", $settings.style.fontSize, in: SettingsDefaults.fontSizeRange,
-                    step: 1,
-                    identifier: "font-size-slider")
+                ValueSlider(
+                    label: "Font size", value: $settings.style.fontSize,
+                    range: SettingsDefaults.fontSizeRange,
+                    step: 1, identifier: "font-size-slider", width: 92)
             }
         }
     }
@@ -347,40 +314,19 @@ struct EditorInspectorView: View {
             : String(localized: "\(lines.count) lines redacted")
     }
 
-    /// A slider with a trailing numeric readout, so the user can see (and target) the
-    /// current value instead of guessing from the knob position. The value is
-    /// hidden from VoiceOver because the slider already announces it.
-    @ViewBuilder
-    private func valueSlider(
-        _ label: LocalizedStringKey, _ value: Binding<Double>, in range: ClosedRange<Double>,
-        step: Double, identifier: String
-    ) -> some View {
-        HStack(spacing: 8) {
-            Slider(value: value, in: range, step: step)
-                .frame(width: 92)
-                .accessibilityLabel(label)
-                .accessibilityIdentifier(identifier)
-            Text(verbatim: "\(Int(value.wrappedValue.rounded()))")
-                .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
-                .foregroundStyle(VitrineTokens.Text.tertiary)
-                .frame(width: 22, alignment: .trailing)
-                .accessibilityHidden(true)
-        }
-    }
-
     private var canvasSection: some View {
         InspectorSection(title: Text("Canvas")) {
             InspectorRow(label: Text("Padding")) {
-                valueSlider(
-                    "Padding", $settings.style.padding, in: SettingsDefaults.paddingRange, step: 4,
-                    identifier: "padding-slider")
+                ValueSlider(
+                    label: "Padding", value: $settings.style.padding,
+                    range: SettingsDefaults.paddingRange,
+                    step: 4, identifier: "padding-slider", width: 92)
             }
             InspectorRow(label: Text("Corner radius")) {
-                valueSlider(
-                    "Corner radius", $settings.style.cornerRadius,
-                    in: SettingsDefaults.cornerRadiusRange,
-                    step: 2,
-                    identifier: "corner-radius-slider")
+                ValueSlider(
+                    label: "Corner radius", value: $settings.style.cornerRadius,
+                    range: SettingsDefaults.cornerRadiusRange,
+                    step: 2, identifier: "corner-radius-slider", width: 92)
             }
             // The code card's macOS chrome. For a beautified image the Frame section
             // owns the window/browser chrome, so these rows are hidden there.
@@ -413,10 +359,10 @@ struct EditorInspectorView: View {
             }
             if settings.style.showShadow {
                 InspectorRow(label: Text("Shadow depth")) {
-                    valueSlider(
-                        "Shadow depth", $settings.style.shadowRadius,
-                        in: SettingsDefaults.shadowRadiusRange, step: 2,
-                        identifier: "shadow-radius-slider")
+                    ValueSlider(
+                        label: "Shadow depth", value: $settings.style.shadowRadius,
+                        range: SettingsDefaults.shadowRadiusRange,
+                        step: 2, identifier: "shadow-radius-slider", width: 92)
                 }
             }
         }
@@ -521,68 +467,13 @@ struct EditorInspectorView: View {
             ?? "Custom: your own size and style, with no destination preset applied."
     }
 
-    private var selectedGradientPreset: GradientPreset? {
-        if case .gradient(let preset) = settings.style.background { return preset }
-        return nil
-    }
-
-    /// The active background kind; switching seeds a sensible default from the
-    /// current style, mirroring the Settings pane.
-    private var backgroundKindBinding: Binding<BackgroundKind> {
-        Binding(
-            get: { BackgroundKind(settings.style.background) },
-            set: {
-                settings.style.background = $0.makeDefault(
-                    from: settings.style.background, imageStore: .container)
-            }
-        )
-    }
-
-    /// The controls for the active non-preset background kind.
-    @ViewBuilder private var backgroundDetail: some View {
-        switch settings.style.background {
-        case .gradient:
-            EmptyView()
-        case .customGradient(let gradient):
-            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
-                CustomGradientEditor(
-                    gradient: Binding(
-                        get: { gradient },
-                        set: { settings.style.background = .customGradient($0) }))
-            }
-        case .solid(let color):
-            InspectorRow(label: Text("Color")) {
-                ColorPicker(
-                    "Color",
-                    selection: Binding(
-                        get: { color.color },
-                        set: { settings.style.background = .solid(RGBAColor($0)) }),
-                    supportsOpacity: true
-                )
-                .labelsHidden()
-                .accessibilityIdentifier("background-solid-color")
-            }
-        case .image(let image):
-            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
-                ImageBackgroundEditor(
-                    image: Binding(
-                        get: { image }, set: { settings.style.background = .image($0) }),
-                    imageStore: .container)
-            }
-        case .transparent:
-            Text("Exports with a real transparent (alpha) background.")
-                .font(.system(size: VitrineTokens.FontSize.caption))
-                .foregroundStyle(VitrineTokens.Text.tertiary)
-        }
-    }
-
     /// Whether the selected font ships programming ligatures, gating the toggle
     /// so it reads as inert for a font that has none.
     private var fontHasLigatures: Bool {
         CodeFont.hasLigatures(settings.style.fontName)
     }
 
-    private var ligatureHelp: String {
+    private var ligatureHelp: LocalizedStringKey {
         fontHasLigatures
             ? "Render programming ligatures (->, =>, !=) for this font."
             : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."

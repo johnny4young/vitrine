@@ -18,6 +18,8 @@ struct BackgroundControls: View {
     @Binding var background: VitrineDomain.BackgroundStyle
     var layout: Layout = .settings
     var imageStore: BackgroundImageStore = .container
+    /// Keeps each surface's accessibility identifiers distinct (e.g. "social-card-").
+    var identifierPrefix = ""
 
     var body: some View {
         ChipScroll(topPadding: 2, bottomPadding: 6) {
@@ -35,7 +37,7 @@ struct BackgroundControls: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Gradient preset")
-        .accessibilityIdentifier("background-gradient-preset")
+        .accessibilityIdentifier("\(identifierPrefix)background-gradient-preset")
 
         if selectedPreset == nil {
             row(label: Text("Kind"), caption: Text("Gradient preset, solid color, or image")) {
@@ -50,7 +52,7 @@ struct BackgroundControls: View {
                     selection: kindBinding
                 )
                 .accessibilityLabel("Kind")
-                .accessibilityIdentifier("background-kind-picker")
+                .accessibilityIdentifier("\(identifierPrefix)background-kind-picker")
             }
             detail
         }
@@ -77,7 +79,7 @@ struct BackgroundControls: View {
                     supportsOpacity: true
                 )
                 .labelsHidden()
-                .accessibilityIdentifier("background-solid-color")
+                .accessibilityIdentifier("\(identifierPrefix)background-solid-color")
             }
         case .image(let image):
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
