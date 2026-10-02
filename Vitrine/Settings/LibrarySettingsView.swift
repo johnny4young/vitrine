@@ -82,15 +82,15 @@ struct StylePresetsSection: View {
 
             TokenRow(
                 label: Text("Selected preset"),
-                caption: Text("Save the current style, then export or import as JSON")
+                caption: Text("Save the default style, then export or import as JSON")
             ) {
                 HStack(spacing: VitrineTokens.Spacing.xs) {
-                    Button("Save Current Style…") {
+                    Button("Save Default Style…") {
                         saveName = settings.config.theme.displayName
                         showSavePrompt = true
                     }
                     .buttonStyle(.borderedProminent)
-                    .help("Save the current style as a new named preset you can reuse.")
+                    .help("Save the default style as a new named preset you can reuse.")
                     .accessibilityIdentifier("save-style-preset-button")
 
                     Button("Import…") { runImport() }
@@ -102,8 +102,8 @@ struct StylePresetsSection: View {
                     .disabled(store.userPresets.isEmpty)
                     .help(
                         store.userPresets.isEmpty
-                            ? "Save a preset first to export your presets."
-                            : "Export your saved presets to a JSON file."
+                            ? Text("Save a preset first to export your presets.")
+                            : Text("Export your saved presets to a JSON file.")
                     )
                     .accessibilityIdentifier("export-presets-button")
                 }
@@ -184,7 +184,7 @@ struct StylePresetsSection: View {
                 Button("Apply") {
                     if let preset { settings.applyStylePreset(preset, themes: themes) }
                 }
-                .help("Apply this preset's style to the current snapshot.")
+                .help("Make this preset's style the default for new windows and captures.")
                 .disabled(preset == nil)
                 .accessibilityIdentifier("apply-style-preset-button")
                 Button("Duplicate") {
@@ -249,9 +249,9 @@ struct StylePresetsSection: View {
                 importSuccessMessage = String(localized: "Added \(count) presets")
             }
         } catch let error as StylePresetDocument.ImportError {
-            importErrorMessage = error.message
+            importErrorMessage = error.localizedMessage
         } catch {
-            importErrorMessage = "This preset file could not be imported."
+            importErrorMessage = String(localized: "This preset file could not be imported.")
         }
     }
 }
@@ -385,8 +385,8 @@ struct CustomThemesSection: View {
             .disabled(store.customThemes.isEmpty)
             .help(
                 store.customThemes.isEmpty
-                    ? "Create a theme first to export your themes."
-                    : "Export your custom themes to a JSON file."
+                    ? Text("Create a theme first to export your themes.")
+                    : Text("Export your custom themes to a JSON file.")
             )
             .accessibilityIdentifier("export-themes-button")
         }
@@ -402,7 +402,7 @@ struct CustomThemesSection: View {
                 Button("Apply") {
                     if let theme { settings.config.theme = store.theme(withID: theme.id) }
                 }
-                .help("Use this custom theme for the current snapshot.")
+                .help("Make this theme the default for new windows and captures.")
                 .disabled(theme == nil)
                 .accessibilityIdentifier("apply-custom-theme-button")
                 Button("Edit…") {
@@ -463,9 +463,9 @@ struct CustomThemesSection: View {
                 importSuccessMessage = String(localized: "Added \(count) themes")
             }
         } catch let error as CustomThemeDocument.ImportError {
-            importErrorMessage = error.message
+            importErrorMessage = error.localizedMessage
         } catch {
-            importErrorMessage = "This theme file could not be imported."
+            importErrorMessage = String(localized: "This theme file could not be imported.")
         }
     }
 }

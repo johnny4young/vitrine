@@ -81,7 +81,7 @@ struct CustomBackgroundSwatch: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help("Custom — solid color or image")
+        .help("Solid color, custom gradient, or image")
         .accessibilityLabel("Custom background")
     }
 }

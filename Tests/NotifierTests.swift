@@ -98,12 +98,14 @@ struct NotifierFeedbackTests {
         #expect(Notifier.feedback(for: .empty).actions == [.openEditor])
     }
 
-    @Test func urlFeedbackOffersWebSnapshot() {
-        #expect(Notifier.feedback(for: .url("https://example.com")).actions == [.openWebSnapshot])
+    @Test func urlFeedbackOffersNoAction() {
+        // `QuickCapture.perform` opens Web Snapshot itself for a URL.
+        #expect(Notifier.feedback(for: .url("https://example.com")).actions.isEmpty)
     }
 
     @Test func aCaptureThatWasNeitherCopiedNorSavedIsNotASuccess() {
-        let feedback = Notifier.feedback(for: .rendered, copiedToClipboard: false, savedToFile: false)
+        let feedback = Notifier.feedback(
+            for: .rendered, copiedToClipboard: false, savedToFile: false)
         #expect(feedback.category == .info)
         #expect(feedback.message.contains("Settings"))
     }
@@ -125,13 +127,11 @@ struct NotifierFeedbackTests {
 
     @Test func recoveryActionTitlesAreHumanReadable() {
         #expect(!Notifier.RecoveryAction.openEditor.title.isEmpty)
-        #expect(!Notifier.RecoveryAction.openWebSnapshot.title.isEmpty)
     }
 
     @Test func recoveryActionAccessibilityTokensAreStableAndNonLocalized() {
         // Accessibility identifiers must not be localized (UI tests rely on them).
         #expect(Notifier.RecoveryAction.openEditor.accessibilityToken == "open-editor")
-        #expect(Notifier.RecoveryAction.openWebSnapshot.accessibilityToken == "open-web-snapshot")
     }
 }
 

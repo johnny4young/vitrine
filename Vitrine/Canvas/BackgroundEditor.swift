@@ -4,84 +4,118 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-/// The Style-pane editor for the canvas background.
-///
-/// Surfaces every background kind — gradient preset, custom gradient (stops +
-/// angle), solid color, user image (fit/blur/dimming), and transparent — behind
-/// a single kind picker, then shows the controls for the active kind. It edits a
-/// `BackgroundStyle` binding directly, so changes flow straight into the live
-/// `SnapshotConfig` and persist through `AppSettings`.
-struct BackgroundEditor: View {
-    @Binding var background: VitrineDomain.BackgroundStyle
+/// The background control shared by the Settings Style pane and the inspectors: the
+/// gradient preset swatches, a "+" that switches to a custom kind, and, once the
+/// background is no longer a stock preset, the kind picker and per-kind controls.
+struct BackgroundControls: View {
+    enum Layout {
+        /// Settings rows with captions.
+        case settings
+        /// Compact inspector rows.
+        case inspector
+    }
 
-    /// Imports/resolves image backgrounds in the app container. Injectable so the
-    /// editor can be previewed/tested against an isolated store.
+    @Binding var background: VitrineDomain.BackgroundStyle
+    var layout: Layout = .settings
     var imageStore: BackgroundImageStore = .container
 
     var body: some View {
-        Picker("Kind", selection: kindBinding) {
-            ForEach(BackgroundKind.allCases) { kind in
-                Text(kind.displayName).tag(kind)
+        ChipScroll(topPadding: 2, bottomPadding: 6) {
+            ForEach(GradientPreset.allCases) { preset in
+                GradientSwatch(
+                    preset: preset, isSelected: selectedPreset == preset, size: swatchSize
+                ) {
+                    background = .gradient(preset)
+                }
+            }
+            CustomBackgroundSwatch(size: swatchSize) {
+                background = BackgroundKind.solid.makeDefault(
+                    from: background, imageStore: imageStore)
             }
         }
-        .accessibilityIdentifier("background-kind-picker")
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Gradient preset")
+        .accessibilityIdentifier("background-gradient-preset")
 
+        if selectedPreset == nil {
+            row(label: Text("Kind"), caption: Text("Gradient preset, solid color, or image")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (BackgroundKind.gradient, Text("Gradient")),
+                        (.customGradient, Text("Custom")),
+                        (.solid, Text("Solid")),
+                        (.image, Text("Image")),
+                        (.transparent, Text("Transparent")),
+                    ],
+                    selection: kindBinding
+                )
+                .accessibilityLabel("Kind")
+                .accessibilityIdentifier("background-kind-picker")
+            }
+            detail
+        }
+    }
+
+    /// The controls for the active non-preset kind.
+    @ViewBuilder private var detail: some View {
         switch background {
         case .gradient:
-            presetPicker
+            EmptyView()
         case .customGradient(let gradient):
-            CustomGradientEditor(
-                gradient: Binding(
-                    get: { gradient },
-                    set: { background = .customGradient($0) }))
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
+                CustomGradientEditor(
+                    gradient: Binding(
+                        get: { gradient }, set: { background = .customGradient($0) }))
+            }
+            .padding(.vertical, layout == .settings ? 9 : 0)
         case .solid(let color):
-            ColorPicker(
-                "Color",
-                selection: Binding(
-                    get: { color.color }, set: { background = .solid(RGBAColor($0)) }),
-                supportsOpacity: true
-            )
-            .accessibilityIdentifier("background-solid-color")
+            row(label: Text("Color"), caption: nil) {
+                ColorPicker(
+                    "Color",
+                    selection: Binding(
+                        get: { color.color }, set: { background = .solid(RGBAColor($0)) }),
+                    supportsOpacity: true
+                )
+                .labelsHidden()
+                .accessibilityIdentifier("background-solid-color")
+            }
         case .image(let image):
-            ImageBackgroundEditor(
-                image: Binding(
-                    get: { image }, set: { background = .image($0) }),
-                imageStore: imageStore)
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
+                ImageBackgroundEditor(
+                    image: Binding(get: { image }, set: { background = .image($0) }),
+                    imageStore: imageStore)
+            }
+            .padding(.vertical, layout == .settings ? 9 : 0)
         case .transparent:
             Text("Exports with a real transparent (alpha) background.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
         }
     }
 
-    @ViewBuilder private var presetPicker: some View {
-        Picker("Preset", selection: presetBinding) {
-            ForEach(GradientPreset.allCases) { preset in
-                Text(preset.rawValue).tag(preset)
-            }
+    @ViewBuilder
+    private func row<Content: View>(
+        label: Text, caption: Text?, @ViewBuilder content: () -> Content
+    ) -> some View {
+        switch layout {
+        case .settings: TokenRow(label: label, caption: caption, content: content)
+        case .inspector: InspectorRow(label: label, content: content)
         }
-        .accessibilityIdentifier("background-gradient-preset")
     }
 
-    // MARK: - Bindings
+    private var swatchSize: CGFloat { layout == .settings ? 26 : 28 }
 
-    /// The active background kind. Switching kind seeds a sensible default for the
-    /// new kind from whatever is on screen, so the change is never a jarring blank
-    /// state (e.g. switching to Custom Gradient pre-fills from the current preset).
+    private var selectedPreset: GradientPreset? {
+        if case .gradient(let preset) = background { return preset }
+        return nil
+    }
+
+    /// Switching kind seeds a default from the current style, so the change never
+    /// lands on a blank state.
     private var kindBinding: Binding<BackgroundKind> {
         Binding(
             get: { BackgroundKind(background) },
             set: { background = $0.makeDefault(from: background, imageStore: imageStore) }
-        )
-    }
-
-    private var presetBinding: Binding<GradientPreset> {
-        Binding(
-            get: {
-                if case .gradient(let preset) = background { return preset }
-                return .aurora
-            },
-            set: { background = .gradient($0) }
         )
     }
 }
@@ -95,16 +129,6 @@ enum BackgroundKind: String, CaseIterable, Identifiable {
     case gradient, customGradient, solid, image, transparent
 
     var id: String { rawValue }
-
-    var displayName: String {
-        switch self {
-        case .gradient: "Gradient preset"
-        case .customGradient: "Custom gradient"
-        case .solid: "Solid color"
-        case .image: "Image"
-        case .transparent: "Transparent"
-        }
-    }
 
     /// The kind backing an existing style.
     init(_ style: VitrineDomain.BackgroundStyle) {
@@ -358,7 +382,7 @@ struct ImageBackgroundEditor: View {
         panel.allowedContentTypes = [.image]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.message = "Choose an image to use as the background."
+        panel.message = String(localized: "Choose an image to use as the background.")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         imageRequestGeneration += 1
         let generation = imageRequestGeneration

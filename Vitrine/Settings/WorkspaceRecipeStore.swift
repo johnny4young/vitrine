@@ -36,13 +36,17 @@ final class WorkspaceRecipeStore {
         var message: String {
             switch self {
             case .workspaceIsNotFolder:
-                "Choose a folder or repository for this association."
+                String(localized: "Choose a folder or repository for this association.")
             case .recipe(let error):
-                error.message
+                error.localizedMessage
             case .bookmarkCreationFailed:
-                "Vitrine could not retain access to that folder or recipe file."
+                String(
+                    localized: "Vitrine could not retain access to that folder or recipe file.")
             case .associationUnavailable:
-                "The associated folder or recipe is no longer available. Add it again to renew access."
+                String(
+                    localized:
+                        "The associated folder or recipe is no longer available. Add it again to renew access."
+                )
             }
         }
     }

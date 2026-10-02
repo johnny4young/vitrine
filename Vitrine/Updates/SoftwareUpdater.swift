@@ -70,6 +70,16 @@ final class SoftwareUpdater {
         #endif
     }
 
+    /// Whether a user-initiated check can start now (Sparkle refuses one while a check or
+    /// an install is already running).
+    var canCheckForUpdates: Bool {
+        #if VITRINE_DIRECT_DOWNLOAD
+            controller.updater.canCheckForUpdates
+        #else
+            false
+        #endif
+    }
+
     /// Begins a user-initiated update check, showing Sparkle's standard progress and
     /// "you're up to date" / "a new version is available" UI. A no-op on a build that
     /// excludes Sparkle (the App Store build), where the command is not surfaced anyway.

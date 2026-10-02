@@ -459,11 +459,13 @@ struct QuickCaptureFenceTests {
             clipboard: { "https://example.com" },
             urlCaptureEnabled: false)
         #expect(result.outcome != .url("https://example.com"))
-        #expect(QuickCapture.capture(
-            settings: settings,
-            recents: RecentsStore(defaults: quickCaptureDefaults()),
-            clipboard: { "https://example.com" },
-            urlCaptureEnabled: true).outcome == .url("https://example.com"))
+        #expect(
+            QuickCapture.capture(
+                settings: settings,
+                recents: RecentsStore(defaults: quickCaptureDefaults()),
+                clipboard: { "https://example.com" },
+                urlCaptureEnabled: true
+            ).outcome == .url("https://example.com"))
     }
 
     @Test func singleFenceIsStrippedBeforeStoring() {
@@ -561,5 +563,22 @@ struct QuickCaptureRasterPreflightTests {
     func noDestinationsSkipRaster() {
         #expect(
             !QuickCapture.rasterIsRequired(autoCopy: false, savesToFile: false, format: .png))
+    }
+}
+
+extension QuickCapture {
+    /// The outcome-only form the older tests use; production reads the full `Result`.
+    @discardableResult
+    static func run(
+        settings: AppSettings,
+        recents: RecentsStore,
+        destinationPreset: ExportPreset? = nil,
+        clipboard: () -> String? = { nil },
+        urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
+    ) -> Outcome {
+        capture(
+            settings: settings, recents: recents, destinationPreset: destinationPreset,
+            clipboard: clipboard, urlCaptureEnabled: urlCaptureEnabled
+        ).outcome
     }
 }

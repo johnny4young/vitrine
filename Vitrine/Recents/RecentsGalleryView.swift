@@ -152,7 +152,9 @@ struct RecentsGalleryView: View {
             Button("Clear Recents", role: .destructive) { recents.clear() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes every recent capture and its cached preview. This can't be undone.")
+            Text(
+                "This deletes every capture, including pinned captures, and cached previews from Vitrine. It does not erase backups or copies outside the app."
+            )
         }
         .confirmationDialog(
             "Clear Unpinned?",
@@ -313,11 +315,26 @@ struct RecentsGalleryView: View {
     private var filteredCaptures: [Capture] {
         sortOrder.sorted(
             recents.captures.filter {
-                (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery, themes: recents.themeLookup)
+                (!showsPinnedOnly || $0.isPinned)
+                    && $0.matchesSearch(searchQuery, themes: recents.themeLookup)
             })
     }
 
-    private var emptyState: some View {
+    @ViewBuilder private var emptyState: some View {
+        if recents.isEnabled {
+            capturesEmptyState
+        } else {
+            EmptyStateView(
+                title: "History is off",
+                message:
+                    "New captures aren't saved. Turn on Save capture history in Settings ▸ Export to keep them here.",
+                actionTitle: "Open Editor",
+                action: open
+            )
+        }
+    }
+
+    private var capturesEmptyState: some View {
         EmptyStateView(
             title: "No recent captures",
             message:
@@ -376,13 +393,9 @@ struct RecentsGalleryView: View {
         // the PRO Brand Kit watermark is applied at the export seam.
         var config = recents.document(for: capture, over: settings.exportConfig)
         preset.apply(to: &config)
-        let outcome = ExportManager.copyToPasteboardOutcome(
-            config,
-            scale: CGFloat(preset.scale),
-            fixedSize: preset.sizing.fixedSize,
-            profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard,
-            plainText: settings.export.textSidecar, concealed: settings.export.concealClipboard)
+        let outcome = RenderedImageCopy.copy(
+            config, scale: CGFloat(preset.scale), fixedSize: preset.sizing.fixedSize,
+            output: settings, appWide: settings)
         feedback(ExportFeedback.copyOutcome(outcome))
     }
 

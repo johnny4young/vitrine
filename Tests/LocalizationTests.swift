@@ -503,3 +503,29 @@ struct AppLanguageTests {
         #expect(AppLanguage.spanish.displayName == "Español")
     }
 }
+
+/// AppKit panel and window titles take a plain `String`, so a literal there is shown
+/// verbatim in every language.
+@Suite("Unlocalized AppKit copy")
+struct UnlocalizedAppKitCopyTests {
+    @Test func panelsAndWindowTitlesGoThroughTheCatalog() throws {
+        let pattern = try NSRegularExpression(
+            pattern:
+                #"(panel|Panel)\.(title|message|prompt|nameFieldLabel)\s*=\s*"|window\.title\s*=\s*""#
+        )
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Vitrine")
+        let enumerator = try #require(
+            FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+        var offenders: [String] = []
+        for case let url as URL in enumerator where url.pathExtension == "swift" {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            let range = NSRange(text.startIndex..<text.endIndex, in: text)
+            if pattern.firstMatch(in: text, range: range) != nil {
+                offenders.append(url.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty, "Unlocalized panel or window copy in: \(offenders)")
+    }
+}

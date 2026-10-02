@@ -46,7 +46,9 @@ struct OutputSettingsView: View {
                 }
                 // The caption states honestly which output is vector: PDF is the
                 // supported scalable format; PNG is raster.
-                TokenRow(label: Text("Format"), caption: Text(settings.export.format.summary)) {
+                TokenRow(
+                    label: Text("Format"), caption: Text(settings.export.format.localizedSummary)
+                ) {
                     TokenSegmentedPicker(
                         options: ExportFormat.availableCases.map {
                             ($0, Text(verbatim: $0.displayName))
@@ -121,7 +123,7 @@ struct OutputSettingsView: View {
             TokenGroup(title: Text("Advanced")) {
                 TokenRow(
                     label: Text("Color profile"),
-                    caption: Text(settings.export.colorProfile.summary)
+                    caption: Text(settings.export.colorProfile.localizedSummary)
                 ) {
                     TokenSegmentedPicker(
                         options: [

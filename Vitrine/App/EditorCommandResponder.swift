@@ -4,9 +4,9 @@ import VitrineRendering
 
 /// Performs and validates the editor/document commands (Copy / Save / Share
 /// Image) so they exist as real menu commands with keyboard shortcuts, not just
-/// toolbar buttons. These mirror the editor toolbar exactly: both reach
-/// the active editor settings and `ExportManager`, so the menu command and the
-/// toolbar button always produce the same image.
+/// toolbar buttons. Both reach the active editor settings and `ExportManager`, so the
+/// menu command and the toolbar button produce the same image, and Copy Image closes
+/// the editor afterward under the same app-wide preference.
 ///
 /// One instance retained by the main-menu owner is the explicit target of the
 /// editor menu items. Targeting it directly (rather than the responder chain)
@@ -91,15 +91,27 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
 
     @objc func copyRenderedImage(_ sender: Any?) {
         guard canPerform(.copyImage) else { return }
-        let settings = activeSettings
-        // Surface the outcome so a render/encode failure from the menu isn't silent,
-        // mirroring the quick-capture HUD path.
-        let outcome = ExportManager.copyToPasteboardOutcome(
-            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
-            concealed: self.settings.export.concealClipboard)
+        copyImage(from: activeSettings, editorWindow: NSApp.keyWindow ?? NSApp.mainWindow)
+    }
+
+    /// Copies `settings`' image and, when the app-wide "Close the editor after copying"
+    /// preference is on and the copy succeeded, closes `editorWindow` on a later turn.
+    /// Returns the close task, if one was scheduled.
+    @discardableResult
+    func copyImage(
+        from settings: AppSettings, editorWindow: NSWindow?, pasteboard: NSPasteboard = .general
+    ) -> Task<Void, Never>? {
+        let outcome = RenderedImageCopy.copy(
+            settings.exportConfig, output: settings, appWide: self.settings,
+            pasteboard: pasteboard)
         feedback(ExportFeedback.copyOutcome(outcome))
+        guard
+            EditorView.shouldCloseAfterCopy(
+                copied: outcome == .copied,
+                preferenceEnabled: self.settings.export.closeAfterCopy),
+            let editorWindow
+        else { return nil }
+        return Task { editorWindow.close() }
     }
 
     @objc func saveRenderedImage(_ sender: Any?) {

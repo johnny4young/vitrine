@@ -6,8 +6,7 @@ import os
 ///
 /// `Notifier` is the pure *policy* layer: it turns a `QuickCapture.Outcome` into a
 /// `CaptureFeedback` value (a category, a human message, and any inline recovery
-/// actions) and decides how that feedback should be delivered — an in-app HUD for
-/// routine success, with Notification Center reserved as a fallback. The mapping
+/// actions), which the in-app HUD and the menu-bar panel present. The mapping
 /// is deliberately free of side effects so it is unit-testable; the actual
 /// presentation (the HUD window, running a recovery action) is wired up by the
 /// app delegate.
@@ -33,15 +32,12 @@ enum Notifier {
     enum RecoveryAction: Equatable {
         /// Open the editor window so the user can paste or write code themselves.
         case openEditor
-        /// Open the Web Snapshot window with the detected URL prefilled.
-        case openWebSnapshot
 
         /// The button label shown for this action. Localized through the String
         /// Catalog; the `accessibilityToken` below stays non-localized.
         var title: String {
             switch self {
             case .openEditor: String(localized: "Open Editor")
-            case .openWebSnapshot: String(localized: "Open Web Snapshot")
             }
         }
 
@@ -51,7 +47,6 @@ enum Notifier {
         var accessibilityToken: String {
             switch self {
             case .openEditor: "open-editor"
-            case .openWebSnapshot: "open-web-snapshot"
             }
         }
     }
@@ -104,13 +99,12 @@ enum Notifier {
         case .renderFailed(let error):
             return renderFailure(error)
         case .url:
-            // `QuickCapture.perform` opens Web Snapshot directly; another caller that
-            // surfaces the outcome still offers it.
+            // `QuickCapture.perform` opens Web Snapshot itself, so no action is offered.
             return CaptureFeedback(
                 category: .info,
                 message: String(
                     localized: "That looks like a URL — open Web Snapshot to capture it"),
-                actions: [.openWebSnapshot])
+                actions: [])
         case .empty:
             // An empty clipboard is the most common dead end; route the user
             // straight to the editor rather than leaving them stuck.
@@ -151,23 +145,40 @@ enum Notifier {
     /// Actionable, localized feedback shared by quick capture and the explicit
     /// copy/save/share surfaces for every checked render failure category.
     static func renderFailure(_ error: RenderBudgetError) -> CaptureFeedback {
-        let message =
-            switch error {
-            case .tooLarge:
-                String(
-                    localized:
-                        "The image is too large to render safely. Reduce the canvas size or scale.")
-            case .allocationFailed:
-                String(
-                    localized:
-                        "Vitrine couldn't allocate the image buffer. Reduce the canvas size or scale and try again."
-                )
-            case .encodingFailed:
-                String(localized: "Vitrine couldn't encode the selected image format.")
-            case .cancelled:
-                String(localized: "Rendering was cancelled.")
-            }
-        return failure(message)
+        failure(renderFailureMessage(error))
+    }
+
+    /// The render failure categories that have their own message.
+    enum RenderFailureKind: Sendable {
+        case tooLarge, allocationFailed, encodingFailed, cancelled
+    }
+
+    nonisolated static func renderFailureMessage(_ error: RenderBudgetError) -> String {
+        switch error {
+        case .tooLarge: renderFailureMessage(RenderFailureKind.tooLarge)
+        case .allocationFailed: renderFailureMessage(RenderFailureKind.allocationFailed)
+        case .encodingFailed: renderFailureMessage(RenderFailureKind.encodingFailed)
+        case .cancelled: renderFailureMessage(RenderFailureKind.cancelled)
+        }
+    }
+
+    /// The localized sentence for a render failure, shared with the automation errors.
+    nonisolated static func renderFailureMessage(_ kind: RenderFailureKind) -> String {
+        switch kind {
+        case .tooLarge:
+            String(
+                localized:
+                    "The image is too large to render safely. Reduce the canvas size or scale.")
+        case .allocationFailed:
+            String(
+                localized:
+                    "Vitrine couldn't allocate the image buffer. Reduce the canvas size or scale and try again."
+            )
+        case .encodingFailed:
+            String(localized: "Vitrine couldn't encode the selected image format.")
+        case .cancelled:
+            String(localized: "Rendering was cancelled.")
+        }
     }
 
     /// Builds the success message from what actually happened to the image, so the

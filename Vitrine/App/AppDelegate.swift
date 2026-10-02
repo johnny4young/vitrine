@@ -86,16 +86,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // means "do not enforce".
         guard Self.shouldEnforceSingleInstance(ProcessInfo.processInfo.environment) else { return }
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
-        let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-            .filter {
-                $0 != .current
-                    && $0.executableURL?.lastPathComponent
-                        != MenuBarHelperLauncher.executableName
-            }
-        if let existing = others.first {
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        let candidates = running.map {
+            RunningInstance(
+                processID: $0.processIdentifier,
+                isTerminated: $0.isTerminated,
+                isHelper: $0.executableURL?.lastPathComponent
+                    == MenuBarHelperLauncher.executableName)
+        }
+        if let existingID = Self.existingInstance(
+            among: candidates,
+            currentProcessID: ProcessInfo.processInfo.processIdentifier,
+            predecessorProcessID: AppRelauncher.predecessorProcessID(in: CommandLine.arguments)),
+            let existing = running.first(where: { $0.processIdentifier == existingID })
+        {
             existing.activate()
             exit(0)
         }
+    }
+
+    /// The facts the single-instance guard needs about one running copy.
+    struct RunningInstance: Equatable {
+        let processID: pid_t
+        let isTerminated: Bool
+        let isHelper: Bool
+    }
+
+    /// The instance a new launch should defer to. A relaunch ignores the instance it
+    /// replaces, which is still listed until it finishes quitting.
+    static func existingInstance(
+        among candidates: [RunningInstance],
+        currentProcessID: pid_t,
+        predecessorProcessID: pid_t?
+    ) -> pid_t? {
+        candidates.first {
+            $0.processID != currentProcessID
+                && $0.processID != predecessorProcessID
+                && !$0.isTerminated
+                && !$0.isHelper
+        }?.processID
     }
 
     /// Whether to enforce the single-instance guard for a launch with this environment.
@@ -198,7 +227,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func presentEditor(_ config: SnapshotConfig) {
         EditorWindowController.shared.loadIntoPrimary(config)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {

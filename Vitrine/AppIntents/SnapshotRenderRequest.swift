@@ -66,6 +66,10 @@ struct SnapshotRenderRequest: Equatable {
     /// over any preset background. Off by default.
     var transparent: Bool = false
 
+    /// A fixed canvas size used when no preset pins one, so the Services action can
+    /// match the size of the user's selected destination.
+    var fixedSizeOverride: CGSize?
+
     /// The live exported style an automation starts from before applying its overrides.
     /// Defaults to the factory configuration so a request can be built and tested
     /// without any app-wide store.
@@ -122,7 +126,7 @@ struct SnapshotRenderRequest: Equatable {
 
     /// The exact logical canvas size to render, when the active preset pins one
     /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content.
-    var fixedSize: CGSize? { resolvedPreset?.sizing.fixedSize }
+    var fixedSize: CGSize? { resolvedPreset?.sizing.fixedSize ?? fixedSizeOverride }
 
     /// Whether the request carries usable (non-empty) code. An automation that hands
     /// over empty or whitespace-only text has nothing to render and is rejected up

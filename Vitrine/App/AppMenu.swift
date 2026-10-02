@@ -314,14 +314,8 @@ final class AppMenu {
             title: String(localized: "Theme"), action: nil, keyEquivalent: "")
         themeItem.setAccessibilityIdentifier("menu-theme-submenu")
         let themeMenu = NSMenu(title: String(localized: "Theme"))
-        for theme in Theme.builtIns {
-            let item = NSMenuItem(
-                title: theme.displayName,
-                action: #selector(AppCommandResponder.selectTheme(_:)), keyEquivalent: "")
-            item.representedObject = theme.id
-            item.target = appCommands
-            themeMenu.addItem(item)
-        }
+        appCommands.populateThemeMenu(themeMenu)
+        themeMenu.delegate = appCommands
         themeItem.submenu = themeMenu
         menu.addItem(themeItem)
         menu.addItem(.separator())

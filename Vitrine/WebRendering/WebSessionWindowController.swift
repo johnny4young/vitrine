@@ -33,7 +33,7 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
                     localized: "Vitrine could not establish safe web access. Try again later.")
                 alert.alertStyle = .warning
                 // An accessory app would otherwise show the alert behind other apps.
-                NSApp.activate(ignoringOtherApps: true)
+                AppActivation.bringForward()
                 alert.runModal()
             }
         }
@@ -86,7 +86,7 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate {
         webView.load(URLRequest(url: checkedURL))
         // An accessory app gets no activation from the caller's click, and this window
         // exists to be typed into.
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
         window.makeKeyAndOrderFront(nil)
     }
 

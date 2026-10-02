@@ -32,8 +32,7 @@ enum QuickCapture {
 
     /// The full result of a quick capture: the outcome plus what actually happened
     /// to the produced image, so the feedback layer can name the destination
-    /// precisely — copied, saved, both, or neither. `run` returns only the
-    /// `outcome` for its existing callers and tests; `capture` returns this.
+    /// precisely — copied, saved, both, or neither.
     struct Result: Equatable {
         var outcome: Outcome
         var copiedToClipboard: Bool
@@ -56,23 +55,8 @@ enum QuickCapture {
         case renderFailed(RenderBudgetError)
     }
 
-    @discardableResult
-    static func run(
-        settings: AppSettings,
-        recents: RecentsStore,
-        destinationPreset: ExportPreset? = nil,
-        clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) },
-        urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
-    ) -> Outcome {
-        capture(
-            settings: settings, recents: recents, destinationPreset: destinationPreset,
-            clipboard: clipboard, urlCaptureEnabled: urlCaptureEnabled
-        ).outcome
-    }
-
     /// Runs a quick capture and reports the full `Result` (outcome + copied/saved
-    /// state) for precise feedback. `run` is the thin wrapper that keeps
-    /// returning just the outcome.
+    /// state) for precise feedback.
     static func capture(
         settings: AppSettings,
         recents: RecentsStore,
