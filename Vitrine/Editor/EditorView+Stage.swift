@@ -322,17 +322,14 @@ extension EditorView {
                 try Task.checkCancellation()
                 guard settings.style.foregroundImage == reference else { throw CancellationError() }
                 guard
-                    let result = try ImageSecretRedactor.redactSecrets(
+                    let result = try await ImageSecretRedactor.redactedPNG(
                         in: cgImage, recognizedLines: lines)
                 else {
                     return nil
                 }
-                guard let data = ExportManager.pngData(from: result.image) else {
-                    throw ImageSecretRedactor.RedactionError.renderingFailed
-                }
                 try Task.checkCancellation()
                 let newReference = try await store.importImageConcurrently(
-                    data: data, preferredExtension: "png")
+                    data: result.data, preferredExtension: "png")
                 guard await store.preloadImage(for: newReference) != nil else {
                     throw BackgroundImageStore.ImportError.notAnImage
                 }
@@ -433,7 +430,7 @@ extension EditorView {
                     if showsSafeAreaGuides {
                         SafeAreaGuideOverlay(
                             canvasSize: cardSize,
-                            code: previewConfig.code,
+                            code: previewConfig.sidecarText,
                             showsGuideRect: settings.effectiveFixedSize != nil)
                     }
                 }
