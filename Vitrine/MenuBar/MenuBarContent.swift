@@ -526,14 +526,15 @@ private struct RecentCaptureRow: View {
 
     /// Language · relative time · theme — the capture's visible context line.
     private var metadataLine: String {
-        let time = Self.relativeFormatter.localizedString(
-            for: capture.date, relativeTo: Date())
+        let time = capture.relativeDateText(using: Self.relativeFormatter)
         return "\(capture.language.displayName) · \(time) · \(theme.displayName)"
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
+        // Named, so a capture made this second reads "now", not "in 0 s".
+        formatter.dateTimeStyle = .named
         return formatter
     }()
 

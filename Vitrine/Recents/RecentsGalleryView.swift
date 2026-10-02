@@ -525,7 +525,7 @@ private struct RecentsCard: View {
                 .foregroundStyle(Brand.Palette.textSecondary.color)
                 .lineLimit(1)
             Spacer(minLength: Brand.Spacing.xs)
-            Text(Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date()))
+            Text(capture.relativeDateText(using: Self.dateFormatter))
                 .font(.caption)
                 .foregroundStyle(Brand.Palette.textSecondary.color)
                 .lineLimit(1)
@@ -596,7 +596,7 @@ private struct RecentsCard: View {
     /// One concise VoiceOver announcement combining the metadata the card shows
     /// visually, so the card reads usefully without the user inspecting each label.
     private var accessibilityLabel: String {
-        let when = Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date())
+        let when = capture.relativeDateText(using: Self.dateFormatter)
         let details = "\(capture.language.displayName), \(themeName), \(when)"
         if let comparisonIndex {
             return "\(String(localized: "Selected \(comparisonIndex + 1)")), \(details)"
@@ -614,6 +614,8 @@ private struct RecentsCard: View {
     private static let dateFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
+        // Named, so a capture made this second reads "now", not "in 0 s".
+        formatter.dateTimeStyle = .named
         return formatter
     }()
 }

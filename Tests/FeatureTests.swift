@@ -37,6 +37,17 @@ struct SnapshotConfigShadowTests {
 
 @Suite("Capture")
 struct CaptureTests {
+    @Test func aCaptureStampedAfterNowReadsAsJustMade() {
+        let now = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        var capture = Capture(code: "x", languageID: "swift", themeID: "one-dark")
+        capture.date = now.addingTimeInterval(0.4)
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.unitsStyle = .abbreviated
+        formatter.dateTimeStyle = .named
+        #expect(capture.relativeDateText(using: formatter, now: now) == "now")
+    }
+
     @Test func menuTitleIsSingleLineAndTruncated() {
         let long = String(repeating: "x", count: 80)
         let capture = Capture(

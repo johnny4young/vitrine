@@ -136,3 +136,13 @@ enum RecentsSortOrder: String, CaseIterable, Identifiable {
         return newestFirst ? lhs.offset < rhs.offset : lhs.offset > rhs.offset
     }
 }
+
+extension Capture {
+    /// "2 min ago"-style text. A capture stamped a moment after `now` (clock skew, or
+    /// one taken while the list renders) reads as just made, never as a future time.
+    func relativeDateText(
+        using formatter: RelativeDateTimeFormatter, now: Date = Date()
+    ) -> String {
+        formatter.localizedString(for: min(date, now), relativeTo: now)
+    }
+}
