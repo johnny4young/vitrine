@@ -14,6 +14,8 @@ can never drift.
 
 ### Added
 
+- Provide five checked, synthetic local CLI publishing workflows for external agents,
+  with explicit inputs and fail-closed JSON/artifact verification; no client setup or activation.
 - Export one editor document as a PNG documentation package with selected relative-link
   Markdown, static HTML, and safe plain text. Imported images never fabricate source.
 - Add bounded, content-bound alternative text to documentation, shared snapshots, and
