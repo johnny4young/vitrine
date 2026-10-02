@@ -37,13 +37,13 @@ enum DocumentationPackageWriter {
         try Task.checkCancellation()
         let staging = parent.appendingPathComponent(
             ".vitrine-export-\(UUID().uuidString)", isDirectory: true)
-        try manager.createDirectory(
-            at: staging, withIntermediateDirectories: false, attributes: [.posixPermissions: 0o700])
+        // Default attributes honor the umask, so the committed folder matches its siblings.
+        try manager.createDirectory(at: staging, withIntermediateDirectories: false)
         var committed = false
         defer { if !committed { try? manager.removeItem(at: staging) } }
-        for filename in package.files.keys.sorted() {
+        for (filename, data) in package.files.sorted(by: { $0.key < $1.key }) {
             try Task.checkCancellation()
-            try writeFile(package.files[filename]!, staging.appendingPathComponent(filename))
+            try writeFile(data, staging.appendingPathComponent(filename))
         }
         try Task.checkCancellation()
         // RENAME_EXCL makes a commit-time collision fail atomically, including empty directories.

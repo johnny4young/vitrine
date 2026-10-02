@@ -97,7 +97,7 @@ public struct SharedSnapshot: Codable, Equatable {
         metadata =
             (try? container.decode(SnapshotMetadata.self, forKey: .metadata))
             ?? SnapshotMetadata()
-        altText = try SnapshotAltText.normalized(
+        altText = try? SnapshotAltText.normalized(
             container.decodeIfPresent(String.self, forKey: .altText))
         shadowRadius = SettingsDefaults.clampShadowRadius(
             (try? container.decode(Double.self, forKey: .shadowRadius))

@@ -112,6 +112,16 @@ struct DocumentationPackageTests {
             SharedSnapshot.self, from: JSONSerialization.data(withJSONObject: legacy))
         old.apply(to: &reopened)
         #expect(reopened.altText == nil)
+        let restoredCode = reopened.code
+        for invalid: Any in [42, String(repeating: "a", count: 1_025)] {
+            legacy["altText"] = invalid
+            let decoded = try JSONDecoder().decode(
+                SharedSnapshot.self, from: JSONSerialization.data(withJSONObject: legacy))
+            reopened.altText = config.altText
+            decoded.apply(to: &reopened)
+            #expect(reopened.altText == nil)
+            #expect(reopened.code == restoredCode)
+        }
     }
 
     @Test func descriptionNeverBecomesARecipeOrDefaultAndWindowsStayIndependent() throws {

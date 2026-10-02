@@ -54,5 +54,12 @@ struct CLIAlternativeTextTests: CLITestSupport {
             #expect(!text.contains("PRIVATE_REDACTED_SENTINEL"))
             #expect(text.contains("[redacted]"))
         }
+        let sidecar = { (ext: String) in
+            try String(
+                contentsOf: output.deletingPathExtension().appendingPathExtension(ext),
+                encoding: .utf8)
+        }
+        #expect(try sidecar("md").contains(#"![Readable \[description\] \<&\>]"#))
+        #expect(try sidecar("html").contains(#"alt="Readable [description] &lt;&amp;&gt;""#))
     }
 }
