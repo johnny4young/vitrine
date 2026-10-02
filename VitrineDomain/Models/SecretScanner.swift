@@ -37,8 +37,12 @@ public enum SecretScanner {
         ("jwt", #"\beyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b"#),
         ("private-key", #"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY(?: BLOCK)?-----"#),
         ("bearer-token", #"(?i)\bbearer[^\S\r\n]+[A-Za-z0-9._~+/-]{16}[A-Za-z0-9._~+/-]*"#),
-        // The bounded scheme keeps a long dotted or hyphenated line linear.
-        ("url-credentials", #"(?i)\b[a-z][a-z0-9+.-]{0,31}://[^/\s:@]+:[^@\s/]{6}[^@\s/]*@"#),
+        // A scheme starts only after a non-scheme character, so a long dotted or
+        // hyphenated line is not retried at every position.
+        (
+            "url-credentials",
+            #"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]{0,31}://[^/\s:@]+:[^@\s/]{6}[^@\s/]*@"#
+        ),
     ].map { kind, pattern in
         Rule(kind: kind, regex: expression(pattern))
     }
