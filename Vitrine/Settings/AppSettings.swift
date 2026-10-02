@@ -235,9 +235,9 @@ final class AppSettings {
     private typealias Keys = SettingsCodec.Keys
 
     init(
-        defaults: UserDefaults = .standard,
-        brandKit: BrandKitStore = .shared,
-        entitlements: Entitlements = .shared
+        defaults: UserDefaults,
+        brandKit: BrandKitStore,
+        entitlements: Entitlements
     ) {
         self.defaults = defaults
         self.brandKit = brandKit

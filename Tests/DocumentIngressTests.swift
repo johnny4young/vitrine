@@ -116,8 +116,7 @@ struct DocumentIngressTests {
     }
 
     @Test func urlAsTextRecoveryExportsNewTextInsteadOfOldImageOrRedactions() throws {
-        let settings = AppSettings(
-            defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+        let settings = AppSettings(defaults: testDefaults())
         let source = markedDocument()
         settings.config = source
         settings.export.autoCopy = true

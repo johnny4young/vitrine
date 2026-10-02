@@ -198,7 +198,7 @@ struct EditorWindowState: Codable, Equatable {
     /// line-highlight spec. Numeric fields are clamped to their documented ranges so a
     /// corrupt value can never drive the renderer out of bounds, mirroring
     /// `AppSettings.readConfig`.
-    func config(themes: CustomThemeStore = .shared) -> SnapshotConfig {
+    func config(themes: CustomThemeStore) -> SnapshotConfig {
         var config = SnapshotConfig()
         config.code = code
         if let language = Language(rawValue: languageID) { config.language = language }

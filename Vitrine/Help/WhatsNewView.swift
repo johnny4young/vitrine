@@ -187,7 +187,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     /// - Returns: whether the window was presented, which the launch path can use
     ///   to avoid stacking it over another just-opened window.
     @discardableResult
-    func presentIfNewVersion(settings: AppSettings = .shared) -> Bool {
+    func presentIfNewVersion(settings: AppSettings) -> Bool {
         guard let latest = ReleaseNotes.latest else { return false }
 
         if settings.lastSeenWhatsNewVersion == nil {
@@ -209,7 +209,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     /// Shows (creating if needed) and focuses the window for `note`. Public so a
     /// launch hook can force it open for manual and UI testing, independent of the
     /// gate.
-    func show(settings: AppSettings = .shared, note: ReleaseNote? = ReleaseNotes.latest) {
+    func show(settings: AppSettings, note: ReleaseNote? = ReleaseNotes.latest) {
         guard let note else { return }
         presentedSettings = settings
         presentedNote = note
@@ -231,7 +231,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     /// Closes the window without releasing the controller, so a later forced

@@ -158,7 +158,7 @@ struct EntitlementsTests {
                     "VITRINE_USER_DEFAULTS_SUITE": "isolated-activation-failure-test",
                 ]))
             #expect(!entitlements.isPro)
-            #expect(!(await entitlements.activate(licenseKey: "vitrine-ui-test-key")))
+            #expect(!(await entitlements.activate(licenseKey: "vitrine-ui-test-key")).succeeded)
             #expect(entitlements.isPro)
             #expect(entitlements.directLicenseManagementState == .active)
         }
@@ -169,17 +169,17 @@ struct EntitlementsTests {
             var lockedFailure = PaywallActivationState()
             lockedFailure.begin()
             #expect(!lockedFailure.dismissesOnUnlock(isPro: true))
-            lockedFailure.finish(succeeded: false, isPro: false)
+            lockedFailure.finish(.invalidKey, isPro: false)
             #expect(lockedFailure.failed)
             #expect(lockedFailure.dismissesOnUnlock(isPro: true))
 
             var partial = PaywallActivationState()
             partial.begin()
-            partial.finish(succeeded: false, isPro: true)
+            partial.finish(.persistenceFailed, isPro: true)
             #expect(!partial.dismissesOnUnlock(isPro: true))
             partial.begin()
             #expect(!partial.failed)
-            partial.finish(succeeded: true, isPro: true)
+            partial.finish(.activated, isPro: true)
             #expect(partial.dismissesOnUnlock(isPro: true))
         }
 
@@ -189,7 +189,7 @@ struct EntitlementsTests {
                     ManagedLicenseUITestFixture.environmentKey: "activation-success",
                     "VITRINE_USER_DEFAULTS_SUITE": "isolated-activation-invalid-key-test",
                 ]))
-            #expect(!(await entitlements.activate(licenseKey: "not-the-fixture-key")))
+            #expect(await entitlements.activate(licenseKey: "not-the-fixture-key") == .invalidKey)
             #expect(!entitlements.isPro)
         }
 
@@ -400,15 +400,18 @@ struct StoreKitProviderTests {
         #expect(provider.cachedIsPro == isVerified)
     }
 
-    @Test(arguments: [StoreKitClient.PurchaseResult.userCancelled, .pending])
-    func cancellationAndPendingStaySilent(
-        result: StoreKitClient.PurchaseResult
+    @Test(arguments: [
+        (StoreKitClient.PurchaseResult.userCancelled, PurchaseOutcome.cancelled),
+        (.pending, .pending),
+    ])
+    func cancellationAndPendingDoNotUnlock(
+        result: StoreKitClient.PurchaseResult, expected: PurchaseOutcome
     ) async {
         let spy = ClientSpy()
         spy.purchaseResult = result
         let provider = StoreKitProvider(defaults: testDefaults(), client: spy.client)
 
-        #expect(await provider.purchase() == .cancelled)
+        #expect(await provider.purchase() == expected)
         #expect(spy.currentProductIDs.isEmpty)
     }
 
@@ -650,7 +653,7 @@ struct LicenseKeyTests {
                 verifier: LicenseVerifier(publicKey: Curve25519.Signing.PrivateKey().publicKey),
                 cliTokenFile: CLITokenFile(url: cliURL))
             let entitlements = Entitlements(provider: provider)
-            #expect(!(await entitlements.activate(licenseKey: "ANY-KEY")))
+            #expect(await entitlements.activate(licenseKey: "ANY-KEY") == .notConfigured)
             #expect(!entitlements.isPro)
         }
 
@@ -684,9 +687,9 @@ struct LicenseKeyTests {
             // Release the suspended operation before assertions can throw.
             await firstValidator.succeed()
             let firstSucceeded = await first.value
-            #expect(!second)
+            #expect(second == .busy)
             #expect(await secondValidator.callCount == 0)
-            #expect(firstSucceeded)
+            #expect(firstSucceeded == .activated)
             #expect(recordStore.record?.licenseID == "FIRST")
             #expect(provider.cachedIsPro)
             let mirrored = try String(contentsOf: cliURL, encoding: .utf8)
@@ -749,7 +752,7 @@ struct LicenseKeyTests {
                         licenseID: "LOCAL", instanceID: "local-instance", status: "active")))
             let service = LicenseActivationService(validator: validator, signingKey: key)
             let completed = await entitlements.activate(licenseKey: "LOCAL-KEY", using: service)
-            #expect(!completed)
+            #expect(completed == .persistenceFailed)
             #expect(!FileManager.default.fileExists(atPath: cliURL.path))
             #expect((recordStore.record != nil) == (failure != "record"))
             #expect((tokenStore.token != nil) == (failure == "mirror-and-rollback"))
@@ -772,10 +775,10 @@ struct LicenseKeyTests {
             let entitlements = Entitlements(provider: provider)
             let failed = RecordingValidator(result: .failure(.network("simulated offline")))
             #expect(
-                !(await entitlements.activate(
+                await entitlements.activate(
                     licenseKey: "LOCAL-KEY",
                     using:
-                        LicenseActivationService(validator: failed, signingKey: key))))
+                        LicenseActivationService(validator: failed, signingKey: key)) == .network)
             let retry = RecordingValidator(
                 result: .success(
                     LicenseActivation(
@@ -784,7 +787,7 @@ struct LicenseKeyTests {
                 await entitlements.activate(
                     licenseKey: "LOCAL-KEY",
                     using:
-                        LicenseActivationService(validator: retry, signingKey: key)))
+                        LicenseActivationService(validator: retry, signingKey: key)) == .activated)
             #expect(await failed.callCount == 1)
             #expect(await retry.callCount == 1)
         }
@@ -858,7 +861,7 @@ struct LicenseKeyTests {
             #expect(entitlements.directLicenseManagementState == .cleanupNeeded)
             let activationSucceeded = await entitlements.activate(
                 licenseKey: "NEW-KEY", using: service)
-            #expect(!activationSucceeded)
+            #expect(activationSucceeded == .recordedSeatNeedsRelease)
             #expect(await validator.callCount == 0)
             #expect(provider.activationRecordForDeactivation == oldRecord)
 
@@ -980,7 +983,7 @@ struct LicenseKeyTests {
             #expect(fixture.provider.activationRecordForDeactivation == newRecord)
         }
 
-        @Test func aboutPaneUsesAConfirmingCancellableLicenseJourney() throws {
+        @Test func aboutPaneUsesAConfirmingLicenseJourneyThatOutlivesThePane() throws {
             let root = try String(
                 contentsOf: Self.repoFile("Vitrine", "Settings", "SettingsRootView.swift"),
                 encoding: .utf8)
@@ -989,9 +992,56 @@ struct LicenseKeyTests {
                 encoding: .utf8)
             #expect(root.contains("entitlements: environment.entitlements"))
             #expect(about.contains(".confirmationDialog("))
-            #expect(about.contains(".task(id: deactivationRequestID)"))
+            #expect(about.contains("entitlements.startLicenseDeactivation()"))
+            #expect(about.contains("unacknowledgedDeactivationOutcome"))
             #expect(about.contains("deactivate-license-button"))
             #expect(about.contains("SecureField") == false)
+        }
+
+        @Test func startedDeactivationKeepsItsOutcomeUntilAcknowledged() async throws {
+            let fixture = try activeFixture(licenseID: "PANE")
+            let entitlements = Entitlements(provider: fixture.provider)
+            let service = LicenseDeactivationService(
+                deactivator: StubDeactivator(
+                    result: .success(LicenseDeactivation(licenseID: "PANE"))))
+
+            let task = try #require(entitlements.startLicenseDeactivation(using: service))
+            #expect(entitlements.isDeactivatingLicense)
+            #expect(entitlements.startLicenseDeactivation(using: service) == nil)
+            await task.value
+
+            #expect(!entitlements.isDeactivatingLicense)
+            #expect(entitlements.unacknowledgedDeactivationOutcome == .deactivated)
+            entitlements.acknowledgeDeactivationOutcome()
+            #expect(entitlements.unacknowledgedDeactivationOutcome == nil)
+        }
+
+        @Test func activationReportsWhyItDidNotUnlock() async throws {
+            let key = Curve25519.Signing.PrivateKey()
+            let provider = LicenseKeyProvider(
+                store: InMemoryTokenStore(), activationRecordStore: InMemoryActivationRecordStore(),
+                verifier: LicenseVerifier(publicKey: key.publicKey),
+                cliTokenFile: CLITokenFile(url: tempTokenURL()))
+            let entitlements = Entitlements(provider: provider)
+            let limited = RecordingValidator(result: .failure(.activationLimitReached))
+            #expect(
+                await entitlements.activate(
+                    licenseKey: "KEY",
+                    using: LicenseActivationService(validator: limited, signingKey: key))
+                    == .limitReached)
+            #expect(LicenseActivationResult.limitReached.message != nil)
+            #expect(LicenseActivationResult.activated.message == nil)
+
+            let recorded = try activeFixture(licenseID: "SEAT")
+            let unrelated = RecordingValidator(result: .failure(.invalidKey))
+            let withSeat = Entitlements(provider: recorded.provider)
+            // An active seat is recorded, so activation stops before the provider.
+            #expect(
+                await withSeat.activate(
+                    licenseKey: "OTHER",
+                    using: LicenseActivationService(validator: unrelated, signingKey: key))
+                    == .recordedSeatNeedsRelease)
+            #expect(await unrelated.callCount == 0)
         }
 
         private struct ActiveFixture {

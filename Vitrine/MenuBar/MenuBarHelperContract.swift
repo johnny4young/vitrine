@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 /// Process-bound configuration accepted by the paint-only menu-bar helper.
@@ -55,6 +56,15 @@ enum MenuBarHelperContract {
     /// Losing either the painted status item or its exact owner ends the helper.
     static func shouldRemainRunning(statusItemVisible: Bool, ownerExists: Bool) -> Bool {
         statusItemVisible && ownerExists
+    }
+
+    /// The panel anchor: the center of the icon's window, or the pointer when the
+    /// button has no window frame yet.
+    static func anchorLocation(buttonWindowFrame: CGRect?, mouseLocation: CGPoint) -> CGPoint {
+        guard let frame = buttonWindowFrame, !frame.isEmpty, !frame.isNull else {
+            return mouseLocation
+        }
+        return CGPoint(x: frame.midX, y: frame.midY)
     }
 }
 

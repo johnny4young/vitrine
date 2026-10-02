@@ -1,11 +1,852 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Export Here" : {
+    "panel.prompt.export" : {
+      "comment" : "Save and folder panel button that exports (a verb, unlike the Export pane title).",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export Here" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exportar aquí" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exportar" } }
+      }
+    },
+    "Editor hotkey" : {
+      "comment" : "VoiceOver label for the menu-bar hotkey chip when the hotkey opens the editor.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Editor hotkey" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Atajo del editor" } }
+      }
+    },
+    "History is off" : {
+      "comment" : "Menu-bar Recents empty state when capture history is turned off.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "History is off" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El historial está desactivado" } }
+      }
+    },
+    "Turn on Save capture history in Settings ▸ Export." : {
+      "comment" : "Menu-bar link to the Export pane when capture history is off.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Turn on Save capture history in Settings ▸ Export." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Activa Guardar historial de capturas en Ajustes ▸ Exportación." } }
+      }
+    },
+    "View All →" : {
+      "comment" : "Menu-bar link that opens the Recents window.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "View All →" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ver todo →" } }
+      }
+    },
+    "New captures aren't saved. Turn on Save capture history in Settings ▸ Export to keep them here." : {
+      "comment" : "Recents window empty state when capture history is turned off.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "New captures aren't saved. Turn on Save capture history in Settings ▸ Export to keep them here." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Las capturas nuevas no se guardan. Activa Guardar historial de capturas en Ajustes ▸ Exportación para conservarlas aquí." } }
+      }
+    },
+    "There is no code to render. Provide some text first." : {
+      "comment" : "Automation error when the request has no code.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "There is no code to render. Provide some text first." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No hay código para renderizar. Proporciona algo de texto primero." } }
+      }
+    },
+    "Select some code first, then run the service." : {
+      "comment" : "Services menu error when no text is selected.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Select some code first, then run the service." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Selecciona algo de código primero y luego ejecuta el servicio." } }
+      }
+    },
+    "Vitrine could not render an image from that code." : {
+      "comment" : "Services menu error for an unexpected render failure.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine could not render an image from that code." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine no pudo renderizar una imagen con ese código." } }
+      }
+    },
+    "Vitrine rendered the image but could not return it." : {
+      "comment" : "Services menu error when the image could not be written back.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine rendered the image but could not return it." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine renderizó la imagen, pero no pudo devolverla." } }
+      }
+    },
+    "Raster image at the chosen resolution. Best for posting and chat." : {
+      "comment" : "Export pane caption for the PNG format.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Raster image at the chosen resolution. Best for posting and chat." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Imagen rasterizada a la resolución elegida. Ideal para publicar y para el chat." } }
+      }
+    },
+    "Scalable vector document. Best for docs, slides, and print." : {
+      "comment" : "Export pane caption for the PDF format.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Scalable vector document. Best for docs, slides, and print." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Documento vectorial escalable. Ideal para documentos, presentaciones e impresión." } }
+      }
+    },
+    "Compressed raster image, much smaller than PNG. Best for docs sites." : {
+      "comment" : "Export pane caption for the HEIC format.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Compressed raster image, much smaller than PNG. Best for docs sites." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Imagen rasterizada comprimida, mucho más liviana que PNG. Ideal para sitios de documentación." } }
+      }
+    },
+    "Modern compressed raster image with alpha. Best for web publishing." : {
+      "comment" : "Export pane caption for the AVIF format.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Modern compressed raster image with alpha. Best for web publishing." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Imagen rasterizada comprimida moderna con transparencia. Ideal para publicar en la web." } }
+      }
+    },
+    "Best for the web, Slack, X, and slides. Looks the same everywhere." : {
+      "comment" : "Export pane caption for the sRGB color profile.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Best for the web, Slack, X, and slides. Looks the same everywhere." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ideal para la web, Slack, X y presentaciones. Se ve igual en todas partes." } }
+      }
+    },
+    "Wider gamut for P3 displays. Can oversaturate in apps that ignore the profile." : {
+      "comment" : "Export pane caption for the Display P3 color profile.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wider gamut for P3 displays. Can oversaturate in apps that ignore the profile." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gama más amplia para pantallas P3. Puede verse sobresaturada en apps que ignoran el perfil." } }
+      }
+    },
+    "1600×900 (16:9) in-stream card." : {
+      "comment" : "Destination preset summary: X / Twitter.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1600×900 (16:9) in-stream card." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tarjeta de 1600×900 (16:9) para el feed." } }
+      }
+    },
+    "1200×628 (1.91:1) feed image." : {
+      "comment" : "Destination preset summary: LinkedIn.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1200×628 (1.91:1) feed image." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Imagen de 1200×628 (1.91:1) para el feed." } }
+      }
+    },
+    "1920×1080 (16:9) slide with generous padding." : {
+      "comment" : "Destination preset summary: Keynote.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1920×1080 (16:9) slide with generous padding." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Diapositiva de 1920×1080 (16:9) con margen amplio." } }
+      }
+    },
+    "1200×800 (3:2) image for inline docs and blog posts." : {
+      "comment" : "Destination preset summary: Docs / Blog.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1200×800 (3:2) image for inline docs and blog posts." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Imagen de 1200×800 (3:2) para documentación y artículos de blog." } }
+      }
+    },
+    "1920×1080 (16:9) transparent layer for any slide." : {
+      "comment" : "Destination preset summary: Transparent Slide.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1920×1080 (16:9) transparent layer for any slide." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Capa transparente de 1920×1080 (16:9) para cualquier diapositiva." } }
+      }
+    },
+    "Exact 1200×630 link-preview card at 1×." : {
+      "comment" : "Destination preset summary: OpenGraph.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Exact 1200×630 link-preview card at 1×." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Tarjeta de vista previa de enlace de exactamente 1200×630 a 1×." } }
+      }
+    },
+    "1080×1920 (9:16) vertical story." : {
+      "comment" : "Destination preset summary: Instagram Story.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1080×1920 (9:16) vertical story." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Historia vertical de 1080×1920 (9:16)." } }
+      }
+    },
+    "1280×640 (2:1) README header image." : {
+      "comment" : "Destination preset summary: GitHub Banner.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "1280×640 (2:1) README header image." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Imagen de encabezado de 1280×640 (2:1) para un README." } }
+      }
+    },
+    "This file is not a Vitrine preset file." : {
+      "comment" : "Preset import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This file is not a Vitrine preset file." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo no es un archivo de ajustes preestablecidos de Vitrine." } }
+      }
+    },
+    "This preset file uses a newer format (version %lld) this app can't read." : {
+      "comment" : "Preset import error with the file's schema version.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This preset file uses a newer format (version %lld) this app can't read." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo de ajustes preestablecidos usa un formato más reciente (versión %lld) que esta app no puede leer." } }
+      }
+    },
+    "This preset file does not contain any presets." : {
+      "comment" : "Preset import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This preset file does not contain any presets." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo no contiene ningún ajuste preestablecido." } }
+      }
+    },
+    "This preset file is larger than 1 MB and was not read." : {
+      "comment" : "Preset import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This preset file is larger than 1 MB and was not read." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo de ajustes preestablecidos pesa más de 1 MB y no se leyó." } }
+      }
+    },
+    "This preset file contains more than 1,000 presets." : {
+      "comment" : "Preset import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This preset file contains more than 1,000 presets." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo contiene más de 1000 ajustes preestablecidos." } }
+      }
+    },
+    "This file is not a Vitrine theme file." : {
+      "comment" : "Theme import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This file is not a Vitrine theme file." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo no es un archivo de temas de Vitrine." } }
+      }
+    },
+    "This theme file uses a newer format (version %lld) this app can't read." : {
+      "comment" : "Theme import error with the file's schema version.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This theme file uses a newer format (version %lld) this app can't read." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo de temas usa un formato más reciente (versión %lld) que esta app no puede leer." } }
+      }
+    },
+    "This theme file does not contain any themes." : {
+      "comment" : "Theme import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This theme file does not contain any themes." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo de temas no contiene ningún tema." } }
+      }
+    },
+    "This theme file is larger than 1 MB and was not read." : {
+      "comment" : "Theme import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This theme file is larger than 1 MB and was not read." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo de temas pesa más de 1 MB y no se leyó." } }
+      }
+    },
+    "This theme file contains more than 1,000 themes." : {
+      "comment" : "Theme import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This theme file contains more than 1,000 themes." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo de temas contiene más de 1000 temas." } }
+      }
+    },
+    "The theme is missing the required \"%@\" color." : {
+      "comment" : "Theme validation error with the missing color key.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The theme is missing the required \"%@\" color." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Al tema le falta el color obligatorio «%@»." } }
+      }
+    },
+    "The \"%@\" color \"%@\" is not a valid hex color (e.g. \"#1E1E1E\")." : {
+      "comment" : "Theme validation error with the color key and its invalid value.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The \"%@\" color \"%@\" is not a valid hex color (e.g. \"#1E1E1E\")." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El color «%1$@» con valor «%2$@» no es un color hexadecimal válido (por ejemplo, «#1E1E1E»)." } }
+      }
+    },
+    "The recipe name cannot be empty." : {
+      "comment" : "Workspace recipe validation error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recipe name cannot be empty." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El nombre de la receta no puede estar vacío." } }
+      }
+    },
+    "The recipe uses an unknown destination preset \"%@\"." : {
+      "comment" : "Workspace recipe validation error with the preset id.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recipe uses an unknown destination preset \"%@\"." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La receta usa un destino desconocido: «%@»." } }
+      }
+    },
+    "The recipe uses an unknown theme \"%@\" without embedding its palette." : {
+      "comment" : "Workspace recipe validation error with the theme id.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recipe uses an unknown theme \"%@\" without embedding its palette." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La receta usa un tema desconocido, «%@», sin incluir su paleta." } }
+      }
+    },
+    "The recipe embeds custom theme \"%@\" but does not use it." : {
+      "comment" : "Workspace recipe validation error with the theme id.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recipe embeds custom theme \"%@\" but does not use it." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La receta incluye el tema personalizado «%@», pero no lo usa." } }
+      }
+    },
+    "The recipe theme id \"%@\" does not match embedded theme \"%@\"." : {
+      "comment" : "Workspace recipe validation error with both theme ids.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recipe theme id \"%@\" does not match embedded theme \"%@\"." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El identificador de tema «%1$@» de la receta no coincide con el tema incluido «%2$@»." } }
+      }
+    },
+    "The recipe export scale %lld must be between 1 and 3." : {
+      "comment" : "Workspace recipe validation error with the scale.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recipe export scale %lld must be between 1 and 3." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La escala de exportación %lld de la receta debe estar entre 1 y 3." } }
+      }
+    },
+    "The recipe canvas %lldx%lld must use dimensions between 64 and 2048." : {
+      "comment" : "Workspace recipe validation error with the canvas size.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The recipe canvas %lldx%lld must use dimensions between 64 and 2048." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El lienzo de %1$lldx%2$lld de la receta debe tener dimensiones entre 64 y 2048." } }
+      }
+    },
+    "This file is not a Vitrine workspace recipe." : {
+      "comment" : "Workspace recipe import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This file is not a Vitrine workspace recipe." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Este archivo no es una receta de espacio de trabajo de Vitrine." } }
+      }
+    },
+    "This workspace recipe uses unsupported schema version %lld." : {
+      "comment" : "Workspace recipe import error with the schema version.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This workspace recipe uses unsupported schema version %lld." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esta receta de espacio de trabajo usa la versión de esquema %lld, que no es compatible." } }
+      }
+    },
+    "The workspace recipe contains unknown field \"%@\"." : {
+      "comment" : "Workspace recipe import error with the field path.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The workspace recipe contains unknown field \"%@\"." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La receta de espacio de trabajo contiene un campo desconocido: «%@»." } }
+      }
+    },
+    "The workspace recipe is invalid: %@" : {
+      "comment" : "Workspace recipe import error with the decoder detail.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The workspace recipe is invalid: %@" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La receta de espacio de trabajo no es válida: %@" } }
+      }
+    },
+    "The workspace recipe could not be read." : {
+      "comment" : "Workspace recipe read error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The workspace recipe could not be read." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo leer la receta de espacio de trabajo." } }
+      }
+    },
+    "The workspace recipe is larger than 1 MB and was not read." : {
+      "comment" : "Workspace recipe read error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The workspace recipe is larger than 1 MB and was not read." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La receta de espacio de trabajo pesa más de 1 MB y no se leyó." } }
+      }
+    },
+    "Choose a folder or repository for this association." : {
+      "comment" : "Workspace recipe association error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a folder or repository for this association." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige una carpeta o un repositorio para esta asociación." } }
+      }
+    },
+    "Vitrine could not retain access to that folder or recipe file." : {
+      "comment" : "Workspace recipe association error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine could not retain access to that folder or recipe file." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine no pudo conservar el acceso a esa carpeta o archivo de receta." } }
+      }
+    },
+    "The associated folder or recipe is no longer available. Add it again to renew access." : {
+      "comment" : "Workspace recipe association error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The associated folder or recipe is no longer available. Add it again to renew access." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La carpeta o receta asociada ya no está disponible. Agrégala de nuevo para renovar el acceso." } }
+      }
+    },
+    "The workspace recipe could not be encoded." : {
+      "comment" : "Workspace recipe export error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The workspace recipe could not be encoded." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo codificar la receta de espacio de trabajo." } }
+      }
+    },
+    "The workspace recipe could not be written to the selected file." : {
+      "comment" : "Workspace recipe export error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The workspace recipe could not be written to the selected file." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo escribir la receta de espacio de trabajo en el archivo elegido." } }
+      }
+    },
+    "Export Presets" : {
+      "comment" : "Save panel title for exporting style presets.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export Presets" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exportar ajustes preestablecidos" } }
+      }
+    },
+    "Export your saved presets to a JSON file. Presets are saved only to the file you choose — nothing is sent anywhere." : {
+      "comment" : "Save panel message for exporting style presets.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export your saved presets to a JSON file. Presets are saved only to the file you choose — nothing is sent anywhere." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exporta tus ajustes preestablecidos guardados a un archivo JSON. Solo se guardan en el archivo que elijas; no se envía nada a ninguna parte." } }
+      }
+    },
+    "Import" : {
+      "comment" : "Open panel prompt for importing a file.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Importar" } }
+      }
+    },
+    "Choose a Vitrine preset file (.json) to add its presets." : {
+      "comment" : "Open panel message for importing style presets.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a Vitrine preset file (.json) to add its presets." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige un archivo de ajustes preestablecidos de Vitrine (.json) para agregar sus ajustes." } }
+      }
+    },
+    "Export Themes" : {
+      "comment" : "Save panel title for exporting custom themes.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export Themes" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exportar temas" } }
+      }
+    },
+    "Export your custom themes to a JSON file. Themes are saved only to the file you choose — nothing is sent anywhere." : {
+      "comment" : "Save panel message for exporting custom themes.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export your custom themes to a JSON file. Themes are saved only to the file you choose — nothing is sent anywhere." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exporta tus temas personalizados a un archivo JSON. Solo se guardan en el archivo que elijas; no se envía nada a ninguna parte." } }
+      }
+    },
+    "Choose a Vitrine theme file (.json) to add its themes." : {
+      "comment" : "Open panel message for importing custom themes.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a Vitrine theme file (.json) to add its themes." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige un archivo de temas de Vitrine (.json) para agregar sus temas." } }
+      }
+    },
+    "Export Diagnostics" : {
+      "comment" : "Save panel title for the diagnostics export.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export Diagnostics" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exportar diagnóstico" } }
+      }
+    },
+    "Diagnostics are saved only to the file you choose. Nothing is sent anywhere." : {
+      "comment" : "Save panel message for the diagnostics export.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Diagnostics are saved only to the file you choose. Nothing is sent anywhere." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "El diagnóstico se guarda solo en el archivo que elijas. No se envía nada a ninguna parte." } }
+      }
+    },
+    "Choose an image to use as the background." : {
+      "comment" : "Open panel message for choosing a background image.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose an image to use as the background." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige una imagen para usarla como fondo." } }
+      }
+    },
+    "Solid color, custom gradient, or image" : {
+      "comment" : "Tooltip for the swatch that switches to a custom background kind.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Solid color, custom gradient, or image" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Color sólido, gradiente personalizado o imagen" } }
+      }
+    },
+    "Style section" : {
+      "comment" : "Accessibility label for the Style pane's sub-tab picker.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Style section" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Sección de estilo" } }
+      }
+    },
+    "Shown in the window chrome of new captures. Leave empty for none." : {
+      "comment" : "Settings Style pane caption for the default window title.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Shown in the window chrome of new captures. Leave empty for none." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Se muestra en la barra de ventana de las capturas nuevas. Déjalo vacío para no mostrar ninguno." } }
+      }
+    },
+    "Render programming ligatures (->, =>, !=) for this font." : {
+      "comment" : "Tooltip for the ligatures switch when the font has ligatures.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Render programming ligatures (->, =>, !=) for this font." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Dibuja ligaduras de programación (->, =>, !=) con esta fuente." } }
+      }
+    },
+    "The selected font has no ligatures; choose Fira Code or JetBrains Mono." : {
+      "comment" : "Tooltip for the ligatures switch when the font has none.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The selected font has no ligatures; choose Fira Code or JetBrains Mono." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La fuente elegida no tiene ligaduras; elige Fira Code o JetBrains Mono." } }
+      }
+    },
+    "Save the default style, then export or import as JSON" : {
+      "comment" : "Library pane caption for the style preset actions.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save the default style, then export or import as JSON" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guarda el estilo predeterminado y luego expórtalo o impórtalo como JSON" } }
+      }
+    },
+    "Save Default Style…" : {
+      "comment" : "Library pane button that saves the default style as a preset.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save Default Style…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guardar estilo predeterminado…" } }
+      }
+    },
+    "Save the default style as a new named preset you can reuse." : {
+      "comment" : "Tooltip for Save Default Style.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save the default style as a new named preset you can reuse." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guarda el estilo predeterminado como un nuevo ajuste preestablecido con nombre para reutilizarlo." } }
+      }
+    },
+    "Save a preset first to export your presets." : {
+      "comment" : "Tooltip for the disabled preset Export button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save a preset first to export your presets." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guarda primero un ajuste preestablecido para exportar tus ajustes." } }
+      }
+    },
+    "Export your saved presets to a JSON file." : {
+      "comment" : "Tooltip for the preset Export button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export your saved presets to a JSON file." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exporta tus ajustes preestablecidos guardados a un archivo JSON." } }
+      }
+    },
+    "Make this preset's style the default for new windows and captures." : {
+      "comment" : "Tooltip for the style preset Apply button in Settings.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Make this preset's style the default for new windows and captures." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Usa el estilo de este ajuste preestablecido como predeterminado para ventanas y capturas nuevas." } }
+      }
+    },
+    "This preset file could not be imported." : {
+      "comment" : "Generic preset import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This preset file could not be imported." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo importar este archivo de ajustes preestablecidos." } }
+      }
+    },
+    "Create a theme first to export your themes." : {
+      "comment" : "Tooltip for the disabled theme Export button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Create a theme first to export your themes." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Crea primero un tema para exportar tus temas." } }
+      }
+    },
+    "Export your custom themes to a JSON file." : {
+      "comment" : "Tooltip for the theme Export button.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export your custom themes to a JSON file." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exporta tus temas personalizados a un archivo JSON." } }
+      }
+    },
+    "Make this theme the default for new windows and captures." : {
+      "comment" : "Tooltip for the custom theme Apply button in Settings.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Make this theme the default for new windows and captures." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Usa este tema como predeterminado para ventanas y capturas nuevas." } }
+      }
+    },
+    "This theme file could not be imported." : {
+      "comment" : "Generic theme import error.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This theme file could not be imported." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo importar este archivo de temas." } }
+      }
+    },
+    "Custom: your own size and style, with no destination preset applied." : {
+      "comment" : "Tooltip for the Custom destination.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom: your own size and style, with no destination preset applied." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Personalizado: tu propio tamaño y estilo, sin un destino aplicado." } }
+      }
+    },
+    "Drag the mark in the Style pane preview, or in an editor, to place it anywhere." : {
+      "comment" : "Brand Kit caption for free placement; the drag handle lives in the Style pane preview and the editor.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Drag the mark in the Style pane preview, or in an editor, to place it anywhere." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Arrastra la marca en la vista previa del panel Estilo, o en un editor, para ubicarla donde quieras." } }
+      }
+    },
+    "Approve in Login Items…" : {
+      "comment" : "Link shown when System Settings blocks Vitrine's login item.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Approve in Login Items…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aprobar en Ítems de inicio…" } }
+      }
+    },
+    "Vitrine is turned off in System Settings ▸ General ▸ Login Items." : {
+      "comment" : "Tooltip for the login-item approval link.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine is turned off in System Settings ▸ General ▸ Login Items." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine está desactivado en Configuración del Sistema ▸ General ▸ Ítems de inicio." } }
+      }
+    },
+    "Restores Vitrine's style, export, and input preferences" : {
+      "comment" : "Caption for Reset All Settings in Settings ▸ General.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Restores Vitrine's style, export, and input preferences" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Restablece las preferencias de estilo, exportación y entrada de Vitrine" } }
+      }
+    },
+    "This cannot be undone. Your recent languages, saved presets, custom themes, workspace recipe associations, Brand Kit, and working social card are also cleared." : {
+      "comment" : "Reset All Settings confirmation message.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This cannot be undone. Your recent languages, saved presets, custom themes, workspace recipe associations, Brand Kit, and working social card are also cleared." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esta acción no se puede deshacer. También se borran tus lenguajes recientes, ajustes preestablecidos guardados, temas personalizados, asociaciones de recetas de espacio de trabajo, el Brand Kit y la tarjeta social en curso." } }
+      }
+    },
+    "Couldn't safely update the command link in the selected folder. System folders need an administrator: run the copied command in Terminal instead." : {
+      "comment" : "CLI install failure when the folder refuses the write.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Couldn't safely update the command link in the selected folder. System folders need an administrator: run the copied command in Terminal instead." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo actualizar de forma segura el enlace del comando en la carpeta elegida. Las carpetas del sistema requieren un administrador: ejecuta el comando copiado en Terminal." } }
+      }
+    },
+    "This license is already active on its maximum number of Macs. Deactivate it on another Mac, then try again." : {
+      "comment" : "Paywall error when the license seat limit is reached.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This license is already active on its maximum number of Macs. Deactivate it on another Mac, then try again." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esta licencia ya está activa en el número máximo de Macs. Desactívala en otra Mac y vuelve a intentarlo." } }
+      }
+    },
+    "The license service couldn't be reached. Check your internet connection and try again." : {
+      "comment" : "Paywall error when activation cannot reach the license service.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The license service couldn't be reached. Check your internet connection and try again." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se pudo contactar el servicio de licencias. Revisa tu conexión a internet y vuelve a intentarlo." } }
+      }
+    },
+    "This build of Vitrine can't activate licenses." : {
+      "comment" : "Paywall error on a build without license activation.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This build of Vitrine can't activate licenses." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esta compilación de Vitrine no puede activar licencias." } }
+      }
+    },
+    "This Mac still has a recorded license seat. Release it in Settings ▸ About, then try again." : {
+      "comment" : "Paywall error when a recorded seat must be released first.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This Mac still has a recorded license seat. Release it in Settings ▸ About, then try again." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esta Mac todavía tiene un cupo de licencia registrado. Libéralo en Ajustes ▸ Acerca de y vuelve a intentarlo." } }
+      }
+    },
+    "An activation is already in progress." : {
+      "comment" : "Paywall error when another activation is running.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "An activation is already in progress." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ya hay una activación en curso." } }
+      }
+    },
+    "The license was accepted, but Vitrine couldn't store it on this Mac. Try again." : {
+      "comment" : "Paywall error when the license could not be stored.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "The license was accepted, but Vitrine couldn't store it on this Mac. Try again." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "La licencia fue aceptada, pero Vitrine no pudo guardarla en esta Mac. Vuelve a intentarlo." } }
+      }
+    },
+    "Purchase pending approval. PRO unlocks as soon as it's approved." : {
+      "comment" : "Paywall notice for an Ask to Buy purchase.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Purchase pending approval. PRO unlocks as soon as it's approved." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Compra pendiente de aprobación. PRO se desbloquea en cuanto se apruebe." } }
+      }
+    },
+    "No previous purchase was found." : {
+      "comment" : "Notice after Restore Purchases finds nothing.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No previous purchase was found." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se encontró ninguna compra anterior." } }
+      }
+    },
+    "Diagnostics Not Saved" : {
+      "comment" : "Alert title when the diagnostics file could not be written.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Diagnostics Not Saved" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "No se guardó el diagnóstico" } }
+      }
+    },
+    "Vitrine couldn't write the diagnostics file. Choose another location and try again." : {
+      "comment" : "Alert message when the diagnostics file could not be written.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine couldn't write the diagnostics file. Choose another location and try again." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine no pudo escribir el archivo de diagnóstico. Elige otra ubicación y vuelve a intentarlo." } }
+      }
+    },
+    "Releasing the seat…" : {
+      "comment" : "Progress label while a license seat is released.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Releasing the seat…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Liberando el cupo…" } }
+      }
+    },
+    "Vitrine PRO is not active on this Mac." : {
+      "comment" : "About pane status on the App Store build.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine PRO is not active on this Mac." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine PRO no está activo en esta Mac." } }
+      }
+    },
+    "Direct-download only. A copied URL is rendered as text." : {
+      "comment" : "Input pane caption when this build cannot capture URLs.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Direct-download only. A copied URL is rendered as text." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Solo en la descarga directa. Una URL copiada se renderiza como texto." } }
+      }
+    },
+    "Clear all web data?" : {
+      "comment" : "Confirmation title before clearing saved web sessions.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear all web data?" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "¿Borrar todos los datos web?" } }
+      }
+    },
+    "This signs Vitrine out of %@ and removes their saved website data. It does not end sessions on those servers." : {
+      "comment" : "Confirmation message before clearing saved web sessions; the argument lists the sites.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "This signs Vitrine out of %@ and removes their saved website data. It does not end sessions on those servers." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Esto cierra la sesión de Vitrine en %@ y elimina sus datos web guardados. No cierra las sesiones en esos servidores." } }
+      }
+    },
+    "Drag, or use the arrow keys, to place the brand mark" : {
+      "comment" : "Accessibility hint for the free-placement brand mark handle.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Drag, or use the arrow keys, to place the brand mark" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Arrastra, o usa las teclas de flecha, para ubicar la marca" } }
+      }
+    },
+    "Expanded" : {
+      "comment" : "Accessibility value of an expanded disclosure.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Expanded" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Expandido" } }
+      }
+    },
+    "Collapsed" : {
+      "comment" : "Accessibility value of a collapsed disclosure.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Collapsed" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Contraído" } }
+      }
+    },
+    "Choose the folder to create the documentation package in." : {
+      "comment" : "Folder panel message for the documentation export.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose the folder to create the documentation package in." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Elige la carpeta donde se creará el paquete de documentación." } }
       }
     },
     "Alternative text" : {
@@ -1110,7 +1951,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esa dirección está en esta Mac. Activa “Permitir capturas de localhost” en Configuración ▸ Entrada para capturarla."
+            "value" : "Esa dirección está en esta Mac. Activa «Permitir capturas de localhost» en Ajustes ▸ Entrada para capturarla."
           }
         }
       }
@@ -1122,17 +1963,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Opciones de captura"
-          }
-        }
-      }
-    },
-    "Capture pages behind a login by sending your existing cookies. Off by default; your code and captures still stay on your Mac." : {
-      "comment" : "Caption for the URL-capture logged-in-session toggle.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Captura páginas detrás de un login enviando tus cookies actuales. Desactivado por defecto; tu código y tus capturas siguen quedándose en tu Mac."
           }
         }
       }
@@ -1206,23 +2036,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ya existe un elemento normal llamado vitrine en la carpeta seleccionada. Muévelo antes de instalar el comando."
-          }
-        }
-      }
-    },
-    "Couldn't safely update the command link in the selected folder." : {
-      "comment" : "Settings General: generic fail-closed CLI link installation error.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn't safely update the command link in the selected folder."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No se pudo actualizar de forma segura el enlace del comando en la carpeta seleccionada."
           }
         }
       }
@@ -1408,23 +2221,6 @@
         }
       }
     },
-    "%@ System folders need an administrator: run the copied command in Terminal instead." : {
-      "comment" : "Settings General: CLI install failure alert message.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ System folders need an administrator: run the copied command in Terminal instead."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ Las carpetas del sistema requieren un administrador: ejecuta el comando copiado en la Terminal."
-          }
-        }
-      }
-    },
     "%@ · Version %@" : {
       "comment" : "What's New row: release headline · version number.",
       "localizations" : {
@@ -1597,18 +2393,6 @@
         }
       }
     },
-    "2× (Retina)" : {
-      "comment" : "Output resolution option: 2x (Retina) scale.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "2× (Retina)"
-          }
-        }
-      }
-    },
     "3×" : {
       "comment" : "Output resolution option: 3x scale.",
       "extractionState" : "stale",
@@ -1617,18 +2401,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "3×"
-          }
-        }
-      }
-    },
-    "A destination preset sizes and styles the image for a place to post it." : {
-      "comment" : "Style pane footer explaining destination presets.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un ajuste preestablecido de destino dimensiona y estiliza la imagen para el lugar donde la publicarás."
           }
         }
       }
@@ -1652,18 +2424,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Acerca de Vitrine"
-          }
-        }
-      }
-    },
-    "Add an optional filename, title, caption, or language badge above the code." : {
-      "comment" : "Style pane Header section footer.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agrega un nombre de archivo, título, leyenda o insignia de lenguaje opcional sobre el código."
           }
         }
       }
@@ -1700,18 +2460,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Agregar texto soltado"
-          }
-        }
-      }
-    },
-    "Add highlighted code as rich text" : {
-      "comment" : "Output pane toggle: include highlighted code as rich text on copy.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agregar el código resaltado como texto enriquecido"
           }
         }
       }
@@ -1931,18 +2679,6 @@
         }
       }
     },
-    "Apply a saved or built-in style — theme, background, and layout — in one step." : {
-      "comment" : "Help text for the editor style preset picker.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aplica un estilo guardado o incorporado —tema, fondo y diseño— en un solo paso."
-          }
-        }
-      }
-    },
     "Apply a saved style in one click" : {
       "comment" : "Library pane: preset row caption.",
       "localizations" : {
@@ -1956,18 +2692,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aplica un estilo guardado con un clic"
-          }
-        }
-      }
-    },
-    "Apply this preset's style to the current snapshot." : {
-      "comment" : "Help text for the Apply preset button.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aplica el estilo de este ajuste preestablecido a la imagen actual."
           }
         }
       }
@@ -2049,18 +2773,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Incorporado"
-          }
-        }
-      }
-    },
-    "Built-in presets can't be changed — duplicate one to make it your own." : {
-      "comment" : "Presets footer for a built-in selection.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los ajustes preestablecidos incorporados no se pueden cambiar; duplica uno para personalizarlo."
           }
         }
       }
@@ -2216,18 +2928,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Buscar actualizaciones…"
-          }
-        }
-      }
-    },
-    "Choose a built-in or custom syntax theme." : {
-      "comment" : "Help text for the theme picker.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige un tema de sintaxis incorporado o personalizado."
           }
         }
       }
@@ -2470,18 +3170,6 @@
         }
       }
     },
-    "Copy as a data URI, or copy the highlighted code as rich text" : {
-      "comment" : "Help text for the editor's copy-options menu.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copia como URI de datos o copia el código resaltado como texto enriquecido"
-          }
-        }
-      }
-    },
     "Copy as Data URI" : {
       "comment" : "Menu/toolbar command: copy the image as a base64 data URI.",
       "extractionState" : "stale",
@@ -2663,24 +3351,6 @@
         }
       }
     },
-    "Copy the highlighted code as rich text, or the image as a data URI" : {
-      "comment" : "Editor toolbar: copy-options menu help.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy the highlighted code as rich text, or the image as a data URI"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copia el código resaltado como texto con formato, o la imagen como data URI"
-          }
-        }
-      }
-    },
     "Copy to clipboard automatically" : {
       "comment" : "Output pane toggle.",
       "localizations" : {
@@ -2837,18 +3507,6 @@
         }
       }
     },
-    "Custom Themes" : {
-      "comment" : "Style pane section header: custom themes.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Temas personalizados"
-          }
-        }
-      }
-    },
     "Custom themes" : {
       "comment" : "Library pane: custom themes group title.",
       "localizations" : {
@@ -2862,36 +3520,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Temas personalizados"
-          }
-        }
-      }
-    },
-    "Custom themes are your own syntax palettes. Built-in themes can't be changed. Theme files are JSON and never leave your Mac." : {
-      "comment" : "Custom themes section footer.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los temas personalizados son tus propias paletas de sintaxis. Los temas incorporados no se pueden cambiar. Los archivos de tema son JSON y nunca salen de tu Mac."
-          }
-        }
-      }
-    },
-    "Custom — solid color or image" : {
-      "comment" : "Help on the dashed + background swatch.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Custom — solid color or image"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Personalizado: color sólido o imagen"
           }
         }
       }
@@ -3625,7 +4253,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preset de gradiente"
+            "value" : "Ajuste preestablecido de gradiente"
           }
         }
       }
@@ -3642,7 +4270,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preset de gradiente, color sólido o imagen"
+            "value" : "Ajuste preestablecido de gradiente, color sólido o imagen"
           }
         }
       }
@@ -3760,13 +4388,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Destination presets size the image for where it is going (a README, a social card, a slide). Style presets save a look you like so you can reapply it in one click. Manage both in Settings ▸ Style."
+            "value" : "Destination presets size the image for where it is going (a README, a social card, a slide). Style presets save a look you like so you can reapply it in one click. Choose destination presets in Settings ▸ Style or Export; manage saved style presets and custom themes in Settings ▸ Library."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los ajustes preestablecidos de destino dimensionan la imagen para su lugar de publicación (un README, una tarjeta social, una diapositiva). Los de estilo guardan un aspecto que te gusta para reaplicarlo con un clic. Administra ambos en Ajustes ▸ Estilo."
+            "value" : "Los ajustes preestablecidos de destino dimensionan la imagen para su lugar de publicación (un README, una tarjeta social, una diapositiva). Los de estilo guardan un aspecto que te gusta para reaplicarlo con un clic. Elige los de destino en Ajustes ▸ Estilo o Exportación; administra los ajustes de estilo guardados y los temas personalizados en Ajustes ▸ Biblioteca."
           }
         }
       }
@@ -4798,18 +5426,6 @@
         }
       }
     },
-    "No custom themes yet. Create one, or import a theme file." : {
-      "comment" : "Empty-state text for the custom themes section.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aún no tienes temas personalizados. Crea uno o importa un archivo de tema."
-          }
-        }
-      }
-    },
     "No recent captures" : {
       "comment" : "Empty state for the Recents submenu.",
       "localizations" : {
@@ -4893,17 +5509,6 @@
         }
       }
     },
-    "Open Web Snapshot" : {
-      "comment" : "Recovery action label for opening Web Snapshot with a detected URL.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir Web Snapshot"
-          }
-        }
-      }
-    },
     "Open Help" : {
       "comment" : "What's New button: open the Help window.",
       "extractionState" : "stale",
@@ -4960,18 +5565,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Abrir la Ayuda de Vitrine"
-          }
-        }
-      }
-    },
-    "Optional — you can set these any time in Settings." : {
-      "comment" : "Welcome setup hint under the optional controls.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Opcional: puedes configurarlos en cualquier momento en Ajustes."
           }
         }
       }
@@ -5081,18 +5674,6 @@
         }
       }
     },
-    "Paste code, or drop a source file, to turn it into a beautiful image." : {
-      "comment" : "Editor empty-state message.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pega código o suelta un archivo de origen para convertirlo en una imagen atractiva."
-          }
-        }
-      }
-    },
     "Paste the image" : {
       "comment" : "Onboarding step 3 title.",
       "extractionState" : "stale",
@@ -5122,18 +5703,6 @@
         }
       }
     },
-    "Pasting tidies the indentation automatically. Undo with ⌘Z, or format anytime with ⌥⌘F." : {
-      "comment" : "Settings · Input: footnote under the re-indent-on-paste toggle.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Al pegar, la indentación se ordena automáticamente. Deshaz con ⌘Z, o formatea cuando quieras con ⌥⌘F."
-          }
-        }
-      }
-    },
     "Phone" : {
       "comment" : "Web capture viewport segment.",
       "localizations" : {
@@ -5147,18 +5716,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Teléfono"
-          }
-        }
-      }
-    },
-    "Pick a starting look. You can fine-tune everything later in the editor." : {
-      "comment" : "Help text for the welcome style picker.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige un estilo inicial. Puedes ajustarlo todo después en el editor."
           }
         }
       }
@@ -5210,18 +5767,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Los presets definen el tamaño y la resolución de la imagen para un destino"
-          }
-        }
-      }
-    },
-    "Presets set the image size and resolution for a destination." : {
-      "comment" : "Output pane footer explaining presets.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Los ajustes preestablecidos definen el tamaño y la resolución de la imagen para un destino."
           }
         }
       }
@@ -5282,18 +5827,6 @@
         }
       }
     },
-    "Recents Gallery…" : {
-      "comment" : "Menu action: open the visual recents gallery window.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Galería de recientes…"
-          }
-        }
-      }
-    },
     "Redo" : {
       "comment" : "Edit menu: standard redo command.",
       "extractionState" : "stale",
@@ -5314,18 +5847,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reabrir para aplicar"
-          }
-        }
-      }
-    },
-    "Remove every recent capture and its cached preview" : {
-      "comment" : "Help text for the Clear Recents button.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elimina cada captura reciente y su vista previa en caché"
           }
         }
       }
@@ -5527,35 +6048,6 @@
         }
       }
     },
-    "Restores every preference to its default" : {
-      "comment" : "General pane: reset row caption.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restores every preference to its default"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaura todas las preferencias a su valor predeterminado"
-          }
-        }
-      }
-    },
-    "Restores every preference to its default, including your recent languages." : {
-      "comment" : "General pane footer for the reset action.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaura cada preferencia a su valor predeterminado, incluidos tus lenguajes recientes."
-          }
-        }
-      }
-    },
     "Rich-text code on copy" : {
       "comment" : "Output pane: rich clipboard row label.",
       "localizations" : {
@@ -5664,47 +6156,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Guarda el estilo actual —tema, fuente, fondo y el resto de tu diseño— como un ajuste preestablecido con nombre."
-          }
-        }
-      }
-    },
-    "Save the current style as a new named preset you can reuse." : {
-      "comment" : "Help text for the Save current style button.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guarda el estilo actual como un nuevo ajuste preestablecido con nombre que puedes reutilizar."
-          }
-        }
-      }
-    },
-    "Save the current style as a preset, then export or import presets as JSON." : {
-      "comment" : "Presets footer for a user selection.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guarda el estilo actual como un ajuste preestablecido y luego exporta o importa ajustes en JSON."
-          }
-        }
-      }
-    },
-    "Save the current style, then export or import as JSON" : {
-      "comment" : "Library pane: selected preset row caption.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save the current style, then export or import as JSON"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Guarda el estilo actual y luego expórtalo o impórtalo como JSON"
           }
         }
       }
@@ -5848,18 +6299,6 @@
         }
       }
     },
-    "Show a line-number gutter and highlight specific lines or ranges." : {
-      "comment" : "Style pane Lines section footer.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Muestra un margen con números de línea y resalta líneas o rangos específicos."
-          }
-        }
-      }
-    },
     "Show All" : {
       "comment" : "App menu: standard unhide-all command.",
       "extractionState" : "stale",
@@ -5978,18 +6417,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sólido"
-          }
-        }
-      }
-    },
-    "Starting style" : {
-      "comment" : "Accessibility label for the welcome style picker.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Estilo inicial"
           }
         }
       }
@@ -6498,30 +6925,6 @@
         }
       }
     },
-    "Style preset" : {
-      "comment" : "Accessibility label for the style preset picker.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajuste preestablecido de estilo"
-          }
-        }
-      }
-    },
-    "Style…" : {
-      "comment" : "Editor style preset picker prompt row.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Estilo…"
-          }
-        }
-      }
-    },
     "Syntax" : {
       "comment" : "Custom theme editor section: syntax colors.",
       "extractionState" : "stale",
@@ -6668,17 +7071,6 @@
         }
       }
     },
-    "This cannot be undone. Your recent languages, saved presets, custom themes, and Brand Kit are also cleared." : {
-      "comment" : "Reset confirmation message.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esto no se puede deshacer. También se borran tus lenguajes recientes, ajustes preestablecidos guardados, temas personalizados y Brand Kit."
-          }
-        }
-      }
-    },
     "This editor already has code. Replace it with the dropped content, or append to the end?" : {
       "comment" : "Editor drop replace-or-append dialog message.",
       "localizations" : {
@@ -6697,17 +7089,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esto elimina la captura y su vista previa en caché. No se puede deshacer."
-          }
-        }
-      }
-    },
-    "This removes every recent capture and its cached preview. This can't be undone." : {
-      "comment" : "Clear Recents confirmation message.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esto elimina cada captura reciente y su vista previa en caché. No se puede deshacer."
           }
         }
       }
@@ -6895,30 +7276,6 @@
         }
       }
     },
-    "Use this custom theme for the current snapshot." : {
-      "comment" : "Help text for the Apply theme button.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usa este tema personalizado para la imagen actual."
-          }
-        }
-      }
-    },
-    "Use this window's style — theme, font, background, and output — for new windows and captures." : {
-      "comment" : "Help tooltip on the editor's Make Default toolbar button.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usa el estilo de esta ventana —tema, fuente, fondo y salida— para nuevas ventanas y capturas."
-          }
-        }
-      }
-    },
     "Variables" : {
       "comment" : "Custom theme editor color label: variables.",
       "extractionState" : "stale",
@@ -6980,23 +7337,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ver la documentación en GitHub"
-          }
-        }
-      }
-    },
-    "View history →" : {
-      "comment" : "Menu-bar panel: link to the Recents gallery.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "View history →"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ver historial →"
           }
         }
       }
@@ -7101,18 +7441,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vitrine se reabrirá en el idioma seleccionado en el próximo inicio"
-          }
-        }
-      }
-    },
-    "Vitrine reopens in the selected language the next time you launch it." : {
-      "comment" : "Settings General pane: footnote under the app language picker.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vitrine se reabrirá en el idioma seleccionado la próxima vez que lo abras."
           }
         }
       }
@@ -7240,18 +7568,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Si está desactivado, una URL copiada se renderiza como texto"
-          }
-        }
-      }
-    },
-    "When on, Copy also places the highlighted code as rich text, so pasting into a document keeps the colors and font. The image is always included." : {
-      "comment" : "Output pane clipboard section footer.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cuando está activado, Copiar también coloca el código resaltado como texto enriquecido, así al pegarlo en un documento se conservan los colores y la fuente. La imagen siempre se incluye."
           }
         }
       }
@@ -7573,18 +7889,6 @@
         }
       }
     },
-    "That input isn't available in this build." : {
-      "comment" : "Web Snapshot: deferred-input message.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esa entrada no está disponible en esta versión."
-          }
-        }
-      }
-    },
     "The render didn't complete." : {
       "comment" : "Web Snapshot: generic render failure.",
       "extractionState" : "stale",
@@ -7860,18 +8164,6 @@
         }
       }
     },
-    "Color + lines green and − lines red, GitHub-style." : {
-      "comment" : "Editor lines: diff-decorations toggle help.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Colorea las líneas + en verde y las − en rojo, estilo GitHub."
-          }
-        }
-      }
-    },
     "Clear filter" : {
       "comment" : "Chip filter: clear-button accessibility label.",
       "extractionState" : "stale",
@@ -8031,18 +8323,6 @@
         }
       }
     },
-    "Add an arrow, text, or blur box, then drag it on the preview." : {
-      "comment" : "Annotations inspector: empty-state hint.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Agrega una flecha, texto o caja de desenfoque y arrástrala en la vista previa."
-          }
-        }
-      }
-    },
     "Annotation color" : {
       "comment" : "Annotation toolbar: color swatch accessibility label.",
       "extractionState" : "stale",
@@ -8081,24 +8361,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Texto de anotación"
-          }
-        }
-      }
-    },
-    "Blur lines that look like API keys, tokens, or passwords." : {
-      "comment" : "Editor inspector: help for the Redact secrets action.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Blur lines that look like API keys, tokens, or passwords."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Difumina las líneas que parezcan llaves de API, tokens o contraseñas."
           }
         }
       }
@@ -8193,18 +8455,6 @@
         }
       }
     },
-    "Annotations" : {
-      "comment" : "Inspector: annotations section title.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anotaciones"
-          }
-        }
-      }
-    },
     "Arrow" : {
       "comment" : "Annotation kind: arrow.",
       "extractionState" : "stale",
@@ -8213,18 +8463,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Flecha"
-          }
-        }
-      }
-    },
-    "Blur box" : {
-      "comment" : "Annotation kind: blur box (list label).",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Caja de desenfoque"
           }
         }
       }
@@ -9128,23 +9366,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Libre"
-          }
-        }
-      }
-    },
-    "Drag the mark in the preview to place it anywhere." : {
-      "comment" : "Brand Kit: hint shown when placement is Free.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Drag the mark in the preview to place it anywhere."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arrastra la marca en la vista previa para ponerla donde quieras."
           }
         }
       }
@@ -10170,17 +10391,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "No se pudo exportar la receta del espacio de trabajo."
-          }
-        }
-      }
-    },
-    "This cannot be undone. Your recent languages, saved presets, custom themes, workspace recipe associations, and Brand Kit are also cleared." : {
-      "comment" : "Workspace recipes UI.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta acción no se puede deshacer. También se borrarán tus idiomas recientes, ajustes preestablecidos guardados, temas personalizados, asociaciones de recetas de espacios de trabajo y el kit de marca."
           }
         }
       }

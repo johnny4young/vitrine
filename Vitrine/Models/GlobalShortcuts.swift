@@ -20,9 +20,6 @@ extension KeyboardShortcuts.Name {
         #endif
         return Self("quickCapture")
     }()
-
-    /// Open the editor window.
-    static let openEditor = Self("openEditor")
 }
 
 /// Installation-local policy, intentionally not part of exportable style settings.

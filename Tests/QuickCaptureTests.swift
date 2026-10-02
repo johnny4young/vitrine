@@ -565,3 +565,20 @@ struct QuickCaptureRasterPreflightTests {
             !QuickCapture.rasterIsRequired(autoCopy: false, savesToFile: false, format: .png))
     }
 }
+
+extension QuickCapture {
+    /// The outcome-only form the older tests use; production reads the full `Result`.
+    @discardableResult
+    static func run(
+        settings: AppSettings,
+        recents: RecentsStore,
+        destinationPreset: ExportPreset? = nil,
+        clipboard: () -> String? = { nil },
+        urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
+    ) -> Outcome {
+        capture(
+            settings: settings, recents: recents, destinationPreset: destinationPreset,
+            clipboard: clipboard, urlCaptureEnabled: urlCaptureEnabled
+        ).outcome
+    }
+}

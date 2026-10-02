@@ -54,20 +54,17 @@ struct CaptureFeedbackPresenterTests {
         #expect(routing.loadedConfigs.isEmpty)
     }
 
-    @Test func webSnapshotRecoveryConsumesThePendingURL() throws {
+    @Test func urlFeedbackRoutesNowhere() {
         let environment = makeEnvironment()
         let display = DisplaySpy()
         let routing = RoutingSpy()
         let presenter = CaptureFeedbackPresenter(
             display: display.port, routing: routing.port)
-        let url = "https://vitrineframe.app"
 
-        presenter.present(.nonProducing(.url(url)), environment: environment)
-        let action = try #require(display.actionHandler)
-        action(.openWebSnapshot)
-        presenter.run(.openWebSnapshot, environment: environment)
+        presenter.present(.nonProducing(.url("https://vitrineframe.app")), environment: environment)
 
-        #expect(routing.webSnapshotURLs == [url, nil])
+        #expect(presenter.lastFeedback?.actions.isEmpty == true)
+        #expect(routing.webSnapshotURLs.isEmpty)
     }
 
     @Test func resolvedFeedbackUpdatesTheHUDAndRetainedPanelStatus() {

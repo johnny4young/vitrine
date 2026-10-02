@@ -50,6 +50,10 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private var appActivationObserver: NSObjectProtocol?
     private var helperProcessID: pid_t?
     private var visibilityRepairTask: Task<Void, Never>?
+    /// The app the user was in when the panel opened, so focus can return to it.
+    private var previousFrontmostApplication: NSRunningApplication?
+    /// Observable panel state refreshed on every presentation.
+    let panelState = MenuBarPanelState()
     /// The data graph supplied to the panel and every quick-capture action it starts.
     let environment: AppEnvironment
     /// The UI lifecycle presenter retained alongside the panel so transient and inline
@@ -103,6 +107,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         // "Vitrine" is the verbatim brand wordmark, like the other brand strings that
         // bypass the String Catalog.
         item.button?.toolTip = "Vitrine"
+        item.button?.setAccessibilityLabel("Vitrine")
         item.button?.setAccessibilityIdentifier("menubar-status-item")
         item.button?.target = self
         item.button?.action = #selector(toggleStatusItemPanel)
@@ -292,9 +297,12 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     private func showPanel(relativeTo anchor: NSView) {
         let popover = popover ?? makePopover()
         self.popover = popover
+        panelState.refresh(hotkeyAction: environment.appSettings.hotkeyAction)
+        previousFrontmostApplication = AppActivation.frontmostOtherApplication(
+            helperProcessID: helperProcessID)
         // The external click activates the helper. Complete the activation handoff before
         // presentation so AppKit cannot treat it as a reason to close the new panel.
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
         popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         // The panel takes keyboard focus so its controls are reachable without a click.
         popover.contentViewController?.view.window?.makeKey()
@@ -310,7 +318,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
             navigation: navigation,
             dismiss: MenuBarDismissAction { [weak self] in
                 self?.dismissPanel()
-            }
+            },
+            panelState: panelState
         )
         popover.contentViewController = NSHostingController(rootView: content)
         return popover
@@ -322,8 +331,17 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         removeDismissalObservers()
-        helperProcessID = nil
+        let helperProcessID = helperProcessID
+        self.helperProcessID = nil
         discardExternalAnchor()
+        // A panel action that opened no window would otherwise leave a windowless
+        // Vitrine active, so the next ⌘V would not reach the user's app.
+        let previous = previousFrontmostApplication
+        previousFrontmostApplication = nil
+        Task {
+            await Task.yield()
+            AppActivation.restoreFocus(to: previous, helperProcessID: helperProcessID)
+        }
     }
 
     private func installDismissalObservers() {
@@ -390,6 +408,9 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     /// All close paths converge here so SwiftUI commands, pointer monitors, workspace
     /// activation, and icon toggles receive the same delegate-driven cleanup.
     private func dismissPanel() {
+        // Drop the monitors now rather than after the close animation, so an action
+        // that opens a modal alert gets its own Escape key.
+        removeDismissalObservers()
         popover?.close()
     }
 

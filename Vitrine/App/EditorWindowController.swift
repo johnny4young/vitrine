@@ -73,7 +73,7 @@ final class EditorSession {
     /// rebuilds the window from its archived state.
     func restore(_ state: EditorWindowState) {
         livingSnapshot.stop()
-        settings.config = state.config()
+        settings.config = state.config(themes: environment.customThemes)
         state.applyOutput(to: settings)
     }
 
@@ -199,27 +199,29 @@ final class EditorWindowController: NSObject {
         showWindow(for: EditorWindowIdentity(index: index))
     }
 
-    /// Opens one additional editor for the opt-in dynamic-memory journey and returns
-    /// its stable index so the exact window can be rendered and closed again.
-    func openWindowForMemoryJourney() -> Int {
-        let index = EditorWindowIdentity.nextAvailableIndex(notIn: Set(windows.keys))
-        showWindow(for: EditorWindowIdentity(index: index))
-        return index
-    }
+    #if DEBUG
+        /// Opens one additional editor for the opt-in dynamic-memory journey and returns
+        /// its stable index so the exact window can be rendered and closed again.
+        func openWindowForMemoryJourney() -> Int {
+            let index = EditorWindowIdentity.nextAvailableIndex(notIn: Set(windows.keys))
+            showWindow(for: EditorWindowIdentity(index: index))
+            return index
+        }
 
-    /// The exact additional editor created by the dynamic-memory journey.
-    func windowForMemoryJourney(at index: Int) -> NSWindow? {
-        windows[index]
-    }
+        /// The exact additional editor created by the dynamic-memory journey.
+        func windowForMemoryJourney(at index: Int) -> NSWindow? {
+            windows[index]
+        }
 
-    /// Closes one dynamic-memory editor through the normal delegate teardown path.
-    func closeWindowForMemoryJourney(at index: Int) {
-        windows[index]?.close()
-    }
+        /// Closes one dynamic-memory editor through the normal delegate teardown path.
+        func closeWindowForMemoryJourney(at index: Int) {
+            windows[index]?.close()
+        }
 
-    /// Current controller-owned editor count, used to prove each churn iteration
-    /// returned to its baseline rather than merely hiding a window.
-    var liveWindowCountForMemoryJourney: Int { windows.count }
+        /// Current controller-owned editor count, used to prove each churn iteration
+        /// returned to its baseline rather than merely hiding a window.
+        var liveWindowCountForMemoryJourney: Int { windows.count }
+    #endif
 
     /// Shows the editor preloaded with the onboarding sample snippet when the primary
     /// window has no code yet, so a first-run user can explore the flow without external
@@ -269,7 +271,7 @@ final class EditorWindowController: NSObject {
         #if DEBUG
             Self.applyRequestedViewportForUITesting(to: window)
         #endif
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     /// Builds the AppKit window hosting an `EditorView` bound to `identity`'s session,
@@ -305,7 +307,6 @@ final class EditorWindowController: NSObject {
         // Frame persistence + secure state restoration. The autosave name
         // restores size/position across launches; the restoration class + encoded
         // draft let secure restoration rebuild the document this window held.
-        window.setFrameAutosaveName(identity.frameAutosaveName)
         window.identifier = identity.restorationIdentifier
         window.isRestorable = true
         window.restorationClass = EditorWindowRestoration.self
@@ -323,13 +324,7 @@ final class EditorWindowController: NSObject {
         // the cap never squeezes the editor below its supported layout. One with a
         // saved frame keeps the restored position and only needs the off-screen
         // recovery pass in `showWindow(for:)`.
-        if !window.setFrameUsingName(identity.frameAutosaveName) {
-            if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
-                window.setFrame(
-                    WindowFrameSolver.clamp(window.frame, into: visible), display: false)
-            }
-            window.center()
-        }
+        WindowPlacement.placeNew(window, autosaveName: identity.frameAutosaveName)
         return window
     }
 
@@ -400,25 +395,23 @@ final class EditorWindowController: NSObject {
     /// unreachable, preserving its size. Uses the pure ``WindowFrameSolver`` against the
     /// live screens' visible frames; a window already on screen is left untouched.
     private func recoverIfOffScreen(_ window: NSWindow) {
-        let visibleFrames = NSScreen.screens.map(\.visibleFrame)
-        let recovered = WindowFrameSolver.onScreenFrame(
-            for: window.frame, visibleFrames: visibleFrames)
-        if recovered != window.frame {
+        if WindowPlacement.recoverIfOffScreen(window) {
             Log.app.notice("Recovered an off-screen editor window onto a visible display")
-            window.setFrame(recovered, display: true)
         }
     }
 
-    /// A UI-test hook: shove the primary editor window far off the visible
-    /// screens and then run the recovery pass, so an automated test can verify the
-    /// window is pulled back on-screen without physically rearranging displays. Only
-    /// reachable through the `--force-offscreen-editor` launch argument.
-    func moveKeyEditorOffScreenForTesting() {
-        guard let window = windows[EditorWindowIdentity.primary.index] else { return }
-        // A point well beyond any plausible display, then recover from it.
-        window.setFrameOrigin(NSPoint(x: 12000, y: 9000))
-        recoverIfOffScreen(window)
-    }
+    #if DEBUG
+        /// A UI-test hook: shove the primary editor window far off the visible
+        /// screens and then run the recovery pass, so an automated test can verify the
+        /// window is pulled back on-screen without physically rearranging displays. Only
+        /// reachable through the `--force-offscreen-editor` launch argument.
+        func moveKeyEditorOffScreenForTesting() {
+            guard let window = windows[EditorWindowIdentity.primary.index] else { return }
+            // A point well beyond any plausible display, then recover from it.
+            window.setFrameOrigin(NSPoint(x: 12000, y: 9000))
+            recoverIfOffScreen(window)
+        }
+    #endif
 }
 
 // MARK: - NSWindowDelegate (lifecycle cleanup)

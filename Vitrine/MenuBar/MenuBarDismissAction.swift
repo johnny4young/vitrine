@@ -20,4 +20,15 @@ struct MenuBarDismissAction {
     func callAsFunction() {
         perform()
     }
+
+    /// Closes the panel, then runs `operation` on a later turn. A modal alert opened by
+    /// the operation would otherwise run under the panel's Escape monitor.
+    @discardableResult
+    func thenRun(_ operation: @escaping () -> Void) -> Task<Void, Never> {
+        perform()
+        return Task {
+            await Task.yield()
+            operation()
+        }
+    }
 }

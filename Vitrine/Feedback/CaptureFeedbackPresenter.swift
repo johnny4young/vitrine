@@ -21,10 +21,6 @@ final class CaptureFeedbackPresenter {
     /// last result stays reachable after the transient HUD fades.
     private(set) var lastFeedback: Notifier.CaptureFeedback?
 
-    /// The URL detected by the last capture, if any, prefilled by the Web Snapshot
-    /// recovery. Never logged (privacy policy).
-    private var pendingURLText: String?
-
     let display: FeedbackDisplay
     let routing: CaptureRecoveryRouting
 
@@ -47,12 +43,6 @@ final class CaptureFeedbackPresenter {
             copiedToClipboard: result.copiedToClipboard,
             savedToFile: result.savedToFile)
 
-        if case .url(let text) = result.outcome {
-            pendingURLText = text
-        } else {
-            pendingURLText = nil
-        }
-
         lastFeedback = feedback
         display(feedback) { [weak self] action in
             self?.run(action, environment: environment)
@@ -62,7 +52,6 @@ final class CaptureFeedbackPresenter {
     /// Presents an already-resolved feedback value and keeps the panel's retained
     /// status in sync with the transient HUD.
     func present(_ feedback: Notifier.CaptureFeedback) {
-        pendingURLText = nil
         lastFeedback = feedback
         display(feedback)
     }
@@ -73,13 +62,6 @@ final class CaptureFeedbackPresenter {
         case .openEditor:
             // Show, never load: the editor may hold an unsaved document.
             routing.showEditor()
-        case .openWebSnapshot:
-            if let text = pendingURLText {
-                pendingURLText = nil
-                routing.showWebSnapshot(prefillURL: text)
-            } else {
-                routing.showWebSnapshot()
-            }
         }
     }
 }

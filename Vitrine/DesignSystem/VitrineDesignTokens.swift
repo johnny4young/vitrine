@@ -148,15 +148,11 @@ enum VitrineTokens {
             light: Color(hex: "#1A1B22").opacity(0.09),
             dark: Color(hex: "#FFFFFF").opacity(0.08)
         ).color
-        /// `--control-track` — the off track behind custom toggles.
-        static let controlTrack = Brand.BrandColor(
-            light: Color(hex: "#1A1B22").opacity(0.16),
-            dark: Color(hex: "#FFFFFF").opacity(0.18)
-        ).color
-        /// `--focus-ring` — the 1.5 pt accent focus stroke.
-        static let focusRing = Brand.Palette.accent.color
+        /// `--focus-ring` — the 1.5 pt accent focus stroke. Follows the system accent, like
+        /// the selections it surrounds.
+        static var focusRing: Color { Accent.system }
         /// `--ring-focus` — the soft outer glow behind the focus stroke.
-        static let focusGlow = Brand.Palette.accent.color.opacity(0.35)
+        static var focusGlow: Color { Accent.system.opacity(0.35) }
     }
 
     // MARK: - Gradients (135°, topLeading → bottomTrailing)
@@ -258,9 +254,9 @@ enum VitrineTokens {
             light: Color(hex: "#1A1B22").opacity(0.04),
             dark: Color(hex: "#FFFFFF").opacity(0.05)
         ).color
-        /// Selected font-pill wash — the lifted accent at 12 % in both
-        /// appearances (the design uses one fixed value).
-        static let pillSelectedFill = Color(hex: "#7C8CFF").opacity(0.12)
+        /// Selected font-pill wash — the system accent at 12 % in both appearances, so
+        /// it matches the selected pill's border.
+        static var pillSelectedFill: Color { Accent.system.opacity(0.12) }
         /// Selected gradient-swatch border — accent in light, white over the
         /// dark stage.
         static let swatchSelectedBorder = Brand.BrandColor(

@@ -9,6 +9,28 @@ import OSLog
 /// and reopening by hand is non-obvious. This gives the language picker a one-click
 /// "Relaunch to Apply" so the new language takes effect at once.
 enum AppRelauncher {
+    /// Tells the replacement which process it replaces, so its single-instance guard
+    /// does not hand control back to the instance that is about to quit.
+    static let predecessorArgumentPrefix = "--relaunch-of="
+
+    static func predecessorArgument(
+        for processID: pid_t = ProcessInfo.processInfo.processIdentifier
+    ) -> String {
+        "\(predecessorArgumentPrefix)\(processID)"
+    }
+
+    /// The predecessor process identifier passed by `relaunch()`, if any.
+    static func predecessorProcessID(in arguments: [String]) -> pid_t? {
+        for argument in arguments where argument.hasPrefix(predecessorArgumentPrefix) {
+            if let processID = pid_t(argument.dropFirst(predecessorArgumentPrefix.count)),
+                processID > 0
+            {
+                return processID
+            }
+        }
+        return nil
+    }
+
     /// Launches a replacement instance of the app bundle, then terminates this one. The
     /// new process reads the just-written `AppleLanguages` override and localizes
     /// accordingly. The replacement is started *before* this instance quits, so a
@@ -17,6 +39,7 @@ enum AppRelauncher {
         let url = Bundle.main.bundleURL
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.createsNewApplicationInstance = true
+        configuration.arguments = [predecessorArgument()]
         Task {
             do {
                 _ = try await NSWorkspace.shared.openApplication(

@@ -544,3 +544,25 @@ struct ServiceRegistrationTests {
         #expect(pasteboard.string(forType: .string) == nil)
     }
 }
+
+@MainActor
+@Suite("Services output settings")
+struct ServicesOutputSettingsTests {
+    @Test func servicesRequestMatchesQuickCaptureOutput() throws {
+        let environment = try makeAutomationEnvironment(isPro: true)
+        let settings = environment.appSettings
+        settings.export.scale = 3
+        settings.export.colorProfile = .displayP3
+        settings.selectPreset(.openGraph)
+
+        let request = CodeImageService(environment: environment)
+            .makeRenderRequest(for: "let answer = 42")
+        let plan = QuickCapture.renderPlan(
+            for: settings.config, settings: settings, destinationPreset: nil)
+
+        #expect(request.effectiveScale == plan.scale)
+        #expect(request.fixedSize == plan.fixedSize)
+        #expect(request.fixedSize == ExportPreset.openGraph.sizing.fixedSize)
+        #expect(request.profile == .displayP3)
+    }
+}
