@@ -209,7 +209,11 @@ extension EditorView {
                         ? "Export carousel" : "Export carousel — Requires PRO",
                     systemImage: "rectangle.stack")
             }
-            .disabled(!settings.hasRenderableContent || settings.style.usesImageContent)
+            .disabled(
+                !settings.hasRenderableContent || settings.style.usesImageContent
+                    || !Self.carouselAccepts(settings.style)
+            )
+            .help(carouselHelp)
             .accessibilityIdentifier("export-carousel-button")
 
             Divider()
@@ -382,13 +386,30 @@ extension EditorView {
                     ProBadge().accessibilityHidden(true)
                 }
             }
-            .help("Split the snippet into numbered carousel slides (4:5)")
+            .help(carouselHelp)
             .disabled(
                 !settings.hasRenderableContent || settings.style.usesImageContent
+                    || !Self.carouselAccepts(settings.style)
             )
             .accessibilityLabel(Text("Export carousel"))
             .accessibilityValue(entitlements.proRequirementValue(for: .carouselExport))
             .accessibilityIdentifier("export-carousel-button")
+    }
+
+    /// Terminal transcripts can't be cut by raw lines, and blur boxes are placed against
+    /// the whole canvas, so neither can be carried onto slides safely.
+    static func carouselAccepts(_ style: SnapshotConfig) -> Bool {
+        style.language != .terminal && !style.annotations.contains { $0.kind == .blur }
+    }
+
+    private var carouselHelp: LocalizedStringKey {
+        if settings.style.language == .terminal {
+            return "Carousel export isn't available for terminal captures"
+        }
+        if settings.style.annotations.contains(where: { $0.kind == .blur }) {
+            return "Remove blur boxes, or use Redact secrets, to export a carousel"
+        }
+        return "Split the snippet into numbered carousel slides (4:5)"
     }
 
     /// Routes both toolbar densities through one presentation state and one sheet host.

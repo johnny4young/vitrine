@@ -487,6 +487,22 @@ struct EditorCommandResponderTests {
         #expect(textView.string == expected)
     }
 
+    @Test func theSessionOwnsTheLargeFormatSoTheButtonPathCompletes() async throws {
+        let input = String(repeating: "struct A {\nlet x = 1\n}\n", count: 3_000)
+        let environment = AppEnvironment(defaults: testDefaults())
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 52), environment: environment,
+            feedback: .noOp, presentation: .noOp)
+        defer { session.discard() }
+        let textView = NSTextView(frame: .zero)
+        textView.string = input
+
+        let operation = try #require(session.codeFormat.format(textView, language: .swift))
+        await operation.value
+
+        #expect(textView.string == CodeFormatter.tidy(input, language: .swift))
+    }
+
     @Test func aNewFormatCommandPreventsAnOlderLargeResultFromWinning() async throws {
         let largeInput = String(repeating: "struct Old {\nlet stale = true\n}\n", count: 3_000)
         let currentInput = "struct Current {\nlet value = true\n}"

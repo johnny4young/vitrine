@@ -3915,6 +3915,17 @@
         }
       }
     },
+    "Nothing was copied or saved. Turn on Copy or Save in Settings ▸ Export." : {
+      "comment" : "Feedback when a capture rendered but neither copy nor save is enabled.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se copió ni se guardó nada. Activa Copiar o Guardar en Ajustes ▸ Exportación."
+          }
+        }
+      }
+    },
     "Image copied to the clipboard" : {
       "comment" : "Success feedback: the image was copied only.",
       "extractionState" : "stale",
@@ -3935,18 +3946,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Imagen copiada al portapapeles y guardada en un archivo"
-          }
-        }
-      }
-    },
-    "Image rendered" : {
-      "comment" : "Success feedback: the image was rendered without copy or save.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imagen generada"
           }
         }
       }
@@ -5291,18 +5290,6 @@
         }
       }
     },
-    "Render as Text" : {
-      "comment" : "Recovery action label: render the detected URL as plain text.",
-      "extractionState" : "stale",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Generar como texto"
-          }
-        }
-      }
-    },
     "Render Clipboard As…" : {
       "comment" : "Menu-bar action that renders clipboard code with a one-off destination preset.",
       "localizations" : {
@@ -6084,6 +6071,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Divide el fragmento en diapositivas 4:5 numeradas para un carrusel."
+          }
+        }
+      }
+    },
+    "Carousel export isn't available for terminal captures" : {
+      "comment" : "Help for the disabled carousel export button on a terminal capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La exportación de carrusel no está disponible para capturas de terminal"
+          }
+        }
+      }
+    },
+    "Remove blur boxes, or use Redact secrets, to export a carousel" : {
+      "comment" : "Help for the disabled carousel export button when the canvas has blur boxes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quita las cajas de desenfoque, o usa Ocultar secretos, para exportar un carrusel"
           }
         }
       }
@@ -10088,13 +10097,13 @@
         }
       }
     },
-    "A saved change is waiting because this editor has local edits" : {
-      "comment" : "Help for a living snapshot whose disk version cannot replace local edits.",
+    "A saved change is waiting because this editor has local edits or marks. Reload replaces them." : {
+      "comment" : "Help for a living snapshot whose disk version cannot replace local edits or marks.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hay un cambio guardado pendiente porque este editor tiene cambios locales"
+            "value" : "Hay un cambio guardado pendiente porque este editor tiene cambios o marcas locales. Recargar los reemplaza."
           }
         }
       }

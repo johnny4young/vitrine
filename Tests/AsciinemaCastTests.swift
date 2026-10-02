@@ -22,6 +22,11 @@ struct AsciinemaCastTests {
         #expect(AsciinemaCast.terminalText(from: cast) == "$ ls\r\nREADME.md\r\n")
     }
 
+    @Test func acceptsCRLFLineEndings() {
+        let cast = header + "\r\n" + #"[0.1, "o", "ok"]"# + "\r\n"
+        #expect(AsciinemaCast.terminalText(from: cast) == "ok")
+    }
+
     @Test func skipsNonOutputEvents() {
         // Input echoes, resizes, and markers carry no screen bytes.
         let cast = """

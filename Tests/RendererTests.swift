@@ -167,7 +167,8 @@ struct QuickCaptureClassificationTests {
         settings.treatURLsAsScreenshot = true
         let recents = RecentsStore(defaults: freshDefaults())
         let outcome = QuickCapture.run(
-            settings: settings, recents: recents, clipboard: { "https://example.com" })
+            settings: settings, recents: recents, clipboard: { "https://example.com" },
+            urlCaptureEnabled: true)
         // `run` reports the URL outcome; nothing is rendered, copied, or recorded for
         // it here (the Web Snapshot window, opened by `perform`, owns the capture).
         #expect(outcome == .url("https://example.com"))

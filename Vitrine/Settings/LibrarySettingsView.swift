@@ -14,7 +14,8 @@ struct LibrarySettingsView: View {
     var body: some View {
         SettingsPaneScroll {
             StylePresetsSection(settings: settings, store: presets, themes: themes)
-            WorkspaceRecipeSettingsSection(settings: settings, store: workspaceRecipes)
+            WorkspaceRecipeSettingsSection(
+                settings: settings, store: workspaceRecipes, themes: themes)
             CustomThemesSection(settings: settings, store: themes)
         }
         .accessibilityIdentifier("settings-library-pane")
@@ -312,17 +313,9 @@ struct CustomThemesSection: View {
             CustomThemeEditor(
                 settings: settings, draft: draft,
                 onSave: { name, palette in
-                    if let id = draft.editingID {
-                        store.rename(id: id, to: name)
-                        // Re-create the palette by deleting and re-adding keeps the
-                        // store's value-typed contract simple; preserve selection.
-                        store.delete(id: id)
-                    }
-                    let saved = store.addTheme(named: name, palette: palette)
+                    let saved = settings.saveCustomTheme(
+                        editingID: draft.editingID, name: name, palette: palette, in: store)
                     selectedID = saved.id
-                    // Apply the just-saved theme so the editor's preview matches the
-                    // live canvas immediately.
-                    settings.config.theme = store.theme(withID: saved.id)
                     editorDraft = nil
                 },
                 onCancel: { editorDraft = nil })
@@ -458,8 +451,8 @@ struct CustomThemesSection: View {
     }
 
     private func commitRename() {
-        guard let id = selectedID else { return }
-        store.rename(id: id, to: renameName)
+        guard let id = selectedID, store.rename(id: id, to: renameName) else { return }
+        if settings.style.theme.id == id { settings.style.theme = store.theme(withID: id) }
     }
 
     private func runImport() {

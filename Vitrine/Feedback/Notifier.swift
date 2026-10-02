@@ -1,5 +1,4 @@
 import Foundation
-import UserNotifications
 import VitrineRendering
 import os
 
@@ -36,8 +35,6 @@ enum Notifier {
         case openEditor
         /// Open the Web Snapshot window with the detected URL prefilled.
         case openWebSnapshot
-        /// Render the detected URL as plain text instead of opening Web Snapshot.
-        case renderAsText
 
         /// The button label shown for this action. Localized through the String
         /// Catalog; the `accessibilityToken` below stays non-localized.
@@ -45,7 +42,6 @@ enum Notifier {
             switch self {
             case .openEditor: String(localized: "Open Editor")
             case .openWebSnapshot: String(localized: "Open Web Snapshot")
-            case .renderAsText: String(localized: "Render as Text")
             }
         }
 
@@ -56,7 +52,6 @@ enum Notifier {
             switch self {
             case .openEditor: "open-editor"
             case .openWebSnapshot: "open-web-snapshot"
-            case .renderAsText: "render-as-text"
             }
         }
     }
@@ -100,21 +95,22 @@ enum Notifier {
     ) -> CaptureFeedback {
         switch outcome {
         case .copied, .rendered:
+            // With copy and save both off the capture reached only history, so it is
+            // not reported as a success the user could paste.
             return CaptureFeedback(
-                category: .success,
+                category: copiedToClipboard || savedToFile ? .success : .info,
                 message: successMessage(copied: copiedToClipboard, saved: savedToFile),
                 actions: [])
         case .renderFailed(let error):
             return renderFailure(error)
         case .url:
-            // A raw `.url` outcome normally opens Web Snapshot directly from
-            // `QuickCapture.perform`. If another caller surfaces it as feedback, still
-            // offer a direct Web Snapshot action plus the plain-text fallback.
+            // `QuickCapture.perform` opens Web Snapshot directly; another caller that
+            // surfaces the outcome still offers it.
             return CaptureFeedback(
                 category: .info,
                 message: String(
                     localized: "That looks like a URL — open Web Snapshot to capture it"),
-                actions: [.openWebSnapshot, .renderAsText])
+                actions: [.openWebSnapshot])
         case .empty:
             // An empty clipboard is the most common dead end; route the user
             // straight to the editor rather than leaving them stuck.
@@ -183,43 +179,10 @@ enum Notifier {
         case (true, true): String(localized: "Image copied to the clipboard and saved to a file")
         case (true, false): String(localized: "Image copied to the clipboard")
         case (false, true): String(localized: "Image saved to a file")
-        case (false, false): String(localized: "Image rendered")
-        }
-    }
-
-    /// Posts feedback for `outcome`. Kept for callers that do not need
-    /// the in-app HUD; it routes through Notification Center only.
-    ///
-    /// Routine success should prefer the in-app HUD (`CaptureHUD`) so Notification
-    /// Center is not used repeatedly for ordinary captures; the app
-    /// delegate owns that decision in `CaptureFeedbackPresenter`.
-    static func notify(_ outcome: QuickCapture.Outcome) {
-        postNotification(feedback(for: outcome).message)
-    }
-
-    /// Posts a single Notification Center banner with `body`. No-op when
-    /// notifications are unauthorized. Used as the fallback channel when no in-app
-    /// HUD is available.
-    static func postNotification(_ body: String) {
-        Task {
-            let center = UNUserNotificationCenter.current()
-            let granted = (try? await center.requestAuthorization(options: [.alert])) ?? false
-            guard granted else { return }
-
-            let content = UNMutableNotificationContent()
-            content.title = "Vitrine"
-            content.body = body
-            let request = UNNotificationRequest(
-                identifier: UUID().uuidString, content: content, trigger: nil)
-            do {
-                try await center.add(request)
-            } catch {
-                // Don't leave a failed post completely silent; the body is non-PII
-                // feedback text, but log only the error domain/code to be safe.
-                Log.app.error(
-                    "Notification post failed (\((error as NSError).domain, privacy: .public) \((error as NSError).code, privacy: .public))"
-                )
-            }
+        case (false, false):
+            String(
+                localized:
+                    "Nothing was copied or saved. Turn on Copy or Save in Settings ▸ Export.")
         }
     }
 }

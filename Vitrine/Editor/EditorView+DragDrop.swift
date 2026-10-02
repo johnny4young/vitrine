@@ -131,11 +131,13 @@ extension EditorView {
             session.livingSnapshot.stop()
         }
         if replacing, let sourceURL = loaded.sourceURL,
-            environment.workspaceRecipes.applyRecipe(for: sourceURL, to: settings) != nil
+            environment.workspaceRecipes.applyRecipe(
+                for: sourceURL, to: settings, themes: environment.customThemes) != nil
         {
             Log.capture.info("Applied a workspace recipe to an explicitly loaded file")
         }
         loaded.apply(to: &settings.config, replacing: replacing)
+        if replacing { settings.noteDocumentReplaced() }
         settings.noteLanguageUsed(settings.config.language)
         if startsLivingSnapshot {
             session.livingSnapshot.start(with: loaded)
@@ -247,6 +249,7 @@ extension EditorView {
         session.livingSnapshot.stop()
         settings.config.clearContentMarks()
         settings.config.foregroundImage = reference
+        settings.noteDocumentReplaced()
         Log.capture.info("Editor drop loaded a foreground image")
     }
 

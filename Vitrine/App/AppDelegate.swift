@@ -174,9 +174,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Intent do, seeded on the user's current style. A no-op for an empty payload.
     private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
-        let language = handoff.language ?? LanguageDetector.interpret(handoff.content).language
+        let interpreted = LanguageDetector.interpret(handoff.content)
         let config = environment.appSettings.config.replacingContent(
-            with: handoff.content, language: language)
+            with: handoff.language == nil ? interpreted.code : handoff.content,
+            language: handoff.language ?? interpreted.language)
         loadEditor(config)
         Log.app.notice("Opened a CLI --edit handoff in the editor")
     }

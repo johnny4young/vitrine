@@ -2,6 +2,9 @@ import Foundation
 import VitrineDomain
 import VitrineRendering
 
+/// Resolves a theme id, including the user's custom themes.
+typealias ThemeLookup = (String) -> Theme
+
 /// A past capture stored in Recents. Themes and languages are stored by
 /// id so the model stays `Codable` and decoupled from SwiftUI types.
 struct Capture: Codable, Identifiable, Equatable {
@@ -55,23 +58,27 @@ struct Capture: Codable, Identifiable, Equatable {
     }
 
     var language: Language { Language(rawValue: languageID) ?? .plaintext }
-    var theme: Theme { Theme.theme(withID: themeID) }
+
+    /// The capture's theme. A custom theme id resolves only through the app's theme
+    /// store, so callers pass its lookup.
+    func theme(resolvedBy lookup: ThemeLookup) -> Theme { lookup(themeID) }
 
     /// Places the content remembered by this recent capture over a current style.
     /// Content-bound marks belong to the document they were created for, so replacing
     /// the source must discard them rather than drawing stale highlights or annotations
     /// over unrelated code.
-    func applying(to base: SnapshotConfig) -> SnapshotConfig {
+    func applying(to base: SnapshotConfig, themes lookup: ThemeLookup) -> SnapshotConfig {
         var config = base.replacingContent(with: code, language: language)
-        config.theme = theme
+        config.theme = theme(resolvedBy: lookup)
         return config
     }
 
     /// Whether this capture matches every whitespace-separated search term across
     /// its source, language, and theme. Recents is deliberately tiny and capped, so
     /// keeping the index value-derived avoids another persisted search structure.
-    func matchesSearch(_ query: String) -> Bool {
-        LocalSearch.matchesAllTerms(query, in: [code, language.displayName, theme.displayName])
+    func matchesSearch(_ query: String, themes lookup: ThemeLookup) -> Bool {
+        LocalSearch.matchesAllTerms(
+            query, in: [code, language.displayName, theme(resolvedBy: lookup).displayName])
     }
 
     /// A short, single-line label for the Recents submenu.

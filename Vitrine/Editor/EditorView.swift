@@ -226,9 +226,12 @@ struct EditorView: View {
                     isPresented: $showCommandPalette, commands: commandPaletteCommands)
             }
         }
-        // Opened from outside the view through the app-level notification.
-        .onReceive(NotificationCenter.default.publisher(for: .vitrineOpenCommandPalette)) { _ in
-            showCommandPalette = true
+        .onChange(of: settings.documentGeneration) {
+            // Marks and history belonged to the replaced content.
+            annotationHistory.reset()
+            selectedAnnotationID = nil
+            editingAnnotationID = nil
+            pendingDrop = nil
         }
         .onReceive(NotificationCenter.default.publisher(for: .vitrineSelectAnnotationTool)) {
             notification in

@@ -27,17 +27,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     let feedback: FeedbackDisplay
     let presentation: EditorPresentation
 
-    /// Small snippets format synchronously so the menu command feels instant. Larger
-    /// snippets do the pure string work off the main actor and only return to AppKit
-    /// for the final text replacement; beyond this cap, formatting is refused instead
-    /// of risking an unresponsive editor.
-    private static let asyncFormatThresholdBytes = 64 * 1024
-    private static let maxInteractiveFormatBytes = 1 * 1024 * 1024
-    /// At most one large format may remain relevant. Replacing it cooperatively cancels
-    /// stale CPU work and, more importantly, prevents an older result from winning after
-    /// a newer command or a synchronous small edit.
-    private var formatTask: Task<Void, Never>?
-    private var formatGeneration: UInt = 0
+    /// Formats when no editor session is key (the unit-test host).
+    private let fallbackFormat: CodeFormatOperation
 
     init(
         settings: AppSettings,
@@ -47,11 +38,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         self.settings = settings
         self.feedback = feedback
         self.presentation = presentation
+        fallbackFormat = CodeFormatOperation(feedback: feedback)
         super.init()
-    }
-
-    isolated deinit {
-        formatTask?.cancel()
     }
 
     /// The settings the command should act on: the key editor window's own session,
@@ -175,80 +163,19 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     /// into `config.code`. A no-op (already tidy) changes nothing and registers no undo.
     @objc func formatCode(_ sender: Any?) {
         guard canPerform(.formatCode),
-            let textView = Self.editorTextView(in: NSApp.keyWindow ?? NSApp.mainWindow)
+            let textView = CodeFormatOperation.editorTextView(
+                in: NSApp.keyWindow ?? NSApp.mainWindow)
         else { return }
         formatCode(in: textView, language: activeSettings.config.language)
     }
 
-    /// Formats an already-resolved editor. Keeping the AppKit lookup at the command
-    /// boundary lets the asynchronous edit contract be exercised without relying on
-    /// process-global key-window state in the test host. Returns the asynchronous operation
-    /// when one was started; callers may await it even after a later command cancels it.
+    /// Formats an already-resolved editor through the key window's own operation, so
+    /// a large format outlives this call. Returns the asynchronous operation when one
+    /// was started.
     @discardableResult
     func formatCode(in textView: NSTextView, language: Language) -> Task<Void, Never>? {
-        let original = textView.string
-        let byteCount = original.utf8.count
-        formatTask?.cancel()
-        formatTask = nil
-        formatGeneration &+= 1
-        let generation = formatGeneration
-        guard byteCount <= Self.maxInteractiveFormatBytes else {
-            feedback(
-                Notifier.failure(String(localized: "Code is too large to format interactively")))
-            return nil
-        }
-
-        if byteCount > Self.asyncFormatThresholdBytes {
-            formatTask = Task(priority: .userInitiated) { [weak self, weak textView] in
-                defer {
-                    if self?.formatGeneration == generation {
-                        self?.formatTask = nil
-                    }
-                }
-                guard
-                    let tidied = try? await CodeFormatter.tidyConcurrently(
-                        original, language: language),
-                    !Task.isCancelled,
-                    let textView,
-                    textView.string == original
-                else { return }
-                Self.applyFormattedCode(tidied, original: original, to: textView)
-            }
-            return formatTask
-        }
-
-        let tidied = CodeFormatter.tidy(original, language: language)
-        Self.applyFormattedCode(tidied, original: original, to: textView)
-        return nil
-    }
-
-    /// Applies an already-computed format result through the text view's native edit
-    /// cycle, preserving delegate updates and undo behavior.
-    private static func applyFormattedCode(
-        _ tidied: String, original: String, to textView: NSTextView
-    ) {
-        guard tidied != original else { return }
-        let whole = NSRange(location: 0, length: (original as NSString).length)
-        guard textView.shouldChangeText(in: whole, replacementString: tidied) else { return }
-        textView.textStorage?.replaceCharacters(in: whole, with: tidied)
-        textView.didChangeText()  // fires the delegate → writes back to config.code
-        textView.undoManager?.setActionName(String(localized: "Format Code"))
-    }
-
-    /// The code editor's `NSTextView` in `window`, found by the accessibility identifier
-    /// `CodeEditorView` assigns it. Used so Format Code edits the real text view (and its
-    /// undo stack) rather than mutating the model behind its back.
-    private static func editorTextView(in window: NSWindow?) -> NSTextView? {
-        guard let root = window?.contentView else { return nil }
-        var stack: [NSView] = [root]
-        while let view = stack.popLast() {
-            if let textView = view as? NSTextView,
-                textView.accessibilityIdentifier() == "code-editor-text-view"
-            {
-                return textView
-            }
-            stack.append(contentsOf: view.subviews)
-        }
-        return nil
+        let operation =
+            EditorWindowController.shared.keyWindowSession?.codeFormat ?? fallbackFormat
+        return operation.format(textView, language: language)
     }
 }

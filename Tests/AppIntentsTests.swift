@@ -86,6 +86,14 @@ struct SnapshotRenderRequestTests {
         #expect(request.makeConfig().language == .swift)
     }
 
+    @Test func aFencedSnippetRendersItsBodyNotTheFence() {
+        let request = SnapshotRenderRequest(code: "```swift\nlet x = 1\n```")
+        #expect(request.makeConfig().code == "let x = 1")
+        #expect(request.makeConfig().language == .swift)
+        let verbatim = SnapshotRenderRequest(code: "```swift\nlet x = 1\n```", language: .markdown)
+        #expect(verbatim.makeConfig().code.hasPrefix("```"))
+    }
+
     @Test func explicitLanguageOverridesDetection() {
         // An explicit language wins over what detection would have guessed.
         let request = SnapshotRenderRequest(code: "SELECT * FROM t", language: .python)

@@ -38,7 +38,8 @@ extension EditorView {
                     CodeDocumentEditor(
                         settings: settings,
                         reindentOnPaste: environment.appSettings.reindentOnPaste,
-                        pasteFromClipboard: pasteFromClipboard)
+                        pasteFromClipboard: pasteFromClipboard,
+                        beginPastedDocument: beginPastedDocument)
                 }
             }
         }
@@ -177,7 +178,10 @@ extension EditorView {
         case .watching:
             String(localized: "Watching \(session.livingSnapshot.displayName) for saved changes")
         case .changeAvailable:
-            String(localized: "A saved change is waiting because this editor has local edits")
+            String(
+                localized:
+                    "A saved change is waiting because this editor has local edits or marks. Reload replaces them."
+            )
         case .unavailable:
             String(localized: "The live file is temporarily unavailable")
         }
@@ -246,7 +250,9 @@ extension EditorView {
             }
             Button(role: .destructive) {
                 imageProcessing.cancel()
-                settings.style.foregroundImage = nil
+                // Marks and alt text described the screenshot, not the code beneath it.
+                settings.style.clearContentMarks()
+                settings.noteDocumentReplaced()
             } label: {
                 Text("Remove image")
             }
@@ -355,11 +361,8 @@ extension EditorView {
     /// same undo-aware behavior as the ⌥⌘F command.
     var formatButton: some View {
         Button {
-            EditorCommandResponder(
-                settings: settings,
-                feedback: session.feedback,
-                presentation: session.presentation
-            ).formatCode(nil)
+            session.codeFormat.formatEditor(
+                in: NSApp.keyWindow, language: settings.style.language)
         } label: {
             Image(systemName: VitrineCommand.formatCode.systemImageName)
                 .font(.system(size: 11, weight: .medium))
@@ -595,16 +598,23 @@ extension EditorView {
         guard let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else {
             return
         }
-        let language = LanguageDetector.detect(text)
-        settings.style.language = language
-        // Pasting fresh code is a new capture, so drop content-bound marks (annotations,
-        // highlighted lines) that were positioned over whatever was here before.
-        settings.style.resetForNewContent()
+        let intake = beginPastedDocument(text)
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
         settings.documentCode =
             environment.appSettings.reindentOnPaste
-            ? CodeFormatter.tidy(text, language: language) : text
+            ? CodeFormatter.tidy(intake.code, language: intake.language) : intake.code
+    }
+
+    /// Pasting a whole document is a new capture: it stops the live file, drops marks
+    /// placed over the old content, and adopts the pasted text's language.
+    func beginPastedDocument(_ text: String) -> LanguageDetector.Interpretation {
+        let intake = LanguageDetector.interpret(text)
+        session.livingSnapshot.stop()
+        settings.style.resetForNewContent()
+        settings.style.language = intake.language
+        settings.noteDocumentReplaced()
+        return intake
     }
 }
 
@@ -688,6 +698,7 @@ private struct CodeDocumentEditor: View {
     @Bindable var settings: AppSettings
     let reindentOnPaste: Bool
     let pasteFromClipboard: () -> Void
+    let beginPastedDocument: (String) -> LanguageDetector.Interpretation
 
     var body: some View {
         CodeEditorView(
@@ -698,7 +709,7 @@ private struct CodeDocumentEditor: View {
             fontSize: settings.style.fontSize,
             fontLigatures: settings.style.fontLigatures,
             reindentOnPaste: reindentOnPaste,
-            onReplaceAllPaste: { settings.style.resetForNewContent() }
+            onReplaceAllPaste: beginPastedDocument
         )
         .overlay {
             if settings.documentIsEmpty {

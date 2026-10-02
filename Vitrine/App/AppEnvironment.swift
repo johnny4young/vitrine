@@ -49,8 +49,10 @@ final class AppEnvironment {
         brandKit = BrandKitStore(defaults: defaults)
         appSettings = AppSettings(
             defaults: defaults, brandKit: brandKit, entitlements: self.entitlements)
-        recents = RecentsStore(defaults: defaults)
-        customThemes = CustomThemeStore(defaults: defaults)
+        let customThemes = CustomThemeStore(defaults: defaults)
+        self.customThemes = customThemes
+        recents = RecentsStore(
+            defaults: defaults, themeLookup: { customThemes.theme(withID: $0) })
         presets = PresetStore(defaults: defaults)
         workspaceRecipes = WorkspaceRecipeStore(defaults: defaults)
     }

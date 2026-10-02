@@ -44,6 +44,9 @@ struct WelcomeView: View {
     /// quick-start.
     @State private var selectedBackground: GradientPreset = .aurora
 
+    /// Keeps the sample render out of every body pass; it changes only with the swatch.
+    @State private var sampleRenders = SampleRenderCache()
+
     /// Outcome of the in-window sample capture, for an inline status line.
     private enum SampleStatus: Equatable {
         case copied
@@ -320,11 +323,15 @@ struct WelcomeView: View {
     /// The sample render: the bundled snippet, One Dark, the chosen gradient,
     /// compact padding — preview-only, never the user's live document.
     private var sampleImage: NSImage? {
+        sampleRenders.image(for: selectedBackground)
+    }
+
+    fileprivate static func renderSample(on background: GradientPreset) -> NSImage? {
         var config = SnapshotConfig()
         config.code = EditorPreview.sampleCode
         config.language = .swift
         config.theme = .oneDark
-        config.background = .gradient(selectedBackground)
+        config.background = .gradient(background)
         config.padding = 24
         config.fontSize = 12.5
         return ExportManager.renderNSImage(config, scale: 2, profile: .sRGB, budget: .preview)
@@ -418,7 +425,7 @@ struct WelcomeView: View {
     /// user's chosen style and auto-copy preference.
     private func runSampleCapture() {
         let result = QuickCapture.renderText(
-            EditorPreview.sampleCode, language: .swift, settings: settings)
+            EditorPreview.sampleCode, language: .swift, settings: settings, recents: nil)
         switch result.outcome {
         case .copied: sampleStatus = .copied
         case .rendered: sampleStatus = .rendered
@@ -447,11 +454,14 @@ struct WelcomeView: View {
 /// `RecentsGalleryWindowController`): an AppKit window hosting the SwiftUI view,
 /// created lazily and reused. `presentIfFirstRun` is the single entry the app
 /// lifecycle calls so the per-defaults-suite gate lives in one place.
-final class WelcomeWindowController {
+final class WelcomeWindowController: NSObject, NSWindowDelegate {
     static let shared = WelcomeWindowController()
 
     let navigation: WelcomeNavigation
     private var window: NSWindow?
+
+    /// Retained so closing the window by any path records the quick-start as seen.
+    private var presentedSettings: AppSettings?
 
     init(navigation: WelcomeNavigation = .live) {
         self.navigation = navigation
@@ -470,6 +480,7 @@ final class WelcomeWindowController {
     /// Shows (creating if needed) and focuses the quick-start window. Public so a
     /// launch hook can force it open for manual and UI testing.
     func show(settings: AppSettings = .shared) {
+        presentedSettings = settings
         if window == nil {
             let hosting = NSHostingController(
                 rootView: makeRootView(settings: settings))
@@ -485,6 +496,7 @@ final class WelcomeWindowController {
             window.titleVisibility = .hidden
             window.isReleasedWhenClosed = false
             window.setAccessibilityIdentifier("welcome-window")
+            window.delegate = self
             window.center()
             self.window = window
         }
@@ -534,6 +546,25 @@ final class WelcomeWindowController {
             settings: settings,
             navigation: navigation,
             onDismiss: { [weak self] in self?.close() })
+    }
+
+    /// The title-bar close button and ⌘W dismiss the quick-start like Skip does.
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === window else { return }
+        presentedSettings?.hasSeenWelcome = true
+        presentedSettings = nil
+    }
+}
+
+/// Memoizes the quick-start sample per swatch without making the view observe it.
+private final class SampleRenderCache {
+    private var images: [GradientPreset: NSImage] = [:]
+
+    func image(for background: GradientPreset) -> NSImage? {
+        if let cached = images[background] { return cached }
+        let rendered = WelcomeView.renderSample(on: background)
+        images[background] = rendered
+        return rendered
     }
 }
 

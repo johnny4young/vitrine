@@ -88,8 +88,9 @@ struct SnapshotRenderRequest: Equatable {
         var config = baseStyle.styled(
             presetID: presetID, themeID: themeID, transparent: transparent,
             themeResolver: themeResolver)
-        config.code = code
-        config.language = resolvedLanguage
+        let intake = resolvedIntake
+        config.code = intake.code
+        config.language = intake.language
         return config
     }
 
@@ -97,8 +98,14 @@ struct SnapshotRenderRequest: Equatable {
     /// language inferred from the text using the same interpreter quick capture
     /// uses, so automation gets the app's smart detection (Markdown fences,
     /// file-path hints, then content scoring).
-    var resolvedLanguage: Language {
-        language ?? LanguageDetector.interpret(code).language
+    var resolvedLanguage: Language { resolvedIntake.language }
+
+    /// Without an explicit language the text is read like a quick capture, so a
+    /// Markdown fence is unwrapped rather than rendered; an explicit language keeps it.
+    private var resolvedIntake: (code: String, language: Language) {
+        if let language { return (code, language) }
+        let interpreted = LanguageDetector.interpret(code)
+        return (interpreted.code, interpreted.language)
     }
 
     /// The resolved destination preset, or `nil` when none was requested.

@@ -151,8 +151,9 @@ struct DocumentIngressTests {
             settings: environment.appSettings, recents: environment.recents, clipboard: { text })
         #expect(result.outcome == .deferredToEditor(blocks: 2))
         expectFresh(
-            environment.appSettings.config, source: source,
+            try #require(result.editorDocument), source: source,
             code: LanguageDetector.interpret(text).code)
+        #expect(environment.appSettings.config == source)
         #expect(environment.recents.captures.isEmpty)
     }
 }

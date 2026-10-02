@@ -38,6 +38,9 @@ enum QuickCapture {
         var outcome: Outcome
         var copiedToClipboard: Bool
         var savedToFile: Bool
+        /// The document to open when the capture defers to the editor. It carries the
+        /// one-off destination framing without writing it into the app-wide default.
+        var editorDocument: SnapshotConfig? = nil
 
         /// A result that produced no image (empty clipboard, URL, deferred).
         static func nonProducing(_ outcome: Outcome) -> Result {
@@ -58,11 +61,12 @@ enum QuickCapture {
         settings: AppSettings,
         recents: RecentsStore,
         destinationPreset: ExportPreset? = nil,
-        clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) }
+        clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) },
+        urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
     ) -> Outcome {
         capture(
             settings: settings, recents: recents, destinationPreset: destinationPreset,
-            clipboard: clipboard
+            clipboard: clipboard, urlCaptureEnabled: urlCaptureEnabled
         ).outcome
     }
 
@@ -74,7 +78,8 @@ enum QuickCapture {
         recents: RecentsStore,
         destinationPreset: ExportPreset? = nil,
         clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) },
-        historyConsent: RecentsStore.ConsentResolver? = nil
+        historyConsent: RecentsStore.ConsentResolver? = nil,
+        urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
     ) -> Result {
         guard let text = clipboard(),
             !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -83,13 +88,9 @@ enum QuickCapture {
             return .nonProducing(.empty)
         }
 
-        // URL → screenshot capture only branches off when the user opted in.
-        // The classified URL becomes a `.url` outcome: the app's `perform()` opens the
-        // Web Snapshot window (which owns the privacy disclosure and the async render),
-        // while a headless caller can offer the "Render as Text" recovery.
-        // `capture()` stays synchronous and UI-free — it only classifies and reports
-        // the outcome, so it carries no dependency on the windowed render path.
-        if settings.treatURLsAsScreenshot, classifyURL(text) != nil {
+        // A URL branches off only when the user opted in and this build can capture
+        // it; otherwise it renders as text. `perform()` opens Web Snapshot for `.url`.
+        if settings.treatURLsAsScreenshot, urlCaptureEnabled, classifyURL(text) != nil {
             // Never log the URL itself; record only that the branch was taken.
             Log.capture.info("Quick capture: URL detected")
             return .nonProducing(.url(text))
@@ -107,16 +108,17 @@ enum QuickCapture {
             for: config, settings: settings, destinationPreset: destinationPreset)
         config = plan.config
 
-        // Several fenced blocks are ambiguous to render inline: load the combined
-        // source into the editor and defer the choice to the user, recording
-        // nothing and copying nothing. The call site opens the editor.
+        // Several fenced blocks are ambiguous to render inline: hand the combined
+        // source to the editor and defer the choice to the user, recording nothing,
+        // copying nothing, and leaving the app-wide default untouched.
         if interpreted.hasMultipleBlocks {
-            settings.config = config
             settings.noteLanguageUsed(config.language)
             Log.capture.info(
                 "Quick capture: \(interpreted.blockCount, privacy: .public) code blocks → editor"
             )
-            return .nonProducing(.deferredToEditor(blocks: interpreted.blockCount))
+            var result = Result.nonProducing(.deferredToEditor(blocks: interpreted.blockCount))
+            result.editorDocument = config
+            return result
         }
 
         settings.noteLanguageUsed(config.language)
@@ -127,9 +129,8 @@ enum QuickCapture {
             "Quick capture: detected \(config.language.rawValue, privacy: .public), \(config.code.count, privacy: .public) chars"
         )
 
-        // Apply the PRO brand-kit watermark to the rendered image. Set here,
-        // on the export path only: the multi-block "load into editor" branch above
-        // returns first, so the stored `settings.config` is never watermarked.
+        // Apply the PRO brand-kit watermark on the export path only: the multi-block
+        // branch above returns first, so the editor document is never watermarked.
         config.watermark = settings.exportWatermark
 
         // Honor the active destination preset's framing (size/scale) so quick
@@ -322,21 +323,19 @@ enum QuickCapture {
     /// Renders an explicit string as a plain-text capture, bypassing clipboard
     /// reading and the URL branch.
     ///
-    /// This backs the "Render as Text" recovery offered when a clipboard URL is
-    /// detected but the user chooses not to open Web Snapshot: the URL text itself
-    /// is framed as a plain-text snippet using the same output settings as a normal
-    /// capture.
+    /// Uses the same output settings as a normal capture; pass `recents: nil` to
+    /// keep the render out of history (the Welcome sample does).
     @discardableResult
     static func renderText(
         _ text: String,
         language: Language = .plaintext,
         settings: AppSettings,
-        recents: RecentsStore = .shared,
+        recents: RecentsStore?,
         pasteboard: NSPasteboard = .general,
         historyConsent: RecentsStore.ConsentResolver? = nil
     ) -> Result {
         var config = settings.config.replacingContent(with: text, language: language)
-        settings.noteLanguageUsed(language)
+        if recents != nil { settings.noteLanguageUsed(language) }
         // Apply the PRO brand-kit watermark to the rendered image.
         config.watermark = settings.exportWatermark
 
@@ -355,7 +354,7 @@ enum QuickCapture {
             return .nonProducing(.renderFailed(error))
         }
 
-        recents.record(config, consent: historyConsent)
+        recents?.record(config, consent: historyConsent)
         Log.capture.notice(
             "Rendered text capture (\(didCopy ? "copied" : "rendered", privacy: .public))")
         return Result(
@@ -386,7 +385,7 @@ enum QuickCapture {
             config.foregroundImage = reference
             let plan = renderPlan(
                 for: config, settings: settings, destinationPreset: destinationPreset)
-            EditorWindowController.shared.loadIntoPrimary(plan.config)
+            feedback.routing.loadIntoPrimaryEditor(plan.config)
             Log.capture.info("Quick capture: clipboard image → editor")
             return
         }
@@ -398,18 +397,13 @@ enum QuickCapture {
             historyConsent: HistoryConsentPrompt.resolve)
         switch result.outcome {
         case .deferredToEditor:
-            // `capture` has already written the combined multi-block source into
-            // `settings.config`; load that into the primary editor window so the user
-            // sees it even if the editor was already open; a plain `show()` no longer
-            // clobbers an open window's per-window document.
-            EditorWindowController.shared.loadIntoPrimary(settings.config)
+            if let document = result.editorDocument {
+                feedback.routing.loadIntoPrimaryEditor(document)
+            }
             feedback.present(result, environment: environment)
         case .url(let text):
-            // A clipboard URL opens the Web Snapshot window preloaded with it — where
-            // the privacy disclosure and the local capture live — rather than the old
-            // deferred dead-end. `MenuBar/` is excluded from the CLI target, so naming
-            // the WebKit-backed window here keeps the tool free of it.
-            WebSnapshotWindowController.shared.show(prefillURL: text)
+            // Web Snapshot owns the privacy disclosure and the local capture.
+            feedback.routing.showWebSnapshot(prefillURL: text)
         default:
             feedback.present(result, environment: environment)
         }

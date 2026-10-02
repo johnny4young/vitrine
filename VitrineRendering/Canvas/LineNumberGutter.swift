@@ -188,7 +188,13 @@ struct CodeLinesView: View {
 public enum LineSplitter {
     /// The plain-text lines, including empty ones (interior and trailing).
     static func plainLines(of text: String) -> [Substring] {
-        text.split(separator: "\n", omittingEmptySubsequences: false)
+        text.split(omittingEmptySubsequences: false, whereSeparator: isLineFeed)
+    }
+
+    /// `"\r\n"` is a single `Character`, so a CRLF line ending must match explicitly
+    /// to keep rows aligned with `lineCount(of:)` and the line-based redactions.
+    static func isLineFeed(_ character: Character) -> Bool {
+        character == "\n" || character == "\r\n"
     }
 
     /// The number of rows `text` renders as: one per line, with empty interior
@@ -214,7 +220,7 @@ public enum LineSplitter {
         let characters = attributed.characters
 
         while cursor < attributed.endIndex {
-            if characters[cursor] == "\n" {
+            if isLineFeed(characters[cursor]) {
                 result.append(AttributedString(attributed[lineStart..<cursor]))
                 cursor = attributed.index(afterCharacter: cursor)
                 lineStart = cursor

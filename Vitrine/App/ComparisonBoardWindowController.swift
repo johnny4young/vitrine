@@ -31,6 +31,7 @@ final class ComparisonBoardWindowController: NSObject, NSWindowDelegate {
         try ComparisonBoardDraft(
             captures: captures,
             baseConfig: environment.appSettings.exportConfig,
+            themes: environment.recents.themeLookup,
             profile: environment.appSettings.export.colorProfile,
             renderScale: CGFloat(environment.appSettings.export.scale))
     }

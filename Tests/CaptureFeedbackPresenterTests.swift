@@ -50,7 +50,8 @@ struct CaptureFeedbackPresenterTests {
         #expect(presenter.lastFeedback == Notifier.feedback(for: .empty))
         let action = try #require(display.actionHandler)
         action(.openEditor)
-        #expect(routing.loadedConfigs == [environment.appSettings.config])
+        #expect(routing.editorPresentations == 1)
+        #expect(routing.loadedConfigs.isEmpty)
     }
 
     @Test func webSnapshotRecoveryConsumesThePendingURL() throws {
@@ -84,18 +85,6 @@ struct CaptureFeedbackPresenterTests {
         #expect(routing.loadedConfigs.isEmpty)
         #expect(routing.editorPresentations == 0)
         #expect(routing.webSnapshotURLs.isEmpty)
-    }
-
-    @Test func renderAsTextWithoutPendingURLRoutesToTheEditor() throws {
-        let environment = makeEnvironment()
-        let display = DisplaySpy()
-        let routing = RoutingSpy()
-        let presenter = CaptureFeedbackPresenter(
-            display: display.port, routing: routing.port)
-
-        presenter.run(.renderAsText, environment: environment)
-
-        #expect(routing.editorPresentations == 1)
     }
 
     @Test func coordinatorContainsNoWindowSingletonReads() throws {

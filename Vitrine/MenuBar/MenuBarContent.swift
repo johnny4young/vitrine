@@ -204,6 +204,7 @@ struct MenuBarContent: View {
                 ForEach(Array(recents.captures.prefix(3))) { capture in
                     RecentCaptureRow(
                         capture: capture,
+                        theme: recents.theme(for: capture),
                         reopen: {
                             reopen(capture)
                             dismiss()
@@ -347,7 +348,7 @@ struct MenuBarContent: View {
     /// even if the editor is already open; a plain `show()` no longer clobbers an
     /// open window's per-window document.
     private func reopen(_ capture: Capture) {
-        navigation.loadIntoPrimaryEditor(capture.applying(to: settings.config))
+        navigation.loadIntoPrimaryEditor(recents.document(for: capture, over: settings.config))
     }
 
     /// Re-renders a recent capture with the user's current output settings and
@@ -356,7 +357,7 @@ struct MenuBarContent: View {
     private func copyAgain(_ capture: Capture) {
         // `exportConfig`, not `config`: every export surface renders through it so
         // the PRO Brand Kit watermark is applied at the export seam.
-        let config = capture.applying(to: settings.exportConfig)
+        let config = recents.document(for: capture, over: settings.exportConfig)
         let outcome = ExportManager.copyToPasteboardOutcome(
             config, scale: CGFloat(settings.effectiveExportScale),
             fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
@@ -410,6 +411,7 @@ private struct KbdChip: View {
 /// copy actions. Clicking the row reopens the capture.
 private struct RecentCaptureRow: View {
     let capture: Capture
+    let theme: Theme
     let reopen: () -> Void
     let copyImage: () -> Void
     let copySource: () -> Void
@@ -492,7 +494,7 @@ private struct RecentCaptureRow: View {
     private var metadataLine: String {
         let time = Self.relativeFormatter.localizedString(
             for: capture.date, relativeTo: Date())
-        return "\(capture.language.displayName) · \(time) · \(capture.theme.displayName)"
+        return "\(capture.language.displayName) · \(time) · \(theme.displayName)"
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {
@@ -504,7 +506,7 @@ private struct RecentCaptureRow: View {
     /// The 52×38 stylized thumbnail: a mini code card in the capture's theme
     /// color over the signature gradient.
     private var thumbnail: some View {
-        let chip = ThemeChipColors.colors(for: capture.theme)
+        let chip = ThemeChipColors.colors(for: theme)
         return RoundedRectangle(cornerRadius: 7, style: .continuous)
             .fill(VitrineTokens.Gradients.signature)
             .frame(width: 52, height: 38)

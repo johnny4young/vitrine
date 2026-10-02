@@ -119,6 +119,7 @@ struct RecentsGalleryView: View {
                         ForEach(filteredCaptures) { capture in
                             RecentsCard(
                                 capture: capture,
+                                themeName: recents.theme(for: capture).displayName,
                                 thumbnail: recents.thumbnail(for: capture),
                                 action: { cardAction(capture) },
                                 comparisonIndex: comparisonSelection.index(of: capture.id),
@@ -312,7 +313,7 @@ struct RecentsGalleryView: View {
     private var filteredCaptures: [Capture] {
         sortOrder.sorted(
             recents.captures.filter {
-                (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery)
+                (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery, themes: recents.themeLookup)
             })
     }
 
@@ -335,7 +336,7 @@ struct RecentsGalleryView: View {
     /// *and* left the editor on its previous content; this matches the menu's semantics so
     /// the two recents surfaces behave identically.
     private func open(_ capture: Capture) {
-        navigation.loadIntoPrimaryEditor(capture.applying(to: settings.config))
+        navigation.loadIntoPrimaryEditor(recents.document(for: capture, over: settings.config))
     }
 
     private func cardAction(_ capture: Capture) {
@@ -373,7 +374,7 @@ struct RecentsGalleryView: View {
     private func render(_ capture: Capture, as preset: ExportPreset) {
         // `exportConfig`, not `config`: every export surface renders through it so
         // the PRO Brand Kit watermark is applied at the export seam.
-        var config = capture.applying(to: settings.exportConfig)
+        var config = recents.document(for: capture, over: settings.exportConfig)
         preset.apply(to: &config)
         let outcome = ExportManager.copyToPasteboardOutcome(
             config,
@@ -414,6 +415,7 @@ extension RecentsSortOrder {
 /// relative capture date.
 private struct RecentsCard: View {
     let capture: Capture
+    let themeName: String
     let thumbnail: NSImage?
     let action: () -> Void
     let comparisonIndex: Int?
@@ -505,7 +507,7 @@ private struct RecentsCard: View {
             // A locale-neutral separator dot, shown verbatim.
             Text(verbatim: "·")
                 .foregroundStyle(Brand.Palette.textSecondary.color)
-            Text(capture.theme.displayName)
+            Text(themeName)
                 .font(.subheadline)
                 .foregroundStyle(Brand.Palette.textSecondary.color)
                 .lineLimit(1)
@@ -582,7 +584,7 @@ private struct RecentsCard: View {
     /// visually, so the card reads usefully without the user inspecting each label.
     private var accessibilityLabel: String {
         let when = Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date())
-        let details = "\(capture.language.displayName), \(capture.theme.displayName), \(when)"
+        let details = "\(capture.language.displayName), \(themeName), \(when)"
         if let comparisonIndex {
             return "\(String(localized: "Selected \(comparisonIndex + 1)")), \(details)"
         }

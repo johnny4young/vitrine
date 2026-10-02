@@ -154,28 +154,30 @@ extension ExportManager {
     /// Renders one slide per page into `directory` as `carousel-01.png` … — the
     /// carousel export. Each slide is `baseConfig` with only its `code`
     /// replaced by that page's lines, rendered at the fixed 4:5 slide frame through
-    /// the standard pipeline; content marks that belong to the whole document
-    /// (annotations, highlighted/redacted lines) are cleared so a page never carries a
-    /// mark positioned against different lines. Pipelined like `exportPresetSizes`:
+    /// the standard pipeline. Highlighted and redacted lines follow their lines onto
+    /// the slide; positional annotations are dropped because they are placed against
+    /// the whole canvas. Pipelined like `exportPresetSizes`:
     /// render on the main actor, PNG-encode + write off it, results drain in
     /// completion order with count-based progress. Two-digit numbering keeps the
     /// files sorted everywhere; only counts are logged.
     @discardableResult
     static func exportCarousel(
-        _ baseConfig: SnapshotConfig, pages: [String], to directory: URL,
+        _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide], to directory: URL,
         profile: ColorProfile = .sRGB,
         onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
     ) async -> BatchExportResult {
         var written = 0
         var failed = 0
         var firstRenderFailure: RenderBudgetError?
-        let total = pages.count
+        let total = slides.count
         var completed = 0
         await withTaskGroup(of: BatchItemOutcome.self) { group in
-            for (index, page) in pages.enumerated() {
+            for (index, slide) in slides.enumerated() {
                 var config = baseConfig
                 config.clearContentMarks()
-                config.code = page
+                config.code = slide.text
+                config.highlightedLineRanges = slide.localRanges(baseConfig.highlightedLineRanges)
+                config.redactedLineRanges = slide.localRanges(baseConfig.redactedLineRanges)
                 config.fontSize = max(config.fontSize, carouselMinimumFontSize)
                 let raster: CGImage?
                 do throws(RenderBudgetError) {

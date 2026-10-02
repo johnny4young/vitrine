@@ -31,6 +31,13 @@ final class AppSettings {
         }
     }
 
+    /// Bumped whenever new content replaces the document, so editor-only state tied to
+    /// the old content (annotation undo, selection) can reset.
+    private(set) var documentGeneration = 0
+
+    /// Records that new content replaced the document.
+    func noteDocumentReplaced() { documentGeneration &+= 1 }
+
     /// Whether ``documentCode`` is empty, observed separately from the text itself.
     ///
     /// It changes only when the answer does, so a view that needs just this (an action
@@ -383,6 +390,22 @@ final class AppSettings {
         return true
     }
 
+    /// Saves the custom-theme editor's result. An edit keeps the theme's id, and the
+    /// default follows it only when it already used that theme; a new theme becomes the
+    /// default so the editor's preview matches the canvas.
+    @discardableResult
+    func saveCustomTheme(
+        editingID: String?, name: String, palette: ThemePalette, in themes: CustomThemeStore
+    ) -> Theme {
+        if let editingID, let updated = themes.update(id: editingID, name: name, palette: palette) {
+            if style.theme.id == editingID { style.theme = updated }
+            return updated
+        }
+        let added = themes.addTheme(named: name, palette: palette)
+        style.theme = added
+        return added
+    }
+
     /// Apply through existing observable properties: typing remains independent from
     /// style, and output controls continue observing individual fields rather than a
     /// new aggregate store. Set the destination last so intermediate style writes cannot
@@ -457,14 +480,21 @@ final class AppSettings {
     ///   could not adopt. Callers can surface that boundary instead of silently
     ///   implying full parity.
     @discardableResult
-    func applyWorkspaceRecipe(_ recipe: WorkspaceRecipe) -> Bool {
+    func applyWorkspaceRecipe(_ recipe: WorkspaceRecipe, themes: CustomThemeStore) -> Bool {
         isApplyingPreset = true
         defer { isApplyingPreset = false }
 
         var updated = config
         let destination = recipe.output.destinationPresetID.flatMap(ExportPreset.preset(withID:))
         destination?.apply(to: &updated)
-        recipe.style.apply(to: &updated, resolvingThemeWith: recipe.theme(withID:))
+        recipe.style.apply(to: &updated) { id in
+            if let embedded = recipe.customTheme, embedded.id == id,
+                let adopted = themes.adopt(embedded)
+            {
+                return adopted
+            }
+            return recipe.theme(withID: id)
+        }
         if let windowTitle = recipe.metadata.windowTitle {
             updated.windowTitle = windowTitle
         }

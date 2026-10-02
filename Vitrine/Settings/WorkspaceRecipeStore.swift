@@ -148,9 +148,11 @@ final class WorkspaceRecipeStore {
     /// this policy in the store makes editor drag-and-drop a thin adapter and keeps
     /// automatic application independently testable.
     @discardableResult
-    func applyRecipe(for sourceURL: URL, to settings: AppSettings) -> ResolvedRecipe? {
+    func applyRecipe(
+        for sourceURL: URL, to settings: AppSettings, themes: CustomThemeStore
+    ) -> ResolvedRecipe? {
         guard let resolved = resolvedRecipe(for: sourceURL) else { return nil }
-        let canvasDeferred = settings.applyWorkspaceRecipe(resolved.recipe)
+        let canvasDeferred = settings.applyWorkspaceRecipe(resolved.recipe, themes: themes)
         if canvasDeferred {
             // The explicit Settings ▸ Apply action tells the user about this boundary in
             // an alert; a file drop must not interrupt with one, so the partial

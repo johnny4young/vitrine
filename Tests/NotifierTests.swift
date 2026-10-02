@@ -98,10 +98,14 @@ struct NotifierFeedbackTests {
         #expect(Notifier.feedback(for: .empty).actions == [.openEditor])
     }
 
-    @Test func urlFeedbackOffersWebSnapshotAndRenderAsText() {
-        let actions = Notifier.feedback(for: .url("https://example.com")).actions
-        #expect(actions.contains(.openWebSnapshot))
-        #expect(actions.contains(.renderAsText))
+    @Test func urlFeedbackOffersWebSnapshot() {
+        #expect(Notifier.feedback(for: .url("https://example.com")).actions == [.openWebSnapshot])
+    }
+
+    @Test func aCaptureThatWasNeitherCopiedNorSavedIsNotASuccess() {
+        let feedback = Notifier.feedback(for: .rendered, copiedToClipboard: false, savedToFile: false)
+        #expect(feedback.category == .info)
+        #expect(feedback.message.contains("Settings"))
     }
 
     @Test func routineSuccessHasNoRecoveryActions() {
@@ -122,14 +126,12 @@ struct NotifierFeedbackTests {
     @Test func recoveryActionTitlesAreHumanReadable() {
         #expect(!Notifier.RecoveryAction.openEditor.title.isEmpty)
         #expect(!Notifier.RecoveryAction.openWebSnapshot.title.isEmpty)
-        #expect(!Notifier.RecoveryAction.renderAsText.title.isEmpty)
     }
 
     @Test func recoveryActionAccessibilityTokensAreStableAndNonLocalized() {
         // Accessibility identifiers must not be localized (UI tests rely on them).
         #expect(Notifier.RecoveryAction.openEditor.accessibilityToken == "open-editor")
         #expect(Notifier.RecoveryAction.openWebSnapshot.accessibilityToken == "open-web-snapshot")
-        #expect(Notifier.RecoveryAction.renderAsText.accessibilityToken == "render-as-text")
     }
 }
 
@@ -223,12 +225,12 @@ struct CaptureResultDestinationTests {
         #expect(result.outcome == .rendered)
         #expect(!result.copiedToClipboard)
         #expect(!result.savedToFile)
-        // The feedback for this result still reads as success, not a failure.
+        // Nothing reached the user, so the feedback says how to fix it, not "success".
         #expect(
             Notifier.feedback(
                 for: result.outcome, copiedToClipboard: result.copiedToClipboard,
                 savedToFile: result.savedToFile
-            ).category == .success)
+            ).category == .info)
     }
 
     @Test func nonProducingOutcomesReportNeitherCopiedNorSaved() {

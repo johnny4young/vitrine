@@ -26,8 +26,8 @@ struct CarouselExportView: View {
 
     private var isExporting: Bool { progress != nil }
 
-    private var pages: [String] {
-        CarouselPaginator.pages(for: baseConfig.code, maxLinesPerSlide: linesPerSlide)
+    private var pages: [CarouselPaginator.Slide] {
+        CarouselPaginator.slides(for: baseConfig.code, maxLinesPerSlide: linesPerSlide)
     }
 
     var body: some View {
@@ -79,7 +79,7 @@ struct CarouselExportView: View {
         progress = (0, pages.count)
         Task {
             let result = await ExportManager.exportCarousel(
-                baseConfig, pages: pages, to: directory, profile: profile,
+                baseConfig, slides: pages, to: directory, profile: profile,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil
             let completion = BatchExportCompletion(

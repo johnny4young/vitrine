@@ -26,6 +26,8 @@ final class EditorSession {
     let environment: AppEnvironment
     let feedback: FeedbackDisplay
     let presentation: EditorPresentation
+    /// The window's Format Code work, retained so a large format is not cancelled early.
+    let codeFormat: CodeFormatOperation
 
     /// Creates a session for `identity` with its own ephemeral settings.
     ///
@@ -47,6 +49,7 @@ final class EditorSession {
         self.environment = environment
         self.feedback = feedback
         self.presentation = presentation
+        codeFormat = CodeFormatOperation(feedback: feedback)
         let resolvedSettings: AppSettings
         if let settings {
             resolvedSettings = settings
@@ -238,6 +241,7 @@ final class EditorWindowController: NSObject {
         let session = session(for: .primary)
         session.livingSnapshot.stop()
         session.settings.config = config
+        session.settings.noteDocumentReplaced()
         show()
     }
 

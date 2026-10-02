@@ -18,6 +18,14 @@ struct LineSplitterTests {
         #expect(LineSplitter.plainLines(of: "a\n\nb\n").count == 4)
     }
 
+    @Test func crlfLineEndingsSplitIntoTheSameRowsTheyCount() {
+        let text = "a\r\nb\r\n\r\nc"
+        #expect(LineSplitter.lineCount(of: text) == 4)
+        #expect(LineSplitter.plainLines(of: text) == ["a", "b", "", "c"])
+        let lines = LineSplitter.attributedLines(of: AttributedString(text))
+        #expect(lines.map { String($0.characters) } == ["a", "b", "", "c"])
+    }
+
     @Test func emptyTextIsASingleRow() {
         #expect(LineSplitter.lineCount(of: "") == 1)
     }

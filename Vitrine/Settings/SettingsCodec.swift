@@ -253,9 +253,19 @@ enum SettingsCodec {
     /// out-of-range or hand-edited value can never reach the renderer.
     static func readSocialCard(from defaults: UserDefaults) -> SocialCardModel {
         guard let data = defaults.data(forKey: Keys.socialCard),
-            let decoded = try? JSONDecoder().decode(SocialCardModel.self, from: data)
+            var decoded = try? JSONDecoder().decode(SocialCardModel.self, from: data)
         else { return SocialCardModel() }
+        // The model resolves only built-in themes; a custom one comes from the store.
+        if let themeID = (try? JSONDecoder().decode(StoredThemeID.self, from: data))?.theme,
+            !Theme.builtInIDs.contains(themeID)
+        {
+            decoded.theme = CustomThemeStore(defaults: defaults).theme(withID: themeID)
+        }
         return decoded
+    }
+
+    private struct StoredThemeID: Decodable {
+        var theme: String?
     }
 
     /// Reads the export scale, clamping a stored value into the supported set and
