@@ -103,7 +103,8 @@ struct NotifierFeedbackTests {
     }
 
     @Test func aCaptureThatWasNeitherCopiedNorSavedIsNotASuccess() {
-        let feedback = Notifier.feedback(for: .rendered, copiedToClipboard: false, savedToFile: false)
+        let feedback = Notifier.feedback(
+            for: .rendered, copiedToClipboard: false, savedToFile: false)
         #expect(feedback.category == .info)
         #expect(feedback.message.contains("Settings"))
     }

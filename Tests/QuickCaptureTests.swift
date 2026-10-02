@@ -459,11 +459,13 @@ struct QuickCaptureFenceTests {
             clipboard: { "https://example.com" },
             urlCaptureEnabled: false)
         #expect(result.outcome != .url("https://example.com"))
-        #expect(QuickCapture.capture(
-            settings: settings,
-            recents: RecentsStore(defaults: quickCaptureDefaults()),
-            clipboard: { "https://example.com" },
-            urlCaptureEnabled: true).outcome == .url("https://example.com"))
+        #expect(
+            QuickCapture.capture(
+                settings: settings,
+                recents: RecentsStore(defaults: quickCaptureDefaults()),
+                clipboard: { "https://example.com" },
+                urlCaptureEnabled: true
+            ).outcome == .url("https://example.com"))
     }
 
     @Test func singleFenceIsStrippedBeforeStoring() {
