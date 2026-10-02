@@ -169,12 +169,18 @@ public struct SocialCardModel: Equatable {
     }
 
     /// Truncates a raw excerpt to at most `maxExcerptLines` lines, appending an
-    /// ellipsis line when content was dropped, and trims trailing blank lines so a
-    /// stray newline never reserves an empty row. Returns `""` for an empty input.
+    /// ellipsis line when content was dropped. Surrounding blank lines and trailing
+    /// spaces are dropped and the common margin is removed uniformly, so a snippet copied
+    /// from inside a function keeps its relative indentation. Returns `""` for an empty input.
     public static func truncatedExcerpt(_ raw: String) -> String {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "" }
-        var lines = trimmed.components(separatedBy: "\n")
+        func isBlank(_ line: Substring) -> Bool { line.allSatisfy(\.isWhitespace) }
+        let all = raw.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        guard let first = all.firstIndex(where: { !isBlank($0) }),
+            let last = all.lastIndex(where: { !isBlank($0) })
+        else { return "" }
+        var lines = CodeFormatter.dedent(all[first...last].joined(separator: "\n"))
+            .components(separatedBy: "\n")
+            .map { String($0.reversed().drop(while: \.isWhitespace).reversed()) }
         guard lines.count > maxExcerptLines else { return lines.joined(separator: "\n") }
         lines = Array(lines.prefix(maxExcerptLines))
         lines.append("…")

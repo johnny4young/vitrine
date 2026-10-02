@@ -133,6 +133,14 @@ struct SocialCardModelValidationTests {
         #expect(!card.codeExcerpt.isEmpty)
     }
 
+    @Test func excerptKeepsRelativeIndentationOfTheFirstLine() {
+        #expect(SocialCardModel.truncatedExcerpt("\n    a\n        b\n    c\n") == "a\n    b\nc")
+        #expect(SocialCardModel.truncatedExcerpt("    a\n    b") == "a\nb")
+        #expect(
+            SocialCardModel.truncatedExcerpt("\r\n  if x {\r\n      y()\r\n  }\r\n")
+                == "if x {\n    y()\n}")
+    }
+
     @Test func emptyExcerptHasNoLines() {
         let card = SocialCardModel(title: "Only a title")
         #expect(card.codeExcerpt.isEmpty)
