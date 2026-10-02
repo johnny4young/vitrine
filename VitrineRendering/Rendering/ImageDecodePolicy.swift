@@ -70,32 +70,50 @@ nonisolated public enum ImageDecodePolicy {
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         var dimensions: [(width: Int, height: Int)] = []
         dimensions.reserveCapacity(frameCount)
-        var totalPixels = 0
 
         for index in 0..<frameCount {
             guard CGImageSourceGetStatusAtIndex(source, index) == .statusComplete,
                 let properties = CGImageSourceCopyPropertiesAtIndex(source, index, options)
                     as? [CFString: Any],
                 let width = properties[kCGImagePropertyPixelWidth] as? Int,
-                let height = properties[kCGImagePropertyPixelHeight] as? Int,
-                width > 0, height > 0
+                let height = properties[kCGImagePropertyPixelHeight] as? Int
             else {
                 throw .invalidImage
             }
-            let (framePixels, frameOverflow) = width.multipliedReportingOverflow(by: height)
-            guard !frameOverflow else { throw .tooLarge }
-            let (nextTotal, totalOverflow) = totalPixels.addingReportingOverflow(framePixels)
-            guard !totalOverflow, nextTotal <= maximumSourcePixelCount else {
-                throw .tooLarge
-            }
-            totalPixels = nextTotal
             dimensions.append((width: width, height: height))
         }
 
         return Metadata(
             frameCount: frameCount,
             frameDimensions: dimensions,
-            totalSourcePixels: totalPixels)
+            totalSourcePixels: try totalSourcePixels(
+                of: dimensions, maximumFrameCount: maximumFrameCount,
+                maximumSourcePixelCount: maximumSourcePixelCount))
+    }
+
+    /// The cumulative pixel budget across frames. It matters for animated images:
+    /// individually small frames can otherwise expand to an unbounded decoded sequence.
+    public static func totalSourcePixels(
+        of dimensions: [(width: Int, height: Int)],
+        maximumFrameCount: Int,
+        maximumSourcePixelCount: Int
+    ) throws(Failure) -> Int {
+        guard !dimensions.isEmpty else { throw .invalidImage }
+        guard dimensions.count <= maximumFrameCount else { throw .tooLarge }
+
+        var totalPixels = 0
+        for dimension in dimensions {
+            guard dimension.width > 0, dimension.height > 0 else { throw .invalidImage }
+            let (framePixels, frameOverflow) = dimension.width.multipliedReportingOverflow(
+                by: dimension.height)
+            guard !frameOverflow else { throw .tooLarge }
+            let (nextTotal, totalOverflow) = totalPixels.addingReportingOverflow(framePixels)
+            guard !totalOverflow, nextTotal <= maximumSourcePixelCount else {
+                throw .tooLarge
+            }
+            totalPixels = nextTotal
+        }
+        return totalPixels
     }
 
     /// The ImageIO maximum-dimension hint that preserves aspect ratio while ensuring both the
