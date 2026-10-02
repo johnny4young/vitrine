@@ -193,11 +193,13 @@ struct EditorInspectorView: View {
     /// primary window). Without this, an inspector tweak reads as "the default", or a
     /// Settings change reads as "should have changed my open image".
     private var scopeNote: some View {
-        Text("These style this capture. New captures start from the default in Settings ▸ Style.")
-            .font(.system(size: VitrineTokens.FontSize.caption))
-            .foregroundStyle(VitrineTokens.Text.tertiary)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityIdentifier("inspector-scope-note")
+        Text(
+            "These controls style this capture. New captures start from the default in Settings ▸ Style."
+        )
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .foregroundStyle(VitrineTokens.Text.tertiary)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("inspector-scope-note")
     }
 
     /// Background: the shared preset swatches, with the kind picker and per-kind
