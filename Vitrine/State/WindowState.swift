@@ -260,7 +260,8 @@ struct EditorWindowState: Codable, Equatable {
         diffDecorations =
             (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? fallback.diffDecorations
         annotations =
-            (try? container.decode([Annotation].self, forKey: .annotations)) ?? fallback.annotations
+            (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
+            .compactMap(\.value) ?? fallback.annotations
     }
 
     /// JSON for archiving this draft into an `NSCoder` restoration record.

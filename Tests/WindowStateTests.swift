@@ -264,6 +264,20 @@ struct EditorWindowStateTests {
         }
     }
 
+    @Test func anUnknownAnnotationKindDropsOnlyThatAnnotation() throws {
+        let arrow = Annotation(kind: .arrow, start: .zero, end: CGPoint(x: 1, y: 1))
+        let known = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(arrow)) as? [String: Any])
+        var future = known
+        future["kind"] = "lasso"
+        future["id"] = UUID().uuidString
+        let payload: [String: Any] = ["code": "x = 1", "annotations": [known, future]]
+
+        let state = try #require(
+            EditorWindowState.decoded(from: JSONSerialization.data(withJSONObject: payload)))
+        #expect(state.config().annotations == [arrow])
+    }
+
     @Test func aPartialPayloadDecodesToFieldDefaults() throws {
         // A truncated restoration blob (only `code` present) must still rebuild a
         // complete, valid draft: every absent field falls back to its `SnapshotConfig`
