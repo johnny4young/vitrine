@@ -85,6 +85,7 @@ struct EditorWindowStateTests {
     /// mistyped key surfaces as a round-trip mismatch.
     private func richConfig() -> SnapshotConfig {
         var config = SnapshotConfig()
+        config.altText = try! SnapshotAltText.normalized("This document only")
         config.code = "let answer = 42\nprint(answer)"
         config.language = .python
         config.theme = .dracula
@@ -253,6 +254,16 @@ struct EditorWindowStateTests {
         #expect(EditorWindowState.decoded(from: Data()) == nil)
     }
 
+    @Test func legacyAndInvalidDescriptionsRestoreWithoutLeakingAcrossDocuments() throws {
+        for input in [
+            "{}", #"{"altText":42}"#, #"{"altText":"  "}"#,
+            "{\"altText\":\"" + String(repeating: "a", count: 1025) + "\"}",
+        ] {
+            let state = try #require(EditorWindowState.decoded(from: Data(input.utf8)))
+            #expect(state.config().altText == nil)
+        }
+    }
+
     @Test func aPartialPayloadDecodesToFieldDefaults() throws {
         // A truncated restoration blob (only `code` present) must still rebuild a
         // complete, valid draft: every absent field falls back to its `SnapshotConfig`
@@ -317,6 +328,26 @@ struct EditorWindowStateTests {
 
 @Suite("Window frame off-screen recovery")
 struct WindowFrameSolverTests {
+    @Test func uiViewportRequestsUseTheActualFrameMinimumAndRejectClipping() {
+        let minimum = CGSize(width: 940, height: 548)
+        let available = CGSize(width: 1600, height: 806)
+        #expect(
+            WindowFrameSolver.requestedViewportSize(
+                "minimum", minimum: minimum, available: available) == minimum)
+        #expect(
+            WindowFrameSolver.requestedViewportSize(
+                "1280x800", minimum: minimum, available: available)
+                == CGSize(width: 1280, height: 800))
+        for invalid in ["940x520", "0x0", "-1x800", "1280x900", "minimumx", "1280", "1280x800x1"] {
+            #expect(
+                WindowFrameSolver.requestedViewportSize(
+                    invalid, minimum: minimum, available: available) == nil)
+        }
+        #expect(
+            WindowFrameSolver.requestedViewportSize(
+                "minimum", minimum: minimum, available: CGSize(width: 800, height: 600)) == nil)
+    }
+
     /// A single 1440×900 main screen at the origin (a common laptop layout).
     private let laptop = CGRect(x: 0, y: 0, width: 1440, height: 900)
 

@@ -1,6 +1,234 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Export Here" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Export Here" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Exportar aquí" } }
+      }
+    },
+    "Alternative text" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alternative text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto alternativo"
+          }
+        }
+      }
+    },
+    "Alternative text must contain at most 1024 characters." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alternative text must contain at most 1024 characters."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El texto alternativo admite como máximo 1024 caracteres."
+          }
+        }
+      }
+    },
+    "Describes this image in Markdown and HTML; not drawn on the image." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describes this image in Markdown and HTML; not drawn on the image."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Describe esta imagen en Markdown y HTML; no se dibuja en la imagen."
+          }
+        }
+      }
+    },
+    "Export for Documentation" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export for Documentation"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar para documentación"
+          }
+        }
+      }
+    },
+    "Save a PNG and selected copyable representations in a new folder. Existing files are never replaced." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save a PNG and selected copyable representations in a new folder. Existing files are never replaced."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda un PNG y los formatos copiables seleccionados en una carpeta nueva. Nunca se reemplazan archivos existentes."
+          }
+        }
+      }
+    },
+    "Folder name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Folder name"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre de carpeta"
+          }
+        }
+      }
+    },
+    "Choose Parent Folder…" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Parent Folder…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elegir carpeta contenedora…"
+          }
+        }
+      }
+    },
+    "Imported images have no original source transcript." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imported images have no original source transcript."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las imágenes importadas no tienen una transcripción del código original."
+          }
+        }
+      }
+    },
+    "Documentation exported" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Documentation exported"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Documentación exportada"
+          }
+        }
+      }
+    },
+    "Couldn't export documentation. Choose a new folder name and check access to its parent." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couldn't export documentation. Choose a new folder name and check access to its parent."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo exportar la documentación. Elige otro nombre y comprueba el acceso a la carpeta contenedora."
+          }
+        }
+      }
+    },
+    "Markdown" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Markdown"
+          }
+        }
+      }
+    },
+    "HTML" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTML"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HTML"
+          }
+        }
+      }
+    },
+    "Plain text" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plain text"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto plano"
+          }
+        }
+      }
+    },
     "Copy some code, then choose New Capture from Clipboard." : {
       "extractionState" : "manual",
       "localizations" : {

@@ -421,6 +421,16 @@ initialize — a runner-image regression, which has happened before
 (actions/runner-images#7621, #8546) — a dedicated step annotates the run as an
 infrastructure failure rather than a product bug.
 
+The documentation-package journey requires an actual usable 1280×800 viewport,
+not a clamped approximation. Before running the UI suite, CI qualifies the display
+using a public CoreGraphics session transaction (not an app-lifetime mode switch)
+and independently checks AppKit's usable
+frame in a fresh process. Mode switching is restricted to disposable GitHub-hosted
+runners; local and self-hosted invocations are rejected. An unsupported display
+fails the lane rather than skipping the journey. The `documentation-ui` artifact
+contains its display receipt and all eight EN/ES, light/dark, minimum/1280×800
+screenshots; missing or duplicate states fail evidence extraction.
+
 For local runs, keep Vitrine/XCTest frontmost while the suite is active. XCUITest
 can report unrelated windows as "interrupting elements" (Slack, browsers, or an
 IDE on another display) even when the app itself is healthy. If a local run fails

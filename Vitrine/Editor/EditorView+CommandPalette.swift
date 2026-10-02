@@ -86,7 +86,7 @@ extension EditorView {
     }
 
     /// The export/copy actions the toolbar also offers, reachable by name.
-    private var exportCommands: [EditorCommand] {
+    var exportCommands: [EditorCommand] {
         [
             EditorCommand(
                 id: "export.copy", title: VitrineCommand.copyImage.title,
@@ -98,6 +98,11 @@ extension EditorView {
                 group: String(localized: "Export"),
                 keywords: ["png", "pdf", "heic", "disk"], symbol: "square.and.arrow.down"
             ) { saveImage() },
+            EditorCommand(
+                id: "export.documentation", title: String(localized: "Export for Documentation"),
+                group: String(localized: "Export"),
+                keywords: ["docs", "package", "markdown", "html"], symbol: "folder"
+            ) { exportSheet = .documentationExport },
             EditorCommand(
                 id: "export.markdown", title: VitrineCommand.copyMarkdown.title,
                 group: String(localized: "Export"),

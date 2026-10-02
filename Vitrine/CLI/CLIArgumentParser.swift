@@ -77,6 +77,7 @@ struct CLIArgumentParser {
     var stdinFilename: String?
     var metadataTitle: String?
     var metadataCaption: String?
+    var altText: SnapshotAltText?
     var showLanguageBadge: Bool?
     var showLineNumbers: Bool?
     var showChrome: Bool?
@@ -314,6 +315,11 @@ struct CLIArgumentParser {
             stdinFilename = value
         case .title:
             metadataTitle = value
+        case .altText:
+            do { altText = try SnapshotAltText.normalized(value) } catch {
+                throw CLIError.invalidValue(
+                    flag: token, value: "alternative text exceeds 1024 characters")
+            }
         case .caption:
             metadataCaption = value
         case .languageBadge:

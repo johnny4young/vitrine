@@ -43,6 +43,34 @@ struct EditorWindowSizingTests {
         #expect(hosting.sizingOptions.isEmpty)
     }
 
+    #if DEBUG
+        @Test func minimumFixtureUsesTheAttachedHostingMinimumRatherThanTheOpeningFrame() throws {
+            let environment = AppEnvironment(defaults: testDefaults())
+            let session = Self.makeSession(environment, index: 46)
+            defer { session.discard() }
+            let window = Self.makeWindow(
+                hosting: EditorWindowController.makeHostingController(
+                    environment: environment, session: session))
+            defer { window.contentViewController = nil }
+            _ = try #require(NSScreen.main)
+            window.layoutIfNeeded()
+            EditorWindowController.pinMinimumContentSize(of: window)
+            let contentMinimum = window.frameRect(
+                forContentRect: NSRect(origin: .zero, size: window.contentMinSize)
+            ).size
+            let expected = CGSize(
+                width: max(window.minSize.width, contentMinimum.width),
+                height: max(window.minSize.height, contentMinimum.height))
+            // AppKit may clear its size properties on the following layout. Compare
+            // with the measured hosting minimum, not those cleared properties.
+            EditorWindowController.applyRequestedViewportForUITesting(
+                to: window, requested: "minimum")
+            #expect(abs(window.frame.width - expected.width) < 2)
+            #expect(abs(window.frame.height - expected.height) < 2)
+            #expect(window.frame.width <= 960 && window.frame.height <= 600)
+        }
+    #endif
+
     /// Qualify the product minimum independently of XCUITest pointer hit-testing.
     /// A resize stopping early must not be assumed to be only an automation problem.
     @Test(arguments: ["", "let value = 1\n"])
