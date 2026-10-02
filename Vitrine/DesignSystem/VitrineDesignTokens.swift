@@ -34,10 +34,18 @@ enum VitrineTokens {
         /// never chose an accent.
         static var system: Color { system(brand: base) }
         nonisolated static func system(brand: Color) -> Color {
-            usesSystemAccentOverride(
-                accentColorValue: UserDefaults.standard.object(forKey: "AppleAccentColor"))
+            !forcesBrandAccent
+                && usesSystemAccentOverride(
+                    accentColorValue: UserDefaults.standard.object(forKey: "AppleAccentColor"))
                 ? Color(nsColor: .controlAccentColor) : brand
         }
+        /// The `--brand-accent` Debug hook, so screenshot tours match on any Mac.
+        #if DEBUG
+            nonisolated private static let forcesBrandAccent =
+                ProcessInfo.processInfo.arguments.contains("--brand-accent")
+        #else
+            nonisolated private static let forcesBrandAccent = false
+        #endif
         /// Whether a stored `AppleAccentColor` value means the user chose a specific
         /// macOS accent (vs. the default "Multicolor", where the key is absent → `nil`).
         /// macOS stores an integer once set (0–6, or `-1` for graphite). Kept a pure

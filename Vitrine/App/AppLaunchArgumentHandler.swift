@@ -57,6 +57,7 @@ import VitrineRendering
         /// `--demo-large-document` preloads a source just above the interactive-highlighting ceiling;
         /// `--demo-html-format` preloads compact markup for the Format Code smoke test;
         /// `--demo-sql-format` does the same for a compact query;
+        /// `--brand-accent` (Debug) keeps the brand accent whatever the macOS accent is;
         /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
         /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
         /// `--open-menu-panel` opens the real panel at a deterministic automation anchor;
