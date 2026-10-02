@@ -98,6 +98,10 @@ GitHub immutable releases are enabled: after publication, the tag, release notes
 attached artifacts cannot be altered or replaced. If a published artifact is wrong,
 fix the source and publish a new patch version instead of rewriting release history.
 
+After a release is published, update the notes that describe current source against
+the previous download: `git grep -n 'v<previous> download'` covers `docs/` (for example
+the agent cookbook, capabilities, and documentation export) and the README status.
+
 ## Continuous integration
 
 CI is a release gate, not just a compile check.
