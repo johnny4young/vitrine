@@ -140,7 +140,11 @@ struct WebSnapshotExportPolishTests {
             "Vitrine", "WebRendering", "WebSnapshotEditorView+Inspector.swift")
         #expect(!inspector.localizedCaseInsensitiveContains("nothing is sent"))
         #expect(inspector.contains("The website receives the request"))
-        #expect(!(try RepositoryFile.catalog()).keys.contains { $0.contains("nothing is sent") })
+        // File exports may truthfully say nothing is sent; web capture copy may not.
+        let webKeys = try RepositoryFile.catalog().keys.filter {
+            $0.contains("WebKit") || $0.localizedCaseInsensitiveContains("page")
+        }
+        #expect(!webKeys.contains { $0.contains("nothing is sent") })
     }
 
     // MARK: - Inspector
