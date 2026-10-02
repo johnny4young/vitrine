@@ -169,15 +169,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Seeds the editor from a `vitrine://edit` handoff (the CLI's `--edit`): reads the
-    /// staged content and optional language hint, then loads it into the primary editor
-    /// replacing that window's document like quick capture and the Open-Code App
+    /// staged content and optional language and terminal-width hints, then loads it into
+    /// the primary editor replacing that window's document like quick capture and the Open-Code App
     /// Intent do, seeded on the user's current style. A no-op for an empty payload.
     private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
         let interpreted = LanguageDetector.interpret(handoff.content)
-        let config = environment.appSettings.config.replacingContent(
+        var config = environment.appSettings.config.replacingContent(
             with: handoff.language == nil ? interpreted.code : handoff.content,
             language: handoff.language ?? interpreted.language)
+        config.terminalColumns = handoff.columns
         loadEditor(config)
         Log.app.notice("Opened a CLI --edit handoff in the editor")
     }

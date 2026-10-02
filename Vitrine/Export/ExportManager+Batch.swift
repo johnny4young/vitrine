@@ -218,4 +218,84 @@ extension ExportManager {
         return BatchExportResult(
             written: written, failed: failed, firstRenderFailure: firstRenderFailure)
     }
+
+    /// One finished raster in an image-set export, named without its extension.
+    nonisolated struct NamedRaster: Sendable {
+        let name: String
+        let image: CGImage
+    }
+
+    /// Writes already-rendered rasters into `directory` in `format`, encoding off the main
+    /// actor. PDF pages are sized in points at `scale`; an existing file is never replaced,
+    /// the new one takes the next free `name-2`, `name-3`, … instead.
+    @discardableResult
+    static func exportRasters(
+        _ items: [NamedRaster], to directory: URL, format: ExportFormat, scale: CGFloat
+    ) async -> BatchExportResult {
+        var claimed: Set<String> = []
+        let targets = items.map { item in
+            let url = availableFileURL(
+                in: directory, name: item.name, fileExtension: format.fileExtension,
+                isTaken: {
+                    claimed.contains($0.lastPathComponent)
+                        || FileManager.default.fileExists(atPath: $0.path)
+                })
+            claimed.insert(url.lastPathComponent)
+            return (item.image, url)
+        }
+        var written = 0
+        var failed = 0
+        await withTaskGroup(of: Bool.self) { group in
+            for (image, url) in targets {
+                group.addTask {
+                    await writeRaster(image, format: format, scale: scale, to: url)
+                }
+            }
+            for await succeeded in group {
+                if succeeded { written += 1 } else { failed += 1 }
+            }
+        }
+        Log.export.notice(
+            "Image-set export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
+        )
+        return BatchExportResult(written: written, failed: failed, firstRenderFailure: nil)
+    }
+
+    /// The first `name.ext`, `name-2.ext`, … in `directory` that `isTaken` does not claim.
+    static func availableFileURL(
+        in directory: URL, name: String, fileExtension: String, isTaken: (URL) -> Bool
+    ) -> URL {
+        var candidate = directory.appendingPathComponent("\(name).\(fileExtension)")
+        var suffix = 2
+        while isTaken(candidate) {
+            candidate = directory.appendingPathComponent("\(name)-\(suffix).\(fileExtension)")
+            suffix += 1
+        }
+        return candidate
+    }
+
+    @concurrent nonisolated private static func writeRaster(
+        _ image: CGImage, format: ExportFormat, scale: CGFloat, to url: URL
+    ) async -> Bool {
+        let data: Data? =
+            if case .pdf = format {
+                pdfData(from: image, scale: scale)
+            } else {
+                rasterData(from: image, format: format)
+            }
+        guard let data else {
+            Log.export.error("Image-set export: encode returned nil")
+            return false
+        }
+        do {
+            try data.write(to: url, options: .withoutOverwriting)
+            return true
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "Image-set export write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            return false
+        }
+    }
 }

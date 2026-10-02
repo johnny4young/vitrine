@@ -55,9 +55,16 @@ enum SocialCardRenderer {
             "card template=\(model.template.rawValue) length=\(model.codeExcerpt.count)")
         defer { signposter.endInterval(RenderSignpost.renderName, state) }
 
-        return try ExportManager.renderCGImageChecked(
+        let image = try ExportManager.renderCGImageChecked(
             SocialCardCanvas(model: model, size: size), proposedSize: size,
             scale: scale, profile: profile)
+        // Same final matte as an image-backed snapshot: fit letterboxes and blurred
+        // edges would otherwise export transparent.
+        guard case .image = model.background else { return image }
+        guard let opaque = ExportManager.compositedOverBlackChecked(image) else {
+            throw .allocationFailed
+        }
+        return opaque
     }
 
     /// Renders `model` to an `NSImage` (used by the share sheet).
@@ -96,7 +103,11 @@ enum SocialCardRenderer {
         }
         // Shares the single-page PDF rasterizer with the snapshot path; only
         // the canvas differs.
-        return ExportManager.pdfData(SocialCardCanvas(model: model, size: size), proposedSize: size)
+        let opaqueMatte: CGColor? =
+            if case .image = model.background { CGColor(gray: 0, alpha: 1) } else { nil }
+        return ExportManager.pdfData(
+            SocialCardCanvas(model: model, size: size), proposedSize: size,
+            opaqueMatte: opaqueMatte)
     }
 
     // MARK: - Clipboard / save flows

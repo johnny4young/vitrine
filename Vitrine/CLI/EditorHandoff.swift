@@ -30,6 +30,17 @@ enum EditorHandoff {
     static let languageKey = "language"
     /// The query key carrying the per-handoff random token that names the pasteboard.
     static let tokenKey = "token"
+    /// The query key carrying a pinned terminal reconstruction width (`vgrab -w`).
+    static let columnsKey = "columns"
+    /// The terminal widths a handoff accepts, matching `--terminal-width`.
+    static let columnsRange = 1...1000
+
+    /// What a handoff carries: the source text plus the hints the editor can apply.
+    struct Payload: Equatable {
+        var content: String
+        var language: Language?
+        var columns: Int? = nil
+    }
     /// The prefix the per-handoff token is appended to, to form a unique pasteboard name.
     private static let pasteboardPrefix = "app.vitrine.edit-handoff"
 
@@ -37,18 +48,25 @@ enum EditorHandoff {
     /// `vitrine://edit` URL to open. The URL carries the random token (so only this open
     /// can consume the payload) and, when known, the language hint (so the app can pick
     /// the renderer without re-detecting; it still falls back to content detection).
-    static func stage(content: String, language: Language?) -> URL? {
+    static func stage(content: String, language: Language?, columns: Int? = nil) -> URL? {
+        stage(Payload(content: content, language: language, columns: columns))
+    }
+
+    static func stage(_ payload: Payload) -> URL? {
         let token = UUID().uuidString
         let pasteboard = NSPasteboard(name: pasteboardName(for: token))
         pasteboard.clearContents()
-        pasteboard.setString(content, forType: .string)
+        pasteboard.setString(payload.content, forType: .string)
 
         var components = URLComponents()
         components.scheme = scheme
         components.host = editHost
         var queryItems = [URLQueryItem(name: tokenKey, value: token)]
-        if let language {
+        if let language = payload.language {
             queryItems.append(URLQueryItem(name: languageKey, value: language.rawValue))
+        }
+        if let columns = payload.columns, columnsRange.contains(columns) {
+            queryItems.append(URLQueryItem(name: columnsKey, value: String(columns)))
         }
         components.queryItems = queryItems
         guard let url = components.url else {
@@ -61,10 +79,11 @@ enum EditorHandoff {
     }
 
     /// App side: read the content staged for `url` (a `vitrine://edit?token=…` URL) and
-    /// the language hint if present. Returns `nil` when `url` is not an edit handoff, the
-    /// token is missing/malformed, or its pasteboard is empty. Clears the pasteboard after
-    /// a successful read so the handoff is one-shot and a stale open can never re-seed.
-    static func consume(url: URL) -> (content: String, language: Language?)? {
+    /// the language and column hints if present. Returns `nil` when `url` is not an edit
+    /// handoff, the token is missing/malformed, or its pasteboard is empty. Clears the
+    /// pasteboard after a successful read so the handoff is one-shot and a stale open can
+    /// never re-seed. An out-of-range column hint is dropped, not trusted.
+    static func consume(url: URL) -> Payload? {
         guard url.scheme == scheme, url.host == editHost,
             let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems,
             let token = queryItems.first(where: { $0.name == tokenKey })?.value,
@@ -78,7 +97,12 @@ enum EditorHandoff {
         pasteboard.clearContents()
 
         let languageID = queryItems.first { $0.name == languageKey }?.value
-        return (content, languageID.flatMap(Language.init(rawValue:)))
+        let columns = queryItems.first { $0.name == columnsKey }?.value
+            .flatMap { Int($0) }
+            .flatMap { columnsRange.contains($0) ? $0 : nil }
+        return Payload(
+            content: content, language: languageID.flatMap(Language.init(rawValue:)),
+            columns: columns)
     }
 
     /// The pasteboard name for a handoff `token`.

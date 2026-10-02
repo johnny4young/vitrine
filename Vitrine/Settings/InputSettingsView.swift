@@ -92,6 +92,9 @@ struct WebCaptureControls: View {
     /// `InspectorDisclosure` so the Web Snapshot inspector leads with the viewport
     /// selection; Settings passes the default `false` and shows every row inline.
     var collapsesAdvanced = false
+    /// False for pasted HTML, which always renders the visible viewport without a
+    /// network wait, a saved session, or localhost access.
+    var showsURLCaptureOptions = true
     @State private var showAdvanced = false
 
     /// WebKit site labels with saved data, not proof of an active login. Read from
@@ -106,7 +109,7 @@ struct WebCaptureControls: View {
             widthRow
             heightRow
         }
-        if collapsesAdvanced {
+        if showsURLCaptureOptions, collapsesAdvanced {
             InspectorDisclosure(
                 label: Text("Capture options"), identifier: "web-advanced-disclosure",
                 isExpanded: $showAdvanced
@@ -118,7 +121,7 @@ struct WebCaptureControls: View {
                 savedSitesRow
                 loopbackCaptureRow
             }
-        } else {
+        } else if showsURLCaptureOptions {
             captureModeRow
             waitRow
             if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }

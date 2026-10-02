@@ -917,6 +917,72 @@
         }
       }
     },
+    "%@ — Not Secure" : {
+      "comment" : "Web sign-in window subtitle: the page host when it is not fully served over HTTPS.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — No es seguro"
+          }
+        }
+      }
+    },
+    "Sign in to %@" : {
+      "comment" : "Web sign-in window: HTTP authentication sheet title naming the site host.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sesión en %@"
+          }
+        }
+      }
+    },
+    "%@ requires a user name and password." : {
+      "comment" : "Web sign-in window: HTTP authentication sheet message naming the site host.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ requiere un nombre de usuario y una contraseña."
+          }
+        }
+      }
+    },
+    "Sign In" : {
+      "comment" : "Web sign-in window: HTTP authentication sheet confirm button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar sesión"
+          }
+        }
+      }
+    },
+    "User name" : {
+      "comment" : "Web sign-in window: HTTP authentication user name field placeholder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre de usuario"
+          }
+        }
+      }
+    },
+    "Password" : {
+      "comment" : "Web sign-in window: HTTP authentication password field placeholder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraseña"
+          }
+        }
+      }
+    },
     "Sign in to %@…" : {
       "comment" : "Button that opens the sign-in window for a named site.",
       "localizations" : {
@@ -6009,6 +6075,24 @@
     "%lld slides" : {
       "comment" : "Live slide count in the carousel export sheet.",
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld slide"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld slides"
+                }
+              }
+            }
+          }
+        },
         "es" : {
           "variations" : {
             "plural" : {
@@ -7080,17 +7164,6 @@
         }
       }
     },
-    "Webpage capture requires the direct-download build with local network access." : {
-      "comment" : "Web privacy disclosure note shown when URL capture is unavailable in the current build.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La captura de páginas web requiere la versión de descarga directa con acceso local a la red."
-          }
-        }
-      }
-    },
     "Welcome to Vitrine" : {
       "comment" : "Welcome window title and header.",
       "localizations" : {
@@ -7301,7 +7374,6 @@
     },
     "Render and save the card as a file" : {
       "comment" : "Social-card toolbar: save button help.",
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -7313,7 +7385,6 @@
     },
     "Render and share the card" : {
       "comment" : "Social-card toolbar: share button help.",
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -7540,7 +7611,6 @@
     },
     "Save the snapshot as a file" : {
       "comment" : "Web Snapshot toolbar: save button help.",
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -7552,7 +7622,6 @@
     },
     "Share the snapshot" : {
       "comment" : "Web Snapshot toolbar: share button help.",
-      "extractionState" : "stale",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -7645,13 +7714,13 @@
         }
       }
     },
-    "Loads the page locally in WebKit — nothing is sent to a server." : {
+    "Loads the page in WebKit on your Mac. The website receives the request, but no remote screenshot service is used." : {
       "comment" : "Web Snapshot: capture privacy reassurance.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Carga la página localmente en WebKit; no se envía nada a un servidor."
+            "value" : "Carga la página en WebKit en tu Mac. El sitio web recibe la solicitud, pero no se usa ningún servicio remoto de capturas."
           }
         }
       }
