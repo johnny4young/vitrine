@@ -88,19 +88,21 @@ extension EditorView {
     }
 
     /// Loads immediately into an empty editor, or defers to the replace/append
-    /// prompt when the editor already holds code.
+    /// prompt when the editor already holds code or shows an image.
     func offerLoaded(
         _ loaded: FileInputLoader.LoadedFile,
         startsLivingSnapshot: Bool = false
     ) {
-        if settings.config.code.isEmpty {
+        let showsImage = settings.style.usesImageContent
+        if settings.config.code.isEmpty && !showsImage {
             apply(
                 loaded, replacing: true,
                 startsLivingSnapshot: startsLivingSnapshot)
         } else {
             pendingDrop = PendingDrop(
                 loaded: loaded,
-                startsLivingSnapshot: startsLivingSnapshot)
+                startsLivingSnapshot: startsLivingSnapshot,
+                replacesImage: showsImage)
         }
     }
 
@@ -138,7 +140,7 @@ extension EditorView {
         }
         loaded.apply(to: &settings.config, replacing: replacing)
         if replacing { settings.noteDocumentReplaced() }
-        settings.noteLanguageUsed(settings.config.language)
+        environment.appSettings.noteLanguageUsed(settings.config.language)
         if startsLivingSnapshot {
             session.livingSnapshot.start(with: loaded)
         }

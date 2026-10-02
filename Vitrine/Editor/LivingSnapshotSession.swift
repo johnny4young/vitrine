@@ -348,7 +348,6 @@ final class LivingSnapshotSession {
         }
         loaded.apply(to: &settings.config, replacing: true)
         settings.noteDocumentReplaced()
-        settings.noteLanguageUsed(settings.config.language)
         lastLoadedText = loaded.text
         status = .watching
         Log.capture.info(

@@ -20,6 +20,8 @@ struct CodeEditorView: NSViewRepresentable {
     var onReplaceAllPaste: (String) -> LanguageDetector.Interpretation = {
         LanguageDetector.interpret($0)
     }
+    /// Called on each user edit, so a draw tool or selected mark stops owning ⌘Z.
+    var onUserEdit: () -> Void = {}
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -265,6 +267,7 @@ struct CodeEditorView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard !isHighlighting, let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
+            parent.onUserEdit()
             // Recoloring is debounced; the surface must not lag an empty/nonempty flip.
             if textView.drawsBackground == textView.string.isEmpty {
                 applySurface(to: textView)

@@ -152,6 +152,9 @@ struct EditorView: View {
         /// Whether the explicit file picker should start a session-only watcher after
         /// the user confirms replacement. Ordinary drops remain one-time imports.
         var startsLivingSnapshot = false
+        /// The editor shows a beautified image, so appending to its hidden code would
+        /// change nothing visible; only replacement is offered.
+        var replacesImage = false
 
         /// The dialog title names the source so the choice has context — the
         /// filename for a dropped file, or a generic label for dropped text.
@@ -164,7 +167,17 @@ struct EditorView: View {
         }
 
         var promptMessage: String {
-            startsLivingSnapshot
+            if replacesImage {
+                return startsLivingSnapshot
+                    ? String(
+                        localized:
+                            "This editor shows an image. Replace it and watch the selected file for saved changes?"
+                    )
+                    : String(
+                        localized:
+                            "This editor shows an image. Replace it with the dropped content?")
+            }
+            return startsLivingSnapshot
                 ? String(
                     localized:
                         "This editor already has code. Replace it and watch the selected file for saved changes?"
@@ -242,6 +255,19 @@ struct EditorView: View {
             else { return }
             activeTool = tool
         }
+        .onReceive(NotificationCenter.default.publisher(for: .vitrineAnnotationMarkAction)) {
+            notification in
+            guard let targetWindow = notification.object as? NSWindow,
+                targetWindow === editorWindow.value,
+                let rawValue = notification.userInfo?["action"] as? String,
+                let action = AnnotationMarkAction(rawValue: rawValue)
+            else { return }
+            switch action {
+            case .duplicate: duplicateSelection()
+            case .bringToFront: bringSelectionToFront()
+            case .sendToBack: sendSelectionToBack()
+            }
+        }
         // The `--open-command-palette` dev hook: read the argument when the editor
         // appears (guaranteed after its subscriptions are live) rather than relying on
         // a one-shot notification's timing. Gated on the argument, so a normal launch
@@ -304,6 +330,8 @@ struct EditorView: View {
                 Button("Replace & Watch", role: .destructive) {
                     applyDrop(replacing: true)
                 }
+            } else if pendingDrop?.replacesImage == true {
+                Button("Replace Image", role: .destructive) { applyDrop(replacing: true) }
             } else {
                 // Replacing discards the entire current document, so it is marked
                 // destructive (red) to distinguish it from the safe Append — matching

@@ -33,6 +33,8 @@ struct EditorInspectorView: View {
 
     /// Presents the PRO paywall when the user reaches for a gated image frame (browser).
     @State private var showingFramePaywall = false
+    /// The last scan's outcome, so a scan that finds nothing still answers.
+    @State private var secretScanSummary: String?
 
     var body: some View {
         ScrollView {
@@ -121,28 +123,26 @@ struct EditorInspectorView: View {
                                     .accessibilityIdentifier("diff-decorations-toggle")
                             }
                             InspectorRow(label: Text("Redact secrets")) {
-                                if settings.style.redactedLineRanges.isEmpty {
-                                    Button("Scan") {
-                                        // Scan `sidecarText`, not `code`: for a terminal capture
-                                        // the canvas renders the ANSI-resolved screen, so the raw
-                                        // bytes' line numbers would map to the wrong rows (and
-                                        // could leave a secret visible). For other languages
-                                        // `sidecarText == code`.
-                                        let lines = SecretScanner.secretLines(
-                                            in: settings.config.sidecarText)
-                                        settings.style.redactedLineRanges =
-                                            LineHighlight.normalize(
-                                                lines.map { $0...$0 })
+                                HStack(spacing: 6) {
+                                    Button("Scan", action: scanForSecrets)
+                                        .help(
+                                            "Remove lines that look like API keys, tokens, or passwords from images and exported text."
+                                        )
+                                        .disabled(settings.documentIsEmpty)
+                                        .accessibilityLabel("Scan for secrets")
+                                        .accessibilityIdentifier("redact-secrets-button")
+                                    if !settings.style.redactedLineRanges.isEmpty {
+                                        Button("Clear") { settings.style.redactedLineRanges = [] }
+                                            .accessibilityLabel("Clear redactions")
+                                            .accessibilityIdentifier("clear-redactions-button")
                                     }
-                                    .help(
-                                        "Remove lines that look like API keys, tokens, or passwords from images and exported text."
-                                    )
-                                    .disabled(settings.documentIsEmpty)
-                                    .accessibilityIdentifier("redact-secrets-button")
-                                } else {
-                                    Button("Clear") { settings.style.redactedLineRanges = [] }
-                                        .accessibilityIdentifier("clear-redactions-button")
                                 }
+                            }
+                            if let secretScanSummary {
+                                Text(verbatim: secretScanSummary)
+                                    .font(.system(size: VitrineTokens.FontSize.caption))
+                                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                                    .accessibilityIdentifier("secret-scan-summary")
                             }
                         }
                     }
@@ -177,6 +177,8 @@ struct EditorInspectorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
+        .onChange(of: settings.documentGeneration) { secretScanSummary = nil }
+        .onChange(of: settings.style.redactedLineRanges.isEmpty) { secretScanSummary = nil }
         .sheet(isPresented: $showingFramePaywall) {
             PaywallSheet(feature: .advancedFrames, entitlements: entitlements)
         }
@@ -292,6 +294,7 @@ struct EditorInspectorView: View {
                         prompt: Text(verbatim: "vitrineframe.app"),
                         text: $settings.style.windowTitle
                     )
+                    .accessibilityLabel("Window title")
                     .accessibilityIdentifier("image-frame-title-field")
                 }
             }
@@ -326,10 +329,22 @@ struct EditorInspectorView: View {
             }
             InspectorRow(label: Text("Font size")) {
                 valueSlider(
-                    "Font size", $settings.style.fontSize, in: 10...20, step: 1,
+                    "Font size", $settings.style.fontSize, in: SettingsDefaults.fontSizeRange,
+                    step: 1,
                     identifier: "font-size-slider")
             }
         }
+    }
+
+    /// Scans `sidecarText`, not `code`: a terminal capture renders the ANSI-resolved
+    /// screen, so raw line numbers would redact the wrong rows.
+    private func scanForSecrets() {
+        let lines = SecretScanner.secretLines(in: settings.config.sidecarText)
+        settings.style.redactedLineRanges = LineHighlight.normalize(lines.map { $0...$0 })
+        secretScanSummary =
+            lines.isEmpty
+            ? String(localized: "No secrets found")
+            : String(localized: "\(lines.count) lines redacted")
     }
 
     /// A slider with a trailing numeric readout, so the user can see (and target) the
@@ -357,12 +372,14 @@ struct EditorInspectorView: View {
         InspectorSection(title: Text("Canvas")) {
             InspectorRow(label: Text("Padding")) {
                 valueSlider(
-                    "Padding", $settings.style.padding, in: 16...64, step: 4,
+                    "Padding", $settings.style.padding, in: SettingsDefaults.paddingRange, step: 4,
                     identifier: "padding-slider")
             }
             InspectorRow(label: Text("Corner radius")) {
                 valueSlider(
-                    "Corner radius", $settings.style.cornerRadius, in: 0...32, step: 2,
+                    "Corner radius", $settings.style.cornerRadius,
+                    in: SettingsDefaults.cornerRadiusRange,
+                    step: 2,
                     identifier: "corner-radius-slider")
             }
             // The code card's macOS chrome. For a beautified image the Frame section
@@ -375,12 +392,13 @@ struct EditorInspectorView: View {
                         .accessibilityIdentifier("window-chrome-toggle")
                 }
                 if settings.style.showChrome {
-                    InspectorRow(label: Text("Title")) {
+                    InspectorRow(label: Text("Window title")) {
                         HStack(spacing: 6) {
                             TokenTextField(
                                 prompt: Text(verbatim: "ContentView.swift"),
                                 text: $settings.style.windowTitle
                             )
+                            .accessibilityLabel("Window title")
                             .accessibilityIdentifier("window-title-field")
                             WindowTitleSuggestionButton(settings: settings)
                         }
@@ -396,7 +414,8 @@ struct EditorInspectorView: View {
             if settings.style.showShadow {
                 InspectorRow(label: Text("Shadow depth")) {
                     valueSlider(
-                        "Shadow depth", $settings.style.shadowRadius, in: 0...40, step: 2,
+                        "Shadow depth", $settings.style.shadowRadius,
+                        in: SettingsDefaults.shadowRadiusRange, step: 2,
                         identifier: "shadow-radius-slider")
                 }
             }

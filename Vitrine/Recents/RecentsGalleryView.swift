@@ -313,7 +313,8 @@ struct RecentsGalleryView: View {
     private var filteredCaptures: [Capture] {
         sortOrder.sorted(
             recents.captures.filter {
-                (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery, themes: recents.themeLookup)
+                (!showsPinnedOnly || $0.isPinned)
+                    && $0.matchesSearch(searchQuery, themes: recents.themeLookup)
             })
     }
 

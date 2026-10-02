@@ -248,6 +248,21 @@ struct AppSettingsTests {
         #expect(settings.orderedLanguages.first == .python)
         #expect(Set(settings.orderedLanguages).count == Language.allCases.count)
     }
+
+    @Test func onlyAUserPickOfDiffForcesBandsAndLineNumbers() {
+        let settings = AppSettings(defaults: freshDefaults())
+        var loaded = settings.config
+        loaded.language = .diff
+        loaded.showLineNumbers = false
+        loaded.diffDecorations = false
+        settings.config = loaded
+        #expect(!settings.style.showLineNumbers, "a loaded diff keeps its own gutter choice")
+
+        settings.selectLanguageFromUser(.swift)
+        settings.selectLanguageFromUser(.diff)
+        #expect(settings.style.showLineNumbers)
+        #expect(settings.style.diffDecorations)
+    }
 }
 
 @MainActor

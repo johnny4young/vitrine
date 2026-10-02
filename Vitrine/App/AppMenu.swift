@@ -297,6 +297,17 @@ final class AppMenu {
         }
         annotationToolsItem.submenu = annotationToolsMenu
         menu.addItem(annotationToolsItem)
+        for action in AnnotationMarkAction.allCases {
+            let item = NSMenuItem(
+                title: action.localizedTitle,
+                action: #selector(EditorCommandResponder.performAnnotationMarkAction(_:)),
+                keyEquivalent: action.keyEquivalent)
+            item.keyEquivalentModifierMask = action.modifiers
+            item.representedObject = action.rawValue
+            item.target = editorCommands
+            item.setAccessibilityIdentifier("command-annotation-\(action.rawValue)")
+            menu.addItem(item)
+        }
 
         editMenuItem.submenu = menu
         return editMenuItem

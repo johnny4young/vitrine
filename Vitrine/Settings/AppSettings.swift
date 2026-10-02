@@ -436,6 +436,10 @@ final class AppSettings {
         selectedPresetID = preset.id
     }
 
+    /// Re-selects a restored window's destination without re-applying its style, which
+    /// the restored document already carries.
+    func restoreDestination(_ preset: ExportPreset) { selectedPresetID = preset.id }
+
     /// Drops back to "Custom": no preset is applied and none is persisted. The
     /// current style is left exactly as-is.
     func clearPreset() { selectedPresetID = nil }
@@ -555,6 +559,16 @@ final class AppSettings {
         var resolved = config
         resolved.watermark = exportWatermark
         return resolved
+    }
+
+    /// An explicit pick from the language picker. Choosing Diff turns on the +/−
+    /// bands and the gutter they read best with; loaded documents keep their own.
+    func selectLanguageFromUser(_ language: Language) {
+        style.language = language
+        if language == .diff {
+            style.diffDecorations = true
+            style.showLineNumbers = true
+        }
     }
 
     /// Records a language as recently used (MRU, capped at 6).

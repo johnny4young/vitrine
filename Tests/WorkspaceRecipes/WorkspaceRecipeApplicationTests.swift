@@ -58,7 +58,8 @@ struct WorkspaceRecipeApplicationTests {
                 destinationPresetID: "opengraph", scale: 1, format: .png,
                 colorProfile: .sRGB))
 
-        let ignoredCanvas = settings.applyWorkspaceRecipe(recipe, themes: CustomThemeStore(defaults: testDefaults()))
+        let ignoredCanvas = settings.applyWorkspaceRecipe(
+            recipe, themes: CustomThemeStore(defaults: testDefaults()))
 
         #expect(!ignoredCanvas)
         #expect(settings.config.code == "let value = 42")
@@ -80,7 +81,9 @@ struct WorkspaceRecipeApplicationTests {
                 themeID: Theme.nord.id, background: .gradient(.forest)),
             output: .init(canvasSize: .init(width: 900, height: 500)))
 
-        #expect(settings.applyWorkspaceRecipe(recipe, themes: CustomThemeStore(defaults: testDefaults())))
+        #expect(
+            settings.applyWorkspaceRecipe(
+                recipe, themes: CustomThemeStore(defaults: testDefaults())))
         #expect(settings.selectedPresetID == nil)
     }
 

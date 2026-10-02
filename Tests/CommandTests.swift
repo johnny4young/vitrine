@@ -333,6 +333,23 @@ struct AppMenuTests {
         #expect(arrow?.representedObject as? String == AnnotationTool.arrow.rawValue)
     }
 
+    @Test func selectedMarkActionsUseTheAppKitMenuShortcutPath() {
+        let edit = submenu(named: "Edit")
+        let expected: [(AnnotationMarkAction, String, NSEvent.ModifierFlags)] = [
+            (.duplicate, "d", [.command]),
+            (.bringToFront, "]", [.command, .option]),
+            (.sendToBack, "[", [.command, .option]),
+        ]
+        for (action, key, modifiers) in expected {
+            let item = edit.items.first {
+                $0.accessibilityIdentifier() == "command-annotation-\(action.rawValue)"
+            }
+            #expect(item?.keyEquivalent == key, "\(action)")
+            #expect(item?.keyEquivalentModifierMask == modifiers, "\(action)")
+            #expect(item?.target === menuController.editorCommands, "\(action)")
+        }
+    }
+
     /// While the designed menu is the main menu, the displacement check must not
     /// rebuild it: `reinstallIfDisplaced()` runs on every event-loop pass via
     /// `applicationWillUpdate(_:)`, so a spurious rebuild there would churn the menu

@@ -39,7 +39,8 @@ extension EditorView {
                         settings: settings,
                         reindentOnPaste: environment.appSettings.reindentOnPaste,
                         pasteFromClipboard: pasteFromClipboard,
-                        beginPastedDocument: beginPastedDocument)
+                        beginPastedDocument: beginPastedDocument,
+                        leaveAnnotationContext: leaveAnnotationContext)
                 }
             }
         }
@@ -452,6 +453,10 @@ extension EditorView {
                         press.key, shift: press.modifiers.contains(.shift),
                         isRepeat: press.phase == .repeat) ? .handled : .ignored
                 }
+                .onKeyPress(keys: [.delete, .deleteForward]) { _ in
+                    deleteSelection() ? .handled : .ignored
+                }
+                .onExitCommand(perform: clearAnnotationSelection)
             }
         }
         .onGeometryChange(for: CGSize.self, of: \.size) { stageSize = $0 }
@@ -699,6 +704,7 @@ private struct CodeDocumentEditor: View {
     let reindentOnPaste: Bool
     let pasteFromClipboard: () -> Void
     let beginPastedDocument: (String) -> LanguageDetector.Interpretation
+    let leaveAnnotationContext: () -> Void
 
     var body: some View {
         CodeEditorView(
@@ -709,7 +715,8 @@ private struct CodeDocumentEditor: View {
             fontSize: settings.style.fontSize,
             fontLigatures: settings.style.fontLigatures,
             reindentOnPaste: reindentOnPaste,
-            onReplaceAllPaste: beginPastedDocument
+            onReplaceAllPaste: beginPastedDocument,
+            onUserEdit: leaveAnnotationContext
         )
         .overlay {
             if settings.documentIsEmpty {

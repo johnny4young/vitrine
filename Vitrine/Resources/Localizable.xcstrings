@@ -4597,6 +4597,91 @@
         }
       }
     },
+    "No secrets found" : {
+      "comment" : "Inspector status after a secret scan of the code found nothing.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontraron secretos"
+          }
+        }
+      }
+    },
+    "Scan for secrets" : {
+      "comment" : "VoiceOver label for the inspector button that scans the code for secrets.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar secretos"
+          }
+        }
+      }
+    },
+    "Clear redactions" : {
+      "comment" : "VoiceOver label for the inspector button that removes secret redactions.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar ocultamientos"
+          }
+        }
+      }
+    },
+    "Window title" : {
+      "comment" : "Inspector row and VoiceOver label for the window chrome title field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Título de la ventana"
+          }
+        }
+      }
+    },
+    "%lld lines redacted" : {
+      "comment" : "Inspector status after a secret scan redacted lines.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line redacted"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines redacted"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld línea oculta"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld líneas ocultas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "No secrets found in the image" : {
       "comment" : "HUD message when the image redaction scan found nothing to cover.",
       "localizations" : {
@@ -8122,6 +8207,50 @@
         }
       }
     },
+    "Annotation" : {
+      "comment" : "VoiceOver fallback label for an annotation mark of an unknown kind.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anotación"
+          }
+        }
+      }
+    },
+    "Replace Image" : {
+      "comment" : "Drop prompt button that replaces the editor's beautified image with dropped code.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reemplazar imagen"
+          }
+        }
+      }
+    },
+    "This editor shows an image. Replace it with the dropped content?" : {
+      "comment" : "Drop prompt message when the editor shows a beautified image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este editor muestra una imagen. ¿Quieres reemplazarla con el contenido soltado?"
+          }
+        }
+      }
+    },
+    "This editor shows an image. Replace it and watch the selected file for saved changes?" : {
+      "comment" : "File picker prompt when the editor shows a beautified image and the file will be watched.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este editor muestra una imagen. ¿Quieres reemplazarla y observar los cambios guardados en el archivo seleccionado?"
+          }
+        }
+      }
+    },
     "Delete annotation" : {
       "comment" : "Annotation inspector: delete button.",
       "extractionState" : "stale",
@@ -9536,35 +9665,35 @@
         }
       }
     },
-    "Hide line wrap" : {
+    "Don't wrap long lines" : {
       "comment" : "Command palette action that turns line wrapping off.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar ajuste de línea"
+            "value" : "No ajustar líneas largas"
           }
         }
       }
     },
-    "Hide shadow" : {
+    "Hide drop shadow" : {
       "comment" : "Command palette action that hides the snapshot shadow.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar sombra"
+            "value" : "Ocultar sombra paralela"
           }
         }
       }
     },
-    "Hide window controls" : {
+    "Hide window chrome" : {
       "comment" : "Command palette action that hides the window controls.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar controles de ventana"
+            "value" : "Ocultar marco de ventana"
           }
         }
       }
@@ -9580,35 +9709,24 @@
         }
       }
     },
-    "Show line wrap" : {
-      "comment" : "Command palette action that turns line wrapping on.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar ajuste de línea"
-          }
-        }
-      }
-    },
-    "Show shadow" : {
+    "Show drop shadow" : {
       "comment" : "Command palette action that shows the snapshot shadow.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar sombra"
+            "value" : "Mostrar sombra paralela"
           }
         }
       }
     },
-    "Show window controls" : {
+    "Show window chrome" : {
       "comment" : "Command palette action that shows the window controls.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mostrar controles de ventana"
+            "value" : "Mostrar marco de ventana"
           }
         }
       }

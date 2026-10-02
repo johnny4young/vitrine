@@ -30,10 +30,6 @@ extension EditorView {
     /// "Copy image" CTA. Each action mirrors its File-menu command,
     /// sharing the command's VoiceOver label and keyboard shortcut.
     var editorToolbar: some View {
-        // `settings` arrives via @Environment (an @Observable), which has no projected
-        // value; this local @Bindable provides the `$settings.style.language` binding the
-        // language picker needs.
-        @Bindable var settings = settings
         @ViewBuilder func contents(_ density: EditorToolbarDensity) -> some View {
             HStack(spacing: density.spacing) {
                 // Just the app mark — the "Vitrine Editor" wordmark was redundant next to
@@ -43,8 +39,17 @@ extension EditorView {
                     .frame(width: 22, height: 22)
                     .accessibilityLabel("Vitrine Editor")
 
-                Picker("Language", selection: $settings.style.language) {
-                    ForEach(settings.orderedLanguages) { language in
+                // The recent-language order is app-wide, so read and record it there.
+                Picker(
+                    "Language",
+                    selection: Binding(
+                        get: { settings.style.language },
+                        set: { language in
+                            settings.selectLanguageFromUser(language)
+                            environment.appSettings.noteLanguageUsed(language)
+                        })
+                ) {
+                    ForEach(environment.appSettings.orderedLanguages) { language in
                         Text(language.displayName).tag(language)
                     }
                 }
@@ -53,16 +58,6 @@ extension EditorView {
                 .help("The language used to syntax-highlight the code.")
                 .accessibilityLabel("Language")
                 .accessibilityIdentifier("language-picker")
-                // Picking the Diff language is an unambiguous "I want diff rendering", so
-                // turn the +/− bands (and the line gutter they read best with) on
-                // automatically — the feature was previously undiscoverable behind an
-                // inspector toggle. The toggle stays as a manual override.
-                .onChange(of: settings.style.language) { _, newValue in
-                    if newValue == .diff {
-                        settings.style.diffDecorations = true
-                        settings.style.showLineNumbers = true
-                    }
-                }
 
                 Spacer(minLength: 8)
 
@@ -87,7 +82,8 @@ extension EditorView {
                     canSendToBack: canSendSelectionToBack,
                     onBringToFront: bringSelectionToFront,
                     onSendToBack: sendSelectionToBack,
-                    density: density.annotationDensity
+                    density: density.annotationDensity,
+                    onStyleEditEnded: endAnnotationEdit
                 )
                 .onChange(of: activeTool) { _, newTool in
                     if newTool != .select { selectedAnnotationID = nil }
@@ -145,7 +141,7 @@ extension EditorView {
     /// to the Copy Image command's shortcut so the menu and CTA stay in lockstep.
     @ViewBuilder func copyImageCTA(compact: Bool) -> some View {
         let button = GradientCTAButton {
-            Image(systemName: "doc.on.doc")
+            Image(systemName: VitrineCommand.copyImage.systemImageName)
                 .font(.system(size: 12, weight: .semibold))
             if !compact {
                 Text("Copy image")
@@ -175,10 +171,6 @@ extension EditorView {
             }
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("save-button")
-
-            Button("Export for Documentation") { exportSheet = .documentationExport }
-                .disabled(!settings.hasRenderableContent)
-                .accessibilityIdentifier("documentation-action")
 
             Button(action: share) {
                 Label(VitrineCommand.shareImage.title, systemImage: "square.and.arrow.up")

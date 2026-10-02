@@ -67,13 +67,14 @@ final class EditorSession {
     }
 
     /// A restoration snapshot of the window's current draft document/style.
-    var windowState: EditorWindowState { EditorWindowState(config: settings.config) }
+    var windowState: EditorWindowState { EditorWindowState(settings: settings) }
 
     /// Adopts a restored draft as this window's live config, used when a relaunch
     /// rebuilds the window from its archived state.
     func restore(_ state: EditorWindowState) {
         livingSnapshot.stop()
         settings.config = state.config()
+        state.applyOutput(to: settings)
     }
 
     /// Promotes this window's current look to the app-wide default so future

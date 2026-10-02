@@ -64,7 +64,8 @@ final class CodeFormatOperation {
             return task
         }
 
-        Self.apply(CodeFormatter.tidy(original, language: language), original: original, to: textView)
+        Self.apply(
+            CodeFormatter.tidy(original, language: language), original: original, to: textView)
         return nil
     }
 

@@ -241,6 +241,28 @@ struct EditorWindowStateTests {
         #expect(state.config() == expectedAfterRestore(session.config))
     }
 
+    @Test func destinationAndOutputSurviveWindowRestoration() throws {
+        let environment = AppEnvironment(
+            defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+        let source = environment.makeEditorSessionSettings()
+        defer { source.discardEphemeralStore() }
+        let linkedIn = try #require(ExportPreset.preset(withID: "linkedin"))
+        source.selectPreset(linkedIn)
+        source.export.scale = 3
+        source.export.colorProfile = .displayP3
+
+        let data = try #require(EditorWindowState(settings: source).encoded())
+        let state = try #require(EditorWindowState.decoded(from: data))
+        let restored = environment.makeEditorSessionSettings()
+        defer { restored.discardEphemeralStore() }
+        restored.config = state.config()
+        state.applyOutput(to: restored)
+
+        #expect(restored.selectedPreset?.id == "linkedin")
+        #expect(restored.export.scale == 3)
+        #expect(restored.export.colorProfile == .displayP3)
+    }
+
     @Test func defaultConfigRoundTripsToItself() {
         // The empty default draft must survive a round trip unchanged so a brand-new
         // window restores to exactly the factory configuration.

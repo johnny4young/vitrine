@@ -35,7 +35,9 @@ struct HistoryRetentionTests {
         #expect(capture.code == "[redacted]\nvisible")
         #expect(rendered == [capture.code])
         #expect(!capture.matchesSearch(secret, themes: Theme.theme(withID:)))
-        #expect(!capture.applying(to: SnapshotConfig(), themes: Theme.theme(withID:)).code.contains(secret))
+        #expect(
+            !capture.applying(to: SnapshotConfig(), themes: Theme.theme(withID:)).code.contains(
+                secret))
         let data = try #require(defaults.data(forKey: "recentCaptures"))
         #expect(!String(decoding: data, as: UTF8.self).contains(secret))
         let reloaded = RecentsStore(

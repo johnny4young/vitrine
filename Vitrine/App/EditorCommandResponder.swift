@@ -84,7 +84,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
         case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
         case #selector(formatCode(_:)): canPerform(.formatCode)
-        case #selector(selectAnnotationTool(_:)): isEditorKey
+        case #selector(selectAnnotationTool(_:)), #selector(performAnnotationMarkAction(_:)):
+            isEditorKey
         default: true
         }
     }
@@ -151,6 +152,21 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             name: .vitrineSelectAnnotationTool,
             object: window,
             userInfo: ["tool": rawValue])
+    }
+
+    /// Routes a selected-mark command to the key editor window, which ignores it
+    /// when nothing is selected.
+    @objc func performAnnotationMarkAction(_ sender: Any?) {
+        guard isEditorKey,
+            let item = sender as? NSMenuItem,
+            let rawValue = item.representedObject as? String,
+            AnnotationMarkAction(rawValue: rawValue) != nil,
+            let window = NSApp.keyWindow ?? NSApp.mainWindow
+        else { return }
+        NotificationCenter.default.post(
+            name: .vitrineAnnotationMarkAction,
+            object: window,
+            userInfo: ["action": rawValue])
     }
 
     /// Tidies the key editor's code in place: JSON is pretty-printed, brace and
