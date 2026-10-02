@@ -292,7 +292,8 @@ struct EditorWindowState: Codable, Equatable {
         diffDecorations =
             (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? fallback.diffDecorations
         annotations =
-            (try? container.decode([Annotation].self, forKey: .annotations)) ?? fallback.annotations
+            (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
+            .compactMap(\.value) ?? fallback.annotations
         destinationID = try? container.decodeIfPresent(String.self, forKey: .destinationID)
         exportScale = try? container.decodeIfPresent(Int.self, forKey: .exportScale)
         exportFormatID = try? container.decodeIfPresent(String.self, forKey: .exportFormatID)

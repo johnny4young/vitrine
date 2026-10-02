@@ -93,6 +93,17 @@ struct LanguageDetectorTests {
         ("<!doctype html><html><body></body></html>", Language.html),
         ("", Language.plaintext),
         ("just some words here", Language.plaintext),
+        ("Please select the file where you saved it", Language.plaintext),
+        ("Update docs where needed", Language.plaintext),
+        ("SELECT id\nFROM users", Language.sql),
+        ("UPDATE users SET name = 'a' WHERE id = 1", Language.sql),
+        (
+            "fn main() {\n    let mut v = Vec::new();\n    println!(\"{}\", v.len());\n}",
+            Language.rust
+        ),
+        (#"{"name": "vitrine", "version": 2}"#, Language.json),
+        ("[\n  {\"id\": 1}\n]", Language.json),
+        ("{ not json }", Language.plaintext),
     ])
     func detectsLanguages(_ snippet: String, _ expected: Language) {
         #expect(LanguageDetector.detect(snippet) == expected)

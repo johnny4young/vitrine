@@ -92,40 +92,40 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
         case showChrome, showShadow, shadowRadius, showLineNumbers, wrapColumns, background
     }
 
+    /// Set to `true` on a decoder's `userInfo` where a mistyped value must fail rather
+    /// than silently default: a workspace recipe is a checked automation contract, while
+    /// presets and preferences stay tolerant.
+    public static let strictDecodingKey = CodingUserInfoKey(rawValue: "vitrine.style.strict")!
+
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        let strict = decoder.userInfo[Self.strictDecodingKey] as? Bool == true
+        func value<T: Decodable>(_ type: T.Type, _ key: CodingKeys) throws -> T? {
+            if strict { return try container.decodeIfPresent(type, forKey: key) }
+            return try? container.decode(type, forKey: key)
+        }
         // The theme/font are stored by id/name and re-validated on apply, so a
         // missing key here decodes to the default rather than failing the file.
-        themeID =
-            (try? container.decode(String.self, forKey: .themeID)) ?? Theme.oneDark.id
-        fontName =
-            (try? container.decode(String.self, forKey: .fontName)) ?? SettingsDefaults.fontName
+        themeID = try value(String.self, .themeID) ?? Theme.oneDark.id
+        fontName = try value(String.self, .fontName) ?? SettingsDefaults.fontName
         fontSize = SettingsDefaults.clampFontSize(
-            (try? container.decode(Double.self, forKey: .fontSize)) ?? SettingsDefaults.fontSize)
-        fontLigatures =
-            (try? container.decode(Bool.self, forKey: .fontLigatures)) ?? false
+            try value(Double.self, .fontSize) ?? SettingsDefaults.fontSize)
+        fontLigatures = try value(Bool.self, .fontLigatures) ?? false
         padding = SettingsDefaults.clampPadding(
-            (try? container.decode(Double.self, forKey: .padding)) ?? SettingsDefaults.padding)
+            try value(Double.self, .padding) ?? SettingsDefaults.padding)
         cornerRadius = SettingsDefaults.clampCornerRadius(
-            (try? container.decode(Double.self, forKey: .cornerRadius))
-                ?? SettingsDefaults.cornerRadius)
-        showChrome = (try? container.decode(Bool.self, forKey: .showChrome)) ?? true
-        showShadow = (try? container.decode(Bool.self, forKey: .showShadow)) ?? true
+            try value(Double.self, .cornerRadius) ?? SettingsDefaults.cornerRadius)
+        showChrome = try value(Bool.self, .showChrome) ?? true
+        showShadow = try value(Bool.self, .showShadow) ?? true
         // Presets saved before this field existed have no key: decode to the type
         // default so an older file applies exactly as it did when it was saved.
         shadowRadius = SettingsDefaults.clampShadowRadius(
-            (try? container.decode(Double.self, forKey: .shadowRadius))
-                ?? SettingsDefaults.shadowRadius)
-        showLineNumbers = (try? container.decode(Bool.self, forKey: .showLineNumbers)) ?? false
-        if let columns = try? container.decode(Int.self, forKey: .wrapColumns) {
-            wrapColumns = SettingsDefaults.clampWrapColumns(columns)
-        } else {
-            wrapColumns = nil
-        }
+            try value(Double.self, .shadowRadius) ?? SettingsDefaults.shadowRadius)
+        showLineNumbers = try value(Bool.self, .showLineNumbers) ?? false
+        wrapColumns = try value(Int.self, .wrapColumns).map(SettingsDefaults.clampWrapColumns)
         // A missing or corrupt background degrades to the signature gradient rather
         // than failing the whole snapshot.
-        let decodedBackground =
-            (try? container.decode(BackgroundStyle.self, forKey: .background)) ?? .gradient(.aurora)
+        let decodedBackground = try value(BackgroundStyle.self, .background) ?? .gradient(.aurora)
         background = Self.portableBackground(decodedBackground)
     }
 }

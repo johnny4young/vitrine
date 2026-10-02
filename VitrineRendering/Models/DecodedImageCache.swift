@@ -41,24 +41,6 @@ nonisolated public enum DecodedImageCache {
         return cache
     }()
 
-    /// The decoded byte cost of an in-memory `image`, used as a safe fallback when
-    /// source metadata is unavailable.
-    ///
-    /// Measured from the largest bitmap representation rather than `size` (which is in
-    /// points, so a 2× asset would be under-counted fourfold) and assumes 4 bytes per
-    /// pixel — the RGBA form the renderer draws from. A vector-only image with no
-    /// bitmap representation reports the minimum cost of 1: it is cheap to hold, and a
-    /// zero cost would exempt it from the limit entirely.
-    @MainActor static func decodedByteCost(of image: NSImage) -> Int {
-        let pixels = image.representations.reduce(0) { largest, representation in
-            let (count, overflow) = representation.pixelsWide.multipliedReportingOverflow(
-                by: representation.pixelsHigh)
-            return overflow ? Int.max : max(largest, count)
-        }
-        let (cost, overflow) = pixels.multipliedReportingOverflow(by: 4)
-        return overflow ? Int.max : max(1, cost)
-    }
-
     /// Returns the decoded image for an already-resolved store URL, decoding and caching
     /// it on a miss. The caller resolves the reference to a URL first, which is what keeps
     /// the directory-escape check in the store that owns the directory.
@@ -88,11 +70,12 @@ nonisolated public enum DecodedImageCache {
             let source = CGImageSourceCreateWithData(data as CFData, sourceOptions),
             let decoded = decodeStaticImage(in: source)
         else { return nil }
-        return makeNSImage(from: decoded.cgImage)
+        return makeNSImage(from: decoded)
     }
 
     private struct DecodedStaticImage: Sendable {
         let cgImage: CGImage
+        let pointSize: CGSize
         let cost: Int
     }
 
@@ -125,7 +108,32 @@ nonisolated public enum DecodedImageCache {
         else { return nil }
         let cost = decodedSurfaceCost(
             bytesPerRow: cgImage.bytesPerRow, height: cgImage.height)
-        return DecodedStaticImage(cgImage: cgImage, cost: cost)
+        return DecodedStaticImage(
+            cgImage: cgImage, pointSize: pointSize(in: source, decoded: cgImage), cost: cost)
+    }
+
+    /// The logical size in points: the oriented source pixels at the file's resolution, so
+    /// a 144-DPI Retina screenshot lays out at half its pixel size. Never larger than the
+    /// pixels, so a low-DPI file is not upscaled.
+    static func pointSize(in source: CGImageSource, decoded: CGImage) -> CGSize {
+        let options = [kCGImageSourceShouldCache: false] as CFDictionary
+        let properties =
+            CGImageSourceCopyPropertiesAtIndex(source, 0, options) as? [CFString: Any] ?? [:]
+        func number(_ key: CFString) -> Double? { (properties[key] as? NSNumber)?.doubleValue }
+        guard let width = number(kCGImagePropertyPixelWidth),
+            let height = number(kCGImagePropertyPixelHeight), width > 0, height > 0
+        else { return CGSize(width: decoded.width, height: decoded.height) }
+        func scale(_ dpi: Double?) -> Double {
+            guard let dpi, dpi.isFinite, dpi > 72 else { return 1 }
+            return 72 / dpi
+        }
+        let horizontal = width * scale(number(kCGImagePropertyDPIWidth))
+        let vertical = height * scale(number(kCGImagePropertyDPIHeight))
+        // EXIF orientations 5–8 rotate a quarter turn, which the decode already applied.
+        let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
+        return (5...8).contains(orientation)
+            ? CGSize(width: vertical, height: horizontal)
+            : CGSize(width: horizontal, height: vertical)
     }
 
     /// The cache cost of a decoded surface: its actual backing bytes
@@ -141,7 +149,7 @@ nonisolated public enum DecodedImageCache {
     @MainActor private static func cache(
         _ decoded: DecodedStaticImage, forKey key: NSString
     ) -> NSImage {
-        let image = makeNSImage(from: decoded.cgImage)
+        let image = makeNSImage(from: decoded)
         imageCache.setObject(image, forKey: key, cost: decoded.cost)
         return image
     }
@@ -149,9 +157,11 @@ nonisolated public enum DecodedImageCache {
     /// Wraps the bounded CGImage as one explicit bitmap representation. Constructing an NSImage
     /// directly from a CGImage can synthesize a backing-scale-dependent representation on a Retina
     /// display; the explicit bitmap keeps the decoded pixel dimensions deterministic.
-    @MainActor private static func makeNSImage(from cgImage: CGImage) -> NSImage {
-        let image = NSImage(size: NSSize(width: cgImage.width, height: cgImage.height))
-        image.addRepresentation(NSBitmapImageRep(cgImage: cgImage))
+    @MainActor private static func makeNSImage(from decoded: DecodedStaticImage) -> NSImage {
+        let image = NSImage(size: decoded.pointSize)
+        let representation = NSBitmapImageRep(cgImage: decoded.cgImage)
+        representation.size = decoded.pointSize
+        image.addRepresentation(representation)
         return image
     }
 }

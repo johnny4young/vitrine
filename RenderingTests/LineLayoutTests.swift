@@ -15,13 +15,12 @@ struct LineSplitterTests {
         // "a\n\nb\n" is four rows: a, blank, b, trailing blank — so line numbering
         // matches what the editor shows.
         #expect(LineSplitter.lineCount(of: "a\n\nb\n") == 4)
-        #expect(LineSplitter.plainLines(of: "a\n\nb\n").count == 4)
+        #expect(LineSplitter.attributedLines(of: AttributedString("a\n\nb\n")).count == 4)
     }
 
     @Test func crlfLineEndingsSplitIntoTheSameRowsTheyCount() {
         let text = "a\r\nb\r\n\r\nc"
         #expect(LineSplitter.lineCount(of: text) == 4)
-        #expect(LineSplitter.plainLines(of: text) == ["a", "b", "", "c"])
         let lines = LineSplitter.attributedLines(of: AttributedString(text))
         #expect(lines.map { String($0.characters) } == ["a", "b", "", "c"])
     }

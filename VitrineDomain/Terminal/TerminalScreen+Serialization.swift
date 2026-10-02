@@ -60,10 +60,4 @@ extension TerminalScreen {
         flush()
         return out
     }
-
-    /// The final screen as plain text (styling dropped) — the copyable-text counterpart of
-    /// the rendered image, matching ``ANSIRenderer/plainText(_:)`` for line mode.
-    public func plainText() -> String {
-        runs().map(\.text).joined()
-    }
 }
