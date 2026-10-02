@@ -308,7 +308,7 @@ appending *lines*:
 | Sequence                      | Meaning                       | Why it is a trigger                        |
 | ----------------------------- | ----------------------------- | ------------------------------------------ |
 | `ESC[?1049h` / `?47h` / `?1047h` | enter the alternate screen | the unambiguous signature of a TUI         |
-| `ESC[…J` (`ED`)               | erase display                 | only a full-screen redraw erases the screen |
+| a second `ESC[2J` (`ED 2`)    | erase display, repeated       | one is the `clear` idiom; a repaint loop clears again |
 | `ESC[…d` (`VPA`)              | absolute row                  | positioning implies a fixed screen          |
 | `ESC[…r` (`DECSTBM`)          | scroll region                 | only a screen model has regions             |
 | `ESC[…H` / `f` (`CUP`) past home | absolute cell               | home alone is ambiguous, so it is excluded  |
@@ -320,7 +320,9 @@ this and stay in line mode.
 frame — the transcript *is* the artifact, and a reader expects every line of it. So
 line mode parses the whole stream verbatim after `ANSIRenderer.normalize(_:)` cleans
 the control bytes a pseudo-terminal leaves behind (`\r` redraws, `\b` backspaces,
-stray `^D`/BEL from `script`), keeping tab, newline, and ESC for the parser.
+stray `^D`/BEL from `script`), keeping tab, newline, and ESC for the parser. A redraw
+erases glyphs only: the SGR and OSC 8 escapes emitted on an erased line are kept, so the
+text drawn after it keeps the pen state a terminal would show.
 
 **Grid mode deliberately skips `normalize`.** That function collapses exactly the
 `\r`/`\b` sequences the emulator needs to interpret as cursor motion, and strips
@@ -338,10 +340,14 @@ handled:
 
 | Sequence           | Mapped? | Reason                                                        |
 | ------------------ | ------- | ------------------------------------------------------------- |
-| `EL 1`, `EL 2`     | discard the line | everything since `lineStart` is exactly start-to-cursor, so this is exact, not an approximation |
-| `CHA` (empty or 1) | discard the line | returning to column 1 is what `\r` means                |
-| `EL 0`             | left to the parser | erases *forward* from a cursor already at the end — a no-op |
+| `EL 1`, `EL 2`     | discard the line | with no column model, both erase the whole emitted line |
+| `CHA` (empty or 1) | return to the line start | what `\r` means: the line is replaced once something is drawn or erased there |
+| `EL 0`             | discard the line only after a return to its start | otherwise the cursor sits at the end of the emitted text, so it is a no-op |
+| `CUU`/`CPL`, `CUD`/`CNL` | move to the line *n* rows up or down | multi-line renderers (log-update, listr2, buildkit) redraw a block in place |
 | `CHA n>1`          | left to the parser | without a real cursor the options are to pad or truncate, and truncating deletes text a program aligned |
+
+A return to the line start (`\r`, `CHA 1`, or a cursor move onto another line) does not
+erase by itself, so `script`'s `\r\r\n` for a program that writes CRLF keeps its line.
 
 **Cell width is a model, not a font question.** `CharacterWidth.displayWidth(_:)`
 classifies each scalar as two columns (CJK, emoji), one, or zero (combining marks), so
@@ -354,7 +360,8 @@ exact; the rendering is as good as the font.
 wide enough that no addressed cell or printed line wraps early. The error is
 deliberately asymmetric: the grid trims trailing blanks, so over-estimating is
 harmless, while under-estimating wraps a TUI's content wrong — hence a floor of 80
-columns. `vgrab -w <cols>` and `vitrine render --terminal-width` pin the width
+columns. Erases fill with the pen's background (`bce`, as xterm and Terminal.app do), so
+a colored bar extends to the inferred right margin. `vgrab -w <cols>` and `vitrine render --terminal-width` pin the width
 instead, so wraps match what was on screen.
 
 **Verifying a change.** `ANSIRenderer.plainText(_:columns:)` returns the reconstructed

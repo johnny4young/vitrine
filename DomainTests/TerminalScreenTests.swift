@@ -259,6 +259,53 @@ struct TerminalGridTests {
         #expect(plain("你Z\(esc)[2G\(esc)[@") == "   Z")  // ICH inside the wide cell
     }
 
+    // MARK: - Background color erase
+
+    private func runs(_ text: String, columns: Int) -> [ANSIRun] {
+        var screen = TerminalScreen(columns: columns, rows: 4)
+        screen.feed(text)
+        return screen.runs()
+    }
+
+    @Test func eraseToEndOfLineFillsTheMarginWithThePenBackground() {
+        let green = ANSIStyle(background: .indexed(2))
+        #expect(
+            runs("\(esc)[42mAB\(esc)[K\(esc)[0m", columns: 10)
+                == [ANSIRun(text: "AB        ", style: green)])
+    }
+
+    @Test func eraseWholeLineAndDisplayUseThePenBackground() {
+        let blue = ANSIStyle(background: .indexed(4))
+        #expect(
+            runs("x\(esc)[44m\(esc)[2K\(esc)[0m", columns: 4) == [
+                ANSIRun(text: "    ", style: blue)
+            ])
+        let screen = runs("\(esc)[44m\(esc)[2J\(esc)[0m", columns: 3)
+        #expect(screen.filter { $0.style == blue }.map(\.text) == ["   ", "   ", "   ", "   "])
+    }
+
+    @Test func eraseCharsAndInsertedCellsUseThePenBackground() {
+        let red = ANSIStyle(background: .indexed(1))
+        #expect(
+            runs("ABCD\(esc)[1G\(esc)[41m\(esc)[2X\(esc)[0m", columns: 6)
+                == [ANSIRun(text: "  ", style: red), ANSIRun(text: "CD", style: ANSIStyle())])
+        #expect(
+            runs("AB\(esc)[1G\(esc)[41m\(esc)[@\(esc)[0m", columns: 4)
+                == [ANSIRun(text: " ", style: red), ANSIRun(text: "AB", style: ANSIStyle())])
+    }
+
+    @Test func defaultBackgroundEraseStillTrims() {
+        #expect(
+            runs("ABCDEF\(esc)[3D\(esc)[K", columns: 10) == [
+                ANSIRun(text: "ABC", style: ANSIStyle())
+            ])
+    }
+
+    @Test func coloredClearOnExitKeepsThePreClearFrame() {
+        let stream = "\(esc)[?1049hframe\(esc)[44m\(esc)[2J\(esc)[0m\(esc)[?1049l$ "
+        #expect(plain(stream) == "frame")
+    }
+
     // MARK: - Wide (double-width) characters & combining marks
 
     @Test func wideCharacterAdvancesTwoColumns() {
@@ -340,6 +387,12 @@ struct TerminalGridTests {
         #expect(TerminalScreen.usesScreenAddressing("\(esc)[3dx"))
     }
 
+    @Test func anInterruptedCSIDoesNotEndTheRoutingScan() {
+        // A C0 byte aborts the first CSI; the alt-screen and CUP after it still count.
+        #expect(
+            TerminalScreen.usesScreenAddressing("\(esc)[\n\(esc)[?1049h\(esc)[5;5Hx\(esc)[?1049l"))
+    }
+
     @Test func inferColumnsFloorsAt80AndWidensForContent() {
         #expect(TerminalScreen.inferColumns("short") == 80)
         #expect(TerminalScreen.inferColumns(String(repeating: "x", count: 120)) == 120)
@@ -389,4 +442,9 @@ struct TerminalGridTests {
         let huge = String(Int.max)
         #expect(!plain("\(esc)[2J\(esc)[\(huge);\(huge)r\(esc)[1;1Hx").isEmpty)
     }
+}
+
+extension TerminalScreen {
+    /// The final screen with styling dropped.
+    func plainText() -> String { runs().map(\.text).joined() }
 }
