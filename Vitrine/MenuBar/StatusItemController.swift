@@ -303,6 +303,11 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         // The external click activates the helper. Complete the activation handoff before
         // presentation so AppKit cannot treat it as a reason to close the new panel.
         AppActivation.bringForward()
+        // Size before showing: AppKit keeps a popover on screen only for the size it
+        // is shown with, so growing afterwards pushes an edge icon's panel off-screen.
+        if let view = popover.contentViewController?.view {
+            popover.contentSize = view.fittingSize
+        }
         popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .minY)
         // The panel takes keyboard focus so its controls are reachable without a click.
         popover.contentViewController?.view.window?.makeKey()
