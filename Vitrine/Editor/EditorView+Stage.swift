@@ -463,6 +463,8 @@ extension EditorView {
             StageStatusCapsule(settings: settings, geometry: cardGeometry, stageSize: stageSize)
         }
         .layoutPriority(EditorLayout.stageLayoutPriority)
+        // A container, so the canvas text and the inline callout field keep their own ids.
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("editor-preview-stage")
         // Keep high-frequency text observation in a tiny sibling. The expensive
         // SnapshotCanvas receives only the staged value and is equatable, so raw
