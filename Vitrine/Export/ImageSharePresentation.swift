@@ -20,7 +20,7 @@ struct ImageSharePresentation {
             guard let view = NSApp.keyWindow?.contentView else { return }
             ShareManager.share(
                 image, relativeTo: view,
-                concealed: environment.appSettings.export.concealClipboard,
+                concealed: environment.appSettings.outputBehavior.concealClipboard,
                 feedback: feedback)
         }
     }

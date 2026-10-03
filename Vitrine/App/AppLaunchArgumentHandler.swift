@@ -238,8 +238,8 @@ import VitrineRendering
                 ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"]?.isEmpty == false
             {
                 // Synthetic UI fixture only: never read or overwrite the real clipboard.
-                settings.export.autoCopy = false
-                settings.export.alsoSaveToFile = false
+                settings.outputBehavior.autoCopy = false
+                settings.outputBehavior.alsoSaveToFile = false
                 Task { @MainActor [environment] in
                     _ = QuickCapture.capture(
                         settings: environment.appSettings, recents: environment.recents,

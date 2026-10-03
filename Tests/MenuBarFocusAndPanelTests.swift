@@ -138,7 +138,7 @@ struct EditorCopyCommandTests {
     private func makeSettings(closeAfterCopy: Bool) -> AppSettings {
         let settings = AppSettings(defaults: testDefaults())
         settings.config.code = "let x = 1"
-        settings.export.closeAfterCopy = closeAfterCopy
+        settings.outputBehavior.closeAfterCopy = closeAfterCopy
         settings.export.richClipboard = false
         settings.export.textSidecar = false
         return settings
@@ -173,6 +173,34 @@ struct EditorCopyCommandTests {
             responder.copyImage(
                 from: settings, editorWindow: window, pasteboard: NSPasteboard.withUniqueName())
                 == nil)
+    }
+
+    /// The behavior changes after the session opens, as a Settings toggle would, so a
+    /// session that seeded its own copy would conceal or close by the stale default.
+    @Test(arguments: zip([true, false], [false, true]))
+    func anEditorSessionCopiesWithTheAppWideBehavior(conceal: Bool, close: Bool) async {
+        let environment = AppEnvironment(
+            defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+        let session = environment.makeEditorSessionSettings()
+        defer { session.discardEphemeralStore() }
+        session.config.code = "let x = 1"
+        environment.appSettings.outputBehavior.concealClipboard = conceal
+        environment.appSettings.outputBehavior.closeAfterCopy = close
+        let responder = EditorCommandResponder(
+            settings: environment.appSettings, feedback: .noOp, presentation: .noOp)
+        let window = CloseRecordingWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 10, height: 10), styleMask: [.titled],
+            backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+
+        let closeTask = responder.copyImage(
+            from: session, editorWindow: window, pasteboard: pasteboard)
+        await closeTask?.value
+
+        #expect(pasteboard.types?.contains(ClipboardWriter.concealedType) == conceal)
+        #expect(window.didClose == close)
     }
 }
 

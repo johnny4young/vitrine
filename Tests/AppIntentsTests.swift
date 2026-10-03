@@ -528,7 +528,7 @@ struct ServiceRegistrationTests {
     @Test(arguments: [false, true])
     func servicesRespectClipboardConfidentiality(_ concealed: Bool) throws {
         let environment = try makeAutomationEnvironment(isPro: true)
-        environment.appSettings.export.concealClipboard = concealed
+        environment.appSettings.outputBehavior.concealClipboard = concealed
         let pasteboard = NSPasteboard(name: .init("VitrineServicePrivacy-\(UUID().uuidString)"))
         defer { pasteboard.releaseGlobally() }
         #expect(pasteboard.setString("let synthetic = 42", forType: .string))

@@ -20,7 +20,8 @@ struct LibraryDeletionTests {
         let document = settings.config
         let environment = AppEnvironment(defaults: defaults)
         let editor = AppSettings.makeEditorSession(
-            seededFrom: defaults, brandKit: environment.brandKit,
+            seededFrom: defaults, sharing: environment.appSettings.outputBehavior,
+            brandKit: environment.brandKit,
             entitlements: environment.entitlements)
         // The primary editor adopts the live document after creating its session.
         // Test deletion of an already-open document, not session seed resolution.

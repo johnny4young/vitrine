@@ -103,13 +103,12 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         from settings: AppSettings, editorWindow: NSWindow?, pasteboard: NSPasteboard = .general
     ) -> Task<Void, Never>? {
         let outcome = RenderedImageCopy.copy(
-            settings.exportConfig, output: settings, appWide: self.settings,
-            pasteboard: pasteboard)
+            settings.exportConfig, settings: settings, pasteboard: pasteboard)
         feedback(ExportFeedback.copyOutcome(outcome))
         guard
             EditorView.shouldCloseAfterCopy(
                 copied: outcome == .copied,
-                preferenceEnabled: self.settings.export.closeAfterCopy),
+                preferenceEnabled: settings.outputBehavior.closeAfterCopy),
             let editorWindow
         else { return nil }
         return Task { editorWindow.close() }

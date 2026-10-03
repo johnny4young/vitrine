@@ -394,8 +394,8 @@ struct RecentsGalleryView: View {
         var config = recents.document(for: capture, over: settings.exportConfig)
         preset.apply(to: &config)
         let outcome = RenderedImageCopy.copy(
-            config, scale: CGFloat(preset.scale), fixedSize: preset.sizing.fixedSize,
-            output: settings, appWide: settings)
+            config, output: settings.export, behavior: settings.outputBehavior,
+            scale: CGFloat(preset.scale), fixedSize: preset.sizing.fixedSize)
         feedback(ExportFeedback.copyOutcome(outcome))
     }
 
@@ -403,7 +403,7 @@ struct RecentsGalleryView: View {
         feedback(
             ExportFeedback.sourceCopyOutcome(
                 ExportManager.copySourceToPasteboard(
-                    capture.code, concealed: settings.export.concealClipboard)))
+                    capture.code, concealed: settings.outputBehavior.concealClipboard)))
     }
 
     private func open() {

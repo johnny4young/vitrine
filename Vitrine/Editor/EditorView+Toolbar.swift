@@ -242,22 +242,15 @@ extension EditorView {
         // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
         // render/encode failure — mirroring the menu command and the quick-capture HUD.
         // The HUD shows near the menu bar regardless of `closeAfterCopy`.
-        let outcome = ExportManager.copyToPasteboardOutcome(
-            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
-            concealed: environment.appSettings.export.concealClipboard)
+        let outcome = RenderedImageCopy.copy(settings.exportConfig, settings: settings)
         session.feedback(ExportFeedback.copyOutcome(outcome))
-        // `closeAfterCopy` is an app-global behavior preference, so it is read from the
-        // environment's app-wide settings (what the Settings toggle edits) rather than
-        // this window's per-session copy. Close *this* window — captured via
-        // `WindowAccessor`, so it
-        // never depends on `keyWindow` being right — deferred past the button's action,
-        // and `close()` (not `performClose`) so it is unconditional.
+        // Close *this* window — captured via `WindowAccessor`, so it never depends on
+        // `keyWindow` being right — deferred past the button's action, and `close()`
+        // (not `performClose`) so it is unconditional.
         guard
             Self.shouldCloseAfterCopy(
                 copied: outcome == .copied,
-                preferenceEnabled: environment.appSettings.export.closeAfterCopy)
+                preferenceEnabled: settings.outputBehavior.closeAfterCopy)
         else { return }
         guard let editorWindow = editorWindow.value else { return }
         Task { editorWindow.close() }
@@ -574,7 +567,7 @@ extension EditorView {
                     scale: CGFloat(settings.effectiveExportScale),
                     fixedSize: settings.effectiveFixedSize,
                     profile: settings.export.colorProfile,
-                    concealed: environment.appSettings.export.concealClipboard)))
+                    concealed: settings.outputBehavior.concealClipboard)))
     }
 
     /// Copies a self-contained Markdown image embed followed by the visible,
@@ -587,7 +580,7 @@ extension EditorView {
                     scale: CGFloat(settings.effectiveExportScale),
                     fixedSize: settings.effectiveFixedSize,
                     profile: settings.export.colorProfile,
-                    concealed: environment.appSettings.export.concealClipboard)))
+                    concealed: settings.outputBehavior.concealClipboard)))
     }
 
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
@@ -597,7 +590,7 @@ extension EditorView {
             ExportFeedback.sourceCopyOutcome(
                 RichPasteboard.copyHighlightedCode(
                     for: settings.config,
-                    concealed: environment.appSettings.export.concealClipboard)))
+                    concealed: settings.outputBehavior.concealClipboard)))
     }
 
     /// Copies a self-contained `vitrine://open` link that reproduces this snapshot. The
@@ -607,7 +600,7 @@ extension EditorView {
         do {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
             let copied = ClipboardWriter.copy(
-                url.absoluteString, concealed: environment.appSettings.export.concealClipboard)
+                url.absoluteString, concealed: settings.outputBehavior.concealClipboard)
             session.feedback(ExportFeedback.shareLinkCopyOutcome(copied))
         } catch SnapshotShareLink.ShareLinkError.tooLarge {
             session.feedback(

@@ -547,12 +547,12 @@ struct WebCaptureSettingsPersistenceTests {
         let defaults = testDefaults()
 
         let settings = AppSettings(defaults: defaults)
-        settings.export.autoCopy = false
+        settings.outputBehavior.autoCopy = false
         settings.webCapture.captureMode = .fullPage
 
         #expect(defaults.integer(forKey: SettingsSchema.versionKey) == SettingsSchema.current)
         let reloaded = AppSettings(defaults: defaults)
-        #expect(reloaded.export.autoCopy == false)
+        #expect(reloaded.outputBehavior.autoCopy == false)
         #expect(reloaded.webCapture.captureMode == .fullPage)
     }
 }

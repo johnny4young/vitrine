@@ -7,6 +7,8 @@ struct OutputSettingsView: View {
     @Bindable var settings: AppSettings
     @Bindable var recents: RecentsStore
 
+    private var behavior: Bindable<OutputBehavior> { Bindable(settings.outputBehavior) }
+
     var body: some View {
         SettingsPaneScroll {
             TokenGroup(title: Text("Export")) {
@@ -17,17 +19,17 @@ struct OutputSettingsView: View {
                     DestinationSegmentedPicker(settings: settings)
                 }
                 TokenRow(label: Text("Copy to clipboard automatically")) {
-                    Toggle("Copy to clipboard automatically", isOn: $settings.export.autoCopy)
+                    Toggle("Copy to clipboard automatically", isOn: behavior.autoCopy)
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }
                 TokenRow(label: Text("Also save to a file")) {
-                    Toggle("Also save to a file", isOn: $settings.export.alsoSaveToFile)
+                    Toggle("Also save to a file", isOn: behavior.alsoSaveToFile)
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }
                 TokenRow(label: Text("Close the editor after copying")) {
-                    Toggle("Close the editor after copying", isOn: $settings.export.closeAfterCopy)
+                    Toggle("Close the editor after copying", isOn: behavior.closeAfterCopy)
                         .toggleStyle(.switch)
                         .labelsHidden()
                         .accessibilityIdentifier("close-after-copy-toggle")
@@ -75,7 +77,7 @@ struct OutputSettingsView: View {
                 ) {
                     Toggle(
                         "Mark clipboard exports as confidential",
-                        isOn: $settings.export.concealClipboard
+                        isOn: behavior.concealClipboard
                     )
                     .toggleStyle(.switch)
                     .labelsHidden()
