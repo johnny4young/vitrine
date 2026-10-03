@@ -148,22 +148,17 @@ struct EditorCopyCommandTests {
         let settings = makeSettings(closeAfterCopy: true)
         let responder = EditorCommandResponder(
             settings: settings, feedback: .noOp, presentation: .noOp)
-        let window = NSWindow(
+        let window = CloseRecordingWindow(
             contentRect: NSRect(x: 0, y: 0, width: 10, height: 10), styleMask: [.titled],
             backing: .buffered, defer: true)
         window.isReleasedWhenClosed = false
-        var didClose = false
-        let observer = NotificationCenter.default.addObserver(
-            forName: NSWindow.willCloseNotification, object: window, queue: nil
-        ) { _ in didClose = true }
-        defer { NotificationCenter.default.removeObserver(observer) }
 
         let close = try #require(
             responder.copyImage(
                 from: settings, editorWindow: window, pasteboard: NSPasteboard.withUniqueName()))
         await close.value
 
-        #expect(didClose)
+        #expect(window.didClose)
     }
 
     @Test func copyKeepsTheEditorWhenThePreferenceIsOff() {
@@ -200,5 +195,14 @@ struct WindowPlacementTests {
         #expect(narrowed.width == 800)
         #expect(narrowed.midX == visible.midX)
         #expect(narrowed.height == visible.height)
+    }
+}
+
+private final class CloseRecordingWindow: NSWindow {
+    private(set) var didClose = false
+
+    override func close() {
+        didClose = true
+        super.close()
     }
 }
