@@ -206,3 +206,25 @@ private final class CloseRecordingWindow: NSWindow {
         super.close()
     }
 }
+
+@Suite("App activation")
+struct AppActivationSourceTests {
+    /// Cooperative activation leaves windows behind Terminal or the app that sent a
+    /// hotkey, so every caller goes through the one forcing call site.
+    @Test func everyActivationGoesThroughAppActivation() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+            .deletingLastPathComponent().appendingPathComponent("Vitrine")
+        let files = try #require(
+            FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+        for case let url as URL in files where url.pathExtension == "swift" {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            let isOwner = url.lastPathComponent == "AppActivation.swift"
+            #expect(
+                isOwner == text.contains("NSApp.activate("),
+                "\(url.lastPathComponent) must activate through AppActivation.bringForward()")
+        }
+        let owner = try String(
+            contentsOf: root.appendingPathComponent("App/AppActivation.swift"), encoding: .utf8)
+        #expect(owner.contains("NSApp.activate(ignoringOtherApps: true)"))
+    }
+}

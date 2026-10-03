@@ -2,10 +2,11 @@ import AppKit
 
 /// The app's single activation call site, so the activation policy changes in one place.
 enum AppActivation {
-    /// Brings Vitrine forward with cooperative activation. The menu-bar helper yields to
-    /// the app before a panel click, and every other caller follows a user action.
+    /// Brings Vitrine forward. Cooperative `NSApp.activate()` is refused while another
+    /// app stays active (Terminal running `render --edit`, a global hotkey, Services),
+    /// which leaves the new window behind it, so this keeps the forcing call.
     static func bringForward() {
-        NSApp.activate()
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     /// Whether activation should go back to `previousProcessID` after a Vitrine surface
