@@ -89,22 +89,22 @@ struct ClipboardPrivacyTests {
         #expect(pasteboard.data(forType: .rtf) != nil)
         #expect(pasteboard.data(forType: .html) != nil)
         check(
-            RichPasteboard.copy(
+            ((try? RichPasteboard.copyChecked(
                 config, scale: 1, fixedSize: nil, profile: .sRGB, includeRichText: true,
-                concealed: concealed, to: pasteboard))
+                concealed: concealed, to: pasteboard)) ?? false))
         check(
-            RichPasteboard.copy(
+            (RichPasteboard.copyOutcome(
                 cgImage: image, config: config, includeRichText: true, concealed: concealed,
-                to: pasteboard))
+                to: pasteboard) == .copied))
         check(RichPasteboard.copyHighlightedCode(for: config, concealed: concealed, to: pasteboard))
         check(
-            RichPasteboard.copyDataURI(
+            (RichPasteboard.copyDataURIOutcome(
                 for: config, scale: 1, fixedSize: nil, profile: .sRGB, concealed: concealed,
-                to: pasteboard))
+                to: pasteboard) == .copied))
         check(
-            RichPasteboard.copyMarkdown(
+            (RichPasteboard.copyMarkdownOutcome(
                 for: config, scale: 1, fixedSize: nil, profile: .sRGB, concealed: concealed,
-                to: pasteboard))
+                to: pasteboard) == .copied))
         let sharedImage = NSImage(
             cgImage: image, size: NSSize(width: image.width, height: image.height))
         check(ClipboardWriter.write([sharedImage], concealed: concealed, to: pasteboard))

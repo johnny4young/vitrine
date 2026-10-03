@@ -74,16 +74,6 @@ enum VitrineTokens {
             }
         }
 
-        /// `--accent-hover` — one step brighter on hover.
-        static let hover = Brand.BrandColor(
-            light: Color(hex: "#4339D4"),
-            dark: Color(hex: "#8E9CFF")
-        ).color
-        /// `--accent-press` — one step further on press.
-        static let press = Brand.BrandColor(
-            light: Color(hex: "#3A30C4"),
-            dark: Color(hex: "#AEB8FF")
-        ).color
         /// `--accent-secondary` — the gradient's far stop (re-exported).
         static let secondary = Brand.Palette.accentSecondary.color
         /// `--accent-contrast` — text and glyphs over accent fills.
@@ -176,15 +166,6 @@ enum VitrineTokens {
         static let callToAction = LinearGradient(
             colors: [Brand.Palette.accent.lightHighContrast, Color(hex: "#06566D")],
             startPoint: .topLeading, endPoint: .bottomTrailing)
-        /// `--grad-signature-wash` — 18 % wash for hero backgrounds.
-        static let signatureWash = Brand.Gradient.signatureWash()
-        /// `--grad-aurora` … `--grad-carbon` — the built-in canvas presets.
-        static let aurora = GradientPreset.aurora.gradient
-        static let ocean = GradientPreset.ocean.gradient
-        static let sunset = GradientPreset.sunset.gradient
-        static let forest = GradientPreset.forest.gradient
-        static let night = GradientPreset.night.gradient
-        static let carbon = GradientPreset.carbon.gradient
     }
 
     // MARK: - Spacing (4-pt scale, re-exported)
@@ -203,7 +184,7 @@ enum VitrineTokens {
 
     // MARK: - Corner radius (continuous style)
 
-    /// `tokens/elevation.css` radii — re-exported plus the pill shape.
+    /// `tokens/elevation.css` radii, re-exported.
     enum Radius {
         static let sm = Brand.Radius.sm
         static let md = Brand.Radius.md
@@ -211,26 +192,6 @@ enum VitrineTokens {
         static let xl = Brand.Radius.xl
         /// The exported code-card corner radius.
         static let card = Brand.Radius.card
-        /// `--radius-pill` — fully rounded capsules and chips.
-        static let pill: CGFloat = 999
-    }
-
-    // MARK: - Shadows (app chrome only)
-
-    /// Shadow recipes from `tokens/elevation.css`, translated for SwiftUI
-    /// (`shadow(radius:)` takes half the CSS blur). These style the current designed
-    /// chrome; the exported card keeps `Brand.Shadow` so renders stay
-    /// byte-identical to the earlier goldens.
-    enum Shadows {
-        /// `--shadow-card` — subtle lift for cards inside the app chrome.
-        static let card = Brand.ShadowStyle(
-            color: .black.opacity(0.18), radius: 6, x: 0, y: 6)
-        /// `--shadow-elevated` — the deep offset under prominent cards.
-        static let elevated = Brand.ShadowStyle(
-            color: .black.opacity(0.35), radius: 10, x: 0, y: 8)
-        /// `--shadow-popover` — floating panels and the menu-bar window.
-        static let popover = Brand.ShadowStyle(
-            color: .black.opacity(0.22), radius: 17, x: 0, y: 10)
     }
 
     // MARK: - Chrome component fills
@@ -293,8 +254,6 @@ enum VitrineTokens {
     enum FontSize {
         /// 28 — welcome / about hero.
         static let largeTitle: CGFloat = 28
-        /// 17 — window titles, section heroes.
-        static let title: CGFloat = 17
         /// 15 — group headers, emphasized labels.
         static let headline: CGFloat = 15
         /// 13 — the macOS control body size.
@@ -303,7 +262,5 @@ enum VitrineTokens {
         static let subhead: CGFloat = 12
         /// 11 — captions, badges, footnotes.
         static let caption: CGFloat = 11
-        /// 14 — the default code size in the editor.
-        static let code: CGFloat = 14
     }
 }

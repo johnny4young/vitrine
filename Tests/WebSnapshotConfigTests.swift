@@ -141,7 +141,6 @@ struct WebWaitStrategyTests {
 
     @Test func domContentLoadedAddsNoPostLoadWait() {
         let strategy = WebSnapshotConfig.WaitStrategy.domContentLoaded
-        #expect(strategy.postLoadDelay == .zero)
         #expect(strategy.totalBudget == WebSnapshotConfig.WaitStrategy.baseLoadBudget)
         #expect(strategy.kind == .domContentLoaded)
     }
@@ -149,7 +148,6 @@ struct WebWaitStrategyTests {
     @Test func aFixedDelayExtendsTheBudgetByTheDelay() {
         let delay = Duration.seconds(3)
         let strategy = WebSnapshotConfig.WaitStrategy.fixedDelay(delay)
-        #expect(strategy.postLoadDelay == delay)
         #expect(strategy.totalBudget == WebSnapshotConfig.WaitStrategy.baseLoadBudget + delay)
         #expect(strategy.kind == .fixedDelay)
     }
@@ -157,7 +155,6 @@ struct WebWaitStrategyTests {
     @Test func networkQuietExtendsTheBudgetByItsBudget() {
         let budget = Duration.seconds(5)
         let strategy = WebSnapshotConfig.WaitStrategy.networkQuiet(budget: budget)
-        #expect(strategy.postLoadDelay == budget)
         #expect(strategy.totalBudget == WebSnapshotConfig.WaitStrategy.baseLoadBudget + budget)
         #expect(strategy.kind == .networkQuiet)
     }

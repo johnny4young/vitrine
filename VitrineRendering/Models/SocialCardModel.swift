@@ -154,11 +154,6 @@ public struct SocialCardModel: Equatable {
         author != nil || project != nil
     }
 
-    /// The excerpt split into its (already truncated) display lines.
-    public var excerptLines: [String] {
-        codeExcerpt.isEmpty ? [] : codeExcerpt.components(separatedBy: "\n")
-    }
-
     /// Trims surrounding whitespace/newlines and collapses an empty result to
     /// `nil`, so `"  "` and `""` are both treated as "no value".
     public static func normalized(_ text: String?) -> String? {

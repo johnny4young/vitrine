@@ -43,8 +43,9 @@ struct RenderOnceExportTests {
         let pasteboard = NSPasteboard(name: NSPasteboard.Name("VitrineP5-\(UUID().uuidString)"))
 
         #expect(
-            RichPasteboard.copy(
-                cgImage: cgImage, config: config, includeRichText: false, to: pasteboard))
+            (RichPasteboard.copyOutcome(
+                cgImage: cgImage, config: config, includeRichText: false, to: pasteboard) == .copied)
+        )
 
         let png = try #require(pasteboard.data(forType: RichPasteboard.pngType))
         #expect(png == ExportManager.pngData(from: cgImage))

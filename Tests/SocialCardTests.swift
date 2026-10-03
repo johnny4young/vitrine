@@ -115,7 +115,7 @@ struct SocialCardModelValidationTests {
         // marker, so a card can never turn into a full-file screenshot.
         let manyLines = (1...20).map { "line \($0)" }.joined(separator: "\n")
         let card = SocialCardModel(codeExcerpt: manyLines)
-        let lines = card.excerptLines
+        let lines = excerptLines(card)
         #expect(lines.count == SocialCardModel.maxExcerptLines + 1)
         #expect(lines.last == "…")
         #expect(lines.first == "line 1")
@@ -123,7 +123,7 @@ struct SocialCardModelValidationTests {
 
     @Test func shortExcerptIsKeptVerbatimWithNoEllipsis() {
         let card = SocialCardModel(codeExcerpt: "a\nb\nc")
-        #expect(card.excerptLines == ["a", "b", "c"])
+        #expect(excerptLines(card) == ["a", "b", "c"])
         #expect(card.codeExcerpt == "a\nb\nc")
     }
 
@@ -144,7 +144,7 @@ struct SocialCardModelValidationTests {
     @Test func emptyExcerptHasNoLines() {
         let card = SocialCardModel(title: "Only a title")
         #expect(card.codeExcerpt.isEmpty)
-        #expect(card.excerptLines.isEmpty)
+        #expect(excerptLines(card).isEmpty)
     }
 
     @Test func fontSizeIsClampedIntoRange() {
@@ -252,7 +252,7 @@ struct SocialCardModelCodableTests {
             """
         let decoded = try JSONDecoder().decode(SocialCardModel.self, from: Data(json.utf8))
         #expect(decoded.fontSize == SocialCardModel.fontSizeRange.upperBound)
-        #expect(decoded.excerptLines.count == SocialCardModel.maxExcerptLines + 1)
+        #expect(excerptLines(decoded).count == SocialCardModel.maxExcerptLines + 1)
     }
 
     @Test func missingBackgroundDegradesToSignatureGradient() throws {
@@ -787,4 +787,9 @@ struct SocialCardRecorderTests {
                 + "\(manifest.pinnedImage.osVersion)/\(manifest.pinnedImage.architecture)/"
                 + "swift\(manifest.pinnedImage.swiftVersion)")
     }
+}
+
+/// The excerpt split into its display lines, as the card renders them.
+private func excerptLines(_ card: SocialCardModel) -> [String] {
+    card.codeExcerpt.isEmpty ? [] : card.codeExcerpt.components(separatedBy: "\n")
 }

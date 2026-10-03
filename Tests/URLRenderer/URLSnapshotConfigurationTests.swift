@@ -29,7 +29,6 @@ struct WebSnapshotConfigTests {
         // touches is persisted unless the caller deliberately opts in.
         let config = try WebSnapshotConfig(captureURL: try URLFixture.valid())
         #expect(config.dataStoreMode == .nonPersistent)
-        #expect(config.dataStoreMode.persistsWebsiteData == false)
     }
 
     @Test func defaultsMatchTheExporterDefaults() throws {
