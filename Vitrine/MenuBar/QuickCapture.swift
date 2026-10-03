@@ -171,8 +171,8 @@ enum QuickCapture {
         // cannot fail a PDF-only save that never needed it — the checked PDF
         // encoder decides that outcome itself.
         let needsRaster = rasterIsRequired(
-            autoCopy: settings.export.autoCopy,
-            savesToFile: settings.export.alsoSaveToFile,
+            autoCopy: settings.outputBehavior.autoCopy,
+            savesToFile: settings.outputBehavior.alsoSaveToFile,
             format: settings.export.format)
         let cgImage: CGImage?
         if needsRaster {
@@ -190,13 +190,13 @@ enum QuickCapture {
         var deferredRenderFailure: RenderBudgetError?
         // `autoCopy` implies `needsRaster`, so the binding always succeeds here;
         // it simply keeps the optional handling explicit.
-        if settings.export.autoCopy, let cgImage {
+        if settings.outputBehavior.autoCopy, let cgImage {
             if settings.export.richClipboard || settings.export.textSidecar {
                 switch RichPasteboard.copyOutcome(
                     cgImage: cgImage, config: plan.config,
                     includeRichText: settings.export.richClipboard,
                     includePlainText: settings.export.textSidecar,
-                    concealed: settings.export.concealClipboard, to: pasteboard)
+                    concealed: settings.outputBehavior.concealClipboard, to: pasteboard)
                 {
                 case .copied:
                     didCopy = true
@@ -207,7 +207,7 @@ enum QuickCapture {
                 }
             } else {
                 switch ExportManager.copyPNGToPasteboardOutcome(
-                    cgImage, concealed: settings.export.concealClipboard, to: pasteboard)
+                    cgImage, concealed: settings.outputBehavior.concealClipboard, to: pasteboard)
                 {
                 case .copied:
                     didCopy = true
@@ -220,7 +220,7 @@ enum QuickCapture {
         }
 
         var didSave = false
-        if settings.export.alsoSaveToFile {
+        if settings.outputBehavior.alsoSaveToFile {
             if settings.export.format == .pdf {
                 let outcome = ExportManager.saveToFile(
                     plan.config, scale: plan.scale, format: .pdf,

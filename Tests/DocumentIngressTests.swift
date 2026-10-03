@@ -119,8 +119,8 @@ struct DocumentIngressTests {
         let settings = AppSettings(defaults: testDefaults())
         let source = markedDocument()
         settings.config = source
-        settings.export.autoCopy = true
-        settings.export.alsoSaveToFile = false
+        settings.outputBehavior.autoCopy = true
+        settings.outputBehavior.alsoSaveToFile = false
         settings.export.textSidecar = true
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }

@@ -58,10 +58,11 @@ final class AppEnvironment {
     }
 
     /// Creates one editor window's ephemeral in-memory settings from this graph. The session keeps
-    /// its own document/style store, while Brand Kit and entitlement resolution stay
-    /// aligned with the long-lived instances the editor view observes.
+    /// its own document/style store, while Brand Kit, entitlement, and output behavior stay
+    /// the long-lived app-wide instances.
     func makeEditorSessionSettings() -> AppSettings {
         AppSettings.makeEditorSession(
-            seededFrom: defaults, brandKit: brandKit, entitlements: entitlements)
+            seededFrom: defaults, sharing: appSettings.outputBehavior, brandKit: brandKit,
+            entitlements: entitlements)
     }
 }

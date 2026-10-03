@@ -273,7 +273,7 @@ extension EditorView {
         else { return }
         let settings = self.settings
         let feedback = session.feedback
-        let export = environment.appSettings.export
+        let behavior = settings.outputBehavior
         imageProcessing.start(
             .copyText,
             work: {
@@ -285,7 +285,7 @@ extension EditorView {
                     feedback(Notifier.confirmation(String(localized: "No text found in the image")))
                     return
                 }
-                let copied = ClipboardWriter.copy(text, concealed: export.concealClipboard)
+                let copied = ClipboardWriter.copy(text, concealed: behavior.concealClipboard)
                 if copied {
                     Log.export.notice(
                         "Copied recognized image text (\(text.count, privacy: .public) chars)")

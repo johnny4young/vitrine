@@ -10,14 +10,14 @@ import VitrineDomain
 struct ClipboardPrivacyTests {
     @Test func preferenceIsOptInPersistentAndResettable() {
         let defaults = testDefaults()
-        let settings = ExportSettings(defaults: defaults)
-        #expect(settings.concealClipboard == false)
-        settings.concealClipboard = true
-        #expect(ExportSettings(defaults: defaults).concealClipboard)
-        settings.resetToDefaults()
-        #expect(ExportSettings(defaults: defaults).concealClipboard == false)
+        let behavior = OutputBehavior(defaults: defaults)
+        #expect(behavior.concealClipboard == false)
+        behavior.concealClipboard = true
+        #expect(OutputBehavior(defaults: defaults).concealClipboard)
+        behavior.resetToDefaults()
+        #expect(OutputBehavior(defaults: defaults).concealClipboard == false)
         defaults.set("not a boolean", forKey: SettingsCodec.Keys.concealClipboard)
-        #expect(ExportSettings(defaults: defaults).concealClipboard == false)
+        #expect(OutputBehavior(defaults: defaults).concealClipboard == false)
         #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.concealClipboard))
     }
 

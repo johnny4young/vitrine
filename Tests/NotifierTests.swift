@@ -203,8 +203,8 @@ struct CaptureResultDestinationTests {
 
     @Test func copyOnlyResultReportsCopiedNotSaved() {
         let settings = AppSettings(defaults: freshDefaults())
-        settings.export.autoCopy = true
-        settings.export.alsoSaveToFile = false
+        settings.outputBehavior.autoCopy = true
+        settings.outputBehavior.alsoSaveToFile = false
         let result = QuickCapture.capture(
             settings: settings,
             recents: RecentsStore(defaults: freshDefaults()),
@@ -216,8 +216,8 @@ struct CaptureResultDestinationTests {
 
     @Test func autoCopyOffReportsRenderedAndOffersNoSave() {
         let settings = AppSettings(defaults: freshDefaults())
-        settings.export.autoCopy = false
-        settings.export.alsoSaveToFile = false
+        settings.outputBehavior.autoCopy = false
+        settings.outputBehavior.alsoSaveToFile = false
         let result = QuickCapture.capture(
             settings: settings,
             recents: RecentsStore(defaults: freshDefaults()),

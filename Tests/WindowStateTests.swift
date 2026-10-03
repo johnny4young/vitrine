@@ -497,6 +497,7 @@ struct EditorSessionIndependenceTests {
         let environment = makeEnvironment(defaults: defaults)
         return AppSettings.makeEditorSession(
             seededFrom: defaults,
+            sharing: environment.appSettings.outputBehavior,
             store: store,
             brandKit: environment.brandKit,
             entitlements: environment.entitlements

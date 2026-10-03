@@ -114,7 +114,7 @@ final class AppSettings {
         didSet { SettingsCodec.persistSocialCard(socialCard, to: defaults) }
     }
 
-    /// The image-output settings (auto-copy, save, scale, format, color profile, rich
+    /// The per-capture image-output settings (scale, format, color profile, rich
     /// clipboard, and text sidecar), extracted into a focused sub-store
     /// rather than as members of this object. Access them through `export`,
     /// e.g. `settings.export.scale`. Both objects are `@Observable`, so a SwiftUI surface
@@ -124,6 +124,13 @@ final class AppSettings {
     /// Declared `var` (never reassigned after `init`) only so a `$settings.export.field`
     /// SwiftUI binding resolves — a `let` class property forms a read-only key path.
     var export: ExportSettings
+
+    /// App-wide clipboard and save behavior. An editor session references the app-wide
+    /// instance instead of seeding its own, so it can never read a stale default.
+    let outputBehavior: OutputBehavior
+
+    /// Only the app-wide instance resets the shared behavior.
+    private let ownsOutputBehavior: Bool
 
     /// What the global hotkey does.
     var hotkeyAction: HotkeyAction {
@@ -234,8 +241,21 @@ final class AppSettings {
 
     private typealias Keys = SettingsCodec.Keys
 
-    init(
+    convenience init(
         defaults: UserDefaults,
+        brandKit: BrandKitStore,
+        entitlements: Entitlements
+    ) {
+        self.init(
+            defaults: defaults, sharedBehavior: nil, brandKit: brandKit,
+            entitlements: entitlements)
+    }
+
+    /// `sharedBehavior` is the app-wide instance an editor session references; `nil`
+    /// builds the app-wide instance, which owns its behavior.
+    private init(
+        defaults: UserDefaults,
+        sharedBehavior: OutputBehavior?,
         brandKit: BrandKitStore,
         entitlements: Entitlements
     ) {
@@ -253,6 +273,8 @@ final class AppSettings {
         // Image-output settings (Output) live in their own focused sub-store,
         // read defensively from the same defaults suite.
         export = ExportSettings(defaults: defaults)
+        outputBehavior = sharedBehavior ?? OutputBehavior(defaults: defaults)
+        ownsOutputBehavior = sharedBehavior == nil
         hotkeyAction = HotkeyAction.resolve(defaults.string(forKey: Keys.hotkeyAction))
         let resolvedLanguage = AppLanguage.resolve(defaults.string(forKey: Keys.appLanguage))
         appLanguage = resolvedLanguage
@@ -305,9 +327,11 @@ final class AppSettings {
     ///
     /// Resolve the complete configuration against the real defaults before crossing the
     /// session boundary. Only value preferences travel; shared theme/preset catalogs and
-    /// app-global behavior never enter the ephemeral store.
+    /// app-global behavior never enter the ephemeral store. The session references
+    /// `outputBehavior`, the app-wide instance, rather than copying it.
     static func makeEditorSession(
         seededFrom source: UserDefaults,
+        sharing outputBehavior: OutputBehavior,
         store: InMemoryUserDefaults = InMemoryUserDefaults(),
         brandKit: BrandKitStore,
         entitlements: Entitlements
@@ -319,7 +343,7 @@ final class AppSettings {
         // enter another window. Production supplies a fresh exclusive store each time.
         store.removeAllValues()
         let session = AppSettings(
-            defaults: store, ephemeralStore: store,
+            defaults: store, ephemeralStore: store, sharedBehavior: outputBehavior,
             brandKit: brandKit, entitlements: entitlements)
         session.applyEditorPreferences(preferences)
         return session
@@ -330,10 +354,13 @@ final class AppSettings {
     private convenience init(
         defaults: InMemoryUserDefaults,
         ephemeralStore: InMemoryUserDefaults,
+        sharedBehavior: OutputBehavior,
         brandKit: BrandKitStore,
         entitlements: Entitlements
     ) {
-        self.init(defaults: defaults, brandKit: brandKit, entitlements: entitlements)
+        self.init(
+            defaults: defaults, sharedBehavior: sharedBehavior, brandKit: brandKit,
+            entitlements: entitlements)
         self.ephemeralStore = ephemeralStore
         isEphemeralSession = true
     }
@@ -601,8 +628,8 @@ final class AppSettings {
             showChrome: config.showChrome,
             showShadow: config.showShadow,
             backgroundKind: config.background.diagnosticsKind,
-            autoCopy: export.autoCopy,
-            alsoSaveToFile: export.alsoSaveToFile,
+            autoCopy: outputBehavior.autoCopy,
+            alsoSaveToFile: outputBehavior.alsoSaveToFile,
             exportScale: export.scale,
             exportFormat: export.format.rawValue,
             colorProfile: export.colorProfile.rawValue,
@@ -639,6 +666,7 @@ final class AppSettings {
         // The output sub-store resets its own published state; its persisted
         // keys were cleared by the `Keys.all` sweep above.
         export.resetToDefaults()
+        if ownsOutputBehavior { outputBehavior.resetToDefaults() }
         hotkeyAction = .fallback
         appLanguage = .system
         treatURLsAsScreenshot = false

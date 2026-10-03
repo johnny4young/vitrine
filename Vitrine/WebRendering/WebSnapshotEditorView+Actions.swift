@@ -83,7 +83,7 @@ extension WebSnapshotEditorView {
         feedback(
             ExportFeedback.copyOutcome(
                 ExportManager.copyPNGToPasteboardOutcome(
-                    asset.cgImage, concealed: settings.export.concealClipboard)))
+                    asset.cgImage, concealed: settings.outputBehavior.concealClipboard)))
     }
 
     func saveImage() {
