@@ -2221,6 +2221,2010 @@
         }
       }
     },
+    "An editor that keeps up" : {
+      "comment" : "What's New headline for version 1.2.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un editor que sigue tu ritmo"
+          }
+        }
+      }
+    },
+    "Typing in the editor is much lighter. Each keystroke used to re-measure the whole window and redraw the inspector beside it; now only the parts that show your text update." : {
+      "comment" : "What's New highlight for version 1.2.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribir en el editor es mucho más ligero. Antes, cada pulsación de tecla volvía a medir toda la ventana y redibujaba el inspector de al lado; ahora solo se actualizan las partes que muestran tu texto."
+          }
+        }
+      }
+    },
+    "Dragging the padding or font-size slider updates the editor once per step instead of twice, and the code editor no longer reapplies its font to the whole document when nothing about the font changed." : {
+      "comment" : "What's New highlight for version 1.2.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastrar el control deslizante de relleno o de tamaño de fuente actualiza el editor una vez por paso en lugar de dos, y el editor de código ya no vuelve a aplicar su fuente a todo el documento cuando nada de la fuente cambió."
+          }
+        }
+      }
+    },
+    "Going back across font sizes or themes you already tried reuses the highlighting Vitrine produced the first time." : {
+      "comment" : "What's New highlight for version 1.2.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver a tamaños de fuente o temas que ya probaste reutiliza el resaltado que Vitrine generó la primera vez."
+          }
+        }
+      }
+    },
+    "Launch no longer waits while Vitrine removes old window settings left by earlier versions." : {
+      "comment" : "What's New highlight for version 1.2.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El inicio ya no espera mientras Vitrine elimina ajustes de ventana antiguos que dejaron versiones anteriores."
+          }
+        }
+      }
+    },
+    "The signed app no longer contains the testing hooks used during development." : {
+      "comment" : "What's New highlight for version 1.2.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La app firmada ya no contiene los ganchos de prueba que se usan durante el desarrollo."
+          }
+        }
+      }
+    },
+    "Vitrine continues to require macOS 15 Sequoia or later and qualifies Tahoe, and direct downloads remain universal for Apple silicon and Intel." : {
+      "comment" : "What's New highlight for versions 1.2.2 and 1.2.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine sigue requiriendo macOS 15 Sequoia o posterior y está validado para Tahoe, y las descargas directas siguen siendo universales para Apple silicon e Intel."
+          }
+        }
+      }
+    },
+    "Updates that arrive, and a faster editor" : {
+      "comment" : "What's New headline for version 1.2.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualizaciones que llegan y un editor más rápido"
+          }
+        }
+      }
+    },
+    "Vitrine now checks for updates on its own. Until this release it only checked when you opened Check for Updates yourself, so an install that never used that menu was never told a new version existed." : {
+      "comment" : "What's New highlight for version 1.2.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine ahora busca actualizaciones por su cuenta. Hasta esta versión solo lo hacía cuando abrías Buscar actualizaciones manualmente, así que una instalación que nunca usó ese menú nunca se enteraba de que existía una versión nueva."
+          }
+        }
+      }
+    },
+    "Editing a large file keeps up with your typing. A 90 KB document used to re-highlight itself three times between keystrokes; now it does that work once." : {
+      "comment" : "What's New highlight for version 1.2.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar un archivo grande sigue el ritmo de tu escritura. Un documento de 90 KB volvía a resaltarse tres veces entre pulsaciones; ahora hace ese trabajo una sola vez."
+          }
+        }
+      }
+    },
+    "Large terminal captures render about twice as fast. Past 512 KB — a recorded session, not a screenshot — the text stays exact and readable but loses its colors, and the editor tells you so." : {
+      "comment" : "What's New highlight for version 1.2.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas de terminal grandes se renderizan aproximadamente el doble de rápido. A partir de 512 KB — una sesión grabada, no una captura de pantalla — el texto se mantiene exacto y legible, pero pierde sus colores, y el editor te lo indica."
+          }
+        }
+      }
+    },
+    "Opening Vitrine with a photo background no longer stalls on the first frame while the image decodes." : {
+      "comment" : "What's New highlight for version 1.2.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Vitrine con una foto de fondo ya no se detiene en el primer fotograma mientras se decodifica la imagen."
+          }
+        }
+      }
+    },
+    "Web capture refuses a page's attempt to navigate somewhere that is not a web address, and recognizes private destinations written in the IPv6 forms that hide an internal address inside them." : {
+      "comment" : "What's New highlight for version 1.2.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura web rechaza los intentos de una página de navegar a algo que no es una dirección web, y reconoce destinos privados escritos en las formas de IPv6 que ocultan una dirección interna."
+          }
+        }
+      }
+    },
+    "Safer rendering, stricter web capture" : {
+      "comment" : "What's New headline for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderizado más seguro, captura web más estricta"
+          }
+        }
+      }
+    },
+    "Extreme canvases and full-page web captures now stop before allocating unsafe bitmaps, with clear guidance instead of a blank result or crash." : {
+      "comment" : "What's New highlight for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los lienzos extremos y las capturas web de página completa ahora se detienen antes de reservar mapas de bits inseguros, con indicaciones claras en lugar de un resultado en blanco o un cierre inesperado."
+          }
+        }
+      }
+    },
+    "Copy, save, share, batch, social-card, comparison-board, CLI, and Shortcuts exports now report the same actionable render failures." : {
+      "comment" : "What's New highlight for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las exportaciones al copiar, guardar, compartir, por lotes, de tarjetas sociales, de tableros comparativos, de la CLI y de Atajos ahora informan los mismos errores de renderizado, con indicaciones para resolverlos."
+          }
+        }
+      }
+    },
+    "Web snapshots block literal local and private subresources by default across images, styles, scripts, frames, and requests; loopback remains explicit." : {
+      "comment" : "What's New highlight for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas web bloquean de forma predeterminada los subrecursos locales y privados literales en imágenes, estilos, scripts, marcos y solicitudes; el loopback sigue requiriendo activación explícita."
+          }
+        }
+      }
+    },
+    "CodeQL and focused Address and Thread Sanitizer lanes add repeatable security and lifecycle evidence before a candidate can be promoted." : {
+      "comment" : "What's New highlight for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CodeQL y ejecuciones dedicadas de Address Sanitizer y Thread Sanitizer aportan evidencia repetible de seguridad y de ciclo de vida antes de que una versión candidata pueda promoverse."
+          }
+        }
+      }
+    },
+    "Large code and image inputs now use bounded caches, metadata-first decoding, and explicit fallbacks that keep editing responsive." : {
+      "comment" : "What's New highlight for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las entradas grandes de código e imagen ahora usan cachés acotadas, decodificación que lee primero los metadatos y alternativas explícitas que mantienen la edición fluida."
+          }
+        }
+      }
+    },
+    "Living files, remote images, and closed editor windows now cancel and release their work through measured lifecycle paths." : {
+      "comment" : "What's New highlight for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos en vivo, las imágenes remotas y las ventanas del editor cerradas ahora cancelan y liberan su trabajo mediante rutas de ciclo de vida medidas."
+          }
+        }
+      }
+    },
+    "Shell and CLI setup now bounds startup-file reads, preserves existing files, and installs canonical command links for Apple silicon or Intel." : {
+      "comment" : "What's New highlight for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La configuración del shell y de la CLI ahora limita la lectura de los archivos de inicio, conserva los archivos existentes e instala enlaces canónicos del comando para Apple silicon o Intel."
+          }
+        }
+      }
+    },
+    "Vitrine continues to require macOS 15 Sequoia or later and qualifies Tahoe while direct downloads remain universal for Apple silicon and Intel." : {
+      "comment" : "What's New highlight for version 1.2.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine sigue requiriendo macOS 15 Sequoia o posterior y está validado para Tahoe, mientras las descargas directas siguen siendo universales para Apple silicon e Intel."
+          }
+        }
+      }
+    },
+    "Safer inputs, stronger foundations" : {
+      "comment" : "What's New headline for version 1.2.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entradas más seguras, bases más sólidas"
+          }
+        }
+      }
+    },
+    "Basic vgrab terminal capture is free, and search handles multi-word Unicode queries consistently across commands, recents, themes, and fonts." : {
+      "comment" : "What's New highlight for version 1.2.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura básica de terminal con vgrab es gratuita, y la búsqueda maneja de forma coherente consultas Unicode de varias palabras en comandos, recientes, temas y fuentes."
+          }
+        }
+      }
+    },
+    "Local source files, recipes, presets, and custom themes now use bounded reads, reject non-files, and fail safely if an input changes while loading." : {
+      "comment" : "What's New highlight for version 1.2.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos fuente locales, las recetas, los ajustes preestablecidos y los temas personalizados ahora usan lecturas acotadas, rechazan lo que no es un archivo y fallan de forma segura si una entrada cambia mientras se carga."
+          }
+        }
+      }
+    },
+    "Cancelled image downloads stop cleanly instead of surfacing a late error after their editor has closed." : {
+      "comment" : "What's New highlight for version 1.2.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las descargas de imágenes canceladas se detienen limpiamente en lugar de mostrar un error tardío después de que se cerró su editor."
+          }
+        }
+      }
+    },
+    "Vitrine now requires macOS 15 Sequoia or later, remains qualified on Tahoe, and continues to ship universal Apple silicon and Intel downloads." : {
+      "comment" : "What's New highlight for version 1.2.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine ahora requiere macOS 15 Sequoia o posterior, sigue validado para Tahoe y continúa ofreciendo descargas universales para Apple silicon e Intel."
+          }
+        }
+      }
+    },
+    "Web captures, update packaging, memory lifecycle checks, and release evidence have stronger safeguards before the same candidate can reach users." : {
+      "comment" : "What's New highlight for version 1.2.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas web, el empaquetado de actualizaciones, las comprobaciones del ciclo de vida de la memoria y la evidencia de cada versión tienen salvaguardas más sólidas antes de que una misma versión candidata pueda llegar a los usuarios."
+          }
+        }
+      }
+    },
+    "Faster capture, safer edges" : {
+      "comment" : "What's New headline for version 1.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura más rápida, casos límite más seguros"
+          }
+        }
+      }
+    },
+    "Basic vgrab terminal capture is now free: copy one command's output or open it in Vitrine without a PRO license." : {
+      "comment" : "What's New highlight for version 1.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La captura básica de terminal con vgrab ahora es gratuita: copia la salida de un comando o ábrela en Vitrine sin licencia PRO."
+          }
+        }
+      }
+    },
+    "Search now finds multiple words in any order across commands, recents, themes, and fonts, with consistent case and accent handling." : {
+      "comment" : "What's New highlight for version 1.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La búsqueda ahora encuentra varias palabras en cualquier orden en comandos, recientes, temas y fuentes, con un manejo coherente de mayúsculas y acentos."
+          }
+        }
+      }
+    },
+    "Large image imports, stalled drops, and web captures now stop at explicit size or time limits instead of hanging or exhausting memory." : {
+      "comment" : "What's New highlight for version 1.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las importaciones de imágenes grandes, los arrastres que se quedan atascados y las capturas web ahora se detienen en límites explícitos de tamaño o de tiempo en lugar de bloquearse o agotar la memoria."
+          }
+        }
+      }
+    },
+    "Compact Sequoia and Tahoe displays keep Welcome and Recents controls reachable, and export choices follow the formats each Mac can write." : {
+      "comment" : "What's New highlight for version 1.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En pantallas compactas con Sequoia y Tahoe, los controles de Bienvenida y Recientes siguen al alcance, y las opciones de exportación se ajustan a los formatos que cada Mac puede escribir."
+          }
+        }
+      }
+    },
+    "Older builds that cannot install an update now offer a working download path, while newer builds continue updating in place." : {
+      "comment" : "What's New highlight for version 1.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las versiones anteriores que no pueden instalar una actualización ahora ofrecen una forma de descarga que funciona, mientras que las más recientes siguen actualizándose en su lugar."
+          }
+        }
+      }
+    },
+    "Steadier everywhere it counts" : {
+      "comment" : "What's New headline for version 1.0.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más estable donde importa"
+          }
+        }
+      }
+    },
+    "Reopening an editor window now brings the whole document back, not just most of it, and two crashes on that path are fixed." : {
+      "comment" : "What's New highlight for version 1.0.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reabrir una ventana del editor ahora recupera el documento completo, no solo la mayor parte, y se corrigieron dos cierres inesperados en ese proceso."
+          }
+        }
+      }
+    },
+    "Terminal captures are more faithful: a cleared screen stays cleared, control sequences your terminal hides stay hidden, and full-screen apps render the way they look." : {
+      "comment" : "What's New highlight for version 1.0.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas de terminal son más fieles: una pantalla borrada sigue borrada, las secuencias de control que tu terminal oculta siguen ocultas y las apps de pantalla completa se ven tal como son."
+          }
+        }
+      }
+    },
+    "Shadow depth now travels with the rest of your style, so a saved preset or exported recipe looks the same when you come back to it." : {
+      "comment" : "What's New highlight for version 1.0.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La profundidad de sombra ahora viaja con el resto de tu estilo, así que un ajuste preestablecido guardado o una receta exportada se ve igual cuando vuelves a ellos."
+          }
+        }
+      }
+    },
+    "Batch exports never overwrite each other anymore, even when two source names differ only in capitalization." : {
+      "comment" : "What's New highlight for version 1.0.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las exportaciones por lotes ya nunca se sobrescriben entre sí, incluso cuando dos nombres de origen solo difieren en mayúsculas y minúsculas."
+          }
+        }
+      }
+    },
+    "Vitrine cleans up after itself: dismissing a pinned snapshot frees its image, and per-window preference files no longer pile up on disk." : {
+      "comment" : "What's New highlight for version 1.0.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine limpia lo que deja: cerrar una captura fijada libera su imagen, y los archivos de preferencias por ventana ya no se acumulan en el disco."
+          }
+        }
+      }
+    },
+    "A complete local workflow, from source to story" : {
+      "comment" : "What's New headline for version 1.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un flujo de trabajo local completo, del código a la historia"
+          }
+        }
+      }
+    },
+    "Keep an explicitly opened source file connected to its editor window. Clean content refreshes after saves, while local edits always wait for your Reload or Keep choice." : {
+      "comment" : "What's New highlight for version 1.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantén un archivo fuente abierto explícitamente conectado a su ventana del editor. El contenido sin cambios se actualiza después de cada guardado, mientras que las ediciones locales siempre esperan a que elijas Recargar o Conservar."
+          }
+        }
+      }
+    },
+    "Export a portable workspace recipe, associate it locally with a folder, or pass it explicitly to the CLI so repeated captures keep one style without repository scanning or hidden configuration." : {
+      "comment" : "What's New highlight for version 1.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporta una receta de espacio de trabajo portátil, asóciala localmente a una carpeta o pásala explícitamente a la CLI para que las capturas repetidas mantengan un mismo estilo sin escanear el repositorio ni usar configuración oculta."
+          }
+        }
+      }
+    },
+    "Select two to four recent captures and turn them into a comparison board with editable captions, ordering, layouts, copy, save, and share." : {
+      "comment" : "What's New highlight for version 1.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selecciona de dos a cuatro capturas recientes y conviértelas en un tablero comparativo con leyendas editables, orden, diseños y opciones para copiar, guardar y compartir."
+          }
+        }
+      }
+    },
+    "Learn the CLI through the new searchable English and Spanish guide, with practical Git, terminal, recipe, batch, redaction, and export examples." : {
+      "comment" : "What's New highlight for version 1.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprende la CLI con la nueva guía con búsqueda en inglés y español, con ejemplos prácticos de Git, terminal, recetas, lotes, ocultación de secretos y exportación."
+          }
+        }
+      }
+    },
+    "More dependable exports and feedback" : {
+      "comment" : "What's New headline for version 0.25.5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportaciones y avisos más confiables"
+          }
+        }
+      }
+    },
+    "Copying a recent image or its source now confirms the result in both the menu-bar panel and the transient HUD, including a clear failure when the clipboard write does not succeed." : {
+      "comment" : "What's New highlight for version 0.25.5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar una imagen reciente o su código fuente ahora confirma el resultado tanto en el panel de la barra de menús como en el aviso flotante temporal, incluido un error claro cuando la escritura en el portapapeles no se completa."
+          }
+        }
+      }
+    },
+    "Batch exports now report success only after every expected image is written, so partial output stays visible as a failure you can retry." : {
+      "comment" : "What's New highlight for version 0.25.5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las exportaciones por lotes ahora informan éxito solo después de escribir cada imagen esperada, así que una salida parcial se muestra como un error que puedes reintentar."
+          }
+        }
+      }
+    },
+    "A failed clipboard export no longer closes the editor, leaving your work open so you can retry or save it instead." : {
+      "comment" : "What's New highlight for version 0.25.5.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una exportación al portapapeles fallida ya no cierra el editor y deja tu trabajo abierto para que puedas reintentarlo o guardarlo."
+          }
+        }
+      }
+    },
+    "The menu-bar panel waits for you" : {
+      "comment" : "What's New headline for version 0.25.4.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El panel de la barra de menús te espera"
+          }
+        }
+      }
+    },
+    "The menu-bar panel now stays open while idle, giving you time to choose an action. It still closes naturally when you click elsewhere, change focus, press Escape, click the icon again, or choose an action that dismisses it." : {
+      "comment" : "What's New highlight for version 0.25.4.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El panel de la barra de menús ahora permanece abierto mientras está inactivo, para darte tiempo de elegir una acción. Sigue cerrándose de forma natural cuando haces clic en otro lugar, cambias el foco, presionas Esc, vuelves a hacer clic en el ícono o eliges una acción que lo cierra."
+          }
+        }
+      }
+    },
+    "The menu-bar icon stays put" : {
+      "comment" : "What's New headline for version 0.25.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El ícono de la barra de menús se queda en su lugar"
+          }
+        }
+      }
+    },
+    "Fixes the icon vanishing from the menu bar while Vitrine kept running, which left the app reachable only by its hotkey. A small companion process now owns the icon so macOS cannot hide it; everything else — the panel, your settings, your recents — still lives in Vitrine itself." : {
+      "comment" : "What's New highlight for version 0.25.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se corrigió la desaparición del ícono de la barra de menús mientras Vitrine seguía en ejecución, lo que dejaba la app accesible solo con su atajo. Ahora un pequeño proceso auxiliar se encarga del ícono para que macOS no pueda ocultarlo; todo lo demás — el panel, tus ajustes, tus recientes — sigue en Vitrine."
+          }
+        }
+      }
+    },
+    "The editor's style inspector really does widen with the window now, and controls that do not fit wrap instead of running off its right edge." : {
+      "comment" : "What's New highlight for version 0.25.3.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El inspector de estilo del editor ahora sí se ensancha con la ventana, y los controles que no caben pasan a la siguiente línea en lugar de salirse por su borde derecho."
+          }
+        }
+      }
+    },
+    "Room to work in the editor" : {
+      "comment" : "What's New headline for version 0.25.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Espacio para trabajar en el editor"
+          }
+        }
+      }
+    },
+    "The editor's style inspector now widens with the window instead of staying one fixed width, so a larger display gives the theme and font pickers real room rather than only stretching the preview." : {
+      "comment" : "What's New highlight for version 0.25.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El inspector de estilo del editor ahora se ensancha con la ventana en lugar de mantener un ancho fijo, así que una pantalla más grande da espacio real a los selectores de tema y fuente en vez de solo estirar la vista previa."
+          }
+        }
+      }
+    },
+    "Those pickers no longer look cut off: the fade that hints at more chips appears only when there really are more, and the last theme or font stays fully readable." : {
+      "comment" : "What's New highlight for version 0.25.2.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esos selectores ya no se ven cortados: el desvanecido que indica que hay más chips solo aparece cuando realmente hay más, y el último tema o fuente se lee completo."
+          }
+        }
+      }
+    },
+    "A copy no longer risks quitting the app" : {
+      "comment" : "What's New headline for version 0.25.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar ya no pone en riesgo la app"
+          }
+        }
+      }
+    },
+    "Fixes a crash where the \"Copied\" confirmation could bring the whole app down moments after copying an image. Whether it happened depended on which screen showed the confirmation, so it could look random — it is fixed for every screen." : {
+      "comment" : "What's New highlight for version 0.25.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se corrigió un cierre inesperado en el que la confirmación de copia podía cerrar toda la app momentos después de copiar una imagen. Que ocurriera dependía de la pantalla que mostraba la confirmación, así que podía parecer aleatorio; ya está corregido en todas las pantallas."
+          }
+        }
+      }
+    },
+    "Sign in to capture, steadier menu bar" : {
+      "comment" : "What's New headline for version 0.25.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicia sesión para capturar y una barra de menús más estable"
+          }
+        }
+      }
+    },
+    "Capture pages behind a login: turn on \"Use my logged-in session\", sign in to the site in a real browser window, and the capture sees the signed-in page. The session is Vitrine's own — nothing is read from Safari or Chrome — and Settings can clear its saved website data." : {
+      "comment" : "What's New highlight for version 0.25.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura páginas que requieren inicio de sesión: activa «Usar mi sesión iniciada», inicia sesión en el sitio en una ventana de navegador real y la captura verá la página con la sesión iniciada. La sesión es propia de Vitrine (no se lee nada de Safari ni de Chrome) y en Ajustes puedes borrar sus datos de sitios web guardados."
+          }
+        }
+      }
+    },
+    "The menu-bar icon can no longer disappear and take the app with it: Vitrine now owns its status item, so a hidden icon never again quits the app at launch with no way back." : {
+      "comment" : "What's New highlight for version 0.25.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El ícono de la barra de menús ya no puede desaparecer y llevarse la app con él: Vitrine ahora controla su propio elemento de estado, así que un ícono oculto nunca vuelve a cerrar la app al iniciarse sin forma de recuperarla."
+          }
+        }
+      }
+    },
+    "Terminal captures of npm audit and other progress bars now show only the finished line — no more spinner frames mashed together." : {
+      "comment" : "What's New highlight for version 0.25.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas de terminal de npm audit y otras barras de progreso ahora muestran solo la línea final, sin fotogramas del indicador de actividad amontonados."
+          }
+        }
+      }
+    },
+    "Terminal context, sturdier releases" : {
+      "comment" : "What's New headline for version 0.24.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contexto de terminal y versiones más sólidas"
+          }
+        }
+      }
+    },
+    "Share terminal output that explains itself: vgrab now adds the project, current Git branch when available, and exact command above the result. Use --no-context whenever the command or branch should stay private." : {
+      "comment" : "What's New highlight for version 0.24.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparte salidas de terminal que se explican solas: vgrab ahora agrega el proyecto, la rama actual de Git cuando está disponible y el comando exacto encima del resultado. Usa --no-context cuando el comando o la rama deban mantenerse privados."
+          }
+        }
+      }
+    },
+    "Release builds now use checksum-verified tooling, carry a dependency inventory, and exercise a safer App Store archive path before shipping." : {
+      "comment" : "What's New highlight for version 0.24.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las compilaciones de versión ahora usan herramientas con suma de verificación comprobada, incluyen un inventario de dependencias y prueban una ruta de archivo más segura para la App Store antes de publicarse."
+          }
+        }
+      }
+    },
+    "Precise annotations, local previews" : {
+      "comment" : "What's New headline for version 0.23.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anotaciones precisas, vistas previas locales"
+          }
+        }
+      }
+    },
+    "Edit annotations faster: duplicate a selected mark, nudge it one point at a time with the arrow keys (ten with Shift), and send it to the front or back — all backed by a bounded, reliable undo history." : {
+      "comment" : "What's New highlight for version 0.23.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edita anotaciones más rápido: duplica una marca seleccionada, muévela un punto a la vez con las teclas de flecha (diez con Mayúsculas) y llévala al frente o al fondo, todo respaldado por un historial de deshacer acotado y confiable."
+          }
+        }
+      }
+    },
+    "Capture a local dev server (direct-download build): turn on the explicit, default-off setting to snapshot a page running on this Mac. Access stays limited to localhost and loopback — LAN, .local, and metadata addresses remain blocked, including on redirects." : {
+      "comment" : "What's New highlight for version 0.23.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura un servidor de desarrollo local (versión de descarga directa): activa el ajuste explícito, desactivado de forma predeterminada, para capturar una página que se ejecuta en esta Mac. El acceso se limita a localhost y loopback; las direcciones de LAN, .local y de metadatos siguen bloqueadas, incluso en las redirecciones."
+          }
+        }
+      }
+    },
+    "Faster previews, safer sharing" : {
+      "comment" : "What's New headline for version 0.22.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vistas previas más rápidas, compartir más seguro"
+          }
+        }
+      }
+    },
+    "Find and run editor actions from the new Command Palette: press ⌘K, type a few letters, and apply themes, change the preview, or export without leaving the keyboard." : {
+      "comment" : "What's New highlight for version 0.22.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encuentra y ejecuta acciones del editor desde la nueva paleta de comandos: presiona ⌘K, escribe unas letras y aplica temas, cambia la vista previa o exporta sin soltar el teclado."
+          }
+        }
+      }
+    },
+    "Copy a fully local share link that opens the same styled snapshot in Vitrine — no server or upload. The link contains the snapshot's code, so review it before sharing sensitive content." : {
+      "comment" : "What's New highlight for version 0.22.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia un enlace para compartir completamente local que abre la misma captura con estilo en Vitrine, sin servidor ni subidas. El enlace contiene el código de la captura, así que revísalo antes de compartir contenido sensible."
+          }
+        }
+      }
+    },
+    "Secret redaction now works on images with on-device OCR, while faster bounded preview caches and stricter input validation keep editing responsive and predictable." : {
+      "comment" : "What's New highlight for version 0.22.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La ocultación de secretos ahora funciona en imágenes con OCR en el dispositivo, mientras que cachés de vista previa acotadas y más rápidas y una validación de entradas más estricta mantienen la edición fluida y predecible."
+          }
+        }
+      }
+    },
+    "From snapshot to post" : {
+      "comment" : "What's New headline for version 0.21.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De la captura a la publicación"
+          }
+        }
+      }
+    },
+    "Carousel export (PRO): split a long snippet into numbered 4:5 slides for a LinkedIn or Instagram carousel — balanced pages, your style and brand mark on every slide." : {
+      "comment" : "What's New highlight for version 0.21.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportación de carrusel (PRO): divide un fragmento largo en diapositivas 4:5 numeradas para un carrusel de LinkedIn o Instagram, con páginas equilibradas y tu estilo y tu marca en cada diapositiva."
+          }
+        }
+      }
+    },
+    "Post to X, LinkedIn, or Bluesky straight from the share sheet: the image is staged on the clipboard and the compose page opens — one paste from posting, nothing sent by Vitrine." : {
+      "comment" : "What's New highlight for version 0.21.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publica en X, LinkedIn o Bluesky directamente desde el menú Compartir: la imagen queda en el portapapeles y se abre la página para redactar; estás a un pegado de publicar y Vitrine no envía nada."
+          }
+        }
+      }
+    },
+    "A bigger annotation toolkit: spotlight dimming, a pixel-measure ruler, curved arrows, and emoji stickers — plus a pinned floating snapshot, on-device OCR, HEIC export, and asciinema import." : {
+      "comment" : "What's New highlight for version 0.21.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más herramientas de anotación: atenuación de foco, una regla para medir píxeles, flechas curvas y stickers de emoji, además de una captura flotante fijada, OCR en el dispositivo, exportación HEIC e importación de asciinema."
+          }
+        }
+      }
+    },
+    "Beautify any image, not just code" : {
+      "comment" : "What's New headline for version 0.20.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Embellece cualquier imagen, no solo código"
+          }
+        }
+      }
+    },
+    "Drop, paste, or quick-capture any screenshot and render it on your backgrounds, padding, and shadow — then frame it as a macOS window, a browser, or a MacBook / iPhone mockup." : {
+      "comment" : "What's New highlight for version 0.20.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suelta, pega o toma con la captura rápida cualquier captura de pantalla y renderízala con tus fondos, relleno y sombra; luego enmárcala como una ventana de macOS, un navegador o un mockup de MacBook / iPhone."
+          }
+        }
+      }
+    },
+    "Auto frame chrome: the title bar samples the image's top edge and tints itself to match, so the frame blends into the shot. Browser and device frames are PRO." : {
+      "comment" : "What's New highlight for version 0.20.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marco automático: la barra de título toma muestras del borde superior de la imagen y se tiñe a juego, para que el marco se integre con la captura. Los marcos de navegador y de dispositivo son PRO."
+          }
+        }
+      }
+    },
+    "Redact secrets before you share" : {
+      "comment" : "What's New headline for version 0.19.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oculta secretos antes de compartir"
+          }
+        }
+      }
+    },
+    "One-click Redact secrets: Vitrine scans your capture for likely API keys, tokens, passwords, and private keys and blurs those lines for you — terminal output included." : {
+      "comment" : "What's New highlight for version 0.19.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar secretos con un clic: Vitrine analiza tu captura en busca de posibles claves de API, tokens, contraseñas y claves privadas, y desenfoca esas líneas por ti, incluida la salida de terminal."
+          }
+        }
+      }
+    },
+    "The blur is leak-proof: the copyable text that travels with the image hides the same lines, so a secret can't slip out through the sidecar or clipboard." : {
+      "comment" : "What's New highlight for version 0.19.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El desenfoque no deja fugas: el texto copiable que acompaña a la imagen oculta las mismas líneas, así que un secreto no puede filtrarse por el archivo complementario ni por el portapapeles."
+          }
+        }
+      }
+    },
+    "Editable annotations, tool shortcuts, and a usability pass" : {
+      "comment" : "What's New headline for version 0.18.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anotaciones editables, atajos de herramientas y mejoras de usabilidad"
+          }
+        }
+      }
+    },
+    "Text annotations are editable: pick the Text tool and type right on the canvas — double-click to edit, Return to commit. Switch tools fast with ⌘1–⌘8." : {
+      "comment" : "What's New highlight for version 0.18.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las anotaciones de texto son editables: elige la herramienta Texto y escribe directamente en el lienzo; haz doble clic para editar y presiona Retorno para confirmar. Cambia de herramienta rápido con ⌘1–⌘8."
+          }
+        }
+      }
+    },
+    "Web captures you can stop: a long multi-size URL capture now shows progress and a Cancel button, and a quick-captured URL starts on its own." : {
+      "comment" : "What's New highlight for version 0.18.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas web que puedes detener: una captura larga de URL en varios tamaños ahora muestra el progreso y un botón Cancelar, y una URL tomada con la captura rápida empieza sola."
+          }
+        }
+      }
+    },
+    "Clearer settings: Brand Kit is its own pane, and the editor explains that its controls style this capture while Settings sets the default for new ones." : {
+      "comment" : "What's New highlight for version 0.18.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes más claros: Brand Kit tiene su propio panel, y el editor explica que sus controles dan estilo a esta captura mientras que Ajustes define el valor predeterminado para las nuevas."
+          }
+        }
+      }
+    },
+    "Wrap long lines, and a snappier preview" : {
+      "comment" : "What's New headline for version 0.17.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste de líneas largas y una vista previa más ágil"
+          }
+        }
+      }
+    },
+    "New \"Wrap long lines\": a long line now soft-wraps to a column width instead of making an extremely wide image. Toggle it in the editor inspector and drag the width — the preview reflows live; off by default." : {
+      "comment" : "What's New highlight for version 0.17.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nuevo «Ajustar líneas largas»: una línea larga ahora se ajusta a un ancho de columna en lugar de generar una imagen extremadamente ancha. Actívalo en el inspector del editor y arrastra el ancho; la vista previa se reacomoda en vivo. Viene desactivado de forma predeterminada."
+          }
+        }
+      }
+    },
+    "Snappier editing: the recents gallery and the terminal / social-card previews render from a cache, so the app stays smooth even on large captures." : {
+      "comment" : "What's New highlight for version 0.17.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edición más ágil: la galería de recientes y las vistas previas de terminal y de tarjeta social se renderizan desde una caché, así que la app se mantiene fluida incluso con capturas grandes."
+          }
+        }
+      }
+    },
+    "Sharper responsive boards and safer downloads" : {
+      "comment" : "What's New headline for version 0.16.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tableros adaptables más nítidos y descargas más seguras"
+          }
+        }
+      }
+    },
+    "The responsive board's viewport labels no longer truncate — each render is captioned with its name above its exact size, so a tall full-page capture reads cleanly instead of showing \"Deskt…\"." : {
+      "comment" : "What's New highlight for version 0.16.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las etiquetas de viewport del tablero adaptable ya no se truncan: cada render lleva su nombre encima de su tamaño exacto, así que una captura alta de página completa se lee con claridad en lugar de mostrar «Deskt…»."
+          }
+        }
+      }
+    },
+    "Hardened remote background-image downloads: size-bounded streaming that tears the transfer down the moment the cap is hit, with private and redirected targets refused before the request is followed." : {
+      "comment" : "What's New highlight for version 0.16.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descargas de imágenes de fondo remotas más robustas: transmisión con límite de tamaño que corta la transferencia en cuanto se alcanza el tope, y destinos privados o redirigidos que se rechazan antes de seguir la solicitud."
+          }
+        }
+      }
+    },
+    "Web Snapshot & Social Card, refined" : {
+      "comment" : "What's New headline for version 0.16.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura web y Tarjeta social, refinadas"
+          }
+        }
+      }
+    },
+    "The Web Snapshot and Social Card windows were redesigned to match the editor — cleaner inspectors, branded empty states, and a centered preview." : {
+      "comment" : "What's New highlight for version 0.16.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las ventanas Captura web y Tarjeta social se rediseñaron para coincidir con el editor: inspectores más limpios, estados vacíos con la marca y una vista previa centrada."
+          }
+        }
+      }
+    },
+    "Capture a webpage at several viewports at once — social, desktop, Full HD, mobile — composed into a shareable responsive board. New Web Snapshot and New Social Card are now in the menu-bar icon panel too." : {
+      "comment" : "What's New highlight for version 0.16.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura una página web en varios viewports a la vez (social, escritorio, Full HD, móvil) y combínalos en un tablero adaptable para compartir. Nueva captura web y Nueva tarjeta social ahora también están en el panel del ícono de la barra de menús."
+          }
+        }
+      }
+    },
+    "Fixed the Get Vitrine PRO purchase link after the store moved." : {
+      "comment" : "What's New highlight for version 0.16.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se corrigió el enlace de compra de Obtener Vitrine PRO después del cambio de tienda."
+          }
+        }
+      }
+    },
+    "Sharper terminal captures — emoji, CJK, exact width" : {
+      "comment" : "What's New headline for version 0.15.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de terminal más nítidas: emoji, CJK y ancho exacto"
+          }
+        }
+      }
+    },
+    "Full-screen terminal captures now handle wide characters: CJK text and emoji line up correctly instead of drifting, so an htop or a 你好 / 🚀 dashboard reconstructs cleanly." : {
+      "comment" : "What's New highlight for version 0.15.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas de terminal de pantalla completa ahora manejan caracteres anchos: el texto CJK y los emoji se alinean correctamente en lugar de desplazarse, así que un htop o un panel con 你好 / 🚀 se reconstruye limpiamente."
+          }
+        }
+      }
+    },
+    "vgrab -w <cols> now pins the exact reconstruction width, so wide output like git log --graph wraps just as it did in your terminal." : {
+      "comment" : "What's New highlight for version 0.15.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vgrab -w <cols> ahora fija el ancho exacto de reconstrucción, así que una salida ancha como git log --graph se ajusta igual que en tu terminal."
+          }
+        }
+      }
+    },
+    "In-place line edits — shell autosuggestion and the like — reconstruct faithfully, with wide characters kept whole." : {
+      "comment" : "What's New highlight for version 0.15.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las ediciones de línea en el lugar (como las autosugerencias del shell) se reconstruyen fielmente, con los caracteres anchos completos."
+          }
+        }
+      }
+    },
+    "Capture full-screen terminal apps" : {
+      "comment" : "What's New headline for version 0.14.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura apps de terminal de pantalla completa"
+          }
+        }
+      }
+    },
+    "Vitrine now turns full-screen terminal apps — htop, vim, lazygit, k9s, less — into images, not just scrolling output. It reconstructs the program's final screen, colors and all, in your theme." : {
+      "comment" : "What's New highlight for version 0.14.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine ahora convierte apps de terminal de pantalla completa — htop, vim, lazygit, k9s, less — en imágenes, no solo la salida que se desplaza. Reconstruye la pantalla final del programa, con todos sus colores, en tu tema."
+          }
+        }
+      }
+    },
+    "It's automatic: vgrab htop captures the dashboard, while a plain git log or test run still renders as the full scrolling transcript." : {
+      "comment" : "What's New highlight for version 0.14.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es automático: vgrab htop captura el panel, mientras que un git log o una ejecución de pruebas normales se siguen renderizando como la transcripción completa con desplazamiento."
+          }
+        }
+      }
+    },
+    "A lighter terminal integration" : {
+      "comment" : "What's New headline for version 0.13.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una integración de terminal más ligera"
+          }
+        }
+      }
+    },
+    "The vitrine shell integration is now a single vgrab function — it no longer runs a background recorder or re-execs your shell, so it has no effect on your terminal's performance." : {
+      "comment" : "What's New highlight for version 0.13.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La integración del shell de vitrine ahora es una sola función vgrab: ya no ejecuta un grabador en segundo plano ni vuelve a ejecutar tu shell, así que no afecta el rendimiento de tu terminal."
+          }
+        }
+      }
+    },
+    "To capture a command you already ran, recall it (↑ or !!) and prepend vgrab — for example, vgrab !!." : {
+      "comment" : "What's New highlight for version 0.13.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Para capturar un comando que ya ejecutaste, recupéralo (↑ o !!) y antepón vgrab; por ejemplo, vgrab !!."
+          }
+        }
+      }
+    },
+    "Terminal capture, now in any shell" : {
+      "comment" : "What's New headline for version 0.12.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura de terminal, ahora en cualquier shell"
+          }
+        }
+      }
+    },
+    "Set up the shell helpers in one click from Settings ▸ General ▸ Shell integration — no more editing a dotfile by hand. Works with zsh, bash, and fish." : {
+      "comment" : "What's New highlight for version 0.12.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configura las utilidades del shell con un clic desde Ajustes ▸ General ▸ Integración del shell, sin editar un dotfile a mano. Funciona con zsh, bash y fish."
+          }
+        }
+      }
+    },
+    "vgrab and vlast now work in bash and fish, not just zsh, so the last command you ran is one keystroke from a beautiful image in any shell." : {
+      "comment" : "What's New highlight for version 0.12.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vgrab y vlast ahora funcionan en bash y fish, no solo en zsh, así que el último comando que ejecutaste está a una pulsación de convertirse en una imagen bonita en cualquier shell."
+          }
+        }
+      }
+    },
+    "Terminal images show Powerline separators and prompt icons from tools like starship and eza --icons, using a Nerd Font you already have installed." : {
+      "comment" : "What's New highlight for version 0.12.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las imágenes de terminal muestran los separadores de Powerline y los íconos del prompt de herramientas como starship y eza --icons, usando una Nerd Font que ya tengas instalada."
+          }
+        }
+      }
+    },
+    "vgrab --edit, vlast --edit, and vitrine render --edit open the capture in the editor so you can restyle and annotate before sharing." : {
+      "comment" : "What's New highlight for version 0.12.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vgrab --edit, vlast --edit y vitrine render --edit abren la captura en el editor para que puedas cambiarle el estilo y anotarla antes de compartirla."
+          }
+        }
+      }
+    },
+    "Terminal hyperlinks render as styled links, and an optional plain-text sidecar keeps the words selectable right next to the image." : {
+      "comment" : "What's New highlight for version 0.12.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los hipervínculos de terminal se renderizan como enlaces con estilo, y un archivo complementario opcional en texto plano mantiene las palabras seleccionables junto a la imagen."
+          }
+        }
+      }
+    },
+    "Turn terminal output into beautiful images" : {
+      "comment" : "What's New headline for version 0.11.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convierte la salida de terminal en imágenes bonitas"
+          }
+        }
+      }
+    },
+    "Paste colored terminal output — git, test runners, build logs — and Vitrine renders the ANSI colors and styles (bold, italic, underline, strikethrough) as a clean terminal image." : {
+      "comment" : "What's New highlight for version 0.11.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega salida de terminal con color — git, ejecutores de pruebas, registros de compilación — y Vitrine renderiza los colores y estilos ANSI (negrita, cursiva, subrayado, tachado) como una imagen de terminal limpia."
+          }
+        }
+      }
+    },
+    "The terminal card follows your theme: a light theme renders on a light card, and Dracula and Nord use their own signature palettes." : {
+      "comment" : "What's New highlight for version 0.11.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tarjeta de terminal sigue tu tema: un tema claro se renderiza sobre una tarjeta clara, y Dracula y Nord usan sus propias paletas características."
+          }
+        }
+      }
+    },
+    "Set up the shell helpers once with vitrine shell-init: vgrab copies an image of a command's colored output, and vlast shares the last command you ran — without re-running it." : {
+      "comment" : "What's New highlight for version 0.11.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configura las utilidades del shell una vez con vitrine shell-init: vgrab copia una imagen de la salida con color de un comando, y vlast comparte el último comando que ejecutaste sin volver a ejecutarlo."
+          }
+        }
+      }
+    },
+    "Your accent, free brand placement, and polish" : {
+      "comment" : "What's New headline for version 0.10.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu color de acento, ubicación libre de la marca y pulido"
+          }
+        }
+      }
+    },
+    "Vitrine's controls now follow your macOS accent color. On the default Multicolor, they keep Vitrine's signature accent." : {
+      "comment" : "What's New highlight for version 0.10.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los controles de Vitrine ahora siguen el color de acento de macOS. Con Multicolor, el valor predeterminado, conservan el acento característico de Vitrine."
+          }
+        }
+      }
+    },
+    "Brand Kit gains a Free placement: drag your mark anywhere on the image — in the editor or the Style preview." : {
+      "comment" : "What's New highlight for version 0.10.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brand Kit suma la ubicación Libre: arrastra tu marca a cualquier parte de la imagen, en el editor o en la vista previa de Estilo."
+          }
+        }
+      }
+    },
+    "Annotations and highlighted lines now reset when you load new code (paste, drop, or quick capture), so old marks never strand over new content; a mid-edit paste keeps them." : {
+      "comment" : "What's New highlight for version 0.10.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las anotaciones y las líneas resaltadas ahora se restablecen cuando cargas código nuevo (al pegar, soltar o usar la captura rápida), para que las marcas viejas nunca queden sobre contenido nuevo; pegar a mitad de una edición las conserva."
+          }
+        }
+      }
+    },
+    "The menu-bar icon is the Vitrine logo now, with a tooltip on hover, and the Settings buttons and website got a cleaner, more legible pass." : {
+      "comment" : "What's New highlight for version 0.10.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El ícono de la barra de menús ahora es el logo de Vitrine, con una descripción al pasar el puntero, y los botones de Ajustes y el sitio web recibieron una revisión más limpia y legible."
+          }
+        }
+      }
+    },
+    "Vitrine PRO, now available" : {
+      "comment" : "What's New headline for version 0.9.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine PRO, ya disponible"
+          }
+        }
+      }
+    },
+    "You can buy Vitrine PRO now: the paywall and the website both link to a secure checkout, and the license key you get by email activates PRO — verified offline after the first check." : {
+      "comment" : "What's New highlight for version 0.9.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ya puedes comprar Vitrine PRO: la pantalla de compra y el sitio web enlazan a un pago seguro, y la clave de licencia que recibes por correo activa PRO, verificada sin conexión después de la primera comprobación."
+          }
+        }
+      }
+    },
+    "Early-bird pricing: $19.99 through 2026 (regular price $25). One-time, not a subscription." : {
+      "comment" : "What's New highlight for version 0.9.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precio de lanzamiento: $19.99 durante 2026 (precio regular: $25). Pago único, no una suscripción."
+          }
+        }
+      }
+    },
+    "PRO unlocks Brand Kit watermarks, multi-size one-pass export, and automation (the vitrine CLI, Shortcuts, and folder batch). The free tier loses nothing." : {
+      "comment" : "What's New highlight for version 0.9.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PRO desbloquea las marcas de agua de Brand Kit, la exportación en varios tamaños de una sola pasada y la automatización (la CLI vitrine, Atajos y el procesamiento por lotes de carpetas). La versión gratuita no pierde nada."
+          }
+        }
+      }
+    },
+    "Vitrine PRO is here" : {
+      "comment" : "What's New headline for version 0.8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Llegó Vitrine PRO"
+          }
+        }
+      }
+    },
+    "Vitrine PRO unlocks Brand Kit watermarks on every export, multi-size one-pass export, and automation (the vitrine CLI, Shortcuts, and folder batch)." : {
+      "comment" : "What's New highlight for version 0.8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine PRO desbloquea las marcas de agua de Brand Kit en cada exportación, la exportación en varios tamaños de una sola pasada y la automatización (la CLI vitrine, Atajos y el procesamiento por lotes de carpetas)."
+          }
+        }
+      }
+    },
+    "Activate a one-time license key in the paywall — it's verified offline after the first check, so PRO keeps working with no network." : {
+      "comment" : "What's New highlight for version 0.8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activa una clave de licencia de pago único en la pantalla de compra; se verifica sin conexión después de la primera comprobación, así que PRO sigue funcionando sin red."
+          }
+        }
+      }
+    },
+    "The free tier loses nothing: no watermark, no resolution cap, no nags." : {
+      "comment" : "What's New highlight for version 0.8.1.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La versión gratuita no pierde nada: sin marca de agua, sin límite de resolución, sin recordatorios insistentes."
+          }
+        }
+      }
+    },
+    "Web boards, and a faster Vitrine" : {
+      "comment" : "What's New headline for version 0.8.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tableros web y un Vitrine más rápido"
+          }
+        }
+      }
+    },
+    "Capture a page at several viewport sizes at once and Vitrine lays them out into one shareable responsive board (direct-download build)." : {
+      "comment" : "What's New highlight for version 0.8.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura una página en varios tamaños de viewport a la vez y Vitrine los organiza en un solo tablero adaptable para compartir (versión de descarga directa)."
+          }
+        }
+      }
+    },
+    "Copy a URL and Vitrine offers to open Web Snapshot prefilled with it, so a link becomes an image in two clicks." : {
+      "comment" : "What's New highlight for version 0.8.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia una URL y Vitrine te ofrece abrir Captura web con ella ya cargada, así que un enlace se convierte en imagen en dos clics."
+          }
+        }
+      }
+    },
+    "Faster across the board: quicker syntax highlighting, lighter exports, and a lighter Web Snapshot filmstrip." : {
+      "comment" : "What's New highlight for version 0.8.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más rápido en todo: resaltado de sintaxis más veloz, exportaciones más ligeras y una tira de miniaturas de Captura web más liviana."
+          }
+        }
+      }
+    },
+    "Menu-bar recents are now proper buttons for VoiceOver and the keyboard, the accent color resets to its default, and the What's New layout is tidier." : {
+      "comment" : "What's New highlight for version 0.8.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los recientes de la barra de menús ahora son botones reales para VoiceOver y el teclado, el color de acento vuelve a su valor predeterminado y el diseño de Novedades es más ordenado."
+          }
+        }
+      }
+    },
+    "Vitrine PRO is on the way: Brand Kit watermarks, multi-size one-pass export, and automation (the vitrine CLI, Shortcuts, and folder batch)." : {
+      "comment" : "What's New highlight for version 0.8.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine PRO está en camino: marcas de agua de Brand Kit, exportación en varios tamaños de una sola pasada y automatización (la CLI vitrine, Atajos y el procesamiento por lotes de carpetas)."
+          }
+        }
+      }
+    },
+    "Annotate your screenshots" : {
+      "comment" : "What's New headline for version 0.7.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anota tus capturas de pantalla"
+          }
+        }
+      }
+    },
+    "Mark up a snapshot from a new toolbar — arrows, lines, rectangles, text, a highlighter, blur boxes, and numbered counters — drawn right on the preview." : {
+      "comment" : "What's New highlight for version 0.7.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marca una captura desde una nueva barra de herramientas — flechas, líneas, rectángulos, texto, un resaltador, cuadros de desenfoque y contadores numerados — dibujados directamente sobre la vista previa."
+          }
+        }
+      }
+    },
+    "Pick a tool and drag to draw, move and resize with handles, restyle the color and size, and undo or redo with ⌘Z." : {
+      "comment" : "What's New highlight for version 0.7.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una herramienta y arrastra para dibujar, mueve y cambia el tamaño con los controladores, cambia el color y el tamaño, y deshaz o rehaz con ⌘Z."
+          }
+        }
+      }
+    },
+    "Two new export shapes — an Instagram Story (1080×1920) and a GitHub README banner — plus a View ▸ Theme quick menu and searchable theme and font pickers." : {
+      "comment" : "What's New highlight for version 0.7.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dos nuevos formatos de exportación — una historia de Instagram (1080×1920) y un banner para el README de GitHub — además de un menú rápido Visualización ▸ Tema y selectores de temas y fuentes con búsqueda."
+          }
+        }
+      }
+    },
+    "Focus mode dims the lines outside your highlight, diff coloring paints + and − lines (automatic for the Diff language), and you can add a window title and tune corner radius and shadow." : {
+      "comment" : "What's New highlight for version 0.7.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El modo de enfoque atenúa las líneas fuera de tu resaltado, el coloreado de diff pinta las líneas + y − (automático para el lenguaje Diff), y puedes agregar un título de ventana y ajustar el radio de esquina y la sombra."
+          }
+        }
+      }
+    },
+    "Drop an image background straight from a URL, and the editor now closes itself after you copy (with a Settings toggle)." : {
+      "comment" : "What's New highlight for version 0.7.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usa una imagen de fondo directamente desde una URL, y ahora el editor se cierra solo después de copiar (con una opción en Ajustes)."
+          }
+        }
+      }
+    },
+    "Social cards and web snapshots" : {
+      "comment" : "What's New headline for version 0.6.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjetas sociales y capturas web"
+          }
+        }
+      }
+    },
+    "Compose a 1200×630 social card from your code — pick a template, theme, and background, then copy, save, or share it." : {
+      "comment" : "What's New highlight for version 0.6.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crea una tarjeta social de 1200×630 a partir de tu código: elige una plantilla, un tema y un fondo, y luego cópiala, guárdala o compártela."
+          }
+        }
+      }
+    },
+    "Render pasted HTML to an image locally in the new Web Snapshot window — fully on your Mac, with no network." : {
+      "comment" : "What's New highlight for version 0.6.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Renderiza HTML pegado como imagen de forma local en la nueva ventana Captura web, completamente en tu Mac y sin red."
+          }
+        }
+      }
+    },
+    "On the direct-download build, capture a webpage to an image: Vitrine loads it locally in WebKit, with a privacy disclosure first." : {
+      "comment" : "What's New highlight for version 0.6.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En la versión de descarga directa, captura una página web como imagen: Vitrine la carga localmente en WebKit, con un aviso de privacidad previo."
+          }
+        }
+      }
+    },
+    "The command line, included" : {
+      "comment" : "What's New headline for version 0.5.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La línea de comandos, incluida"
+          }
+        }
+      }
+    },
+    "The vitrine command-line renderer now ships inside the app — Homebrew installs put it on your PATH automatically." : {
+      "comment" : "What's New highlight for version 0.5.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El renderizador de línea de comandos vitrine ahora viene dentro de la app; las instalaciones con Homebrew lo agregan a tu PATH automáticamente."
+          }
+        }
+      }
+    },
+    "Installed from the DMG? Settings ▸ General ▸ Command-line tool links the command for you." : {
+      "comment" : "What's New highlight for version 0.5.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Lo instalaste desde el DMG? Ajustes ▸ General ▸ Herramienta de línea de comandos enlaza el comando por ti."
+          }
+        }
+      }
+    },
+    "vitrine render input.swift --out image.png — output pixel-identical to the app, fully offline." : {
+      "comment" : "What's New highlight for version 0.5.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vitrine render input.swift --out image.png — una salida idéntica píxel por píxel a la de la app, completamente sin conexión."
+          }
+        }
+      }
+    },
+    "A fresh new look" : {
+      "comment" : "What's New headline for version 0.4.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un aspecto completamente nuevo"
+          }
+        }
+      }
+    },
+    "Vitrine is redesigned end to end: the editor, Settings, Welcome, and the menu-bar panel now share one design language, light and dark." : {
+      "comment" : "What's New highlight for version 0.4.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine se rediseñó de principio a fin: el editor, Ajustes, la Bienvenida y el panel de la barra de menús ahora comparten un mismo lenguaje de diseño, en modo claro y oscuro."
+          }
+        }
+      }
+    },
+    "The editor preview floats in ambient light cast by your background and always scales to fit the window." : {
+      "comment" : "What's New highlight for version 0.4.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La vista previa del editor flota en una luz ambiental proyectada por tu fondo y siempre se escala para caber en la ventana."
+          }
+        }
+      }
+    },
+    "Settings is a sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds." : {
+      "comment" : "What's New highlight for version 0.4.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes es una ventana con barra lateral, una vista previa en vivo fija y selectores de chips para temas, fuentes y fondos."
+          }
+        }
+      }
+    },
+    "The menu-bar panel shows your recent captures with thumbnails — reopen one, or copy its image again, in a click." : {
+      "comment" : "What's New highlight for version 0.4.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El panel de la barra de menús muestra tus capturas recientes con miniaturas: vuelve a abrir una o copia otra vez su imagen con un clic."
+          }
+        }
+      }
+    },
+    "The Welcome tour now renders a real sample card you can restyle before your first capture." : {
+      "comment" : "What's New highlight for version 0.4.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El recorrido de bienvenida ahora renderiza una tarjeta de ejemplo real a la que puedes cambiarle el estilo antes de tu primera captura."
+          }
+        }
+      }
+    },
+    "Smarter windows, smarter paste" : {
+      "comment" : "What's New headline for version 0.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ventanas más inteligentes, pegado más inteligente"
+          }
+        }
+      }
+    },
+    "New and restored editor windows now size themselves to fit the screen, so nothing opens half off a smaller display." : {
+      "comment" : "What's New highlight for version 0.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las ventanas del editor nuevas y restauradas ahora se dimensionan para caber en la pantalla, así que nada se abre a medias fuera de una pantalla más pequeña."
+          }
+        }
+      }
+    },
+    "Pasted code is re-indented by structure, so snippets copied from deep nesting land clean." : {
+      "comment" : "What's New highlight for version 0.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El código pegado se vuelve a sangrar según su estructura, así que los fragmentos copiados de niveles profundos de anidación quedan limpios."
+          }
+        }
+      }
+    },
+    "The Welcome tour and version-aware What's New now greet you on regular launches, not just from the Help menu." : {
+      "comment" : "What's New highlight for version 0.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El recorrido de bienvenida y las Novedades según la versión ahora te reciben en los inicios normales, no solo desde el menú Ayuda."
+          }
+        }
+      }
+    },
+    "The main menu is fully localized, matching the rest of the app in Spanish." : {
+      "comment" : "What's New highlight for version 0.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El menú principal está completamente localizado y coincide con el resto de la app en español."
+          }
+        }
+      }
+    },
+    "Pasted-HTML snapshots no longer load remote resources, keeping every render fully local." : {
+      "comment" : "What's New highlight for version 0.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas de HTML pegado ya no cargan recursos remotos, lo que mantiene cada renderizado completamente local."
+          }
+        }
+      }
+    },
+    "Turn copied code into a beautiful image from the menu bar with a global hotkey." : {
+      "comment" : "What's New highlight for version 0.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convierte código copiado en una imagen bonita desde la barra de menús con un atajo global."
+          }
+        }
+      }
+    },
+    "A focused editor with curated themes, developer fonts, and adjustable padding, corner radius, window chrome, and line numbers." : {
+      "comment" : "What's New highlight for version 0.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un editor enfocado con temas seleccionados, fuentes para desarrolladores y relleno, radio de esquina, marco de ventana y números de línea ajustables."
+          }
+        }
+      }
+    },
+    "Destination and style presets, plus custom solid, gradient, and image backgrounds." : {
+      "comment" : "What's New highlight for version 0.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes preestablecidos de destino y de estilo, además de fondos personalizados de color sólido, gradiente e imagen."
+          }
+        }
+      }
+    },
+    "Copy or save as PNG or PDF — with rich-text and data-URI copy options." : {
+      "comment" : "What's New highlight for version 0.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia o guarda como PNG o PDF, con opciones para copiar como texto enriquecido y como URI de datos."
+          }
+        }
+      }
+    },
+    "Private by design: rendering is fully local, with no account, no network, and no screen-recording or Accessibility permission." : {
+      "comment" : "What's New highlight for version 0.1.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privado por diseño: el renderizado es completamente local, sin cuenta, sin red y sin permisos de grabación de pantalla ni de Accesibilidad."
+          }
+        }
+      }
+    },
     "%@ · Version %@" : {
       "comment" : "What's New row: release headline · version number.",
       "localizations" : {

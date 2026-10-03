@@ -157,6 +157,7 @@ can never drift.
 - The menu-bar panel returns focus to the previous app, stays on screen beside an edge
   icon, announces capture results to VoiceOver, and shows a capture made this second as
   "now". Relaunch to Apply no longer quits the app.
+- What's New shows its release notes in Spanish for Spanish users.
 - Settings, panels, errors, and window titles are localized; license activation explains
   each failure; launch at login reflects the system's real state.
 - Full-screen captures keep the last frame of apps that clear with `ESC[H ESC[J` before

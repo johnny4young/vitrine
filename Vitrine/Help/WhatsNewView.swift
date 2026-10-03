@@ -67,7 +67,7 @@ struct WhatsNewView: View {
                 Text("What's New")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(VitrineTokens.Text.primary)
-                Text("\(note.headline) · Version \(note.version)")
+                Text("\(note.localizedHeadline) · Version \(note.version)")
                     .font(.system(size: VitrineTokens.FontSize.body))
                     .foregroundStyle(VitrineTokens.Text.secondary)
             }
@@ -79,7 +79,7 @@ struct WhatsNewView: View {
 
     private var highlights: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ForEach(Array(note.highlights.enumerated()), id: \.offset) { _, highlight in
+            ForEach(Array(note.localizedHighlights.enumerated()), id: \.offset) { _, highlight in
                 HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
                     Circle()
                         .fill(VitrineTokens.Accent.system)
@@ -152,6 +152,17 @@ struct WhatsNewView: View {
         markSeen()
         navigation.showHelp()
         onDismiss()
+    }
+}
+
+extension ReleaseNote {
+    var localizedHeadline: String { Self.localized(headline) }
+    var localizedHighlights: [String] { highlights.map { Self.localized($0) } }
+
+    /// Looks the English text up as a String Catalog key, falling back to English.
+    /// `localizedString(forKey:)` never parses format specifiers, so a literal `%` stays literal.
+    static func localized(_ english: String, in bundle: Bundle = .main) -> String {
+        bundle.localizedString(forKey: english, value: english, table: nil)
     }
 }
 

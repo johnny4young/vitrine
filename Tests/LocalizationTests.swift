@@ -208,7 +208,9 @@ struct LocalizationTests {
         func contains(_ text: String) -> Bool {
             haystack.range(of: text, options: .literal).location != NSNotFound
         }
-        for key in catalog.strings.keys where !key.contains("%") {
+        // Release notes are concatenated in source, so their keys never appear as literals.
+        let releaseNoteText = Set(ReleaseNotes.all.flatMap { [$0.headline] + $0.highlights })
+        for key in catalog.strings.keys where !key.contains("%") && !releaseNoteText.contains(key) {
             let literal = key.replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\"", with: "\\\"")
                 .replacingOccurrences(of: "\n", with: "\\n")
@@ -216,6 +218,28 @@ struct LocalizationTests {
                 contains(literal) || contains(key),
                 "Catalog key \"\(key)\" is no longer used in the sources.")
         }
+    }
+
+    /// What's New looks every release note up by its English text, so each release must
+    /// ship its headline and highlights translated.
+    @Test func everyReleaseNoteIsTranslated() throws {
+        let catalog = try decodedCatalog()
+        for note in ReleaseNotes.all {
+            for text in [note.headline] + note.highlights {
+                #expect(
+                    catalog.strings[text]?.localizations["es"]?.isTranslated == true,
+                    "Release note \(note.version) text \"\(text)\" has no Spanish catalog entry.")
+            }
+        }
+    }
+
+    @Test func releaseNotesResolveToSpanishAndFallBackVerbatim() throws {
+        let spanish = try #require(bundle(for: "es"))
+        #expect(
+            ReleaseNote.localized("An editor that keeps up", in: spanish)
+                == "Un editor que sigue tu ritmo")
+        let missing = "Not in the catalog: 100% of %@ stays literal."
+        #expect(ReleaseNote.localized(missing, in: spanish) == missing)
     }
 
     /// Localizable views must not smuggle user-facing copy past the catalog with a

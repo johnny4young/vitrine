@@ -1136,6 +1136,8 @@ license again.
       fresh `[Unreleased]`, refresh the compare links, then `make changelog-check`
 - [ ] Release note added to `Vitrine/Help/ReleaseNotes.swift` (newest first; version
       matches `MARKETING_VERSION`), and `docs/HELP.md` updated if Help content changed
+- [ ] The new headline and highlights added to `Vitrine/Resources/Localizable.xcstrings`
+      with Spanish translations, keyed by their exact English text
 - [ ] Website release highlights updated in `site/` (English and Spanish); `cd site &&
       npm test` confirms their version matches `MARKETING_VERSION`
 - [ ] **Visual review against the launch gallery** done (re-run `make gallery` if a
