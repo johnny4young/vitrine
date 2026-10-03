@@ -4352,13 +4352,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use it to capture the code on your clipboard without opening the menu bar. You can also manage it in Settings ▸ General; the menu-bar action always remains available."
+            "value" : "The global hotkey is optional. New installations start without one; existing choices and explicit deactivations are preserved. Set, change, or clear it here or in Settings ▸ General. It works across apps when enabled, and the menu-bar action remains available without a shortcut."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Úsalo para capturar el código del portapapeles sin abrir la barra de menús. También puedes gestionarlo en Ajustes ▸ General; la acción de la barra de menús siempre está disponible."
+            "value" : "El atajo global es opcional. Las instalaciones nuevas empiezan sin uno; se conservan las elecciones existentes y las desactivaciones explícitas. Asígnalo, cámbialo o quítalo aquí o en Ajustes ▸ General. Funciona en todas las apps cuando está activo, y la acción de la barra de menús sigue disponible sin atajo."
           }
         }
       }
@@ -4388,13 +4388,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Destination presets size the image for where it is going (a README, a social card, a slide). Style presets save a look you like so you can reapply it in one click. Choose destination presets in Settings ▸ Style or Export; manage saved style presets and custom themes in Settings ▸ Library."
+            "value" : "Destination presets size the image for where it is going (a README, a social card, a slide). Style presets save a look you like so you can reapply it in one click. Choose destination presets in Settings ▸ Style or Export; manage saved style presets and custom themes in Settings ▸ Library. Deleting one asks for confirmation; built-in presets and themes cannot be deleted."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los ajustes preestablecidos de destino dimensionan la imagen para su lugar de publicación (un README, una tarjeta social, una diapositiva). Los de estilo guardan un aspecto que te gusta para reaplicarlo con un clic. Elige los de destino en Ajustes ▸ Estilo o Exportación; administra los ajustes de estilo guardados y los temas personalizados en Ajustes ▸ Biblioteca."
+            "value" : "Los ajustes preestablecidos de destino dimensionan la imagen para su lugar de publicación (un README, una tarjeta social, una diapositiva). Los de estilo guardan un aspecto que te gusta para reaplicarlo con un clic. Elige los de destino en Ajustes ▸ Estilo o Exportación; administra los ajustes de estilo guardados y los temas personalizados en Ajustes ▸ Biblioteca. Eliminar uno pide confirmación; los ajustes y temas integrados no se pueden eliminar."
           }
         }
       }
