@@ -200,16 +200,15 @@ enum SettingsCodec {
         return config
     }
 
-    /// Reads the persisted annotations, tolerating a missing or corrupt value.
-    /// Stored as a JSON-encoded `[Annotation]`; a garbage blob
-    /// (or any single un-decodable element) yields the empty default — annotations
-    /// are non-critical chrome, so a bad store degrades to "no marks" rather than
-    /// failing the whole read.
+    /// Reads the persisted annotations as a JSON `[Annotation]`. A garbage blob yields no
+    /// marks, and an unreadable element (an unknown kind from a newer build) drops only
+    /// itself, like share links and restored windows.
     static func readAnnotations(from defaults: UserDefaults) -> [Annotation] {
         guard let data = defaults.data(forKey: Keys.annotations),
-            let decoded = try? JSONDecoder().decode([Annotation].self, from: data)
+            let decoded = try? JSONDecoder().decode(
+                [FailableDecodable<Annotation>].self, from: data)
         else { return [] }
-        return decoded
+        return decoded.compactMap(\.value)
     }
 
     /// Reads the persisted metadata header, tolerating a missing or corrupt value.
