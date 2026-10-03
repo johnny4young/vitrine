@@ -10,8 +10,8 @@ import VitrineRendering
 /// subresources blocked, and a URL is loaded on this Mac and rasterized on-device —
 /// there is no remote render service. URL capture additionally reaches the network, so
 /// the first attempt presents the privacy disclosure (`WebPrivacyDisclosureView`) and
-/// only proceeds once the user confirms; a build without the network entitlement shows
-/// the same disclosure with the action disabled and an explanation.
+/// only proceeds once the user confirms; a build without network client access skips
+/// it and the capture fails with an explanation.
 ///
 /// The view is organized across focused extensions in sibling files —
 /// `WebSnapshotEditorView+Toolbar`, `+Preview`, `+Inspector`, and `+Actions` — that

@@ -58,7 +58,8 @@ struct WorkspaceRecipeApplicationTests {
                 destinationPresetID: "opengraph", scale: 1, format: .png,
                 colorProfile: .sRGB))
 
-        let ignoredCanvas = settings.applyWorkspaceRecipe(recipe)
+        let ignoredCanvas = settings.applyWorkspaceRecipe(
+            recipe, themes: CustomThemeStore(defaults: testDefaults()))
 
         #expect(!ignoredCanvas)
         #expect(settings.config.code == "let value = 42")
@@ -80,7 +81,9 @@ struct WorkspaceRecipeApplicationTests {
                 themeID: Theme.nord.id, background: .gradient(.forest)),
             output: .init(canvasSize: .init(width: 900, height: 500)))
 
-        #expect(settings.applyWorkspaceRecipe(recipe))
+        #expect(
+            settings.applyWorkspaceRecipe(
+                recipe, themes: CustomThemeStore(defaults: testDefaults())))
         #expect(settings.selectedPresetID == nil)
     }
 
@@ -93,9 +96,49 @@ struct WorkspaceRecipeApplicationTests {
                 themeID: Theme.nord.id, background: .gradient(.forest)),
             output: .init(destinationPresetID: ExportPreset.openGraph.id))
 
-        settings.applyWorkspaceRecipe(recipe)
+        settings.applyWorkspaceRecipe(recipe, themes: CustomThemeStore(defaults: testDefaults()))
 
         #expect(settings.export.scale == ExportPreset.openGraph.scale)
+    }
+
+    @Test func embeddedCustomThemeSurvivesNewWindowsAndRelaunch() throws {
+        let defaults = try isolatedDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let themes = CustomThemeStore(defaults: defaults)
+        let palette = ThemeTestFixtures.samplePalette()
+        let embedded = StoredCustomTheme(id: "custom.teammate", name: "Team", palette: palette)
+        let recipe = WorkspaceRecipe(
+            name: "Team",
+            style: StyleSnapshot(themeID: embedded.id, background: .gradient(.forest)),
+            customTheme: embedded)
+
+        settings.applyWorkspaceRecipe(recipe, themes: themes)
+        settings.applyWorkspaceRecipe(recipe, themes: themes)
+
+        #expect(settings.config.theme.id == embedded.id)
+        #expect(themes.customThemes.map(\.id) == [embedded.id])
+        let relaunched = AppSettings(defaults: defaults)
+        #expect(relaunched.config.theme.id == embedded.id)
+        #expect(relaunched.config.theme.palette == palette)
+    }
+
+    @Test func embeddedThemeNeverReplacesADifferentLocalTheme() throws {
+        let defaults = try isolatedDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let themes = CustomThemeStore(defaults: defaults)
+        let local = themes.addTheme(named: "Local", palette: ThemeTestFixtures.samplePalette())
+        var other = ThemeTestFixtures.samplePalette()
+        other.background = HexColor("#FFFFFF")!
+        let recipe = WorkspaceRecipe(
+            name: "Collision",
+            style: StyleSnapshot(themeID: local.id, background: .gradient(.forest)),
+            customTheme: StoredCustomTheme(id: local.id, name: "Remote", palette: other))
+
+        settings.applyWorkspaceRecipe(recipe, themes: themes)
+
+        #expect(themes.theme(withID: local.id).palette == ThemeTestFixtures.samplePalette())
+        #expect(settings.config.theme.id != local.id)
+        #expect(settings.config.theme.palette == other)
     }
 
     @Test func appExportCannotWriteARecipeThatImportWouldReject() throws {

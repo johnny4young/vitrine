@@ -86,16 +86,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // means "do not enforce".
         guard Self.shouldEnforceSingleInstance(ProcessInfo.processInfo.environment) else { return }
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
-        let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
-            .filter {
-                $0 != .current
-                    && $0.executableURL?.lastPathComponent
-                        != MenuBarHelperLauncher.executableName
-            }
-        if let existing = others.first {
+        let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID)
+        let candidates = running.map {
+            RunningInstance(
+                processID: $0.processIdentifier,
+                isTerminated: $0.isTerminated,
+                isHelper: $0.executableURL?.lastPathComponent
+                    == MenuBarHelperLauncher.executableName)
+        }
+        if let existingID = Self.existingInstance(
+            among: candidates,
+            currentProcessID: ProcessInfo.processInfo.processIdentifier,
+            predecessorProcessID: AppRelauncher.predecessorProcessID(in: CommandLine.arguments)),
+            let existing = running.first(where: { $0.processIdentifier == existingID })
+        {
             existing.activate()
             exit(0)
         }
+    }
+
+    /// The facts the single-instance guard needs about one running copy.
+    struct RunningInstance: Equatable {
+        let processID: pid_t
+        let isTerminated: Bool
+        let isHelper: Bool
+    }
+
+    /// The instance a new launch should defer to. A relaunch ignores the instance it
+    /// replaces, which is still listed until it finishes quitting.
+    static func existingInstance(
+        among candidates: [RunningInstance],
+        currentProcessID: pid_t,
+        predecessorProcessID: pid_t?
+    ) -> pid_t? {
+        candidates.first {
+            $0.processID != currentProcessID
+                && $0.processID != predecessorProcessID
+                && !$0.isTerminated
+                && !$0.isHelper
+        }?.processID
     }
 
     /// Whether to enforce the single-instance guard for a launch with this environment.
@@ -169,14 +198,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Seeds the editor from a `vitrine://edit` handoff (the CLI's `--edit`): reads the
-    /// staged content and optional language hint, then loads it into the primary editor
-    /// replacing that window's document like quick capture and the Open-Code App
+    /// staged content and optional language and terminal-width hints, then loads it into
+    /// the primary editor replacing that window's document like quick capture and the Open-Code App
     /// Intent do, seeded on the user's current style. A no-op for an empty payload.
     private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
-        let language = handoff.language ?? LanguageDetector.interpret(handoff.content).language
-        let config = environment.appSettings.config.replacingContent(
-            with: handoff.content, language: language)
+        let interpreted = LanguageDetector.interpret(handoff.content)
+        var config = environment.appSettings.config.replacingContent(
+            with: handoff.language == nil ? interpreted.code : handoff.content,
+            language: handoff.language ?? interpreted.language)
+        config.terminalColumns = handoff.columns
         loadEditor(config)
         Log.app.notice("Opened a CLI --edit handoff in the editor")
     }
@@ -197,7 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     static func presentEditor(_ config: SnapshotConfig) {
         EditorWindowController.shared.loadIntoPrimary(config)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
