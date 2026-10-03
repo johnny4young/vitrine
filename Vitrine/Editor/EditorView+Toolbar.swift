@@ -260,7 +260,7 @@ extension EditorView {
                 preferenceEnabled: environment.appSettings.export.closeAfterCopy)
         else { return }
         guard let editorWindow = editorWindow.value else { return }
-        DispatchQueue.main.async { editorWindow.close() }
+        Task { editorWindow.close() }
     }
 
     /// A failed clipboard write leaves the editor open so the user can retry or save
