@@ -274,6 +274,19 @@ struct AppMenuTests {
         #expect(identifiers.contains(VitrineCommand.settings.accessibilityIdentifier))
     }
 
+    @Test func validatingCheckForUpdatesDoesNotStartTheUpdater() throws {
+        try #require(SoftwareUpdater.isSupported && !SoftwareUpdater.isStarted)
+        let appSubmenu = try #require(menuController.make().items.first?.submenu)
+        let item = try #require(
+            appSubmenu.items.first {
+                $0.accessibilityIdentifier()
+                    == VitrineCommand.checkForUpdates.accessibilityIdentifier
+            })
+        let validator = try #require(item.target as? NSMenuItemValidation)
+        #expect(validator.validateMenuItem(item))
+        #expect(!SoftwareUpdater.isStarted, "menu validation must not create Sparkle")
+    }
+
     @Test func helpMenuExposesTheHelpCommand() {
         let identifiers = menuItemIdentifiers(submenu(named: "Help"))
         #expect(identifiers.contains(VitrineCommand.help.accessibilityIdentifier))

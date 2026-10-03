@@ -55,7 +55,11 @@ final class SoftwareUpdater {
             startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     #endif
 
-    private init() {}
+    /// Whether `shared` exists. Reading it must not create the updater, which would
+    /// start Sparkle (and its consent prompt) where launch deliberately skipped it.
+    private(set) static var isStarted = false
+
+    private init() { Self.isStarted = true }
 
     /// Brings up the updater so its background scheduler starts, and returns.
     ///

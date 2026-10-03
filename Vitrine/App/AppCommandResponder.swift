@@ -107,7 +107,7 @@ final class AppCommandResponder: NSObject, NSMenuItemValidation, NSMenuDelegate 
                 menuItem.representedObject as? String == themeTarget.config.theme.id ? .on : .off
             return true
         case #selector(checkForUpdates(_:)):
-            return SoftwareUpdater.shared.canCheckForUpdates
+            return !SoftwareUpdater.isStarted || SoftwareUpdater.shared.canCheckForUpdates
         default:
             return true
         }
