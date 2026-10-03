@@ -189,7 +189,14 @@ struct EditorView: View {
         }
     }
 
+    // Split so each part type-checks quickly on older compilers.
     var body: some View {
+        withDialogs(withEvents(editorLayout))
+            .tint(VitrineTokens.Accent.system)
+    }
+
+    /// The editor's columns and window-level chrome.
+    private var editorLayout: some View {
         VStack(spacing: 0) {
             editorToolbar
             HStack(spacing: 0) {
@@ -239,109 +246,118 @@ struct EditorView: View {
                     isPresented: $showCommandPalette, commands: commandPaletteCommands)
             }
         }
-        .onChange(of: settings.documentGeneration) {
-            // Marks and history belonged to the replaced content.
-            annotationHistory.reset()
-            selectedAnnotationID = nil
-            editingAnnotationID = nil
-            pendingDrop = nil
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .vitrineSelectAnnotationTool)) {
-            notification in
-            guard let targetWindow = notification.object as? NSWindow,
-                targetWindow === editorWindow.value,
-                let rawValue = notification.userInfo?["tool"] as? String,
-                let tool = AnnotationTool(rawValue: rawValue)
-            else { return }
-            activeTool = tool
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .vitrineAnnotationMarkAction)) {
-            notification in
-            guard let targetWindow = notification.object as? NSWindow,
-                targetWindow === editorWindow.value,
-                let rawValue = notification.userInfo?["action"] as? String,
-                let action = AnnotationMarkAction(rawValue: rawValue)
-            else { return }
-            switch action {
-            case .duplicate: duplicateSelection()
-            case .bringToFront: bringSelectionToFront()
-            case .sendToBack: sendSelectionToBack()
+    }
+
+    /// Per-window reactions: document replacement, menu routing, and dev hooks.
+    private func withEvents(_ content: some View) -> some View {
+        content
+            .onChange(of: settings.documentGeneration) {
+                // Marks and history belonged to the replaced content.
+                annotationHistory.reset()
+                selectedAnnotationID = nil
+                editingAnnotationID = nil
+                pendingDrop = nil
             }
-        }
-        // The `--open-command-palette` dev hook: read the argument when the editor
-        // appears (guaranteed after its subscriptions are live) rather than relying on
-        // a one-shot notification's timing. Gated on the argument, so a normal launch
-        // never opens the palette.
-        .task {
-            if ProcessInfo.processInfo.arguments.contains("--open-command-palette") {
-                showCommandPalette = true
+            .onReceive(NotificationCenter.default.publisher(for: .vitrineSelectAnnotationTool)) {
+                notification in
+                guard let targetWindow = notification.object as? NSWindow,
+                    targetWindow === editorWindow.value,
+                    let rawValue = notification.userInfo?["tool"] as? String,
+                    let tool = AnnotationTool(rawValue: rawValue)
+                else { return }
+                activeTool = tool
             }
-        }
-        .tint(VitrineTokens.Accent.system)
-        .alert("Save Preset", isPresented: $showSavePresetPrompt) {
-            TextField("Name", text: $savePresetName)
-                .accessibilityIdentifier("editor-save-preset-name-field")
-            Button("Save") {
-                _ = presets.savePreset(named: savePresetName, from: settings.config)
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text(
-                "Save the current style — theme, font, background, and the rest of your current layout — as a named preset."
-            )
-        }
-        // No identifier on this root: the VStack is not an accessibility element,
-        // so an identifier here would propagate down and *override* the nearest
-        // descendant elements' identifiers (the preset strip would report the
-        // root's name instead of `editor-preset-strip`), breaking accessibility and
-        // UI tests. The window itself is tagged `editor-window`.
-        // A rejected file (binary, too large, unreadable) explains why in plain
-        // language rather than failing silently.
-        .alert(
-            "Can't Load That File",
-            isPresented: Binding(
-                get: { dropError != nil },
-                set: { if !$0 { dropError = nil } })
-        ) {
-            Button("OK", role: .cancel) { dropError = nil }
-        } message: {
-            Text(dropError?.message ?? "")
-        }
-        .alert(
-            "Can't Load That Image",
-            isPresented: Binding(
-                get: { imageDropError != nil },
-                set: { if !$0 { imageDropError = nil } })
-        ) {
-            Button("OK", role: .cancel) { imageDropError = nil }
-        } message: {
-            Text(imageDropError?.message ?? "")
-        }
-        // When the editor already has code, a drop asks before clobbering it:
-        // replace everything, or append to the end.
-        .confirmationDialog(
-            pendingDrop?.promptTitle ?? "",
-            isPresented: Binding(
-                get: { pendingDrop != nil },
-                set: { if !$0 { pendingDrop = nil } }),
-            titleVisibility: .visible
-        ) {
-            if pendingDrop?.startsLivingSnapshot == true {
-                Button("Replace & Watch", role: .destructive) {
-                    applyDrop(replacing: true)
+            .onReceive(NotificationCenter.default.publisher(for: .vitrineAnnotationMarkAction)) {
+                notification in
+                guard let targetWindow = notification.object as? NSWindow,
+                    targetWindow === editorWindow.value,
+                    let rawValue = notification.userInfo?["action"] as? String,
+                    let action = AnnotationMarkAction(rawValue: rawValue)
+                else { return }
+                switch action {
+                case .duplicate: duplicateSelection()
+                case .bringToFront: bringSelectionToFront()
+                case .sendToBack: sendSelectionToBack()
                 }
-            } else if pendingDrop?.replacesImage == true {
-                Button("Replace Image", role: .destructive) { applyDrop(replacing: true) }
-            } else {
-                // Replacing discards the entire current document, so it is marked
-                // destructive (red) to distinguish it from the safe Append — matching
-                // every other irreversible action in the app.
-                Button("Replace", role: .destructive) { applyDrop(replacing: true) }
-                Button("Append") { applyDrop(replacing: false) }
             }
-            Button("Cancel", role: .cancel) { pendingDrop = nil }
-        } message: {
-            Text(pendingDrop?.promptMessage ?? "")
-        }
+            // The `--open-command-palette` dev hook: read the argument when the editor
+            // appears (guaranteed after its subscriptions are live) rather than relying on
+            // a one-shot notification's timing. Gated on the argument, so a normal launch
+            // never opens the palette.
+            .task {
+                if ProcessInfo.processInfo.arguments.contains("--open-command-palette") {
+                    showCommandPalette = true
+                }
+            }
+    }
+
+    /// The preset prompt, load errors, and the replace/append drop dialog.
+    private func withDialogs(_ content: some View) -> some View {
+        content
+            .alert("Save Preset", isPresented: $showSavePresetPrompt) {
+                TextField("Name", text: $savePresetName)
+                    .accessibilityIdentifier("editor-save-preset-name-field")
+                Button("Save") {
+                    _ = presets.savePreset(named: savePresetName, from: settings.config)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(
+                    "Save the current style — theme, font, background, and the rest of your current layout — as a named preset."
+                )
+            }
+            // No identifier on this root: the VStack is not an accessibility element,
+            // so an identifier here would propagate down and *override* the nearest
+            // descendant elements' identifiers (the preset strip would report the
+            // root's name instead of `editor-preset-strip`), breaking accessibility and
+            // UI tests. The window itself is tagged `editor-window`.
+            // A rejected file (binary, too large, unreadable) explains why in plain
+            // language rather than failing silently.
+            .alert(
+                "Can't Load That File",
+                isPresented: Binding(
+                    get: { dropError != nil },
+                    set: { if !$0 { dropError = nil } })
+            ) {
+                Button("OK", role: .cancel) { dropError = nil }
+            } message: {
+                Text(dropError?.message ?? "")
+            }
+            .alert(
+                "Can't Load That Image",
+                isPresented: Binding(
+                    get: { imageDropError != nil },
+                    set: { if !$0 { imageDropError = nil } })
+            ) {
+                Button("OK", role: .cancel) { imageDropError = nil }
+            } message: {
+                Text(imageDropError?.message ?? "")
+            }
+            // When the editor already has code, a drop asks before clobbering it:
+            // replace everything, or append to the end.
+            .confirmationDialog(
+                pendingDrop?.promptTitle ?? "",
+                isPresented: Binding(
+                    get: { pendingDrop != nil },
+                    set: { if !$0 { pendingDrop = nil } }),
+                titleVisibility: .visible
+            ) {
+                if pendingDrop?.startsLivingSnapshot == true {
+                    Button("Replace & Watch", role: .destructive) {
+                        applyDrop(replacing: true)
+                    }
+                } else if pendingDrop?.replacesImage == true {
+                    Button("Replace Image", role: .destructive) { applyDrop(replacing: true) }
+                } else {
+                    // Replacing discards the entire current document, so it is marked
+                    // destructive (red) to distinguish it from the safe Append — matching
+                    // every other irreversible action in the app.
+                    Button("Replace", role: .destructive) { applyDrop(replacing: true) }
+                    Button("Append") { applyDrop(replacing: false) }
+                }
+                Button("Cancel", role: .cancel) { pendingDrop = nil }
+            } message: {
+                Text(pendingDrop?.promptMessage ?? "")
+            }
     }
 }
