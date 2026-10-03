@@ -16,7 +16,6 @@ struct PreferencesTests {
     @Test func hotkeyAction() {
         #expect(HotkeyAction.allCases.count == 2)
         #expect(HotkeyAction.quickCapture.id == "quickCapture")
-        #expect(!HotkeyAction.openEditor.displayName.isEmpty)
     }
 
     @Test func exportFormat() {

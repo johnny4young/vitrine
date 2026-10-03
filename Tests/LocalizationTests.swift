@@ -188,6 +188,36 @@ struct LocalizationTests {
         }
     }
 
+    /// Every catalog key without a format specifier is still a literal somewhere in the
+    /// sources, so removed copy does not linger in the catalog and its translations.
+    @Test func everyPlainCatalogKeyIsStillUsed() throws {
+        let catalog = try decodedCatalog()
+        let root = Self.repositoryRoot
+        var source = ""
+        for module in ["Vitrine", "VitrineDomain", "VitrineRendering", "VitrineCLI"] {
+            let url = root.appendingPathComponent(module, isDirectory: true)
+            guard
+                let files = FileManager.default.enumerator(at: url, includingPropertiesForKeys: nil)
+            else { continue }
+            for case let file as URL in files where file.pathExtension == "swift" {
+                source += try String(contentsOf: file, encoding: .utf8)
+            }
+        }
+        // NSString search keeps a few thousand lookups over megabytes of source fast.
+        let haystack = source as NSString
+        func contains(_ text: String) -> Bool {
+            haystack.range(of: text, options: .literal).location != NSNotFound
+        }
+        for key in catalog.strings.keys where !key.contains("%") {
+            let literal = key.replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: "\\n")
+            #expect(
+                contains(literal) || contains(key),
+                "Catalog key \"\(key)\" is no longer used in the sources.")
+        }
+    }
+
     /// Localizable views must not smuggle user-facing copy past the catalog with a
     /// verbatim initializer. Flags `Text("…" + "…")` (the verbatim `String`
     /// overload) and raw `NSAttributedString(string: "literal")` in the surfaces

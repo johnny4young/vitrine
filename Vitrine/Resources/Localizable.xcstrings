@@ -5663,17 +5663,6 @@
         }
       }
     },
-    "Paste code or terminal output, or drop a file, to turn it into a beautiful image." : {
-      "comment" : "Editor empty-state message.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pega código o salida de terminal, o suelta un archivo, para convertirlo en una imagen atractiva."
-          }
-        }
-      }
-    },
     "Paste the image" : {
       "comment" : "Onboarding step 3 title.",
       "extractionState" : "stale",
@@ -5925,39 +5914,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Renderiza y copia la imagen al portapapeles"
-          }
-        }
-      }
-    },
-    "Re-render As…" : {
-      "comment" : "Accessibility label for choosing a one-off destination preset on a recent capture.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Volver a renderizar como…"
-          }
-        }
-      }
-    },
-    "Re-render or remove this recent capture" : {
-      "comment" : "Help text for the actions menu on a recent capture.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vuelve a renderizar o elimina esta captura reciente"
-          }
-        }
-      }
-    },
-    "Re-render this capture with a destination preset" : {
-      "comment" : "Help text for the destination preset action on a recent capture.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vuelve a renderizar esta captura con un preajuste de destino"
           }
         }
       }
