@@ -1350,8 +1350,8 @@ final class VitrineUITests: XCTestCase {
         if failsPersistence {
             let message =
                 language == "es"
-                ? "No se pudo activar esa clave de licencia. Revísala e inténtalo de nuevo."
-                : "That license key couldn't be activated. Check it and try again."
+                ? "La licencia fue aceptada, pero Vitrine no pudo guardarla en esta Mac. Vuelve a intentarlo."
+                : "The license was accepted, but Vitrine couldn't store it on this Mac. Try again."
             assertExists(app.staticTexts[message], in: app, timeout: 5)
             assertExists(element("pro-paywall-sheet", in: app), in: app)
             let cancel = app.buttons[language == "es" ? "Ahora no" : "Not now"].firstMatch
@@ -2152,9 +2152,9 @@ final class VitrineUITests: XCTestCase {
         while pasteboard.string(forType: .string) == "sentinel", Date() < deadline {
             Thread.sleep(forTimeInterval: 0.2)
         }
+        // The panel lists captures newest first, so the last demo capture leads.
         XCTAssertEqual(
-            pasteboard.string(forType: .string),
-            "func greet(name string) string { return \"Hello, \" + name }")
+            pasteboard.string(forType: .string), "fn main() { println!(\"Hello from Rust\"); }")
         XCTAssertNil(pasteboard.data(forType: .png))
     }
 

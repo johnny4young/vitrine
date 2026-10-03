@@ -150,7 +150,7 @@ import VitrineRendering
                         themeID: Theme.dracula.id))
             }
             if arguments.contains("--demo-recents") {
-                let captures = [
+                var captures = [
                     Capture(
                         code: "func greet(name string) string { return \"Hello, \" + name }",
                         languageID: Language.go.rawValue,
@@ -165,6 +165,12 @@ import VitrineRendering
                         languageID: Language.rust.rawValue,
                         themeID: Theme.dracula.id),
                 ]
+                // Distinct ages keep the newest-first panel order deterministic.
+                let now = Date()
+                for index in captures.indices {
+                    captures[index].date = now.addingTimeInterval(
+                        Double(index - captures.count + 1) * 120)
+                }
                 for capture in captures { environment.recents.add(capture) }
                 environment.recents.updatePinned(id: captures[0].id, isPinned: true)
             }
