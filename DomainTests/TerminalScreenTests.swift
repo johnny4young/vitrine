@@ -128,6 +128,17 @@ struct TerminalGridTests {
         #expect(plain(stream) == "EDITOR")
     }
 
+    @Test func homeThenEraseBelowBeforeExitStillCaptures() {
+        // lazygit clears with ESC[H ESC[J (erase below from the origin) before exiting.
+        let stream = "\(esc)[?1049h\(esc)[1;1HPANES\(esc)[H\(esc)[J\(esc)[?1049lshell$ "
+        #expect(plain(stream) == "PANES")
+    }
+
+    @Test func erasingBelowAMidScreenCursorKeepsNoSnapshot() {
+        let stream = "\(esc)[?1049h\(esc)[1;1HTOP\(esc)[2;1HGONE\(esc)[2;1H\(esc)[J\(esc)[?1049l"
+        #expect(plain(stream) == "TOP")
+    }
+
     @Test func altSnapshotDoesNotLeakAcrossAltSessions() {
         // A first alt session leaves a pre-clear snapshot; a second session that is
         // entered, cleared while still empty, then exited must NOT reuse that stale frame.

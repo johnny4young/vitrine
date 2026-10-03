@@ -283,6 +283,8 @@ extension TerminalScreen {
     mutating func eraseDisplay(_ mode: Int) {
         switch mode {
         case 0:  // cursor → end of screen
+            // From the origin this clears the whole screen (`ESC[H ESC[J`, as lazygit exits).
+            if cursorRow == 0, cursorCol == 0 { snapshotAltScreenBeforeClear() }
             padRow(cursorRow, to: cursorCol)
             blank(row: cursorRow, from: cursorCol)
             for row in (cursorRow + 1)..<rows.count { blank(row: row) }
@@ -291,12 +293,15 @@ extension TerminalScreen {
             padRow(cursorRow, to: cursorCol)
             blank(row: cursorRow, through: cursorCol)
         default:  // 2 / 3 — whole screen
-            // If a full clear would blank a populated alt-screen buffer — apps that erase
-            // the screen right before leaving the alt buffer on exit — keep a pre-clear
-            // copy so the final frame isn't lost.
-            if primaryStash != nil, isPopulated(rows) { altSnapshot = rows }
+            snapshotAltScreenBeforeClear()
             for row in rows.indices { blank(row: row) }
         }
+    }
+
+    /// Apps that erase the screen right before leaving the alt buffer on exit would blank
+    /// the frame we capture, so a full clear of a populated alt buffer keeps a copy.
+    mutating func snapshotAltScreenBeforeClear() {
+        if primaryStash != nil, isPopulated(rows) { altSnapshot = rows }
     }
 
     /// Whether any cell in `frame` was actually drawn. A colored erase alone does not count,

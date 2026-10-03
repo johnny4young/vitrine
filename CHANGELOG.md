@@ -159,6 +159,8 @@ can never drift.
   "now". Relaunch to Apply no longer quits the app.
 - Settings, panels, errors, and window titles are localized; license activation explains
   each failure; launch at login reflects the system's real state.
+- Full-screen captures keep the last frame of apps that clear with `ESC[H ESC[J` before
+  exiting, such as current lazygit releases.
 - The terminal emulator erases with the current background color, line mode follows
   cursor-up redraws and `\r\r\n` output, foreground images honor their DPI, and the
   secret scanner recognizes PGP keys, bearer headers, URL credentials, and `:=`/`=>`.
