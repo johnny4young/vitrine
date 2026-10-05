@@ -12,6 +12,10 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep spaces and punctuation in the selected CLI installation folder literal in the copied Terminal command.
+
 ### Added
 
 - Provide five checked, synthetic local CLI publishing workflows for external agents,
