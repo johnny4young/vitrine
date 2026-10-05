@@ -53,6 +53,8 @@ can never drift.
 
 ### Fixed
 
+- Live-file Reload catches a save that lands while the file is being read, without losing a later local draft.
+
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
   features in English and Spanish.

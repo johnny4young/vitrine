@@ -474,7 +474,10 @@ off the main actor; decoding policy stays centralized, and editor state is appli
 on the main actor. A 650 ms task compares file size, modification date, resource
 identifier, and filesystem file/volume numbers; including inode identity detects editors
 that save by atomically replacing the file instead of mutating its original inode.
-Content is read only after the stamp changes.
+Content is read only after the stamp changes. Explicit reload brackets its content
+read with metadata checks and remembers a stamp only if both checks agree. Changed
+or unavailable evidence leaves the stamp unknown, so the next poll retries instead
+of associating newer path metadata with older bytes.
 
 The session records the last text it applied. When the editor still equals that baseline,
 a saved version replaces it and clears content-bound marks through the normal
