@@ -55,21 +55,33 @@ enum CLIOutputWriter {
         options: CLIOptions,
         inputs: [URL]
     ) throws {
+        try guardOutputsDoNotOverwriteInputs(beside: [imageURL], options: options, inputs: inputs)
+    }
+
+    /// Canonicalize inputs once for a whole batch rather than resolving every
+    /// source again for each image in the output plan.
+    static func guardOutputsDoNotOverwriteInputs(
+        beside imageURLs: [URL],
+        options: CLIOptions,
+        inputs: [URL]
+    ) throws {
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
         let claimed = Set((inputs + resources).map(canonicalPath))
         guard !claimed.isEmpty else { return }
-        if claimed.contains(canonicalPath(imageURL)) {
-            throw CLIError.incompatibleOptions(
-                "The output would overwrite the input file at \"\(imageURL.path)\". "
-                    + "Choose an --out path that differs from the source.")
-        }
-        for sidecar in sidecarURLs(options, beside: imageURL)
-        where claimed.contains(canonicalPath(sidecar)) {
-            throw CLIError.incompatibleOptions(
-                "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
-                    + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
-                    + "source, or drop the sidecar flag.")
+        for imageURL in imageURLs {
+            if claimed.contains(canonicalPath(imageURL)) {
+                throw CLIError.incompatibleOptions(
+                    "The output would overwrite the input file at \"\(imageURL.path)\". "
+                        + "Choose an --out path that differs from the source.")
+            }
+            for sidecar in sidecarURLs(options, beside: imageURL)
+            where claimed.contains(canonicalPath(sidecar)) {
+                throw CLIError.incompatibleOptions(
+                    "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
+                        + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
+                        + "source, or drop the sidecar flag.")
+            }
         }
     }
 

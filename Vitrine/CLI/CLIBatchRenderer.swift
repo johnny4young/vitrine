@@ -77,15 +77,6 @@ enum CLIBatchRenderer {
             excludeExtensions: options.batchExcludeExtensions,
             excluding: excludedArtifacts(options, inputDirectory: inputDirectory),
             directoryLister: directoryLister)
-        if !options.dryRunBatch {
-            do {
-                try FileManager.default.createDirectory(
-                    at: outputDirectory, withIntermediateDirectories: true)
-            } catch {
-                throw CLIError.writeFailed(path: options.outputPath)
-            }
-        }
-
         var loadedInputs: [BatchLoadedInput] = []
         var skipped = 0
         var skippedReport: [SkippedReportEntry] = []
@@ -114,10 +105,17 @@ enum CLIBatchRenderer {
         // `.md`/`.txt`/`.html` sidecar can land exactly on file B. Checked against every
         // discovered input, not just the current one, and before the render loop so a
         // rejected run leaves the folder untouched.
-        let batchInputs = loadedInputs.map(\.file)
-        for outputURL in outputURLs.values {
-            try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
-                beside: outputURL, options: options, inputs: batchInputs)
+        let plannedOutputs = Array(outputURLs.values)
+        try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
+            beside: plannedOutputs, options: options, inputs: files)
+        try guardReportTargets(options, outputURLs: plannedOutputs)
+        if !options.dryRunBatch {
+            do {
+                try FileManager.default.createDirectory(
+                    at: outputDirectory, withIntermediateDirectories: true)
+            } catch {
+                throw CLIError.writeFailed(path: options.outputPath)
+            }
         }
 
         var rendered = 0
@@ -219,6 +217,29 @@ enum CLIBatchRenderer {
 
     private static func canonicalPath(_ url: URL) -> String {
         url.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
+    /// Reports are outputs too: writing one over an image, sidecar, or the other
+    /// report silently destroyed an artifact after the render loop claimed success.
+    /// Check the complete plan before any output is created, including dry runs,
+    /// which still write reports. Fold names like the image planner does so aliases
+    /// on the default case-insensitive Mac filesystem cannot bypass the guard.
+    private static func guardReportTargets(_ options: CLIOptions, outputURLs: [URL]) throws {
+        let reports = [options.batchManifestPath, options.skippedReportPath]
+            .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
+        var claimed = Set(
+            outputURLs.flatMap { [$0] + CLIOutputWriter.sidecarURLs(options, beside: $0) }
+                .map { filesystemKey(canonicalPath($0)) })
+        for report in reports {
+            guard claimed.insert(filesystemKey(canonicalPath(report))).inserted else {
+                throw CLIError.incompatibleOptions(
+                    "The batch report at \"\(report.path)\" conflicts with another output. "
+                        + "Choose distinct paths for images, sidecars, and reports.")
+            }
+            if options.noOverwrite, FileManager.default.fileExists(atPath: report.path) {
+                throw CLIError.outputExists(path: report.path)
+            }
+        }
     }
 
     /// Lists regular files for batch rendering. Non-recursive mode keeps the legacy

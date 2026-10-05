@@ -65,6 +65,10 @@ can never drift.
 
 ### Fixed
 
+- Reject batch report paths that collide with images, sidecars, or each other before
+  writing outputs. `--no-overwrite` protects reports too, and skipped inputs remain
+  protected from sidecar replacement.
+
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
   features in English and Spanish.

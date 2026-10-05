@@ -1,11 +1,93 @@
 import Foundation
 import Testing
+import VitrineRendering
 
 @testable import VitrineCLICore
 
 /// A batch never re-reads its own artifacts and keeps typed render failures readable.
 @Suite("CLI batch artifacts")
 struct CLIBatchArtifactTests: CLITestSupport {
+    @Test(arguments: ["--manifest", "--skipped-report"])
+    func reportsCannotOverwriteImagesOrSidecars(flag: String) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: input)
+
+        for name in ["A.png", "A.txt", "A.md", "A.html", "a.PNG"] {
+            let options = try CLIArguments.parse([
+                "batch", input.path, "--out", output.path, "--sidecars", "all",
+                flag, output.appendingPathComponent(name).path,
+            ])
+            #expect(throws: CLIError.self) { try CLIRenderer.runBatch(options) }
+            #expect(!FileManager.default.fileExists(atPath: output.path))
+        }
+    }
+
+    @Test func reportsMustHaveDistinctPathsEvenDuringADryRun() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let report = root.appendingPathComponent("report.json")
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: input)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--dry-run",
+            "--manifest", report.path, "--skipped-report", report.path,
+        ])
+        #expect(throws: CLIError.self) { try CLIRenderer.runBatch(options) }
+        #expect(!FileManager.default.fileExists(atPath: report.path))
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+    }
+
+    @Test(arguments: ["--manifest", "--skipped-report"])
+    func noOverwriteProtectsExistingReportsBeforeRendering(flag: String) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let report = root.appendingPathComponent("report.json")
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: input)
+        let original = Data("previous report\n".utf8)
+        try original.write(to: report)
+
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--no-overwrite", flag, report.path,
+        ])
+        #expect(throws: CLIError.outputExists(path: report.path)) {
+            try CLIRenderer.runBatch(options)
+        }
+        #expect(try Data(contentsOf: report) == original)
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+    }
+
+    @Test func skippedInputsAreStillProtectedFromSidecarWrites() throws {
+        let input = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: input) }
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: input)
+        let unreadable = input.appendingPathComponent("A.txt")
+        let original = Data([0xFF, 0xFE, 0x00, 0x00])
+        try original.write(to: unreadable)
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", input.path, "--text-sidecar",
+        ])
+
+        #expect(throws: CLIError.self) {
+            try CLIBatchRenderer.run(options, fileLoader: { url in
+                if url == unreadable { throw CLIError.inputUnreadable(path: url.path) }
+                return FileInputLoader.LoadedFile(
+                    text: "let a = 1\n", language: .swift, filename: url.lastPathComponent)
+            })
+        }
+        #expect(try Data(contentsOf: unreadable) == original)
+        #expect(!FileManager.default.fileExists(atPath: input.appendingPathComponent("A.png").path))
+    }
+
     @Test func rerunningIntoANestedOutputFolderDoesNotRenderEarlierArtifacts() throws {
         let input = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: input) }
