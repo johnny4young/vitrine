@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import VitrineDomain
 import VitrineRendering
 
 @testable import VitrineCLICore
@@ -78,11 +79,13 @@ struct CLIBatchArtifactTests: CLITestSupport {
         ])
 
         #expect(throws: CLIError.self) {
-            try CLIBatchRenderer.run(options, fileLoader: { url in
-                if url == unreadable { throw CLIError.inputUnreadable(path: url.path) }
-                return FileInputLoader.LoadedFile(
-                    text: "let a = 1\n", language: .swift, filename: url.lastPathComponent)
-            })
+            try CLIBatchRenderer.run(
+                options,
+                fileLoader: { url in
+                    if url == unreadable { throw CLIError.inputUnreadable(path: url.path) }
+                    return FileInputLoader.LoadedFile(
+                        text: "let a = 1\n", language: .swift, filename: url.lastPathComponent)
+                })
         }
         #expect(try Data(contentsOf: unreadable) == original)
         #expect(!FileManager.default.fileExists(atPath: input.appendingPathComponent("A.png").path))
