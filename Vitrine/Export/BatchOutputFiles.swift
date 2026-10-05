@@ -51,7 +51,9 @@ nonisolated enum BatchOutputFiles {
         guard mkdtemp(&template) != nil else {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
-        let stage = URL(fileURLWithPath: String(cString: template), isDirectory: true)
+        let pathBytes = template.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
+        let stage = URL(
+            fileURLWithPath: String(decoding: pathBytes, as: UTF8.self), isDirectory: true)
         defer { try? FileManager.default.removeItem(at: stage) }
         let payload = stage.appendingPathComponent("payload")
         try data.write(to: payload)

@@ -70,6 +70,20 @@ struct BatchOutputFilesTests {
         #expect(try Data(contentsOf: sidecar) == original)
     }
 
+    @Test func publishesInsideAUnicodeFolderWithSpaces() throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let folder = directory.appendingPathComponent("Team café assets", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+        let output = folder.appendingPathComponent("image.png")
+        let bytes = Data("complete image".utf8)
+
+        try BatchOutputFiles.publish(bytes, to: output)
+
+        #expect(try Data(contentsOf: output) == bytes)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path) == ["image.png"])
+    }
+
     @Test func cancellationBeforeCommitPublishesNothing() throws {
         let directory = try directory()
         defer { try? FileManager.default.removeItem(at: directory) }
