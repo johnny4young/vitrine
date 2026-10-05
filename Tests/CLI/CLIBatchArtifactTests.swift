@@ -82,7 +82,9 @@ struct CLIBatchArtifactTests: CLITestSupport {
             try CLIBatchRenderer.run(
                 options,
                 fileLoader: { url in
-                    if url == unreadable { throw CLIError.inputUnreadable(path: url.path) }
+                    if url.lastPathComponent == unreadable.lastPathComponent {
+                        throw CLIError.inputUnreadable(path: url.path)
+                    }
                     return FileInputLoader.LoadedFile(
                         text: "let a = 1\n", language: .swift, filename: url.lastPathComponent)
                 })
