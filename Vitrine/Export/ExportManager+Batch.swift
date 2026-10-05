@@ -34,7 +34,7 @@ extension ExportManager {
         _ baseConfig: SnapshotConfig, presets: [ExportPreset], to directory: URL,
         format: ExportFormat = .png, profile: ColorProfile = .sRGB, textSidecar: Bool = false,
         onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil,
-        writeFile: @Sendable (Data, URL) throws -> Void = {
+        writeFile: @escaping @Sendable (Data, URL) throws -> Void = {
             try BatchOutputFiles.publish($0, to: $1)
         }
     ) async -> BatchExportResult {
@@ -182,7 +182,7 @@ extension ExportManager {
         _ baseConfig: SnapshotConfig, pages: [String], to directory: URL,
         profile: ColorProfile = .sRGB,
         onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil,
-        writeFile: @Sendable (Data, URL) throws -> Void = {
+        writeFile: @escaping @Sendable (Data, URL) throws -> Void = {
             try BatchOutputFiles.publish($0, to: $1)
         }
     ) async -> BatchExportResult {
