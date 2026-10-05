@@ -57,10 +57,9 @@ struct BatchOutputFilesTests {
     @Test func sidecarFailureKeepsCompletedImageAndPreviousSidecar() throws {
         let directory = try directory()
         defer { try? FileManager.default.removeItem(at: directory) }
-        let output = try #require(
-            BatchOutputFiles.plan(
-                filenames: ["image.png"], in: directory, textSidecars: true)
-                .first)
+        let plan = try BatchOutputFiles.plan(
+            filenames: ["image.png"], in: directory, textSidecars: true)
+        let output = try #require(plan.first)
         let sidecar = try #require(output.sidecar)
         let image = Data("complete image".utf8)
         let original = Data("previous sidecar".utf8)
