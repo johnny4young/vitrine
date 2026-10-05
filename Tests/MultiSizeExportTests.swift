@@ -106,6 +106,69 @@ struct MultiSizeExportTests {
         #expect(!FileManager.default.fileExists(atPath: txt.path))
     }
 
+    @Test func preservesExistingImageAndSidecarBytes() async throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let image = dir.appendingPathComponent("vitrine-twitter.png")
+        let sidecar = dir.appendingPathComponent("vitrine-twitter.txt")
+        let originalImage = Data("original image asset".utf8)
+        let originalSidecar = Data("original text asset".utf8)
+        try originalImage.write(to: image)
+        try originalSidecar.write(to: sidecar)
+
+        let result = await ExportManager.exportPresetSizes(
+            baseConfig(), presets: [.twitter], to: dir, textSidecar: true)
+
+        #expect(result.written == 1)
+        #expect(result.failed == 0)
+        #expect(try Data(contentsOf: image) == originalImage)
+        #expect(try Data(contentsOf: sidecar) == originalSidecar)
+        #expect(FileManager.default.fileExists(
+            atPath: dir.appendingPathComponent("vitrine-twitter-2.png").path))
+        #expect(try String(
+            contentsOf: dir.appendingPathComponent("vitrine-twitter-2.txt"), encoding: .utf8)
+            == "let answer = 42")
+    }
+
+    @Test func carouselPreservesAnExistingSlide() async throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let slide = dir.appendingPathComponent("carousel-01.png")
+        let original = Data("existing slide".utf8)
+        try original.write(to: slide)
+
+        let result = await ExportManager.exportCarousel(baseConfig(), pages: ["one"], to: dir)
+
+        #expect(result.written == 1)
+        #expect(result.failed == 0)
+        #expect(try Data(contentsOf: slide) == original)
+        #expect(FileManager.default.fileExists(
+            atPath: dir.appendingPathComponent("carousel-01-2.png").path))
+    }
+
+    @Test func requestedSidecarFailureReportsAnIncompleteExport() async throws {
+        let dir = tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let previous = dir.appendingPathComponent("vitrine-twitter.txt")
+        let original = Data("previous sidecar".utf8)
+        try original.write(to: previous)
+
+        let result = await ExportManager.exportPresetSizes(
+            baseConfig(), presets: [.twitter], to: dir, textSidecar: true,
+            writeFile: { data, url in
+                if url.pathExtension == "txt" { throw CocoaError(.fileWriteOutOfSpace) }
+                try BatchOutputFiles.publish(data, to: url)
+            })
+
+        #expect(result.written == 0)
+        #expect(result.failed == 1)
+        #expect(try Data(contentsOf: previous) == original)
+        #expect(FileManager.default.fileExists(
+            atPath: dir.appendingPathComponent("vitrine-twitter-2.png").path))
+        #expect(!BatchExportCompletion(written: result.written, failed: result.failed, expected: 1)
+            .isComplete)
+    }
+
     @Test func noPresetsWritesNothing() async {
         let dir = tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }

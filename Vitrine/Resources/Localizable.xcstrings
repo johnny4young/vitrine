@@ -9156,19 +9156,19 @@
         }
       }
     },
-    "Some images couldn't be written. Check the folder and try again." : {
+    "Some export files couldn't be written. Check the folder and try again." : {
       "comment" : "Multi-size export failure note.",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Some images couldn't be written. Check the folder and try again."
+            "value" : "Some export files couldn't be written. Check the folder and try again."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No se pudieron escribir algunas imágenes. Revisa la carpeta e inténtalo de nuevo."
+            "value" : "No se pudieron escribir algunos archivos de exportación. Revisa la carpeta e inténtalo de nuevo."
           }
         }
       }

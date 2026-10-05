@@ -53,6 +53,8 @@ can never drift.
 
 ### Fixed
 
+- Preserve existing files during multi-size and carousel exports by choosing available names and refusing race-created destinations.
+
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
   features in English and Spanish.
