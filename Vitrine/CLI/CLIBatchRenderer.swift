@@ -227,14 +227,18 @@ enum CLIBatchRenderer {
     private static func guardReportTargets(_ options: CLIOptions, outputURLs: [URL]) throws {
         let reports = [options.batchManifestPath, options.skippedReportPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
+        let resources = [options.backgroundImagePath, options.watermarkLogoPath]
+            .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
+        let artifacts = outputURLs.flatMap {
+            [$0] + CLIOutputWriter.sidecarURLs(options, beside: $0)
+        }
         var claimed = Set(
-            outputURLs.flatMap { [$0] + CLIOutputWriter.sidecarURLs(options, beside: $0) }
-                .map { filesystemKey(canonicalPath($0)) })
+            (artifacts + resources).map { filesystemKey(canonicalPath($0)) })
         for report in reports {
             guard claimed.insert(filesystemKey(canonicalPath(report))).inserted else {
                 throw CLIError.incompatibleOptions(
-                    "The batch report at \"\(report.path)\" conflicts with another output. "
-                        + "Choose distinct paths for images, sidecars, and reports.")
+                    "The batch report at \"\(report.path)\" conflicts with an input resource "
+                        + "or another output. Choose distinct paths for resources and outputs.")
             }
             if options.noOverwrite, FileManager.default.fileExists(atPath: report.path) {
                 throw CLIError.outputExists(path: report.path)

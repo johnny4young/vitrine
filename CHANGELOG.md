@@ -65,7 +65,7 @@ can never drift.
 
 ### Fixed
 
-- Reject batch report paths that collide with images, sidecars, or each other before
+- Reject batch report paths that collide with images, sidecars, input resources, or each other before
   writing outputs. `--no-overwrite` protects reports too, and skipped inputs remain
   protected from sidecar replacement.
 

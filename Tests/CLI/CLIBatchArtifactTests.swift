@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 import VitrineDomain
@@ -8,6 +9,36 @@ import VitrineRendering
 /// A batch never re-reads its own artifacts and keeps typed render failures readable.
 @Suite("CLI batch artifacts")
 struct CLIBatchArtifactTests: CLITestSupport {
+    @Test(arguments: ["--manifest", "--skipped-report"])
+    func reportsCannotReplaceBackgroundOrWatermarkResources(flag: String) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let resource = root.appendingPathComponent("resource.png")
+        let alias = root.appendingPathComponent("resource-alias.json")
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: input)
+        try writeFixtureImage(to: resource, size: CGSize(width: 32, height: 20))
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: resource)
+        let original = try Data(contentsOf: resource)
+
+        for resourceFlag in ["--background-image", "--watermark-logo"] {
+            for report in [resource, alias] {
+                let options = try CLIArguments.parse([
+                    "batch", input.path, "--out", output.path,
+                    resourceFlag, resource.path, flag, report.path,
+                ])
+                #expect(throws: CLIError.self) { try CLIRenderer.runBatch(options) }
+                #expect(try Data(contentsOf: resource) == original)
+                #expect(!FileManager.default.fileExists(atPath: output.path))
+                #expect(
+                    try FileManager.default.destinationOfSymbolicLink(atPath: alias.path)
+                        == resource.path)
+            }
+        }
+    }
+
     @Test(arguments: ["--manifest", "--skipped-report"])
     func reportsCannotOverwriteImagesOrSidecars(flag: String) throws {
         let root = try makeTempDirectory()
