@@ -8,7 +8,8 @@ import Testing
 struct BoundedFileReaderConsistencyTests {
     @Test func rejectsASameLengthRewriteBetweenChunks() throws {
         let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("VitrineReaderConsistency-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent(
+                "VitrineReaderConsistency-\(UUID().uuidString)", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("input.txt")
@@ -28,7 +29,7 @@ struct BoundedFileReaderConsistencyTests {
                 try writer.write(contentsOf: replacement)
                 // Pin distinct metadata without relying on scheduler delays or clock resolution.
                 try FileManager.default.setAttributes(
-                    [.modificationDate: oldDate.addingTimeInterval(10)], atPath: url.path)
+                    [.modificationDate: oldDate.addingTimeInterval(10)], ofItemAtPath: url.path)
             }
         }
         #expect(didRewrite)
