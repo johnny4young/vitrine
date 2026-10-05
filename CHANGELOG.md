@@ -53,6 +53,8 @@ can never drift.
 
 ### Fixed
 
+- Reject observed file changes during bounded reads, including same-length saves, instead of accepting mixed text.
+
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
   features in English and Spanish.
