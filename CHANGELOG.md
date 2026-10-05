@@ -68,6 +68,8 @@ can never drift.
 - Reject batch report paths that collide with images, sidecars, input resources, or each other before
   writing outputs. `--no-overwrite` protects reports too, and skipped inputs remain
   protected from sidecar replacement.
+- Refuse to replace an existing in-input report destination unless it is a bounded,
+  structurally matching prior report; preserve repeat runs and empty reports.
 
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
