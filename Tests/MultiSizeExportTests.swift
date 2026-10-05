@@ -123,11 +123,13 @@ struct MultiSizeExportTests {
         #expect(result.failed == 0)
         #expect(try Data(contentsOf: image) == originalImage)
         #expect(try Data(contentsOf: sidecar) == originalSidecar)
-        #expect(FileManager.default.fileExists(
-            atPath: dir.appendingPathComponent("vitrine-twitter-2.png").path))
-        #expect(try String(
-            contentsOf: dir.appendingPathComponent("vitrine-twitter-2.txt"), encoding: .utf8)
-            == "let answer = 42")
+        #expect(
+            FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("vitrine-twitter-2.png").path))
+        #expect(
+            try String(
+                contentsOf: dir.appendingPathComponent("vitrine-twitter-2.txt"), encoding: .utf8)
+                == "let answer = 42")
     }
 
     @Test func carouselPreservesAnExistingSlide() async throws {
@@ -142,8 +144,9 @@ struct MultiSizeExportTests {
         #expect(result.written == 1)
         #expect(result.failed == 0)
         #expect(try Data(contentsOf: slide) == original)
-        #expect(FileManager.default.fileExists(
-            atPath: dir.appendingPathComponent("carousel-01-2.png").path))
+        #expect(
+            FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("carousel-01-2.png").path))
     }
 
     @Test func requestedSidecarFailureReportsAnIncompleteExport() async throws {
@@ -163,10 +166,12 @@ struct MultiSizeExportTests {
         #expect(result.written == 0)
         #expect(result.failed == 1)
         #expect(try Data(contentsOf: previous) == original)
-        #expect(FileManager.default.fileExists(
-            atPath: dir.appendingPathComponent("vitrine-twitter-2.png").path))
-        #expect(!BatchExportCompletion(written: result.written, failed: result.failed, expected: 1)
-            .isComplete)
+        #expect(
+            FileManager.default.fileExists(
+                atPath: dir.appendingPathComponent("vitrine-twitter-2.png").path))
+        #expect(
+            !BatchExportCompletion(written: result.written, failed: result.failed, expected: 1)
+                .isComplete)
     }
 
     @Test func noPresetsWritesNothing() async {

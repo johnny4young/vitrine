@@ -23,12 +23,14 @@ struct BatchOutputFilesTests {
             filenames: ["vitrine-twitter.png", "vitrine-twitter.png"],
             in: directory, textSidecars: true)
 
-        #expect(plan.map { $0.image.lastPathComponent } == [
-            "vitrine-twitter-2.png", "vitrine-twitter-3.png",
-        ])
-        #expect(plan.map { $0.sidecar?.lastPathComponent } == [
-            "vitrine-twitter-2.txt", "vitrine-twitter-3.txt",
-        ])
+        #expect(
+            plan.map { $0.image.lastPathComponent } == [
+                "vitrine-twitter-2.png", "vitrine-twitter-3.png",
+            ])
+        #expect(
+            plan.map { $0.sidecar?.lastPathComponent } == [
+                "vitrine-twitter-2.txt", "vitrine-twitter-3.txt",
+            ])
         #expect(try Data(contentsOf: occupied) == original)
     }
 
@@ -46,9 +48,10 @@ struct BatchOutputFilesTests {
         }
 
         #expect(try Data(contentsOf: output.image) == original)
-        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == [
-            "carousel-01.png"
-        ])
+        #expect(
+            try FileManager.default.contentsOfDirectory(atPath: directory.path) == [
+                "carousel-01.png"
+            ])
     }
 
     @Test func sidecarFailureKeepsCompletedImageAndPreviousSidecar() throws {
@@ -56,7 +59,8 @@ struct BatchOutputFilesTests {
         defer { try? FileManager.default.removeItem(at: directory) }
         let output = try #require(
             BatchOutputFiles.plan(
-                filenames: ["image.png"], in: directory, textSidecars: true).first)
+                filenames: ["image.png"], in: directory, textSidecars: true)
+                .first)
         let sidecar = try #require(output.sidecar)
         let image = Data("complete image".utf8)
         let original = Data("previous sidecar".utf8)
