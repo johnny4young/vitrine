@@ -24,9 +24,11 @@ nonisolated enum BatchOutputFiles {
             let extensionName = requested.pathExtension
             for suffix in 0..<10_000 {
                 let name = suffix == 0 ? stem : "\(stem)-\(suffix + 1)"
-                let image = directory.appendingPathComponent(name).appendingPathExtension(extensionName)
+                let image = directory.appendingPathComponent(name)
+                    .appendingPathExtension(extensionName)
                 let sidecar = textSidecars ? directory.appendingPathComponent(name + ".txt") : nil
-                let names = [image.lastPathComponent] + (sidecar.map { [$0.lastPathComponent] } ?? [])
+                let names = [image.lastPathComponent]
+                    + (sidecar.map { [$0.lastPathComponent] } ?? [])
                 guard names.allSatisfy({ !occupied.contains(key($0)) }) else { continue }
                 occupied.formUnion(names.map(key))
                 return Item(image: image, sidecar: sidecar)
