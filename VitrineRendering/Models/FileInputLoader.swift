@@ -174,6 +174,8 @@ public enum FileInputLoader {
             rawFile = try readBoundedFile(from: url)
         } catch LoadError.tooLarge {
             throw LoadError.tooLarge
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             // Same diagnostic as the synchronous path, so a living-file read failure
             // is visible in an exported bundle too. Never echo the path (privacy policy).
@@ -196,6 +198,9 @@ public enum FileInputLoader {
             data = try BoundedFileReader.read(from: url, limit: maximumByteCount)
         } catch BoundedFileReader.ReadError.tooLarge {
             throw LoadError.tooLarge
+        } catch is CancellationError {
+            // A superseded or closed live-file request is lifecycle, not an unreadable file.
+            throw CancellationError()
         } catch {
             throw LoadError.unreadable
         }
