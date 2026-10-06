@@ -67,22 +67,30 @@ enum CLIOutputWriter {
     ) throws {
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
-        let claimed = Set((inputs + resources).map(canonicalPath))
+        let claimed = Set((inputs + resources).map(claimKey))
         guard !claimed.isEmpty else { return }
         for imageURL in imageURLs {
-            if claimed.contains(canonicalPath(imageURL)) {
-                throw CLIError.incompatibleOptions(
+            if claimed.contains(claimKey(imageURL)) {
+                throw CLIError.outputConflict(
                     "The output would overwrite the input file at \"\(imageURL.path)\". "
                         + "Choose an --out path that differs from the source.")
             }
             for sidecar in sidecarURLs(options, beside: imageURL)
-            where claimed.contains(canonicalPath(sidecar)) {
-                throw CLIError.incompatibleOptions(
+            where claimed.contains(claimKey(sidecar)) {
+                throw CLIError.outputConflict(
                     "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
                         + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
                         + "source, or drop the sidecar flag.")
             }
         }
+    }
+
+    /// The canonical path folded like the default case-insensitive Mac volume, so
+    /// `notes.MD` and a `notes.md` sidecar are one claimed file. Folding only decides
+    /// whether a name is taken; on a case-sensitive volume it can refuse a distinct
+    /// file that differs only by case, which fails closed instead of risking a source.
+    private static func claimKey(_ url: URL) -> String {
+        canonicalPath(url).precomposedStringWithCanonicalMapping.lowercased()
     }
 
     /// A comparable filesystem identity: symlinks resolved and `.`/`..` removed, so two

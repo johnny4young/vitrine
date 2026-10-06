@@ -56,9 +56,13 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate, WKUIDelegate
     private var locationObservations: [NSKeyValueObservation] = []
     /// Sign-in popups (`window.open`, `target=_blank`) hosted in their own windows so
     /// SSO flows that report back through `window.opener` can finish.
-    private var popups: [(window: NSWindow, webView: WKWebView, coordinator: URLLoadCoordinator)] =
-        []
-    private var popupObservations: [NSKeyValueObservation] = []
+    /// Each popup owns its subtitle observations, so they are released with that popup
+    /// instead of accumulating for the lifetime of the sign-in window.
+    private var popups:
+        [(
+            window: NSWindow, webView: WKWebView, coordinator: URLLoadCoordinator,
+            observations: [NSKeyValueObservation]
+        )] = []
     /// Whether the sign-in window is currently open.
     var isPresented: Bool { window != nil }
 
@@ -219,8 +223,8 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate, WKUIDelegate
         popupWindow.isReleasedWhenClosed = false
         popupWindow.delegate = self
         popupWindow.center()
-        popups.append((popupWindow, popup, coordinator))
-        observePopupLocation(popup, in: popupWindow)
+        let observations = Self.subtitleObservations(of: popup, in: popupWindow)
+        popups.append((popupWindow, popup, coordinator, observations))
         popupWindow.makeKeyAndOrderFront(nil)
         return popup
     }
@@ -229,15 +233,11 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate, WKUIDelegate
         popups.first { $0.webView === webView }?.window.close()
     }
 
-    private func observePopupLocation(_ webView: WKWebView, in window: NSWindow) {
-        popupObservations += Self.subtitleObservations(of: webView, in: window)
-    }
-
     private func closePopups() {
         let open = popups
         popups = []
-        popupObservations = []
         for popup in open {
+            for observation in popup.observations { observation.invalidate() }
             popup.webView.stopLoading()
             popup.webView.navigationDelegate = nil
             popup.webView.uiDelegate = nil
@@ -264,6 +264,7 @@ final class WebSessionWindowController: NSObject, NSWindowDelegate, WKUIDelegate
         if let closing = notification.object as? NSWindow, closing !== window {
             if let index = popups.firstIndex(where: { $0.window === closing }) {
                 let popup = popups.remove(at: index)
+                for observation in popup.observations { observation.invalidate() }
                 popup.webView.stopLoading()
                 popup.webView.navigationDelegate = nil
                 popup.webView.uiDelegate = nil

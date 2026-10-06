@@ -70,6 +70,9 @@ can never drift.
   protected from sidecar replacement.
 - Refuse to replace an existing in-input report destination unless it is a bounded,
   structurally matching prior report; preserve repeat runs and empty reports.
+- A `render`/`multi-size` output or sidecar that would replace an input or image resource
+  now exits 1 with only its message, like other runtime failures, instead of exit 2 with the
+  usage text; the check also folds case, so `NOTES.md` cannot replace `notes.md`.
 
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
