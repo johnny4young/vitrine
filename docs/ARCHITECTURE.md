@@ -25,6 +25,24 @@ checks the CLI source roots, while compilation proves it links the shared public
 Moving a source file is not evidence of faster runtime or lower memory: those claims
 require measurements, and this change does not make either claim.
 
+## CLI annotation boundary
+
+`CLIArgumentSchema` remains the source of public flag identity, aliases, availability,
+and help. `CLIArgumentParser` consumes tokens in argv order and resolves syntax using
+its existing value validators. `CLIAnnotationArguments` owns only invocation-local
+annotation state, modifier compatibility, and projection into `CLIOptions`.
+
+Point annotations share position/style rules; geometric groups keep their own points
+and final per-kind style. Repeated marks retain order within each kind, while a later
+style flag applies to every mark of that kind, including earlier marks. The render
+model keeps its existing canonical order: callout, counter, arrows, lines, rectangles,
+highlighters, then blur boxes. Blur remains visual only and does not sanitize sidecars.
+
+Annotation semantic validation runs at the same position in the broader compatibility
+pass and in the same kind order, so multiple invalid options keep their established
+first diagnostic. Token syntax errors still occur before that pass. No CLI flag, default,
+output type, recipe precedence, entitlement boundary, or supported API changes.
+
 ## Product and distribution boundaries
 
 Vitrine has one open-core product contract, not separate demo and paid render engines.
