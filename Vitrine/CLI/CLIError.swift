@@ -27,6 +27,10 @@ nonisolated enum CLIError: Error, Equatable {
     case invalidValue(flag: String, value: String)
     /// Two otherwise-valid options were combined in a way that would be ambiguous.
     case incompatibleOptions(String)
+    /// A planned output would replace an input, an image resource, or another output of
+    /// the same run. Found against the filesystem rather than in the command line, so it
+    /// exits 1 like other runtime failures and does not print the usage text.
+    case outputConflict(String)
     /// The input source file could not be read.
     case inputUnreadable(path: String)
     /// The input source file or stdin exceeds the shared 5 MB source limit.
@@ -98,6 +102,8 @@ nonisolated enum CLIError: Error, Equatable {
         case .invalidValue(let flag, let value):
             "\"\(value)\" is not a valid value for \"\(flag)\"."
         case .incompatibleOptions(let message):
+            message
+        case .outputConflict(let message):
             message
         case .inputUnreadable(let path):
             "Could not read the input file at \"\(path)\"."

@@ -65,6 +65,10 @@ can never drift.
 
 ### Fixed
 
+- A `render`/`multi-size` output or sidecar that would replace an input or image resource
+  now exits 1 with only its message, like other runtime failures, instead of exit 2 with the
+  usage text; the check also folds case, so `NOTES.md` cannot replace `notes.md`.
+
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
   features in English and Spanish.

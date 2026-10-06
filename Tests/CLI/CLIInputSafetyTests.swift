@@ -43,6 +43,37 @@ struct CLIInputSafetyTests: CLITestSupport {
         #expect(try String(contentsOfFile: input, encoding: .utf8) == "# Notes\n")
     }
 
+    @Test func overwritingTheSourceIsARuntimeConflictNotAUsageError() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let input = try writeInput("# Notes\n", named: "notes.md", in: directory)
+        let options = try CLIArguments.parse(["render", input, "--out", input])
+
+        do {
+            _ = try CLIRenderer.run(options)
+            Issue.record("Expected the output conflict to be refused")
+        } catch let error as CLIError {
+            guard case .outputConflict = error else {
+                Issue.record("Unexpected error: \(error)")
+                return
+            }
+            #expect(!error.isUsageError)
+            #expect(error.exitCode == 1)
+        }
+        #expect(try String(contentsOfFile: input, encoding: .utf8) == "# Notes\n")
+    }
+
+    @Test func outputDifferingFromTheSourceOnlyByCaseIsRefused() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let input = try writeInput("# Notes\n", named: "notes.md", in: directory)
+        let output = directory.appendingPathComponent("NOTES.md").path
+        let options = try CLIArguments.parse(["render", input, "--out", output])
+
+        #expect(throws: CLIError.self) { _ = try CLIRenderer.run(options) }
+        #expect(try String(contentsOfFile: input, encoding: .utf8) == "# Notes\n")
+    }
+
     @Test func outputCannotOverwriteTheBackgroundImage() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -214,7 +245,7 @@ struct CLIInputSafetyTests: CLITestSupport {
         let runtime: [CLIError] = [
             .proRequired, .writeFailed(path: "/x"), .renderTooLarge,
             .batchSkipped(rendered: 1, skipped: 1), .editorOpenFailed,
-            .inputTooLarge(path: "/x"),
+            .inputTooLarge(path: "/x"), .outputConflict("conflict"),
         ]
         for error in runtime {
             #expect(!error.isUsageError)
