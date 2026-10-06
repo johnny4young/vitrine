@@ -105,7 +105,8 @@ enum CLIBatchRenderer {
         // `.md`/`.txt`/`.html` sidecar can land exactly on file B. Checked against every
         // discovered input, not just the current one, and before the render loop so a
         // rejected run leaves the folder untouched.
-        let plannedOutputs = Array(outputURLs.values)
+        // Ordered by source key so the first reported conflict is the same on every run.
+        let plannedOutputs = outputURLs.keys.sorted().compactMap { outputURLs[$0] }
         try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
             beside: plannedOutputs, options: options, inputs: files)
         try guardReportTargets(
@@ -240,7 +241,7 @@ enum CLIBatchRenderer {
             guard let path, !path.isEmpty else { continue }
             let report = URL(fileURLWithPath: path)
             guard claimed.insert(filesystemKey(canonicalPath(report))).inserted else {
-                throw CLIError.incompatibleOptions(
+                throw CLIError.outputConflict(
                     "The batch report at \"\(report.path)\" conflicts with an input resource "
                         + "or another output. Choose distinct paths for resources and outputs.")
             }
