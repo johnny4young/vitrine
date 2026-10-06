@@ -60,14 +60,47 @@ nonisolated enum BatchOutputFiles {
         try data.write(to: payload)
         try beforeCommit?()
         try Task.checkCancellation()
-        let result = payload.withUnsafeFileSystemRepresentation { source in
+        let status: Int32 = payload.withUnsafeFileSystemRepresentation { source in
             destination.withUnsafeFileSystemRepresentation { target in
-                guard let source, let target else { return Int32(-1) }
-                return renamex_np(source, target, UInt32(RENAME_EXCL))
+                guard let source, let target else { return EINVAL }
+                return renamex_np(source, target, UInt32(RENAME_EXCL)) == 0 ? 0 : errno
             }
         }
-        guard result == 0 else {
+        switch status {
+        case 0:
+            return
+        case ENOTSUP, EOPNOTSUPP:
+            // Some network and FAT-family volumes refuse `RENAME_EXCL`. Fall back to an
+            // exclusive create, which still never replaces or follows an existing name.
+            try publishByExclusiveCreate(data, to: destination)
+        default:
+            throw POSIXError(POSIXErrorCode(rawValue: status) ?? .EIO)
+        }
+    }
+
+    /// Non-replacing publication for volumes without exclusive rename: `O_EXCL` refuses an
+    /// existing name (including a symlink, via `O_NOFOLLOW`), and a failed write removes
+    /// only the file this call created. Unlike the rename path, the file is visible while
+    /// it is written, so it is used only when the volume cannot rename exclusively.
+    static func publishByExclusiveCreate(_ data: Data, to destination: URL) throws {
+        let descriptor: Int32 = destination.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return -1 }
+            let flags = O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC
+            return Darwin.open(path, flags, 0o644)
+        }
+        guard descriptor >= 0 else {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+        }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        do {
+            try handle.write(contentsOf: data)
+            try handle.close()
+        } catch {
+            try? handle.close()
+            _ = destination.withUnsafeFileSystemRepresentation { path in
+                path.map { Darwin.unlink($0) }
+            }
+            throw error
         }
     }
 

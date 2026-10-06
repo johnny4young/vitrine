@@ -87,6 +87,29 @@ struct BatchOutputFilesTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path) == ["image.png"])
     }
 
+    @Test func exclusiveCreateFallbackNeverReplacesOrFollowsAName() throws {
+        let directory = try directory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = directory.appendingPathComponent("image.png")
+        let bytes = Data("complete image".utf8)
+
+        try BatchOutputFiles.publishByExclusiveCreate(bytes, to: output)
+        #expect(try Data(contentsOf: output) == bytes)
+
+        #expect(throws: (any Error).self) {
+            try BatchOutputFiles.publishByExclusiveCreate(Data("replacement".utf8), to: output)
+        }
+        #expect(try Data(contentsOf: output) == bytes)
+
+        let link = directory.appendingPathComponent("link.png")
+        let target = directory.appendingPathComponent("target.png")
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+        #expect(throws: (any Error).self) {
+            try BatchOutputFiles.publishByExclusiveCreate(bytes, to: link)
+        }
+        #expect(!FileManager.default.fileExists(atPath: target.path))
+    }
+
     @Test func cancellationBeforeCommitPublishesNothing() throws {
         let directory = try directory()
         defer { try? FileManager.default.removeItem(at: directory) }

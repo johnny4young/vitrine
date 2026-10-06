@@ -1196,6 +1196,7 @@ before dismissing, so an inconsistent writer result cannot silently claim succes
 Preset and carousel exports plan all image/sidecar names together before rendering,
 allocating numeric suffixes around occupied names. Complete files are staged privately
 and published with exclusive rename, preserving destinations created after planning.
+Volumes that refuse exclusive rename fall back to an exclusive, non-following create.
 A requested nonempty sidecar failure leaves its completed image in place and reports
 an incomplete export. Cancellation stops further admission and publication; already
 committed files remain available. The
