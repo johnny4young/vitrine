@@ -53,6 +53,9 @@ can never drift.
 
 ### Fixed
 
+- Patch the website build toolchain: `sharp` 0.35.5 (GHSA-wq5f-xc86-pv6w), and overrides for
+  `http-cache-semantics` 4.3.0 and `source-map-js` 1.2.2. `npm audit` for `site/` is clean.
+
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
   features in English and Spanish.
