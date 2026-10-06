@@ -4,6 +4,9 @@ import Foundation
 /// Reads one regular-file descriptor without retaining more than `limit + 1` bytes.
 /// Rejects observed size, modification-time or change-time changes during the read.
 /// Metadata checks do not guarantee a snapshot against arbitrary uncooperative writers.
+/// Change time also moves for metadata-only events (extended attributes, permissions),
+/// so a read racing one of those fails closed as `unreadable`; callers may simply retry.
+/// Cancellation between chunks surfaces as `CancellationError`, never as a read error.
 ///
 /// Callers remain responsible for security-scoped access and for translating these
 /// transport errors into their domain-specific messages. Opening with `O_NONBLOCK`
