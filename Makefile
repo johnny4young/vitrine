@@ -407,7 +407,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: sanitizer-check test-lanes-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: documentation-ui-profile-check sanitizer-check test-lanes-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
@@ -449,3 +449,7 @@ test-web-capture: project web-capture-check
 	python3 scripts/web-capture-fixture-test.py
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/test-web-capture.py \
 		--output "$(WEB_CAPTURE_OUTPUT)" $(WEB_CAPTURE_HOST_FLAGS)
+
+.PHONY: documentation-ui-profile-check
+documentation-ui-profile-check:
+	python3 scripts/summarize-documentation-ui.py --self-test
