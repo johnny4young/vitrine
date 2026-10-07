@@ -55,3 +55,23 @@ The performance lane's compile/link overhead is a separate hypothesis. Inspect t
 actual build graph and configuration differences before proposing reuse. Existing
 lane-partition checks already prevent duplicated performance/golden coverage work;
 that existing behavior is not a new optimization.
+
+## Already-ready folder-panel checks
+
+The folder-panel journey checks the current `exists`/`isHittable` state before
+starting XCTest's polling waits. The same three assertions and five-second
+fallback waits remain: the real open panel must exist, its scoped OK button must
+exist, and that button must be hittable. Export still uses the native button after
+Go to Folder keyboard navigation and path entry; no pasteboard shortcut, seeded
+panel location, or programmatic export replaces that interaction.
+
+This avoids invoking the polling wait when readiness is already established.
+It is a candidate optimization, not a guaranteed duration reduction: extra
+accessibility queries can have a cost, especially when readiness is delayed.
+A focused control test verifies that already-ready state avoids the fallback,
+delayed readiness returns its successful fallback result, and a missing control
+retains the fallback failure. These are synthetic readiness controls, not a
+simulated delayed or missing native panel.
+Use the identical eight-phase markers and matched-run protocol above to determine
+its effect. A single candidate CI run versus a historical baseline is diagnostic;
+it cannot establish a reproducible improvement or quantify workflow savings.
