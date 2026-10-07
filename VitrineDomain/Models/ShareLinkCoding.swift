@@ -38,7 +38,8 @@ public enum Zlib {
             stream.deallocate()
         }
 
-        let bufferSize = min(64 * 1024, max(maxOutputBytes + 1, 1))
+        // Clamp before adding the sentinel byte so Int.max remains a valid ceiling.
+        let bufferSize = min(maxOutputBytes, 64 * 1024 - 1) + 1
         let destination = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
         defer { destination.deallocate() }
 
