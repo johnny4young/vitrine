@@ -68,6 +68,11 @@ can never drift.
 
 ### Fixed
 
+- Reject batch report paths that collide with images, sidecars, input resources, or each other before
+  writing outputs. `--no-overwrite` protects reports too, and skipped inputs remain
+  protected from sidecar replacement.
+- Refuse to replace an existing in-input report destination unless it is a bounded,
+  structurally matching prior report; preserve repeat runs and empty reports.
 - A `render`/`multi-size` output or sidecar that would replace an input or image resource
   now exits 1 with only its message, like other runtime failures, instead of exit 2 with the
   usage text; the check also folds case, so `NOTES.md` cannot replace `notes.md`.

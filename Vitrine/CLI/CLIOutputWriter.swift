@@ -55,21 +55,33 @@ enum CLIOutputWriter {
         options: CLIOptions,
         inputs: [URL]
     ) throws {
+        try guardOutputsDoNotOverwriteInputs(beside: [imageURL], options: options, inputs: inputs)
+    }
+
+    /// Canonicalize inputs once for a whole batch rather than resolving every
+    /// source again for each image in the output plan.
+    static func guardOutputsDoNotOverwriteInputs(
+        beside imageURLs: [URL],
+        options: CLIOptions,
+        inputs: [URL]
+    ) throws {
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
         let claimed = Set((inputs + resources).map(claimKey))
         guard !claimed.isEmpty else { return }
-        if claimed.contains(claimKey(imageURL)) {
-            throw CLIError.outputConflict(
-                "The output would overwrite the input file at \"\(imageURL.path)\". "
-                    + "Choose an --out path that differs from the source.")
-        }
-        for sidecar in sidecarURLs(options, beside: imageURL)
-        where claimed.contains(claimKey(sidecar)) {
-            throw CLIError.outputConflict(
-                "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
-                    + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
-                    + "source, or drop the sidecar flag.")
+        for imageURL in imageURLs {
+            if claimed.contains(claimKey(imageURL)) {
+                throw CLIError.outputConflict(
+                    "The output would overwrite the input file at \"\(imageURL.path)\". "
+                        + "Choose an --out path that differs from the source.")
+            }
+            for sidecar in sidecarURLs(options, beside: imageURL)
+            where claimed.contains(claimKey(sidecar)) {
+                throw CLIError.outputConflict(
+                    "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
+                        + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
+                        + "source, or drop the sidecar flag.")
+            }
         }
     }
 
@@ -77,7 +89,7 @@ enum CLIOutputWriter {
     /// `notes.MD` and a `notes.md` sidecar are one claimed file. Folding only decides
     /// whether a name is taken; on a case-sensitive volume it can refuse a distinct
     /// file that differs only by case, which fails closed instead of risking a source.
-    private static func claimKey(_ url: URL) -> String {
+    static func claimKey(_ url: URL) -> String {
         canonicalPath(url).precomposedStringWithCanonicalMapping.lowercased()
     }
 
