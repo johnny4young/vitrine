@@ -68,6 +68,7 @@ can never drift.
 
 ### Fixed
 
+- Live-file Reload catches a save that lands while the file is being read, without losing a later local draft.
 - Reject observed file changes during bounded reads, including same-length saves, instead of accepting mixed text.
 - Keep spaces and punctuation in the selected CLI installation folder literal in the copied Terminal command.
 - Reject batch report paths that collide with images, sidecars, input resources, or each other before
