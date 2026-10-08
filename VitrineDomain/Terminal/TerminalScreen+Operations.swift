@@ -111,22 +111,25 @@ extension TerminalScreen {
     }
 
     /// Repairs a row after an operation shifts or truncates cells so a wide head is always
-    /// immediately followed by its continuation, and a continuation is never headless.
+    /// immediately followed by its continuation, and a continuation is never headless. An
+    /// orphaned half erases with the pen background, like the cells the operation itself
+    /// left behind, so a right-margin truncation leaves no unstyled hole in a colored line.
     mutating func repairWideClusters(row: Int) {
         guard rows.indices.contains(row), !rows[row].isEmpty else { return }
+        let fill = erasedCell
         var col = 0
         while col < rows[row].count {
             if case .continuation = rows[row][col].content {
                 if col == 0 || cellDisplayWidth(rows[row][col - 1]) != 2 {
-                    rows[row][col] = .blank
+                    rows[row][col] = fill
                 }
             } else if cellDisplayWidth(rows[row][col]) == 2 {
                 if col + 1 >= rows[row].count {
-                    rows[row][col] = .blank
+                    rows[row][col] = fill
                 } else if case .continuation = rows[row][col + 1].content {
                     col += 1
                 } else {
-                    rows[row][col] = .blank
+                    rows[row][col] = fill
                 }
             }
             col += 1
@@ -243,7 +246,11 @@ extension TerminalScreen {
         let n = min(max(1, count), columns - cursorCol)
         guard n > 0 else { return }
         padRow(cursorRow, to: cursorCol)
-        blankWideCluster(row: cursorRow, col: cursorCol)
+        // Inserting inside a wide glyph splits it; inserting at its head shifts both
+        // cells together, so the glyph must survive unless the margin truncates it.
+        if case .continuation = rows[cursorRow][cursorCol].content {
+            blankWideCluster(row: cursorRow, col: cursorCol)
+        }
         rows[cursorRow].insert(contentsOf: Array(repeating: erasedCell, count: n), at: cursorCol)
         if rows[cursorRow].count > columns {
             rows[cursorRow].removeLast(rows[cursorRow].count - columns)
