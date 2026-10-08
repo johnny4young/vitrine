@@ -33,6 +33,8 @@ struct EditorInspectorView: View {
 
     /// Presents the PRO paywall when the user reaches for a gated image frame (browser).
     @State private var showingFramePaywall = false
+    /// The last scan's outcome, so a scan that finds nothing still answers.
+    @State private var secretScanSummary: String?
 
     var body: some View {
         ScrollView {
@@ -121,28 +123,26 @@ struct EditorInspectorView: View {
                                     .accessibilityIdentifier("diff-decorations-toggle")
                             }
                             InspectorRow(label: Text("Redact secrets")) {
-                                if settings.style.redactedLineRanges.isEmpty {
-                                    Button("Scan") {
-                                        // Scan `sidecarText`, not `code`: for a terminal capture
-                                        // the canvas renders the ANSI-resolved screen, so the raw
-                                        // bytes' line numbers would map to the wrong rows (and
-                                        // could leave a secret visible). For other languages
-                                        // `sidecarText == code`.
-                                        let lines = SecretScanner.secretLines(
-                                            in: settings.config.sidecarText)
-                                        settings.style.redactedLineRanges =
-                                            LineHighlight.normalize(
-                                                lines.map { $0...$0 })
+                                HStack(spacing: 6) {
+                                    Button("Scan", action: scanForSecrets)
+                                        .help(
+                                            "Remove lines that look like API keys, tokens, or passwords from images and exported text."
+                                        )
+                                        .disabled(settings.documentIsEmpty)
+                                        .accessibilityLabel("Scan for secrets")
+                                        .accessibilityIdentifier("redact-secrets-button")
+                                    if !settings.style.redactedLineRanges.isEmpty {
+                                        Button("Clear") { settings.style.redactedLineRanges = [] }
+                                            .accessibilityLabel("Clear redactions")
+                                            .accessibilityIdentifier("clear-redactions-button")
                                     }
-                                    .help(
-                                        "Remove lines that look like API keys, tokens, or passwords from images and exported text."
-                                    )
-                                    .disabled(settings.documentIsEmpty)
-                                    .accessibilityIdentifier("redact-secrets-button")
-                                } else {
-                                    Button("Clear") { settings.style.redactedLineRanges = [] }
-                                        .accessibilityIdentifier("clear-redactions-button")
                                 }
+                            }
+                            if let secretScanSummary {
+                                Text(verbatim: secretScanSummary)
+                                    .font(.system(size: VitrineTokens.FontSize.caption))
+                                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                                    .accessibilityIdentifier("secret-scan-summary")
                             }
                         }
                     }
@@ -177,6 +177,8 @@ struct EditorInspectorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
+        .onChange(of: settings.documentGeneration) { secretScanSummary = nil }
+        .onChange(of: settings.style.redactedLineRanges.isEmpty) { secretScanSummary = nil }
         .sheet(isPresented: $showingFramePaywall) {
             PaywallSheet(feature: .advancedFrames, entitlements: entitlements)
         }
@@ -191,53 +193,22 @@ struct EditorInspectorView: View {
     /// primary window). Without this, an inspector tweak reads as "the default", or a
     /// Settings change reads as "should have changed my open image".
     private var scopeNote: some View {
-        Text("These style this capture. New captures start from the default in Settings ▸ Style.")
-            .font(.system(size: VitrineTokens.FontSize.caption))
-            .foregroundStyle(VitrineTokens.Text.tertiary)
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityIdentifier("inspector-scope-note")
+        Text(
+            "These controls style this capture. New captures start from the default in Settings ▸ Style."
+        )
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .foregroundStyle(VitrineTokens.Text.tertiary)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityIdentifier("inspector-scope-note")
     }
 
-    /// Background: the gradient preset swatches plus the dashed "+" leading to
-    /// the custom kinds. The kind picker and per-kind controls appear only once
-    /// the background is no longer a stock gradient, keeping the section as
-    /// small as the design's by default.
+    /// Background: the shared preset swatches, with the kind picker and per-kind
+    /// controls once the background is no longer a stock gradient.
     private var backgroundSection: some View {
         InspectorSection(title: Text("Background")) {
-            ChipScroll(topPadding: 2, bottomPadding: 6) {
-                ForEach(GradientPreset.allCases) { preset in
-                    GradientSwatch(
-                        preset: preset, isSelected: selectedGradientPreset == preset, size: 28
-                    ) {
-                        settings.style.background = .gradient(preset)
-                    }
-                }
-                CustomBackgroundSwatch(size: 28) {
-                    settings.style.background = BackgroundKind.solid.makeDefault(
-                        from: settings.style.background, imageStore: .container)
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Background")
-            .accessibilityIdentifier("inspector-background-swatches")
-
-            if selectedGradientPreset == nil {
-                InspectorRow(label: Text("Kind")) {
-                    TokenSegmentedPicker(
-                        options: [
-                            (BackgroundKind.gradient, Text("Gradient")),
-                            (.customGradient, Text("Custom")),
-                            (.solid, Text("Solid")),
-                            (.image, Text("Image")),
-                            (.transparent, Text("Transparent")),
-                        ],
-                        selection: backgroundKindBinding
-                    )
-                    .accessibilityLabel("Kind")
-                    .accessibilityIdentifier("background-kind-picker")
-                }
-                backgroundDetail
-            }
+            BackgroundControls(
+                background: $settings.style.background, layout: .inspector,
+                identifierPrefix: "inspector-")
         }
     }
 
@@ -292,6 +263,7 @@ struct EditorInspectorView: View {
                         prompt: Text(verbatim: "vitrineframe.app"),
                         text: $settings.style.windowTitle
                     )
+                    .accessibilityLabel("Window title")
                     .accessibilityIdentifier("image-frame-title-field")
                 }
             }
@@ -325,45 +297,38 @@ struct EditorInspectorView: View {
                     .accessibilityIdentifier("ligatures-toggle")
             }
             InspectorRow(label: Text("Font size")) {
-                valueSlider(
-                    "Font size", $settings.style.fontSize, in: 10...20, step: 1,
-                    identifier: "font-size-slider")
+                ValueSlider(
+                    label: "Font size", value: $settings.style.fontSize,
+                    range: SettingsDefaults.fontSizeRange,
+                    step: 1, identifier: "font-size-slider", width: 92)
             }
         }
     }
 
-    /// A slider with a trailing numeric readout, so the user can see (and target) the
-    /// current value instead of guessing from the knob position. The value is
-    /// hidden from VoiceOver because the slider already announces it.
-    @ViewBuilder
-    private func valueSlider(
-        _ label: LocalizedStringKey, _ value: Binding<Double>, in range: ClosedRange<Double>,
-        step: Double, identifier: String
-    ) -> some View {
-        HStack(spacing: 8) {
-            Slider(value: value, in: range, step: step)
-                .frame(width: 92)
-                .accessibilityLabel(label)
-                .accessibilityIdentifier(identifier)
-            Text(verbatim: "\(Int(value.wrappedValue.rounded()))")
-                .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
-                .foregroundStyle(VitrineTokens.Text.tertiary)
-                .frame(width: 22, alignment: .trailing)
-                .accessibilityHidden(true)
-        }
+    /// Scans `sidecarText`, not `code`: a terminal capture renders the ANSI-resolved
+    /// screen, so raw line numbers would redact the wrong rows.
+    private func scanForSecrets() {
+        let lines = SecretScanner.secretLines(in: settings.config.sidecarText)
+        settings.style.redactedLineRanges = LineHighlight.normalize(lines.map { $0...$0 })
+        secretScanSummary =
+            lines.isEmpty
+            ? String(localized: "No secrets found")
+            : String(localized: "\(lines.count) lines redacted")
     }
 
     private var canvasSection: some View {
         InspectorSection(title: Text("Canvas")) {
             InspectorRow(label: Text("Padding")) {
-                valueSlider(
-                    "Padding", $settings.style.padding, in: 16...64, step: 4,
-                    identifier: "padding-slider")
+                ValueSlider(
+                    label: "Padding", value: $settings.style.padding,
+                    range: SettingsDefaults.paddingRange,
+                    step: 4, identifier: "padding-slider", width: 92)
             }
             InspectorRow(label: Text("Corner radius")) {
-                valueSlider(
-                    "Corner radius", $settings.style.cornerRadius, in: 0...32, step: 2,
-                    identifier: "corner-radius-slider")
+                ValueSlider(
+                    label: "Corner radius", value: $settings.style.cornerRadius,
+                    range: SettingsDefaults.cornerRadiusRange,
+                    step: 2, identifier: "corner-radius-slider", width: 92)
             }
             // The code card's macOS chrome. For a beautified image the Frame section
             // owns the window/browser chrome, so these rows are hidden there.
@@ -375,12 +340,13 @@ struct EditorInspectorView: View {
                         .accessibilityIdentifier("window-chrome-toggle")
                 }
                 if settings.style.showChrome {
-                    InspectorRow(label: Text("Title")) {
+                    InspectorRow(label: Text("Window title")) {
                         HStack(spacing: 6) {
                             TokenTextField(
                                 prompt: Text(verbatim: "ContentView.swift"),
                                 text: $settings.style.windowTitle
                             )
+                            .accessibilityLabel("Window title")
                             .accessibilityIdentifier("window-title-field")
                             WindowTitleSuggestionButton(settings: settings)
                         }
@@ -395,9 +361,10 @@ struct EditorInspectorView: View {
             }
             if settings.style.showShadow {
                 InspectorRow(label: Text("Shadow depth")) {
-                    valueSlider(
-                        "Shadow depth", $settings.style.shadowRadius, in: 0...40, step: 2,
-                        identifier: "shadow-radius-slider")
+                    ValueSlider(
+                        label: "Shadow depth", value: $settings.style.shadowRadius,
+                        range: SettingsDefaults.shadowRadiusRange,
+                        step: 2, identifier: "shadow-radius-slider", width: 92)
                 }
             }
         }
@@ -502,68 +469,13 @@ struct EditorInspectorView: View {
             ?? "Custom: your own size and style, with no destination preset applied."
     }
 
-    private var selectedGradientPreset: GradientPreset? {
-        if case .gradient(let preset) = settings.style.background { return preset }
-        return nil
-    }
-
-    /// The active background kind; switching seeds a sensible default from the
-    /// current style, mirroring the Settings pane.
-    private var backgroundKindBinding: Binding<BackgroundKind> {
-        Binding(
-            get: { BackgroundKind(settings.style.background) },
-            set: {
-                settings.style.background = $0.makeDefault(
-                    from: settings.style.background, imageStore: .container)
-            }
-        )
-    }
-
-    /// The controls for the active non-preset background kind.
-    @ViewBuilder private var backgroundDetail: some View {
-        switch settings.style.background {
-        case .gradient:
-            EmptyView()
-        case .customGradient(let gradient):
-            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
-                CustomGradientEditor(
-                    gradient: Binding(
-                        get: { gradient },
-                        set: { settings.style.background = .customGradient($0) }))
-            }
-        case .solid(let color):
-            InspectorRow(label: Text("Color")) {
-                ColorPicker(
-                    "Color",
-                    selection: Binding(
-                        get: { color.color },
-                        set: { settings.style.background = .solid(RGBAColor($0)) }),
-                    supportsOpacity: true
-                )
-                .labelsHidden()
-                .accessibilityIdentifier("background-solid-color")
-            }
-        case .image(let image):
-            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
-                ImageBackgroundEditor(
-                    image: Binding(
-                        get: { image }, set: { settings.style.background = .image($0) }),
-                    imageStore: .container)
-            }
-        case .transparent:
-            Text("Exports with a real transparent (alpha) background.")
-                .font(.system(size: VitrineTokens.FontSize.caption))
-                .foregroundStyle(VitrineTokens.Text.tertiary)
-        }
-    }
-
     /// Whether the selected font ships programming ligatures, gating the toggle
     /// so it reads as inert for a font that has none.
     private var fontHasLigatures: Bool {
         CodeFont.hasLigatures(settings.style.fontName)
     }
 
-    private var ligatureHelp: String {
+    private var ligatureHelp: LocalizedStringKey {
         fontHasLigatures
             ? "Render programming ligatures (->, =>, !=) for this font."
             : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."

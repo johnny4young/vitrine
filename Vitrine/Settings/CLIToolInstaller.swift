@@ -116,7 +116,33 @@ enum CLIToolInstaller {
     /// The result of an install attempt into a powerbox-granted folder.
     enum InstallOutcome: Equatable {
         case installed(URL)
-        case failed(String)
+        case failed(FailureReason)
+    }
+
+    /// Why an install failed, so the alert offers the Terminal fallback only when an
+    /// administrator could actually complete it.
+    enum FailureReason: Equatable {
+        /// A regular item named `vitrine` is in the way; `sudo ln -s` fails too.
+        case existingItem
+        /// The folder refused the write, which `sudo` can get past.
+        case permission
+
+        var needsAdministrator: Bool { self == .permission }
+
+        var message: String {
+            switch self {
+            case .existingItem:
+                String(
+                    localized:
+                        "A regular item named vitrine already exists in the selected folder. Move it before installing the command."
+                )
+            case .permission:
+                String(
+                    localized:
+                        "Couldn't safely update the command link in the selected folder. System folders need an administrator: run the copied command in Terminal instead."
+                )
+            }
+        }
     }
 
     /// Links the canonical `target` as `vitrine` inside `directory` (a folder the user
@@ -137,17 +163,10 @@ enum CLIToolInstaller {
         do {
             destinationState = try state(of: link)
         } catch {
-            return .failed(installFailureMessage)
+            return .failed(.permission)
         }
 
-        guard destinationState != .nonSymlink else {
-            return .failed(
-                String(
-                    localized:
-                        "A regular item named vitrine already exists in the selected folder. Move it before installing the command."
-                )
-            )
-        }
+        guard destinationState != .nonSymlink else { return .failed(.existingItem) }
 
         do {
             try fileManager.createSymbolicLink(
@@ -182,7 +201,7 @@ enum CLIToolInstaller {
             }
             return .installed(link)
         } catch {
-            return .failed(installFailureMessage)
+            return .failed(.permission)
         }
     }
 
@@ -190,10 +209,6 @@ enum CLIToolInstaller {
         case missing
         case symlink
         case nonSymlink
-    }
-
-    private static var installFailureMessage: String {
-        String(localized: "Couldn't safely update the command link in the selected folder.")
     }
 
     private static var currentArchitecture: HostArchitecture {

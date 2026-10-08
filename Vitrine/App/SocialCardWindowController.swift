@@ -18,7 +18,7 @@ final class SocialCardWindowController: NSObject {
     static let shared = SocialCardWindowController(
         environment: .shared,
         feedback: .live,
-        presentation: .live)
+        presentation: .live(environment: .shared, feedback: .live))
 
     /// The data graph supplied to the window and its SwiftUI root.
     let environment: AppEnvironment
@@ -68,7 +68,7 @@ final class SocialCardWindowController: NSObject {
         let window = self.window ?? makeWindow()
         self.window = window
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     /// Builds the AppKit window hosting a ``SocialCardEditorView`` composed from this
@@ -98,14 +98,7 @@ final class SocialCardWindowController: NSObject {
         // frame, cap the default to the screen it opens on — a wide default can
         // overhang a small display (e.g. 1024×768) and strand the trailing controls —
         // then center it. A window with a saved frame keeps the restored position.
-        window.setFrameAutosaveName(Self.frameAutosaveName)
-        if !window.setFrameUsingName(Self.frameAutosaveName) {
-            if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
-                window.setFrame(
-                    WindowFrameSolver.clamp(window.frame, into: visible), display: false)
-            }
-            window.center()
-        }
+        WindowPlacement.placeNew(window, autosaveName: Self.frameAutosaveName)
         return window
     }
 }

@@ -19,13 +19,13 @@ extension TerminalScreen {
     /// reconstruct, rather than scrolling output the line renderer should keep verbatim.
     ///
     /// Triggers on the unambiguous full-screen markers: entering the alternate screen
-    /// (`?1049h`/`?47h`/`?1047h`), an erase-display (`ED`), absolute cursor positioning
-    /// (`CUP` to a non-home cell, or `VPA`), or a scroll region (`DECSTBM`). Plain colored
-    /// output (`git`, `ls`, a test run) carries only SGR — and a progress bar only
-    /// `\r`/`EL`/`CHA` — so none of them trip this and they stay in line mode. `EL` (erase
-    /// *line*) and `CHA` (cursor to a column) are deliberately not triggers: they are the
-    /// progress-bar idiom, which line mode collapses itself in `ANSIRenderer.normalize`
-    /// alongside `\r`.
+    /// (`?1049h`/`?47h`/`?1047h`), a repeated whole-display erase (`ED 2`), absolute
+    /// cursor positioning (`CUP` to a non-home cell, or `VPA`), or a scroll region
+    /// (`DECSTBM`). Plain colored output (`git`, `ls`, a test run) carries only SGR — and
+    /// a progress bar only `\r`/`EL`/`CHA` — so none of them trip this and they stay in
+    /// line mode. `EL` (erase *line*) and `CHA` (cursor to a column) are deliberately not
+    /// triggers: they are the progress-bar idiom, which line mode collapses itself in
+    /// `ANSIRenderer.normalize` alongside `\r`.
     public static func usesScreenAddressing(_ text: String) -> Bool {
         guard ANSIParser.containsANSI(text) else { return false }
         let scalars = Array(text.unicodeScalars)
@@ -49,7 +49,7 @@ extension TerminalScreen {
             }
             let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
             index = end
-            guard let finalByte else { break }
+            guard let finalByte else { continue }
             if params.hasPrefix("?") {
                 let modes = params.dropFirst().split(separator: ";").compactMap { Int($0) }
                 if finalByte == "h" || finalByte == "l",

@@ -170,26 +170,8 @@ struct WebSnapshotView {
         return cgImage
     }
 
-    /// The exact device-pixel dimensions a snapshot of `sourceSize` points renders
-    /// to at `scale`: each axis is `size × scale`, rounded up so fractional points
-    /// are never underestimated. This is the determinism guarantee the rendering
-    /// contract requires, isolated as pure arithmetic so it is assertable without a
-    /// web process. `(0, 0)` signals an invalid or over-budget bitmap.
-    static func pixelDimensions(
-        forSourceSize sourceSize: CGSize, scale: CGFloat
-    )
-        -> (width: Int, height: Int)
-    {
-        guard
-            let allocation = try? RenderBudget.export.allocation(
-                for: sourceSize, scale: scale)
-        else { return (0, 0) }
-        return (allocation.pixelWidth, allocation.pixelHeight)
-    }
-
-    /// Checked counterpart to `pixelDimensions`: applies the shared export budget
-    /// and preserves the exact rejection reason for callers that must fail before a
-    /// WebKit or Core Graphics allocation.
+    /// Applies the shared export budget and preserves the exact rejection reason for
+    /// callers that must fail before a WebKit or Core Graphics allocation.
     static func checkedAllocation(
         forSourceSize sourceSize: CGSize, scale: CGFloat
     ) throws(WebSnapshotError) -> RenderBudget.Allocation {

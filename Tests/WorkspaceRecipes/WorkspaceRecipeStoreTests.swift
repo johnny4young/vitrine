@@ -112,7 +112,8 @@ struct WorkspaceRecipeStoreTests {
         settings.config.code = "let original = true"
         settings.config.language = .swift
 
-        let resolved = store.applyRecipe(for: source, to: settings)
+        let resolved = store.applyRecipe(
+            for: source, to: settings, themes: CustomThemeStore(defaults: defaults))
 
         #expect(resolved?.recipe.name == "Workspace")
         #expect(settings.config.code == "let original = true")

@@ -27,6 +27,9 @@ can never drift.
 
 ### Changed
 
+- Make the first CLI capture free and self-contained, label paid automation explicitly,
+  and qualify editor-handoff instructions for the published v1.2.3 release.
+
 - Distinguish current-source privacy, history, shortcut, and free editor-handoff
   improvements from the published v1.2.3 download in the website and capability docs.
 
@@ -55,7 +58,28 @@ can never drift.
   UI tests compile in the job that executes them rather than in both platform jobs.
   Universal Release, coverage floors and strict visual qualification are unchanged.
 
+- The CLI reads standard input and files up to 5 MB and reports oversized input as such.
+  Usage errors exit with status 2 and print the usage; runtime errors exit 1 with only
+  the message. `--edit` refuses render-only options and carries `vgrab -w`; `--copy`
+  without `--out` accepts PNG only, and with `--out` copies the image it wrote.
+- Web Snapshot's network-quiet wait now waits for in-flight requests to settle. The
+  sign-in window supports popups and HTTP authentication and shows the site's host.
+- The editor inspector, Settings ▸ Style, and the social card share one background
+  control and slider, with ranges from the settings schema. Settings ▸ Style can now
+  edit corner radius, shadow depth, and the window title.
+- Window placement, atomic file export, and app activation each go through one shared
+  path; the comparison board window fits small screens.
+
 ### Fixed
+
+- Reject batch report paths that collide with images, sidecars, input resources, or each other before
+  writing outputs. `--no-overwrite` protects reports too, and skipped inputs remain
+  protected from sidecar replacement.
+- Refuse to replace an existing in-input report destination unless it is a bounded,
+  structurally matching prior report; preserve repeat runs and empty reports.
+- A `render`/`multi-size` output or sidecar that would replace an input or image resource
+  now exits 1 with only its message, like other runtime failures, instead of exit 2 with the
+  usage text; the check also folds case, so `NOTES.md` cannot replace `notes.md`.
 
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
@@ -130,6 +154,35 @@ can never drift.
   share links, including cursor movement, wrapping and alternate-screen output.
   Visible rich-text rows retain their colors; redacted share links never include the
   original ANSI transcript. Clarify that manual blur annotations are not source redaction.
+
+- Editing a custom theme keeps its identity, so defaults, recents, recipes, comparison
+  boards, and social cards keep resolving it instead of falling back to One Dark.
+- Carousel slides keep their highlights and redactions; carousel export is unavailable
+  for terminal captures and blur boxes. CRLF sources split into real rows, so
+  redaction, line numbers, formatting, and asciinema casts handle Windows line endings.
+- A watched file no longer refreshes over local marks. Pasting a whole document detects
+  its language before tidying, external replacements clear stale undo, and the Format
+  button finishes large documents.
+- Annotation color and size edits are their own undo steps, a blank callout leaves no
+  undo step, typing returns ⌘Z to the code editor, and Delete/Escape act on the
+  selected mark. Duplicate and Bring to Front/Send to Back work at every toolbar width.
+- The command palette offers exports only when there is something to export, includes
+  custom themes, and uses the inspector's labels. Only an explicit Diff pick turns on
+  diff bands, and recent languages appear first in the editor's picker.
+- Restored editor windows keep their destination, scale, format, and color profile.
+- The menu-bar panel returns focus to the previous app, stays on screen beside an edge
+  icon, announces capture results to VoiceOver, and shows a capture made this second as
+  "now". Relaunch to Apply no longer quits the app.
+- What's New shows its release notes in Spanish for Spanish users.
+- Settings, panels, errors, and window titles are localized; license activation explains
+  each failure; launch at login reflects the system's real state.
+- Full-screen captures keep the last frame of apps that clear with `ESC[H ESC[J` before
+  exiting, such as current lazygit releases.
+- The terminal emulator erases with the current background color, line mode follows
+  cursor-up redraws and `\r\r\n` output, foreground images honor their DPI, and the
+  secret scanner recognizes PGP keys, bearer headers, URL credentials, and `:=`/`=>`.
+- Social cards with image backgrounds export on an opaque matte, and raster PDFs use
+  point-sized pages.
 
 ### Added
 

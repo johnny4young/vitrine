@@ -70,9 +70,10 @@ native integrations.
 3. **Vitrine detects the content type** and picks the renderer:
    - **Code** → format + syntax highlight → a beautiful image, using the theme and
      style you preset in **Settings** (no questions asked).
-   - **URL** → open the Web Snapshot editor, which loads the requested page **locally**
-     with `WKWebView` on the direct-download build, after a first-use privacy disclosure
-     (see [Rendering architecture](docs/RENDERING.md)).
+   - **URL** → rendered as text by default. Turn on **Settings ▸ Input ▸ Treat copied
+     URLs as a screenshot target** (direct download) and a copied URL opens the Web
+     Snapshot editor instead, which loads the requested page **locally** with `WKWebView`
+     after a first-use privacy disclosure (see [Rendering architecture](docs/RENDERING.md)).
    - **HTML** → paste it into the Web Snapshot editor; pasted HTML renders offline and
      remote subresources are blocked.
 4. **Code captures** can land on your clipboard as a screenshot, ready to paste anywhere.
@@ -81,7 +82,8 @@ native integrations.
 Two modes, one engine:
 
 - **Quick mode** — trigger → detect → render code with your saved settings → clipboard.
-  URL input opens Web Snapshot instead of silently pretending it is a code capture.
+  With URL screenshots turned on in Settings ▸ Input, URL input opens Web Snapshot
+  instead of silently pretending it is a code capture.
 - **Editor mode** — opens a window with live preview and controls when you want to tweak before exporting.
 
 New here? [Create your first image from a synthetic Swift snippet](docs/FIRST-CAPTURE.md).
@@ -120,7 +122,7 @@ shasum -a 256 -c Vitrine-x.y.z.dmg.sha256
 
 The DMG embeds the direct-download `vitrine` CLI but does **not** add it to your
 PATH automatically. After launching the app, use **Settings ▸ General ▸ Command-line
-tool ▸ Install…**, or follow the manual link in [Command-line renderer](#command-line-renderer).
+tool ▸ Install…**, or create the manual link described in [Where the CLI comes from](#where-the-cli-comes-from).
 
 Choose Homebrew when you want the CLI on `PATH` automatically; choose the DMG when you
 prefer a direct install. Neither route starts a countdown or requires an account for the
@@ -134,8 +136,8 @@ git clone https://github.com/johnny4young/vitrine.git && cd vitrine && make
 
 See [Getting started](#getting-started) for the full developer setup.
 
-After launch, Vitrine lives in your **menu bar** (📸) — there is no Dock icon,
-by design.
+After launch, Vitrine lives in your **menu bar** (the `<>` viewfinder icon) — there is
+no Dock icon, by design.
 
 ## Gallery
 
@@ -179,7 +181,7 @@ on every release.
 
 | Annotated markup (counter, box, blur, arrow) | GitHub-style diff coloring |
 | --- | --- |
-| <img src="site/public/screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur/redaction box over a secret, an arrow, and a text callout" width="380"> | <img src="site/public/screenshots/diff.png" alt="A unified diff with + lines banded green and − lines banded red, GitHub-style, with line numbers" width="380"> |
+| <img src="site/public/screenshots/annotated.png" alt="A snapshot marked up with a numbered counter, a rectangle, a blur box, an arrow, and a text callout" width="380"> | <img src="site/public/screenshots/diff.png" alt="A unified diff with + lines banded green and − lines banded red, GitHub-style, with line numbers" width="380"> |
 
 *Full-screen TUI captures — `htop`, `lazygit`, and Neovim — are at the
 [top of this page](#vitrine); the themes above apply to them too.*
@@ -242,7 +244,7 @@ GitHub-style; window chrome, padding, corner radius, and shadow are all yours to
 ### Annotate
 
 A CleanShot-style palette in the title bar — arrows (straight and **curved**), lines,
-rectangles, text callouts, a highlighter, blur/redaction boxes, numbered counters,
+rectangles, text callouts, a highlighter, blur boxes (visual only), numbered counters,
 **emoji stickers**, a **spotlight** that dims everything but the regions you draw, and a
 **measure** ruler that labels the pixel span between two points. Draw them on the live
 preview, move and resize with handles, undo with ⌘Z; they are baked into the export.
@@ -299,7 +301,7 @@ Shortcuts and App Intents.
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
 - 🔄 **Living snapshots** — explicitly open one source file from the editor and its clean content refreshes after saves. Local edits are never overwritten: a changed disk version waits for **Reload** or **Keep**. The watcher is scoped to that window and is not restored or persisted. → [`docs/LIVING-SNAPSHOTS.md`](docs/LIVING-SNAPSHOTS.md).
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
-- ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight and curved), lines, rectangles, text callouts, a highlighter, blur/redaction boxes, numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
+- ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight and curved), lines, rectangles, text callouts, a highlighter, blur boxes (visual only — use **Redact secrets** to remove source text), numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
 - 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format, **HEIC** as a compact option for docs sites and wikis, and **AVIF** when the active ImageIO stack can encode it (Tahoe and newer). Shared preview/export budgets reject unsafe dimensions, pixel counts, or estimated working memory before bitmap allocation and return actionable errors. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
@@ -311,7 +313,7 @@ Shortcuts and App Intents.
 - 📝 **Developer-grade copy formats** — copy highlighted RTF/HTML, a standalone PNG data URI, or one self-contained Markdown block containing the image plus copyable fenced source. Redacted lines stay redacted in every text representation.
 - 🪧 **Social cards** — compose a 1200×630 card from your code (template, theme, background) to copy, save, or share, with **Instagram Story** and **GitHub banner** export presets.
 - 🌐 **Web snapshots** — render pasted **HTML** offline, or capture a **webpage** (direct-download build) after a first-use privacy disclosure. The requested page is fetched and rendered locally in WebKit; there is no remote screenshot service. Full-page output is clamped by total pixels and estimated working memory, and literal private-network subresources are blocked unless narrow loopback access is explicitly enabled. Pick **several viewports at once** (social · desktop · Full HD · mobile · custom) and Vitrine captures each in one pass, then composes them into a shareable **responsive board** — desktop, tablet, and phone side by side for responsive QA.
-- ⚙️ **Settings** — a six-pane sidebar window with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
+- ⚙️ **Settings** — a seven-pane sidebar window (General, Style, Brand Kit, Library, Input, Export, About) with a pinned live preview and chip pickers for themes, fonts, and backgrounds.
 - ✨ A coherent **design system** — one token layer (colors, gradients, spacing, type) drives every surface in light and dark, and the editor stage glows with the ambient color of your background.
 - 🕘 **Recents gallery** — a local history of quick captures, one click from the menu bar. Disable new writes without deleting existing captures; suspected secrets require a per-capture retention decision. → [`docs/HISTORY.md`](docs/HISTORY.md). Enter **Compare** to select two to four captures in order and compose a labelled, path-free board for before/after reviews or release notes. → [`docs/COMPARISON-BOARDS.md`](docs/COMPARISON-BOARDS.md).
 - 🚀 **First-run quick-start**, offline in-app **Help**, and a **What's New** window on upgrades.
@@ -447,8 +449,8 @@ make lint       # swift-format lint (CI gate)
 make icon       # regenerate the app icon set
 ```
 
-Then hit **▶︎ Run** in Xcode. Vitrine appears in the menu bar (📸). There is no Dock
-icon — that's intentional (`LSUIElement`).
+Then hit **▶︎ Run** in Xcode. Vitrine appears in the menu bar (the `<>` viewfinder
+icon). There is no Dock icon — that's intentional (`LSUIElement`).
 
 > **Why is `Vitrine.xcodeproj` not in the repo?** It's generated from
 > [`project.yml`](project.yml) so it can never drift from the spec and never causes
@@ -476,12 +478,17 @@ and option with copyable examples, practical workflows, and troubleshooting.
 | **Mac App Store** | Does not include the CLI because App Store apps do not distribute command-line tools on `PATH`. |
 | **Source checkout** | `make cli` builds the development binary in DerivedData, next to its required resources. |
 
+To link the DMG's binary by hand, use **Copy Command** in the same Settings row: it gives
+the exact command for your Mac, such as
+`sudo ln -s /Applications/Vitrine.app/Contents/MacOS/vitrine-cli /usr/local/bin/vitrine`.
+
 Basic `vgrab <command>` terminal capture is **free**. It uses a deliberately constrained
 CLI capability: terminal input can be copied or opened in the editor, with optional width
 and context, but it cannot opt into general styling, sidecars, file output, or batch work.
-`vitrine render INPUT --edit` is also free **only as an editor handoff**; adding a
-render, save, copy, or sidecar operation still needs PRO. General `render`, `multi-size`,
-`batch`, and `vpane` automation require an **activated direct-download PRO license**.
+`vitrine render INPUT --edit` is also free **only as an editor handoff**: it cannot be
+combined with `--out`, `--copy`, or sidecars, and rendering, saving, or copying an image
+is a separate PRO operation. General `render`, `multi-size`, `batch`, and `vpane`
+automation require an **activated direct-download PRO license**.
 Inspection commands — `--version`, `list`, and `recipe
 validate/show` — also remain available without PRO. A Debug source build can use
 `VITRINE_PRO_UNLOCK=1` for local QA; release builds ignore that variable.
@@ -552,7 +559,7 @@ eval "$(vitrine shell-init zsh)"
 
 vgrab npm test
 vgrab -e git status                 # finish styling or annotating in the editor
-vgrab --no-context env | sort       # deliberately omit project, branch, and command
+vgrab --no-context date             # output only: no project, branch, or command header
 ```
 
 See [Terminal capture](docs/TERMINAL.md) for `vpane`, full-screen TUIs, color-preserving
@@ -599,6 +606,12 @@ vitrine batch Sources --out docs/cards --recursive \
   --skipped-report docs/cards/skipped.json
 ```
 
+Reports cannot overlap rendered outputs or input image resources. Inside the input
+tree, an existing report must match the requested manifest/skipped-report structure
+and be at most 5 MiB before it can be replaced; empty report arrays are supported.
+This recognizes a report's structure, not its origin. Use separate output paths;
+`--no-overwrite` also preserves existing reports.
+
 **Redact before adding selectable source.** `--redact-secrets` and `--redact-lines`
 sanitize both the rendered rows and text/Markdown/HTML sidecars. A visual `--blur-box`
 changes pixels only and must not be used as a text-sanitization boundary.
@@ -615,8 +628,9 @@ than the original ANSI stream. An unredacted share link retains the original str
 Manual blur annotations change appearance only: use explicit line redaction or
 `--redact-secrets` when the source must not accompany an export.
 
-**Confidential clipboard exports:** enable **Settings → Export → Clipboard → Mark
-clipboard exports as confidential**, or pass `--copy --conceal-clipboard` to the CLI.
+**Confidential clipboard exports (current source):** enable **Settings → Export →
+Clipboard → Mark clipboard exports as confidential**, or pass
+`--copy --conceal-clipboard` to the CLI.
 Vitrine's export actions then add the cooperative `org.nspasteboard.ConcealedType`
 marker. Supporting clipboard managers can hide or exclude that content; other apps
 can still read it. This does not erase existing history, automatically expire the
@@ -628,8 +642,9 @@ by default. See the [clipboard marker convention](https://nspasteboard.org/).
 
 The CLI renders code, terminal content, and local images only. It does not capture URLs,
 call a hosted renderer, scan repositories for configuration, or require network, Screen
-Recording, or Accessibility permissions. Local background and watermark images are
-copied into invocation-scoped temporary storage and removed when the command exits.
+Recording, or Accessibility permissions. Local background images and `--image` inputs
+are copied into invocation-scoped temporary storage and removed when the command exits;
+watermark logos are read into memory only.
 
 For the complete option catalog, aliases, bounds, examples, and workarounds, use the
 [**Vitrine CLI documentation**](https://vitrineframe.app/cli). The installed binary
@@ -646,16 +661,16 @@ vitrine/
 │   ├── App/               # @main, AppDelegate, main menu, window controllers
 │   ├── MenuBar/           # helper coordination, AppKit popover + quick capture
 │   ├── Onboarding/        # first-run quick-start
-│   ├── Editor/            # code editor, ambient-light stage, inspector, language detection
-│   ├── Canvas/            # the SwiftUI views that become the exported image
-│   ├── Rendering/         # capture input → code render pipeline
+│   ├── Editor/            # code editor, ambient-light stage, inspector, annotations
+│   ├── Canvas/            # background editing controls
+│   ├── Comparison/        # session-only comparison boards
 │   ├── WebRendering/      # local URL/HTML snapshots (WebKit, on-device)
 │   ├── SocialCards/       # social-card composition
 │   ├── Export/            # ImageRenderer → capability-gated raster/PDF → clipboard / file / share
 │   ├── Recents/           # capture history + gallery window
 │   ├── Help/              # offline Help + What's New release notes
 │   ├── Feedback/          # capture HUD, notifications, diagnostics bundle
-│   ├── Settings/          # six-pane Settings window, presets, custom themes
+│   ├── Settings/          # seven-pane Settings window, presets, custom themes
 │   ├── Pro/               # open-core PRO gate: entitlements, StoreKit + license providers, Brand Kit, paywall
 │   ├── DesignSystem/      # token layer (VitrineTokens) + shared chrome components
 │   ├── AppIntents/        # Shortcuts / App Intents surface
@@ -664,10 +679,14 @@ vitrine/
 │   ├── CLI/               # render core shared with the CLI target
 │   ├── Models/, State/, Support/   # config, themes, persistence, logging
 │   └── Resources/         # assets, Info.plist, entitlements, String Catalog
+├── VitrineDomain/         # pure models, policies, terminal parsing, formatter, licensing
+├── VitrineRendering/      # shared canvas, render pipeline, export, terminal renderer
 ├── VitrineCLI/            # the `vitrine` command-line renderer target
 ├── VitrineMenuBarHelper/  # sandbox-inheriting, paint-only status-item owner
 ├── Tests/                 # Swift Testing unit suite + golden/gallery fixtures
 ├── UITests/               # XCTest UI smokes + opt-in screenshot tour
+├── DomainTests/, RenderingTests/, RepositoryTests/  # package and repository suites
+├── scripts/               # build, release, coverage, and validation helpers
 ├── site/                  # Astro static website (semantic HTML + vanilla CSS/JS)
 └── docs/                  # current product, architecture, privacy, and release docs
 ```
@@ -706,6 +725,8 @@ The published **v1.2.3 (build 38)** download predates the post-release review fi
   retrofit older stored captures or installed binaries.
 - Free editor-only `render --edit` handoff is a source improvement; general CLI image
   rendering and sidecars remain PRO.
+- `--conceal-clipboard`, `--alt-text`, and Export for Documentation are source
+  improvements.
 
 **v1.2.3 (build 38) remains the version identifier in source.** Public artifacts are published only
 through the vetted release workflow; the [Releases page](https://github.com/johnny4young/vitrine/releases)
@@ -721,8 +742,9 @@ also ships an in-app **What's New**.
 
 Bumping the version in source does not publish an app. Homebrew, the Sparkle appcast,
 and GitHub Release artifacts change through the separately authorized promotion of
-qualified candidate bytes. The website can deploy from main independently, so its
-source-feature descriptions are not proof of availability in a downloadable binary.
+qualified candidate bytes. The website validates every change on main but deploys to
+production only from a published stable tag, so its source-feature descriptions are not
+proof of availability in a downloadable binary.
 Anything added under **Unreleased** in the changelog belongs to a future build and is
 not part of the v1.2.3 release line.
 

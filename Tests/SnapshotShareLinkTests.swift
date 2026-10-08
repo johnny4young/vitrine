@@ -232,6 +232,23 @@ struct SnapshotShareLinkTests {
         #expect(decoded.highlightedLineRanges == [1...3])
     }
 
+    /// A link from a newer build may carry a kind this build does not know; only that mark
+    /// is dropped, never every annotation in the link.
+    @Test func anUnknownAnnotationKindDropsOnlyThatAnnotation() throws {
+        let json = try JSONEncoder().encode(SharedSnapshot(capturing: sampleConfig()))
+        var root = try #require(JSONSerialization.jsonObject(with: json) as? [String: Any])
+        var annotations = try #require(root["annotations"] as? [[String: Any]])
+        var future = try #require(annotations.first)
+        future["kind"] = "lasso"
+        future["id"] = UUID().uuidString
+        annotations.append(future)
+        root["annotations"] = annotations
+
+        let decoded = try JSONDecoder().decode(
+            SharedSnapshot.self, from: JSONSerialization.data(withJSONObject: root))
+        #expect(decoded.annotations.map(\.kind) == [.arrow])
+    }
+
     @Test func aFutureSchemaVersionIsRefusedAsUnsupported() throws {
         // Hand-build a payload whose version is one ahead of this build.
         var snapshot = SharedSnapshot(capturing: sampleConfig())

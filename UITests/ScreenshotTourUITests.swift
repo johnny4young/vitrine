@@ -723,7 +723,8 @@ final class ScreenshotTourUITests: XCTestCase {
             miss("61-web-snapshot-html", reason: "HTML segment not found")
         }
 
-        // The secondary capture controls fold into a disclosure (the editor pattern).
+        // URL capture options fold into a disclosure; HTML mode has none, so return to URL.
+        if web.urlMode.waitForExistence(timeout: 3) { web.urlMode.click() }
         let advanced = element("web-advanced-disclosure", in: app)
         if advanced.waitForExistence(timeout: 3) {
             advanced.click()

@@ -38,6 +38,8 @@ struct AnnotationToolbar: View {
     var onBringToFront: () -> Void = {}
     var onSendToBack: () -> Void = {}
     var density: AnnotationToolbarDensity = .full
+    /// Closes a selected mark's color or size edit as one undo step.
+    var onStyleEditEnded: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 8) {
@@ -82,17 +84,19 @@ struct AnnotationToolbar: View {
                 StickerSwatchButton(glyph: stickerGlyph)
             }
             if showsColor {
-                ColorSwatchButton(color: $color)
+                ColorSwatchButton(color: $color, onEditEnded: onStyleEditEnded)
             }
             if showsThickness {
                 HStack(spacing: 5) {
                     Image(systemName: "lineweight")
                         .font(.system(size: 11))
                         .foregroundStyle(VitrineTokens.Text.tertiary)
-                    Slider(value: $thickness, in: Annotation.thicknessRange)
-                        .frame(width: 84)
-                        .accessibilityLabel("Annotation size")
-                        .accessibilityIdentifier("annotation-thickness-slider")
+                    Slider(value: $thickness, in: Annotation.thicknessRange) { editing in
+                        if !editing { onStyleEditEnded() }
+                    }
+                    .frame(width: 84)
+                    .accessibilityLabel("Annotation size")
+                    .accessibilityIdentifier("annotation-thickness-slider")
                 }
                 .help("Stroke and badge size")
             }
@@ -107,20 +111,18 @@ struct AnnotationToolbar: View {
         .motionSensitiveAnimation(.easeInOut(duration: 0.15), value: showsThickness)
     }
 
+    /// Shortcuts for these live in the Edit menu (`AnnotationMarkAction`).
     @ViewBuilder private var selectionActionButtons: some View {
         iconButton(
             "plus.square.on.square", help: "Duplicate",
-            identifier: "annotation-duplicate", enabled: hasSelection,
-            shortcut: KeyboardShortcut("d", modifiers: .command), action: onDuplicate)
+            identifier: "annotation-duplicate", enabled: hasSelection, action: onDuplicate)
         iconButton(
             "square.3.layers.3d.top.filled", help: "Bring to Front",
             identifier: "annotation-bring-front", enabled: canBringToFront,
-            shortcut: KeyboardShortcut("]", modifiers: [.command, .option]),
             action: onBringToFront)
         iconButton(
             "square.3.layers.3d.bottom.filled", help: "Send to Back",
             identifier: "annotation-send-back", enabled: canSendToBack,
-            shortcut: KeyboardShortcut("[", modifiers: [.command, .option]),
             action: onSendToBack)
     }
 
@@ -129,21 +131,18 @@ struct AnnotationToolbar: View {
             Button(action: onDuplicate) {
                 Label("Duplicate", systemImage: "plus.square.on.square")
             }
-            .keyboardShortcut("d", modifiers: .command)
             .disabled(!hasSelection)
             .accessibilityIdentifier("annotation-duplicate")
 
             Button(action: onBringToFront) {
                 Label("Bring to Front", systemImage: "square.3.layers.3d.top.filled")
             }
-            .keyboardShortcut("]", modifiers: [.command, .option])
             .disabled(!canBringToFront)
             .accessibilityIdentifier("annotation-bring-front")
 
             Button(action: onSendToBack) {
                 Label("Send to Back", systemImage: "square.3.layers.3d.bottom.filled")
             }
-            .keyboardShortcut("[", modifiers: [.command, .option])
             .disabled(!canSendToBack)
             .accessibilityIdentifier("annotation-send-back")
         } label: {
@@ -234,7 +233,7 @@ struct AnnotationToolbar: View {
 
     private func iconButton(
         _ systemImage: String, help: LocalizedStringKey, identifier: String, enabled: Bool,
-        shortcut: KeyboardShortcut, action: @escaping () -> Void
+        shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
@@ -306,6 +305,7 @@ private struct StickerSwatchButton: View {
 /// well at the bottom.
 private struct ColorSwatchButton: View {
     @Binding var color: Color
+    let onEditEnded: () -> Void
     @State private var showsPalette = false
 
     private static let palette: [Color] = [
@@ -334,6 +334,7 @@ private struct ColorSwatchButton: View {
                 ForEach(Array(Self.palette.enumerated()), id: \.offset) { _, swatch in
                     Button {
                         color = swatch
+                        onEditEnded()
                         showsPalette = false
                     } label: {
                         Circle()
@@ -353,6 +354,7 @@ private struct ColorSwatchButton: View {
                     .accessibilityIdentifier("annotation-custom-color")
             }
             .padding(10)
+            .onDisappear(perform: onEditEnded)
         }
     }
 }
