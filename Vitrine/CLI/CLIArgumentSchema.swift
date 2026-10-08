@@ -276,7 +276,9 @@ nonisolated enum CLIArgumentSchema {
         ),
         definition(
             .profile, ["--profile"], .value("srgb|p3"), synopsis: "--profile <srgb|p3>",
-            description: "PNG color profile. Defaults to srgb."),
+            description:
+                "Color profile for PNG, HEIC, and AVIF output and clipboard copies. Defaults to srgb."
+        ),
         definition(
             .transparent, ["--transparent"], .flag, synopsis: "--transparent",
             description: "Render a real transparent background."),
@@ -428,7 +430,7 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .altText, ["--alt-text"], .value("text"), synopsis: "--alt-text <text>",
             description:
-                "Alternative text for Markdown/HTML exports; at most 1024 characters, not drawn on the image."
+                "Alternative text for the Markdown/HTML sidecars (requires one); at most 1024 characters, not drawn on the image."
         ),
         definition(
             .caption, ["--caption"], .value("text"), synopsis: "--caption <text>",

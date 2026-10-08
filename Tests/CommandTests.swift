@@ -274,6 +274,19 @@ struct AppMenuTests {
         #expect(identifiers.contains(VitrineCommand.settings.accessibilityIdentifier))
     }
 
+    @Test func validatingCheckForUpdatesDoesNotStartTheUpdater() throws {
+        try #require(SoftwareUpdater.isSupported && !SoftwareUpdater.isStarted)
+        let appSubmenu = try #require(menuController.make().items.first?.submenu)
+        let item = try #require(
+            appSubmenu.items.first {
+                $0.accessibilityIdentifier()
+                    == VitrineCommand.checkForUpdates.accessibilityIdentifier
+            })
+        let validator = try #require(item.target as? NSMenuItemValidation)
+        #expect(validator.validateMenuItem(item))
+        #expect(!SoftwareUpdater.isStarted, "menu validation must not create Sparkle")
+    }
+
     @Test func helpMenuExposesTheHelpCommand() {
         let identifiers = menuItemIdentifiers(submenu(named: "Help"))
         #expect(identifiers.contains(VitrineCommand.help.accessibilityIdentifier))
@@ -331,6 +344,23 @@ struct AppMenuTests {
         #expect(arrow?.keyEquivalentModifierMask == [.command])
         #expect(arrow?.target === menuController.editorCommands)
         #expect(arrow?.representedObject as? String == AnnotationTool.arrow.rawValue)
+    }
+
+    @Test func selectedMarkActionsUseTheAppKitMenuShortcutPath() {
+        let edit = submenu(named: "Edit")
+        let expected: [(AnnotationMarkAction, String, NSEvent.ModifierFlags)] = [
+            (.duplicate, "d", [.command]),
+            (.bringToFront, "]", [.command, .option]),
+            (.sendToBack, "[", [.command, .option]),
+        ]
+        for (action, key, modifiers) in expected {
+            let item = edit.items.first {
+                $0.accessibilityIdentifier() == "command-annotation-\(action.rawValue)"
+            }
+            #expect(item?.keyEquivalent == key, "\(action)")
+            #expect(item?.keyEquivalentModifierMask == modifiers, "\(action)")
+            #expect(item?.target === menuController.editorCommands, "\(action)")
+        }
     }
 
     /// While the designed menu is the main menu, the displacement check must not
@@ -485,6 +515,22 @@ struct EditorCommandResponderTests {
         await operation.value
 
         #expect(textView.string == expected)
+    }
+
+    @Test func theSessionOwnsTheLargeFormatSoTheButtonPathCompletes() async throws {
+        let input = String(repeating: "struct A {\nlet x = 1\n}\n", count: 3_000)
+        let environment = AppEnvironment(defaults: testDefaults())
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 52), environment: environment,
+            feedback: .noOp, presentation: .noOp)
+        defer { session.discard() }
+        let textView = NSTextView(frame: .zero)
+        textView.string = input
+
+        let operation = try #require(session.codeFormat.format(textView, language: .swift))
+        await operation.value
+
+        #expect(textView.string == CodeFormatter.tidy(input, language: .swift))
     }
 
     @Test func aNewFormatCommandPreventsAnOlderLargeResultFromWinning() async throws {

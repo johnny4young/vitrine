@@ -181,10 +181,12 @@ struct LivingSnapshotSessionTests {
         settings.documentCode = await disk.currentText()
         _ = await wait(session.start(with: loaded(await disk.currentText(), url: source)))
 
+        let generation = settings.documentGeneration
         await disk.update(revision: 2, text: "let value = 2")
         _ = await wait(session.checkForChanges())
 
         #expect(settings.documentCode == "let value = 2")
+        #expect(settings.documentGeneration == generation + 1)
         #expect(session.status == .watching)
     }
 
@@ -345,6 +347,31 @@ struct LivingSnapshotSessionTests {
 
         #expect(settings.config.highlightedLineRanges == [1...1])
         #expect(session.status == .watching)
+    }
+
+    @Test func changedFileNeverSilentlyDropsRedactions() async throws {
+        let settings = settings()
+        let source = URL(fileURLWithPath: "/tmp/Live.swift")
+        let disk = TestDisk(text: "token = 1")
+        let session = LivingSnapshotSession(
+            settings: settings,
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in await disk.fileStamp() },
+                load: { _ in try await disk.loadedFile(for: source) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+        settings.documentCode = "token = 1"
+        _ = await wait(session.start(with: loaded("token = 1", url: source)))
+        settings.config.redactedLineRanges = [1...1]
+
+        await disk.update(revision: 2, text: "token = 2")
+        _ = await wait(session.checkForChanges())
+
+        #expect(settings.config.redactedLineRanges == [1...1])
+        #expect(settings.documentCode == "token = 1")
+        #expect(session.status == .changeAvailable)
     }
 
     @Test func explicitReloadOfUnchangedContentPreservesContentMarks() async throws {

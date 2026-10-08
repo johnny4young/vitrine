@@ -86,6 +86,14 @@ struct SnapshotRenderRequestTests {
         #expect(request.makeConfig().language == .swift)
     }
 
+    @Test func aFencedSnippetRendersItsBodyNotTheFence() {
+        let request = SnapshotRenderRequest(code: "```swift\nlet x = 1\n```")
+        #expect(request.makeConfig().code == "let x = 1")
+        #expect(request.makeConfig().language == .swift)
+        let verbatim = SnapshotRenderRequest(code: "```swift\nlet x = 1\n```", language: .markdown)
+        #expect(verbatim.makeConfig().code.hasPrefix("```"))
+    }
+
     @Test func explicitLanguageOverridesDetection() {
         // An explicit language wins over what detection would have guessed.
         let request = SnapshotRenderRequest(code: "SELECT * FROM t", language: .python)
@@ -520,7 +528,7 @@ struct ServiceRegistrationTests {
     @Test(arguments: [false, true])
     func servicesRespectClipboardConfidentiality(_ concealed: Bool) throws {
         let environment = try makeAutomationEnvironment(isPro: true)
-        environment.appSettings.export.concealClipboard = concealed
+        environment.appSettings.outputBehavior.concealClipboard = concealed
         let pasteboard = NSPasteboard(name: .init("VitrineServicePrivacy-\(UUID().uuidString)"))
         defer { pasteboard.releaseGlobally() }
         #expect(pasteboard.setString("let synthetic = 42", forType: .string))
@@ -534,5 +542,27 @@ struct ServiceRegistrationTests {
         #expect(CGImageSourceCreateImageAtIndex(source, 0, nil) != nil)
         #expect(NSImage(pasteboard: pasteboard) != nil)
         #expect(pasteboard.string(forType: .string) == nil)
+    }
+}
+
+@MainActor
+@Suite("Services output settings")
+struct ServicesOutputSettingsTests {
+    @Test func servicesRequestMatchesQuickCaptureOutput() throws {
+        let environment = try makeAutomationEnvironment(isPro: true)
+        let settings = environment.appSettings
+        settings.export.scale = 3
+        settings.export.colorProfile = .displayP3
+        settings.selectPreset(.openGraph)
+
+        let request = CodeImageService(environment: environment)
+            .makeRenderRequest(for: "let answer = 42")
+        let plan = QuickCapture.renderPlan(
+            for: settings.config, settings: settings, destinationPreset: nil)
+
+        #expect(request.effectiveScale == plan.scale)
+        #expect(request.fixedSize == plan.fixedSize)
+        #expect(request.fixedSize == ExportPreset.openGraph.sizing.fixedSize)
+        #expect(request.profile == .displayP3)
     }
 }

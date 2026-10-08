@@ -1,5 +1,4 @@
 import AppKit
-import KeyboardShortcuts
 import SwiftUI
 import VitrineDomain
 import VitrineRendering
@@ -30,6 +29,9 @@ struct MenuBarContent: View {
     /// build the panel standalone.
     var dismiss = MenuBarDismissAction()
 
+    /// Hotkey glyphs and purpose, refreshed by the controller each time the panel opens.
+    var panelState = MenuBarPanelState()
+
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             header
@@ -58,11 +60,12 @@ struct MenuBarContent: View {
         Menu {
             ForEach(ExportPreset.all) { preset in
                 Button {
-                    QuickCapture.perform(
-                        environment: environment,
-                        feedback: feedback,
-                        destinationPreset: preset)
-                    dismiss()
+                    dismiss.thenRun {
+                        QuickCapture.perform(
+                            environment: environment,
+                            feedback: feedback,
+                            destinationPreset: preset)
+                    }
                 } label: {
                     Text(verbatim: preset.displayName)
                 }
@@ -104,10 +107,8 @@ struct MenuBarContent: View {
                 .font(.system(size: VitrineTokens.FontSize.headline, weight: .bold))
                 .foregroundStyle(VitrineTokens.Text.primary)
             Spacer(minLength: 0)
-            if let shortcut = KeyboardShortcuts.getShortcut(for: .quickCapture) {
-                KbdChip(
-                    glyphs: shortcut.description,
-                    purpose: String(localized: "Capture hotkey"))
+            if let glyphs = panelState.hotkeyGlyphs {
+                KbdChip(glyphs: glyphs, purpose: panelState.hotkeyPurpose)
             }
         }
     }
@@ -118,8 +119,9 @@ struct MenuBarContent: View {
     @ViewBuilder private var captureCTA: some View {
         let command = VitrineCommand.newCapture
         let button = Button {
-            QuickCapture.perform(environment: environment, feedback: feedback)
-            dismiss()
+            dismiss.thenRun {
+                QuickCapture.perform(environment: environment, feedback: feedback)
+            }
         } label: {
             HStack(spacing: VitrineTokens.Spacing.xs) {
                 Image(systemName: command.systemImageName)
@@ -158,8 +160,9 @@ struct MenuBarContent: View {
                     .accessibilityIdentifier("menu-last-capture-status")
                 ForEach(last.actions, id: \.self) { action in
                     Button(action.title) {
-                        feedback.run(action, environment: environment)
-                        dismiss()
+                        dismiss.thenRun {
+                            feedback.run(action, environment: environment)
+                        }
                     }
                     .buttonStyle(.link)
                     .font(.system(size: VitrineTokens.FontSize.caption))
@@ -180,7 +183,7 @@ struct MenuBarContent: View {
                     navigation.show(.recents)
                     dismiss()
                 } label: {
-                    Text("View history →")
+                    Text("View All →")
                         .font(.system(size: VitrineTokens.FontSize.caption))
                         .foregroundStyle(VitrineTokens.Accent.system)
                 }
@@ -188,7 +191,9 @@ struct MenuBarContent: View {
                 .accessibilityIdentifier("menu-recents-gallery")
             }
 
-            if recents.captures.isEmpty {
+            if !recents.isEnabled, recents.captures.isEmpty {
+                historyOffNotice
+            } else if recents.captures.isEmpty {
                 // Teach the core loop here — this panel is the first surface many users
                 // open before any capture exists. The menu action works even when
                 // the user has not opted in to a global shortcut.
@@ -201,9 +206,10 @@ struct MenuBarContent: View {
                 .font(.system(size: VitrineTokens.FontSize.caption))
                 .padding(.vertical, 4)
             } else {
-                ForEach(Array(recents.captures.prefix(3))) { capture in
+                ForEach(Self.panelCaptures(from: recents.captures)) { capture in
                     RecentCaptureRow(
                         capture: capture,
+                        theme: recents.theme(for: capture),
                         reopen: {
                             reopen(capture)
                             dismiss()
@@ -213,6 +219,39 @@ struct MenuBarContent: View {
                 }
             }
         }
+    }
+
+    /// With history off nothing new lands here, so say so instead of promising captures.
+    private var historyOffNotice: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("History is off")
+                .foregroundStyle(VitrineTokens.Text.secondary)
+            Button {
+                navigation.show(.settings)
+                dismiss()
+            } label: {
+                Text("Turn on Save capture history in Settings ▸ Export.")
+                    .foregroundStyle(VitrineTokens.Accent.system)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("menu-history-off-settings")
+        }
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .padding(.vertical, 4)
+        .accessibilityIdentifier("menu-history-off")
+    }
+
+    /// The newest captures by date. The store lists pins first, which could keep a
+    /// capture the user just made out of the three panel rows.
+    static func panelCaptures(from captures: [Capture], limit: Int = 3) -> [Capture] {
+        Array(
+            captures.enumerated()
+                .sorted { lhs, rhs in
+                    lhs.element.date != rhs.element.date
+                        ? lhs.element.date > rhs.element.date : lhs.offset < rhs.offset
+                }
+                .prefix(limit)
+                .map(\.element))
     }
 
     // MARK: - Theme
@@ -347,7 +386,7 @@ struct MenuBarContent: View {
     /// even if the editor is already open; a plain `show()` no longer clobbers an
     /// open window's per-window document.
     private func reopen(_ capture: Capture) {
-        navigation.loadIntoPrimaryEditor(capture.applying(to: settings.config))
+        navigation.loadIntoPrimaryEditor(recents.document(for: capture, over: settings.config))
     }
 
     /// Re-renders a recent capture with the user's current output settings and
@@ -356,12 +395,8 @@ struct MenuBarContent: View {
     private func copyAgain(_ capture: Capture) {
         // `exportConfig`, not `config`: every export surface renders through it so
         // the PRO Brand Kit watermark is applied at the export seam.
-        let config = capture.applying(to: settings.exportConfig)
-        let outcome = ExportManager.copyToPasteboardOutcome(
-            config, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
-            concealed: settings.export.concealClipboard)
+        let config = recents.document(for: capture, over: settings.exportConfig)
+        let outcome = RenderedImageCopy.copy(config, settings: settings)
         feedback.present(ExportFeedback.copyOutcome(outcome))
     }
 
@@ -369,7 +404,7 @@ struct MenuBarContent: View {
         feedback.present(
             ExportFeedback.sourceCopyOutcome(
                 ExportManager.copySourceToPasteboard(
-                    capture.code, concealed: settings.export.concealClipboard)))
+                    capture.code, concealed: settings.outputBehavior.concealClipboard)))
     }
 }
 
@@ -410,6 +445,7 @@ private struct KbdChip: View {
 /// copy actions. Clicking the row reopens the capture.
 private struct RecentCaptureRow: View {
     let capture: Capture
+    let theme: Theme
     let reopen: () -> Void
     let copyImage: () -> Void
     let copySource: () -> Void
@@ -490,21 +526,22 @@ private struct RecentCaptureRow: View {
 
     /// Language · relative time · theme — the capture's visible context line.
     private var metadataLine: String {
-        let time = Self.relativeFormatter.localizedString(
-            for: capture.date, relativeTo: Date())
-        return "\(capture.language.displayName) · \(time) · \(capture.theme.displayName)"
+        let time = capture.relativeDateText(using: Self.relativeFormatter)
+        return "\(capture.language.displayName) · \(time) · \(theme.displayName)"
     }
 
     private static let relativeFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
+        // Named, so a capture made this second reads "now", not "in 0 s".
+        formatter.dateTimeStyle = .named
         return formatter
     }()
 
     /// The 52×38 stylized thumbnail: a mini code card in the capture's theme
     /// color over the signature gradient.
     private var thumbnail: some View {
-        let chip = ThemeChipColors.colors(for: capture.theme)
+        let chip = ThemeChipColors.colors(for: theme)
         return RoundedRectangle(cornerRadius: 7, style: .continuous)
             .fill(VitrineTokens.Gradients.signature)
             .frame(width: 52, height: 38)

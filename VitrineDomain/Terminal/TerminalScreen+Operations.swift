@@ -216,7 +216,21 @@ extension TerminalScreen {
     }
 
     func blankRows(_ count: Int) -> [[TerminalCell]] {
-        Array(repeating: [], count: count)
+        let fill = erasedCell
+        return Array(
+            repeating: fill.isBlank ? [] : Array(repeating: fill, count: columns), count: count)
+    }
+
+    /// The cell an erase, scroll or insert leaves behind. Terminals advertise `bce`
+    /// (background color erase), and TUIs paint bars and themes by erasing with a colored pen.
+    var erasedCell: TerminalCell {
+        TerminalCell(content: .grapheme(" "), style: ANSIStyle(background: style.background))
+    }
+
+    /// Grows `row` to the right margin when the erase fill is colored, so the color reaches
+    /// the edge instead of stopping at the row's written length.
+    mutating func padToMarginForFill(_ row: Int) {
+        if !erasedCell.isBlank { padRow(row, to: columns - 1) }
     }
 
     // MARK: - Character insert / delete (within the cursor row)
@@ -230,7 +244,7 @@ extension TerminalScreen {
         guard n > 0 else { return }
         padRow(cursorRow, to: cursorCol)
         blankWideCluster(row: cursorRow, col: cursorCol)
-        rows[cursorRow].insert(contentsOf: Array(repeating: .blank, count: n), at: cursorCol)
+        rows[cursorRow].insert(contentsOf: Array(repeating: erasedCell, count: n), at: cursorCol)
         if rows[cursorRow].count > columns {
             rows[cursorRow].removeLast(rows[cursorRow].count - columns)
         }
@@ -238,14 +252,15 @@ extension TerminalScreen {
     }
 
     /// Deletes `count` cells at the cursor, pulling the rest of the row left and backfilling
-    /// blanks at the right (those trailing blanks are trimmed on output). The `DCH` a line
-    /// editor uses to close space mid-line.
+    /// erased cells at the right margin. The `DCH` a line editor uses to close space mid-line.
     mutating func deleteChars(_ count: Int) {
-        guard rows.indices.contains(cursorRow), cursorCol < rows[cursorRow].count else { return }
+        guard rows.indices.contains(cursorRow) else { return }
+        padToMarginForFill(cursorRow)
+        guard cursorCol < rows[cursorRow].count else { return }
         let n = min(max(1, count), rows[cursorRow].count - cursorCol)
         for col in cursorCol..<(cursorCol + n) { blankWideCluster(row: cursorRow, col: col) }
         rows[cursorRow].removeSubrange(cursorCol..<(cursorCol + n))
-        rows[cursorRow].append(contentsOf: Array(repeating: .blank, count: n))
+        rows[cursorRow].append(contentsOf: Array(repeating: erasedCell, count: n))
         repairWideClusters(row: cursorRow)
     }
 
@@ -254,10 +269,12 @@ extension TerminalScreen {
     mutating func eraseChars(_ count: Int) {
         guard rows.indices.contains(cursorRow) else { return }
         padRow(cursorRow, to: cursorCol)
+        padToMarginForFill(cursorRow)
         let end = min(cursorCol + max(1, count), rows[cursorRow].count)
         guard cursorCol < end else { return }
+        let fill = erasedCell
         for col in cursorCol..<end { blankWideCluster(row: cursorRow, col: col) }
-        for col in cursorCol..<end { rows[cursorRow][col] = .blank }
+        for col in cursorCol..<end { rows[cursorRow][col] = fill }
         repairWideClusters(row: cursorRow)
     }
 
@@ -266,6 +283,8 @@ extension TerminalScreen {
     mutating func eraseDisplay(_ mode: Int) {
         switch mode {
         case 0:  // cursor → end of screen
+            // From the origin this clears the whole screen (`ESC[H ESC[J`, as lazygit exits).
+            if cursorRow == 0, cursorCol == 0 { snapshotAltScreenBeforeClear() }
             padRow(cursorRow, to: cursorCol)
             blank(row: cursorRow, from: cursorCol)
             for row in (cursorRow + 1)..<rows.count { blank(row: row) }
@@ -274,17 +293,21 @@ extension TerminalScreen {
             padRow(cursorRow, to: cursorCol)
             blank(row: cursorRow, through: cursorCol)
         default:  // 2 / 3 — whole screen
-            // If a full clear would blank a populated alt-screen buffer — apps that erase
-            // the screen right before leaving the alt buffer on exit — keep a pre-clear
-            // copy so the final frame isn't lost.
-            if primaryStash != nil, isPopulated(rows) { altSnapshot = rows }
+            snapshotAltScreenBeforeClear()
             for row in rows.indices { blank(row: row) }
         }
     }
 
-    /// Whether any cell in `frame` was actually drawn (a non-blank cell).
+    /// Apps that erase the screen right before leaving the alt buffer on exit would blank
+    /// the frame we capture, so a full clear of a populated alt buffer keeps a copy.
+    mutating func snapshotAltScreenBeforeClear() {
+        if primaryStash != nil, isPopulated(rows) { altSnapshot = rows }
+    }
+
+    /// Whether any cell in `frame` was actually drawn. A colored erase alone does not count,
+    /// so an exit that clears with a colored pen still falls back to the pre-clear frame.
     func isPopulated(_ frame: [[TerminalCell]]) -> Bool {
-        frame.contains { row in row.contains { !$0.isBlank } }
+        frame.contains { row in row.contains { !$0.isErased } }
     }
 
     mutating func eraseLine(_ mode: Int) {
@@ -299,29 +322,34 @@ extension TerminalScreen {
         }
     }
 
-    /// Blanks an entire row in place (keeping its current length).
+    /// Erases an entire row in place, filling it to the margin when the pen is colored.
     mutating func blank(row: Int) {
         guard rows.indices.contains(row) else { return }
-        for col in rows[row].indices { rows[row][col] = .blank }
+        padToMarginForFill(row)
+        let fill = erasedCell
+        for col in rows[row].indices { rows[row][col] = fill }
     }
 
-    /// Blanks a row from `start` to its end.
+    /// Erases a row from `start` to the right margin.
     mutating func blank(row: Int, from start: Int) {
         guard rows.indices.contains(row) else { return }
+        padToMarginForFill(row)
         let start = max(0, start)
         guard start < rows[row].count else { return }
+        let fill = erasedCell
         for col in start..<rows[row].count { blankWideCluster(row: row, col: col) }
-        for col in start..<rows[row].count { rows[row][col] = .blank }
+        for col in start..<rows[row].count { rows[row][col] = fill }
         repairWideClusters(row: row)
     }
 
-    /// Blanks a row from its start through `end` (inclusive).
+    /// Erases a row from its start through `end` (inclusive).
     mutating func blank(row: Int, through end: Int) {
         guard rows.indices.contains(row) else { return }
         let end = min(end, rows[row].count - 1)
         guard end >= 0 else { return }
+        let fill = erasedCell
         for col in 0...end { blankWideCluster(row: row, col: col) }
-        for col in 0...end { rows[row][col] = .blank }
+        for col in 0...end { rows[row][col] = fill }
         repairWideClusters(row: row)
     }
 

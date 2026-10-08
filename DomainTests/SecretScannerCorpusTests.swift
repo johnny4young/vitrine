@@ -92,6 +92,44 @@ struct SecretScannerCorpusTests {
         ].joined(separator: "\r\n")
         #expect(SecretScanner.secretLines(in: source) == [2, 3, 4, 5, 6])
     }
+
+    // Values are assembled at run time so no fixture reads as a credential.
+    private static let value = "Zq8sLm2V" + "x9Rt4Kp7" + "Wn3BqQ"
+
+    @Test func detectsWalrusAndHashRocketAssignments() {
+        #expect(SecretScanner.secretLines(in: "dbPassword := \"\(Self.value)\"") == [1])
+        #expect(SecretScanner.secretLines(in: "'api_key' => '\(Self.value)'") == [1])
+        #expect(SecretScanner.secretLines(in: ":access_token => \"\(Self.value)\",") == [1])
+    }
+
+    @Test func detectsBearerCredentialsInHeaders() {
+        let header = "curl -H \"Authorization: " + "Bearer " + Self.value + "\" https://example.com"
+        #expect(SecretScanner.scan(header).contains { $0.kind == "bearer-token" })
+        #expect(SecretScanner.scan("Use a bearer $TOKEN header").isEmpty)
+    }
+
+    @Test func detectsCredentialsEmbeddedInURLs() {
+        let url = "DATABASE_URL=" + "postgres" + "://admin:" + Self.value + "@db/app"
+        #expect(SecretScanner.scan(url).contains { $0.kind == "url-credentials" })
+        #expect(SecretScanner.scan("ssh://deploy@example.com:22/repo").isEmpty)
+        #expect(SecretScanner.scan("https://example.com:8080/path").isEmpty)
+    }
+
+    @Test func coversAnArmoredPGPPrivateKeyBlock() {
+        let source = [
+            "-----BEGIN PGP " + "PRIVATE KEY BLOCK-----", "",
+            String(repeating: "c", count: 64), "=AbCd",
+            "-----END PGP " + "PRIVATE KEY BLOCK-----", "after",
+        ].joined(separator: "\n")
+        #expect(SecretScanner.secretLines(in: source) == [1, 2, 3, 4, 5])
+    }
+
+    @Test func longDottedLinesStayFastUnderTheURLRule() {
+        let line = String(repeating: "a.b-", count: 262_144) + "://x"
+        let start = ContinuousClock.now
+        #expect(SecretScanner.scan(line).isEmpty)
+        #expect(start.duration(to: .now) < .seconds(3))
+    }
 }
 
 /// Generous wall-clock ceiling catches pathological regex growth, not microsecond

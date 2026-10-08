@@ -21,7 +21,7 @@ struct CommandPaletteTests {
         // An unrelated leading row covers a query changing the first result's identity.
         let commands =
             [command("theme.dracula", "Theme: Dracula", group: "Theme")]
-            + EditorView(environment: environment).exportCommands
+            + EditorView(environment: environment).exportCommands(for: PaletteExport.allCases)
         #expect(!environment.entitlements.isPro)
         #expect(Set(commands.map(\.id)).count == commands.count)
         #expect(
@@ -32,6 +32,17 @@ struct CommandPaletteTests {
                     $0.id == "export.documentation"
                 })
         }
+    }
+
+    @Test func exportsFollowTheToolbarAvailability() {
+        #expect(
+            PaletteExport.available(hasRenderableContent: false, usesImageContent: false).isEmpty)
+        #expect(
+            PaletteExport.available(hasRenderableContent: true, usesImageContent: false)
+                == PaletteExport.allCases)
+        #expect(
+            !PaletteExport.available(hasRenderableContent: true, usesImageContent: true)
+                .contains(.markdown))
     }
 
     @Test func emptyQueryReturnsEverythingInAuthorOrder() {

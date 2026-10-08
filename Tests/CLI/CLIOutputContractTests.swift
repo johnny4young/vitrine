@@ -749,12 +749,10 @@ struct CLIOutputContractTests: CLITestSupport {
         }
     }
 
-    @Test func tooLargeInputCollapsesToUnreadable() throws {
-        // A loader that rejects the file as too large surfaces as `inputUnreadable`:
-        // the CLI maps every non-binary load failure to one unreadable error so it
-        // never leaks a raw error string or a second user-facing failure mode.
+    @Test func tooLargeInputReportsTheSizeLimit() throws {
+        // An oversized source names the 5 MB limit instead of claiming it is unreadable.
         let options = try CLIArguments.parse(["render", "/big.swift", "--out", "/tmp/o.png"])
-        #expect(throws: CLIError.inputUnreadable(path: "/big.swift")) {
+        #expect(throws: CLIError.inputTooLarge(path: "/big.swift")) {
             try CLIRenderer.run(options) { _ in throw FileInputLoader.LoadError.tooLarge }
         }
     }
