@@ -23,6 +23,14 @@ the site's own image scripts. Miniflare pins an exact `sharp` release that can t
 older libvips build. Keep the override equal to the `devDependencies` version, and remove it
 once Miniflare's own pin reaches that version.
 
+The `http-cache-semantics` (4.3.0, GHSA-ch52-4w7c-c8xp), `source-map-js` (1.2.2,
+GHSA-68fv-2mgg-jv7q), and `nanoid` (3.3.18) overrides hold transitive build dependencies on
+patched releases inside the ranges their dependents declare. The `undici` override equals
+Miniflare's exact 7.29.1 pin, but it also moves Astro's `unifont`, which declares `^8.0.0`,
+onto 7.x; that path is unused because the site configures no Astro fonts. Overrides are exact
+pins, so a later advisory needs an override bump, not only a lockfile refresh. Remove each one
+once every dependent's own range excludes the vulnerable releases.
+
 ```bash
 cd site
 npm ci
