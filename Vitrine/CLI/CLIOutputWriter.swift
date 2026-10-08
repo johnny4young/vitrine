@@ -89,7 +89,7 @@ enum CLIOutputWriter {
     /// `notes.MD` and a `notes.md` sidecar are one claimed file. Folding only decides
     /// whether a name is taken; on a case-sensitive volume it can refuse a distinct
     /// file that differs only by case, which fails closed instead of risking a source.
-    private static func claimKey(_ url: URL) -> String {
+    static func claimKey(_ url: URL) -> String {
         canonicalPath(url).precomposedStringWithCanonicalMapping.lowercased()
     }
 

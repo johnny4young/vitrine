@@ -110,7 +110,8 @@ enum CLIBatchRenderer {
         try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
             beside: plannedOutputs, options: options, inputs: files)
         try guardReportTargets(
-            options, outputURLs: plannedOutputs, inputDirectory: inputDirectory)
+            options, outputURLs: plannedOutputs, inputs: files, inputDirectory: inputDirectory,
+            outputDirectory: outputDirectory)
         if !options.dryRunBatch {
             do {
                 try FileManager.default.createDirectory(
@@ -227,20 +228,33 @@ enum CLIBatchRenderer {
     /// which still write reports. Fold names like the image planner does so aliases
     /// on the default case-insensitive Mac filesystem cannot bypass the guard.
     private static func guardReportTargets(
-        _ options: CLIOptions, outputURLs: [URL], inputDirectory: URL
+        _ options: CLIOptions, outputURLs: [URL], inputs: [URL], inputDirectory: URL,
+        outputDirectory: URL
     ) throws {
-        let reports = [(options.batchManifestPath, true), (options.skippedReportPath, false)]
+        let requested: [(path: String?, isManifest: Bool)] = [
+            (options.batchManifestPath, true), (options.skippedReportPath, false),
+        ]
+        let reports: [(url: URL, isManifest: Bool)] = requested.compactMap { request in
+            guard let path = request.path, !path.isEmpty else { return nil }
+            return (URL(fileURLWithPath: path), request.isManifest)
+        }
+        guard !reports.isEmpty else { return }
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
-        let artifacts = outputURLs.flatMap {
-            [$0] + CLIOutputWriter.sidecarURLs(options, beside: $0)
+        let artifactKeys = outputURLs.flatMap {
+            ([$0] + CLIOutputWriter.sidecarURLs(options, beside: $0)).map(CLIOutputWriter.claimKey)
         }
-        var claimed = Set(
-            (artifacts + resources).map { filesystemKey(canonicalPath($0)) })
-        for (path, isManifest) in reports {
-            guard let path, !path.isEmpty else { continue }
-            let report = URL(fileURLWithPath: path)
-            guard claimed.insert(filesystemKey(canonicalPath(report))).inserted else {
+        let outputDirectoryKey = CLIOutputWriter.claimKey(outputDirectory)
+        // Discovered inputs, skipped ones included, are claimed too: a report spelled with
+        // different case than the source escapes the exact-path discovery exclusion.
+        var claimed = Set(artifactKeys + (inputs + resources).map(CLIOutputWriter.claimKey))
+        for (report, isManifest) in reports {
+            let key = CLIOutputWriter.claimKey(report)
+            // A report cannot sit where the run creates a folder, or below a file it writes.
+            let nested =
+                key == outputDirectoryKey
+                || artifactKeys.contains { $0.hasPrefix(key + "/") || key.hasPrefix($0 + "/") }
+            guard !nested, claimed.insert(key).inserted else {
                 throw CLIError.outputConflict(
                     "The batch report at \"\(report.path)\" conflicts with an input resource "
                         + "or another output. Choose distinct paths for resources and outputs.")
@@ -266,7 +280,8 @@ enum CLIBatchRenderer {
             path == root || path.hasPrefix(root.hasSuffix("/") ? root : root + "/")
         }
         let insideInput =
-            contains(canonicalPath(report), under: canonicalPath(inputDirectory))
+            contains(
+                CLIOutputWriter.claimKey(report), under: CLIOutputWriter.claimKey(inputDirectory))
             || contains(
                 report.standardizedFileURL.path, under: inputDirectory.standardizedFileURL.path)
         guard insideInput, FileManager.default.fileExists(atPath: report.path) else { return }
@@ -274,7 +289,7 @@ enum CLIBatchRenderer {
             let data = try? BoundedFileReader.read(from: report, limit: maximumExistingReportBytes),
             matchesReportStructure(data, isManifest: isManifest)
         else {
-            throw CLIError.incompatibleOptions(
+            throw CLIError.outputConflict(
                 "The batch report at \"\(report.path)\" would replace an unrecognized input file. "
                     + "Choose a new report path or move the report outside the input folder.")
         }
@@ -303,7 +318,7 @@ enum CLIBatchRenderer {
                 !$0.input.isEmpty && !$0.output.isEmpty
                     && Language(rawValue: $0.language) != nil
                     && $0.sidecars.allSatisfy { !$0.isEmpty }
-                    && ["png", "pdf", "heic", "avif"].contains($0.format)
+                    && ExportFormat(rawValue: $0.format) != nil
                     && (($0.status == "planned" && $0.width == nil && $0.height == nil)
                         || ($0.status == "rendered" && ($0.width ?? 0) > 0 && ($0.height ?? 0) > 0))
             }

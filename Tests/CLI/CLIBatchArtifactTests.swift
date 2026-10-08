@@ -169,6 +169,57 @@ struct CLIBatchArtifactTests: CLITestSupport {
         }
     }
 
+    @Test func anUnrecognizedInputReportIsARuntimeConflict() throws {
+        let input = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: input) }
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: input)
+        let target = input.appendingPathComponent("notes.json")
+        let original = Data("{\"name\": \"config\"}".utf8)
+        try original.write(to: target)
+        let output = input.appendingPathComponent("cards", isDirectory: true)
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--manifest", target.path,
+        ])
+
+        expectOutputConflict { try CLIRenderer.runBatch(options) }
+        #expect(try Data(contentsOf: target) == original)
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+    }
+
+    @Test(arguments: ["--manifest", "--skipped-report"])
+    func reportsCannotReplaceTheOutputFolderOrAPlannedOutputFolder(flag: String) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let nested = input.appendingPathComponent("docs", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: nested)
+
+        for report in [output, output.appendingPathComponent("docs")] {
+            let options = try CLIArguments.parse([
+                "batch", input.path, "--out", output.path, "--recursive", flag, report.path,
+            ])
+            expectOutputConflict { try CLIRenderer.runBatch(options) }
+            #expect(!FileManager.default.fileExists(atPath: output.path))
+        }
+    }
+
+    private func expectOutputConflict(_ body: () throws -> Void) {
+        do {
+            try body()
+            Issue.record("Expected the batch report conflict to be refused")
+        } catch let error as CLIError {
+            guard case .outputConflict = error else {
+                Issue.record("Unexpected error: \(error)")
+                return
+            }
+            #expect(error.exitCode == 1)
+        } catch {
+            Issue.record("Unexpected error: \(error)")
+        }
+    }
+
     @Test func reportsMustHaveDistinctPathsEvenDuringADryRun() throws {
         let root = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: root) }
