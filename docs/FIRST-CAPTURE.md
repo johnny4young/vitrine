@@ -57,8 +57,13 @@ channel-specific.
   when needed. Heuristic detection is not a guarantee; see the
   [privacy contract](CAPABILITIES.md#privacy-and-retention).
 - On the direct-download/Homebrew channel, save the sample as
-  `first-capture.swift`; the free CLI handoff `vitrine render first-capture.swift --edit`
-  opens it in the editor. Homebrew puts `vitrine` on `PATH`; for a DMG install, use
+  `first-capture.swift`. In current source, the free CLI handoff
+  `vitrine render first-capture.swift --edit` opens it in the editor.
+  **The published v1.2.3 download still requires PRO for `render`, including
+  `--edit`.** If you installed that release, use **Open Editor** and paste the
+  sample as described above; this graphical route is free. Check `vitrine --version`
+  and the release notes before relying on source-only behavior.
+  Homebrew puts `vitrine` on `PATH`; for a DMG install, use
   **Settings ▸ General ▸ Command-line tool** first. Rendering to a file with
   `--out` is a separate PRO operation.
   The Mac App Store build does not ship the CLI.

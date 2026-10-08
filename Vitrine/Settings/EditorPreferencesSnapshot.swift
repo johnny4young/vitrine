@@ -25,9 +25,9 @@ struct EditorPreferencesSnapshot {
         destinationID = settings.selectedPreset?.id
     }
 
-    /// Only per-capture output preferences. Auto-copy, save behavior, close-after-copy,
-    /// and cooperative clipboard privacy stay app-global and are never promoted by
-    /// Make Default. Individual ExportSettings properties retain their Observation scope.
+    /// Only per-capture output preferences. App-wide behavior lives in `OutputBehavior`,
+    /// which is never part of a snapshot. Individual ExportSettings properties retain
+    /// their Observation scope.
     struct Output {
         let scale: Int
         let format: ExportFormat

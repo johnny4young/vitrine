@@ -222,7 +222,7 @@ final class HelpWindowController {
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     /// Closes the window without releasing the controller, so a later `show()` can

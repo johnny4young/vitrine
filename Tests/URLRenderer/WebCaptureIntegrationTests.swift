@@ -331,6 +331,33 @@ struct WebCaptureIntegrationTests {
         #expect(image.height == 480)
     }
 
+    @Test func networkQuietWaitsForALateFetch() async throws {
+        let key = UUID().uuidString
+        var quiet = try config("late-fetch/\(key)")
+        quiet.waitStrategy = .networkQuiet(budget: .seconds(8))
+        let settled = try await URLSnapshotEngine(websiteDataStore: isolatedStore()).snapshot(
+            of: quiet)
+        #expect(try centerColor(of: settled) == .green, "the capture must wait for the fetch")
+
+        // Positive control: without the network wait the same page is still red.
+        let early = try await URLSnapshotEngine(websiteDataStore: isolatedStore()).snapshot(
+            of: config("late-fetch/\(key)-control"))
+        #expect(try centerColor(of: early) == .red)
+        #expect(try await events().contains { $0["path"] == "/slow-data/\(key)" })
+    }
+
+    private enum FixtureColor { case red, green, other }
+
+    private func centerColor(of image: CGImage) throws -> FixtureColor {
+        let bitmap = NSBitmapImageRep(cgImage: image)
+        let color = try #require(
+            bitmap.colorAt(x: bitmap.pixelsWide / 2, y: bitmap.pixelsHigh / 2)?
+                .usingColorSpace(.sRGB))
+        if color.redComponent > 0.8, color.greenComponent < 0.3 { return .red }
+        if color.greenComponent > 0.8, color.redComponent < 0.3 { return .green }
+        return .other
+    }
+
     @Test func clearingSessionsRemovesCachedPrivateResponses() async throws {
         let port = try #require(
             ProcessInfo.processInfo.environment["VITRINE_WEB_FIXTURE_PORT"].flatMap(UInt16.init))

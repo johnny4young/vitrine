@@ -233,7 +233,7 @@ struct AppSettingsMigrationTests {
         #expect(settings.export.scale == SettingsDefaults.exportScale)
         #expect(settings.export.format == .png)
         #expect(settings.hotkeyAction == .quickCapture)
-        #expect(settings.export.autoCopy)
+        #expect(settings.outputBehavior.autoCopy)
         #expect(settings.config.theme.id == Theme.oneDark.id)
         #expect(settings.config.fontName == CodeFont.default)
     }
@@ -278,7 +278,7 @@ struct AppSettingsMigrationTests {
         #expect(settings.export.scale == SettingsDefaults.exportScale)
         // Wrong-typed bools fall back to their defaults.
         #expect(settings.config.showChrome)
-        #expect(settings.export.autoCopy)
+        #expect(settings.outputBehavior.autoCopy)
         // Unrecognized enum / catalog values fall back.
         #expect(settings.config.theme.id == Theme.oneDark.id)
         #expect(settings.config.language == .swift)
@@ -374,7 +374,7 @@ struct AppSettingsResetTests {
         settings.hotkeyAction = .openEditor
         settings.export.format = .pdf
         settings.export.scale = 3
-        settings.export.autoCopy = false
+        settings.outputBehavior.autoCopy = false
         settings.treatURLsAsScreenshot = true
         settings.config.theme = .dracula
         settings.config.padding = 64
@@ -385,7 +385,7 @@ struct AppSettingsResetTests {
         #expect(settings.hotkeyAction == .quickCapture)
         #expect(settings.export.format == .png)
         #expect(settings.export.scale == SettingsDefaults.exportScale)
-        #expect(settings.export.autoCopy)
+        #expect(settings.outputBehavior.autoCopy)
         #expect(!settings.treatURLsAsScreenshot)
         #expect(settings.config.theme.id == Theme.oneDark.id)
         #expect(settings.config.padding == SnapshotConfig().padding)

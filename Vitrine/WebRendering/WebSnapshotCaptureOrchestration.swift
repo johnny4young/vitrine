@@ -140,6 +140,7 @@ extension WebSnapshotModel {
         }
 
         results = captured
+        captureScale = CGFloat(settings.export.scale)
         renderedAsset = captured.first?.asset
         var boardErrorMessage: String?
         // A multi-size batch also gets a composite "responsive board" as the primary
