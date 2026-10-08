@@ -53,6 +53,8 @@ can never drift.
 
 ### Fixed
 
+- Preserve complete CJK and emoji characters when terminal insertion shifts them
+  from their leading cell; split or right-edge-truncated glyphs still clear safely.
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
   features in English and Spanish.

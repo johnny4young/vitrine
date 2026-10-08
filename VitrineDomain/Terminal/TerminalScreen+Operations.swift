@@ -229,7 +229,11 @@ extension TerminalScreen {
         let n = min(max(1, count), columns - cursorCol)
         guard n > 0 else { return }
         padRow(cursorRow, to: cursorCol)
-        blankWideCluster(row: cursorRow, col: cursorCol)
+        // Inserting inside a wide glyph splits it; inserting at its head shifts both
+        // cells together, so the glyph must survive unless the margin truncates it.
+        if case .continuation = rows[cursorRow][cursorCol].content {
+            blankWideCluster(row: cursorRow, col: cursorCol)
+        }
         rows[cursorRow].insert(contentsOf: Array(repeating: .blank, count: n), at: cursorCol)
         if rows[cursorRow].count > columns {
             rows[cursorRow].removeLast(rows[cursorRow].count - columns)
