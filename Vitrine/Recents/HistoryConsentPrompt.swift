@@ -30,10 +30,14 @@ enum HistoryConsentPrompt {
         alert.buttons[1].keyEquivalent = ""
         alert.buttons[2].keyEquivalent = ""
         // Quick capture runs from a global hotkey while another app is frontmost; an
-        // inactive agent app's modal would otherwise open behind it.
-        NSApp.activate()
+        // inactive agent app's modal would otherwise open behind it. Focus goes back to
+        // that app afterward so the next paste lands there.
+        let previous = AppActivation.frontmostOtherApplication()
+        AppActivation.bringForward()
         alert.window.level = .modalPanel
-        return choice(for: alert.runModal())
+        let response = alert.runModal()
+        AppActivation.restoreFocus(to: previous)
+        return choice(for: response)
     }
 
     static func choice(for response: NSApplication.ModalResponse) -> CaptureRetentionPolicy.Consent

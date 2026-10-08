@@ -13,7 +13,7 @@ import VitrineRendering
 enum AboutPanel {
     /// Activates the app and shows the standard About panel with the branded credits.
     static func present() {
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
         NSApp.orderFrontStandardAboutPanel(options: [.credits: credits])
     }
 

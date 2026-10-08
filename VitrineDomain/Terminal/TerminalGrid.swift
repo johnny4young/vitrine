@@ -24,6 +24,13 @@ public struct TerminalCell: Equatable, Sendable {
         guard case .grapheme(" ") = content else { return false }
         return style == ANSIStyle()
     }
+
+    /// Whether the cell is a space carrying at most a background color: what an erase
+    /// leaves behind, as opposed to a drawn glyph.
+    var isErased: Bool {
+        guard case .grapheme(" ") = content else { return false }
+        return style == ANSIStyle(background: style.background)
+    }
 }
 
 /// A cell-buffer VT emulator: replays a stream of terminal output that addresses the

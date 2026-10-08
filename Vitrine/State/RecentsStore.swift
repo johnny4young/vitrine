@@ -59,20 +59,34 @@ final class RecentsStore {
     /// emptied on `clear`).
     @ObservationIgnored private var decodedThumbnails: [UUID: NSImage] = [:]
 
+    /// The capture's theme, resolved through the app's theme store.
+    func theme(for capture: Capture) -> Theme { capture.theme(resolvedBy: themeLookup) }
+
+    /// The capture's content over `base`, with its theme resolved.
+    func document(for capture: Capture, over base: SnapshotConfig) -> SnapshotConfig {
+        capture.applying(to: base, themes: themeLookup)
+    }
+
     /// Renders a capture to thumbnail PNG bytes. Injectable so unit tests can drive
     /// the caching/pruning logic deterministically without invoking the real
     /// (main-actor, AppKit-backed) image renderer; the default reuses the app's
     /// export pipeline so a thumbnail looks exactly like the snapshot it previews.
     private let renderThumbnail: @MainActor (Capture) -> Data?
 
+    /// Resolves capture theme ids, including custom themes, for every reader of history.
+    let themeLookup: ThemeLookup
+
     init(
         defaults: UserDefaults = .standard,
         thumbnails: RecentsThumbnailCache = .container,
-        renderThumbnail: @escaping @MainActor (Capture) -> Data? = RecentsThumbnail.pngData(for:)
+        themeLookup: @escaping ThemeLookup = Theme.theme(withID:),
+        renderThumbnail: (@MainActor (Capture) -> Data?)? = nil
     ) {
         self.defaults = defaults
         self.thumbnails = thumbnails
-        self.renderThumbnail = renderThumbnail
+        self.themeLookup = themeLookup
+        self.renderThumbnail =
+            renderThumbnail ?? { RecentsThumbnail.pngData(for: $0, themes: themeLookup) }
         if let preference = defaults.object(forKey: Self.enabledKey) {
             isEnabled = preference as? Bool ?? false
         } else {
@@ -321,8 +335,10 @@ enum RecentsThumbnail {
     static let size = CGSize(width: 320, height: 200)
 
     /// PNG bytes for `capture`'s preview, or `nil` if the render fails.
-    static func pngData(for capture: Capture) -> Data? {
-        let config = capture.applying(to: SnapshotConfig())
+    static func pngData(
+        for capture: Capture, themes: ThemeLookup = Theme.theme(withID:)
+    ) -> Data? {
+        let config = capture.applying(to: SnapshotConfig(), themes: themes)
         // Thumbnails are recognition aids, not exports: render at 1× into the fixed
         // frame so the cached file stays small and uniform.
         guard

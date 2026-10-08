@@ -264,7 +264,7 @@ enum DiagnosticsExporter {
     /// Builds the bundle for the current runtime + settings. Kept separate from the
     /// save panel so callers (and tests) can obtain the exact text that would be
     /// written.
-    static func currentBundle(settings: AppSettings = .shared) -> DiagnosticsBundle {
+    static func currentBundle(settings: AppSettings) -> DiagnosticsBundle {
         DiagnosticsBundle.build(
             environment: .current(),
             settings: settings.diagnosticsSnapshot,
@@ -273,43 +273,19 @@ enum DiagnosticsExporter {
     }
 
     /// Presents a save panel and writes the diagnostics text to the chosen file.
-    /// No-op if the user cancels. Returns the URL written, or `nil` on cancel/failure.
     @discardableResult
-    static func exportWithSavePanel(settings: AppSettings = .shared) -> URL? {
-        let bundle = currentBundle(settings: settings)
-        let text = bundle.text()
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [.plainText]
-        panel.nameFieldStringValue = "vitrine-diagnostics.txt"
-        // An explicit title and field label give the panel clear context and a
-        // VoiceOver-announced purpose, rather than relying on the body message
-        // alone with the system's generic default title.
-        panel.title = "Export Diagnostics"
-        panel.nameFieldLabel = "Save as:"
-        panel.message =
-            "Diagnostics are saved only to the file you choose. Nothing is sent anywhere."
-        panel.prompt = "Save"
-
-        Log.export.info("Presenting diagnostics export save panel")
-        guard panel.runModal() == .OK, let url = panel.url else {
-            Log.export.info("Diagnostics export cancelled")
-            return nil
-        }
-
-        do {
-            try text.write(to: url, atomically: true, encoding: .utf8)
-            Log.export.notice("Wrote diagnostics bundle (\(text.count, privacy: .public) bytes)")
-            return url
-        } catch {
-            // Log only the error domain/code, never `localizedDescription`, which
-            // can contain the user-chosen path (privacy policy).
-            let nsError = error as NSError
-            Log.export.error(
-                "Failed to write diagnostics bundle (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-            )
-            return nil
-        }
+    static func exportWithSavePanel(settings: AppSettings) -> FileExchangePanel.SaveOutcome {
+        let text = currentBundle(settings: settings).text()
+        return FileExchangePanel.save(
+            Data(text.utf8), contentType: .plainText, suggestedFilename: "vitrine-diagnostics.txt",
+            copy: FileExchangePanel.Copy(
+                title: String(localized: "Export Diagnostics"),
+                message: String(
+                    localized:
+                        "Diagnostics are saved only to the file you choose. Nothing is sent anywhere."
+                ),
+                prompt: String(localized: "Save")),
+            logLabel: "diagnostics bundle")
     }
 }
 

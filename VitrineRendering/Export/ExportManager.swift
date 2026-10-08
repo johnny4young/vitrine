@@ -181,7 +181,7 @@ public enum ExportManager {
     /// `ImageRenderer` composite that layer above selectable text in fit mode;
     /// flattening the finished bitmap preserves the foreground while filling fit
     /// letterboxes and translucent blur edges deterministically.
-    private static func compositedOverBlackChecked(_ cgImage: CGImage) -> CGImage? {
+    public static func compositedOverBlackChecked(_ cgImage: CGImage) -> CGImage? {
         guard
             let colorSpace = cgImage.colorSpace ?? CGColorSpace(name: CGColorSpace.sRGB),
             let context = CGContext(
@@ -332,13 +332,16 @@ public enum ExportManager {
         return produced ? data as Data : nil
     }
 
-    /// Wraps a finished `CGImage` in single-page PDF data at its own pixel size — the
-    /// `CGImage` analogue of the view-based `pdfData(_:proposedSize:)`, for export
-    /// paths (web snapshots) that already hold a rasterized bitmap rather than a SwiftUI
-    /// view. Returns nil if the PDF page context cannot be created.
-    public static func pdfData(from cgImage: CGImage) -> Data? {
+    /// Wraps a finished `CGImage` in single-page PDF data — the `CGImage` analogue of the
+    /// view-based `pdfData(_:proposedSize:)`, for raster-backed exports (web snapshots,
+    /// comparison boards). The page is sized in points (`pixels / scale`), so a 2× capture
+    /// keeps the same page size as a 1× one. Returns nil if the page context fails.
+    nonisolated public static func pdfData(from cgImage: CGImage, scale: CGFloat = 1) -> Data? {
+        let pointScale = scale.isFinite && scale > 0 ? scale : 1
         let data = NSMutableData()
-        var mediaBox = CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height)
+        var mediaBox = CGRect(
+            x: 0, y: 0, width: CGFloat(cgImage.width) / pointScale,
+            height: CGFloat(cgImage.height) / pointScale)
         guard let consumer = CGDataConsumer(data: data as CFMutableData),
             let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
         else { return nil }

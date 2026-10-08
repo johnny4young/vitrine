@@ -219,14 +219,20 @@ public enum ANSIRenderer {
         return ANSIParser.parse(normalize(text))
     }
 
-    /// What a redraw escape does to the text ``normalize(_:)`` has emitted for the
-    /// current line. The line renderer tracks where the line started, not where a
-    /// cursor sits, so only whole-span edits are expressible — and they are the only
-    /// ones the progress-bar and clear idioms need.
+    /// What a redraw escape does to the lines ``normalize(_:)`` has emitted. The line
+    /// renderer tracks lines, not a cursor column, so only whole-line edits are
+    /// expressible — and they are the only ones the progress-bar and clear idioms need.
     private enum LineEdit {
-        /// Discard the current line, so what follows replaces it. This is what `\r`
-        /// already does.
-        case clearLine
+        /// Erase the current line. `EL 1` erases start-to-cursor and `EL 2` the whole
+        /// line; with no column model both discard the line.
+        case eraseLine
+        /// `EL 0` erases from the cursor forward. It only matters when the cursor went
+        /// back to the line start; otherwise it sits at the end of the emitted text.
+        case eraseForward
+        /// Return to the line start (`CHA` to column 1, like `\r`).
+        case returnToLineStart
+        /// Move to the line `n` rows up (`CUU`/`CPL`) or down (`CUD`/`CNL`).
+        case moveLines(Int)
         /// Discard everything emitted so far — the `clear && <command>` idiom. A lone
         /// display erase no longer routes the stream to the grid (see
         /// `TerminalScreen.usesScreenAddressing`), so the reset it implies is applied
@@ -234,26 +240,28 @@ public enum ANSIRenderer {
         case clearTranscript
     }
 
-    /// Maps a CSI to its effect on the current line, or `nil` to leave the sequence for
+    /// Maps a CSI to its effect on the emitted lines, or `nil` to leave the sequence for
     /// the parser.
     ///
-    /// Both mapped cases are exact rather than approximations, because everything emitted
-    /// since `lineStart` is precisely the span from the start of the line to the cursor:
-    /// `EL 1` erases start-to-cursor and `EL 2` erases the whole line, so both discard
-    /// exactly that span, and `CHA` to column 1 returns the cursor to the start of the
-    /// line, which is `\r`.
-    ///
-    /// Deliberately unmapped: `EL 0` erases from the cursor *forward*, and the cursor is
-    /// already at the end of the emitted text, so it changes nothing. `CHA` to any other
-    /// column is left alone too — without a real cursor the honest options are to pad or
-    /// to truncate, and truncating would delete text a program had aligned rather than
-    /// merely fail to align it.
+    /// `CHA` to any column other than 1 is left alone: without a real cursor the honest
+    /// options are to pad or to truncate, and truncating would delete text a program had
+    /// aligned rather than merely fail to align it.
     private static func lineEdit(finalByte: Unicode.Scalar, params: String) -> LineEdit? {
         switch finalByte {
         case "K":  // EL — erase in line
-            return params == "1" || params == "2" ? .clearLine : nil
+            switch params {
+            case "1", "2": return .eraseLine
+            case "", "0": return .eraseForward
+            default: return nil
+            }
         case "G":  // CHA — cursor to an absolute column (empty parameter means column 1)
-            return params.isEmpty || params == "1" ? .clearLine : nil
+            return params.isEmpty || params == "1" ? .returnToLineStart : nil
+        case "A", "F", "B", "E":  // CUU / CPL up, CUD / CNL down
+            guard params.unicodeScalars.allSatisfy({ ("0"..."9").contains($0) }) else {
+                return nil
+            }
+            let count = max(1, min(Int(params) ?? 1, 100_000))
+            return .moveLines(finalByte == "A" || finalByte == "F" ? -count : count)
         case "J":  // ED — erase display
             // Only `2` (erase the whole screen) discards the transcript. `3` erases
             // *saved scrollback*, not the visible screen — a standalone `CSI 3 J` must
@@ -268,101 +276,204 @@ public enum ANSIRenderer {
         }
     }
 
+    /// One line of ``normalize(_:)`` output. Escape sequences ride between the visible
+    /// scalars, and an erase keeps the ones that carry pen state (SGR, OSC), so text
+    /// drawn after a redraw keeps the color a terminal would show.
+    private struct NormalizedLine {
+        enum Piece {
+            case text(Unicode.Scalar)
+            case escape([Unicode.Scalar], keepsState: Bool)
+        }
+
+        /// State-carrying escapes from erased content, always before `live`.
+        private(set) var kept: [[Unicode.Scalar]] = []
+        private(set) var live: [Piece] = []
+
+        mutating func append(_ piece: Piece) { live.append(piece) }
+
+        mutating func erase() {
+            for case .escape(let bytes, true) in live { kept.append(bytes) }
+            live.removeAll(keepingCapacity: true)
+        }
+
+        /// Deletes the last visible scalar, never an escape sequence's bytes.
+        mutating func deleteLastVisible() {
+            guard
+                let index = live.lastIndex(where: {
+                    if case .text = $0 { return true }
+                    return false
+                })
+            else { return }
+            live.remove(at: index)
+        }
+
+        var stateEscapes: [[Unicode.Scalar]] {
+            var result = kept
+            for case .escape(let bytes, true) in live { result.append(bytes) }
+            return result
+        }
+
+        func write(to output: inout String.UnicodeScalarView) {
+            for bytes in kept { output.append(contentsOf: bytes) }
+            for piece in live {
+                switch piece {
+                case .text(let scalar): output.append(scalar)
+                case .escape(let bytes, _): output.append(contentsOf: bytes)
+                }
+            }
+        }
+    }
+
     /// Cleans control bytes a pseudo-terminal capture leaves behind so the static
     /// image shows clean lines. A terminal turns `\\n` into `\\r\\n` on output, a lone
-    /// `\\r` redraws the current line (progress bars/spinners), and `\\b` backs up one
-    /// visible character. `script` can also leave stray bytes like `^D` (EOT) or BEL.
-    /// Keep tab, newline, and ESC — the parser itself consumes ESC as SGR/other
-    /// sequences — while dropping the remaining C0 controls.
+    /// `\\r` redraws the current line (progress bars/spinners), `\\b` backs up one
+    /// visible character, and cursor-up/down redraws a multi-line block in place.
+    /// `script` can also leave stray bytes like `^D` (EOT) or BEL. Keep tab, newline,
+    /// and ESC — the parser itself consumes ESC as SGR/other sequences — while dropping
+    /// the remaining C0 controls.
+    ///
+    /// A return to the line start (`\\r`, `CHA 1`, or a cursor move onto another line)
+    /// erases that line only once something is drawn or erased there, so `\\r\\r\\n`
+    /// and a bare trailing `\\r` keep the line, as a terminal does.
     public static func normalize(_ text: String) -> String {
         let scalars = Array(text.unicodeScalars)
-        var output: [Unicode.Scalar] = []
-        output.reserveCapacity(scalars.count)
-        var lineStart = 0
+        var lines = [NormalizedLine()]
+        var current = 0
+        var atLineStart = false
         var changed = false
         var index = 0
+
+        func draw(_ piece: NormalizedLine.Piece) {
+            if atLineStart {
+                lines[current].erase()
+                atLineStart = false
+            }
+            lines[current].append(piece)
+        }
+        func appendEscape(_ bytes: ArraySlice<Unicode.Scalar>, keepsState: Bool = false) {
+            lines[current].append(.escape(Array(bytes), keepsState: keepsState))
+        }
 
         while index < scalars.count {
             let scalar = scalars[index]
             switch scalar {
             case "\r":
                 changed = true
-                if index + 1 < scalars.count, scalars[index + 1] == "\n" {
-                    output.append("\n")
-                    lineStart = output.count
-                    index += 2
-                } else {
-                    output.removeSubrange(lineStart..<output.count)
-                    index += 1
-                }
+                atLineStart = true
+                index += 1
             case "\n":
-                output.append(scalar)
-                lineStart = output.count
+                current += 1
+                if current == lines.count {
+                    lines.append(NormalizedLine())
+                    atLineStart = false
+                } else {
+                    atLineStart = true  // back on a line a cursor-up revisited
+                }
                 index += 1
             case "\u{08}":
                 changed = true
-                if output.count > lineStart { output.removeLast() }
+                if !atLineStart { lines[current].deleteLastVisible() }
                 index += 1
             case "\u{1B}":
-                // A progress bar redraws its line with `EL`/`CHA` at least as often as
-                // with `\r` (npm, ora, and anything built on gauge emit `ESC[2K ESC[1G`),
-                // so those redraws are applied here, beside `\r`. Left to the parser they
-                // are stripped as decoration, which concatenates every spinner frame the
-                // capture recorded into one unreadable line.
-                if index + 1 < scalars.count, scalars[index + 1] == "[" {
+                guard index + 1 < scalars.count else {
+                    appendEscape(scalars[index...])
+                    index += 1
+                    break
+                }
+                let next = scalars[index + 1]
+                if next == "[" {
+                    // A progress bar redraws its line with `EL`/`CHA` at least as often
+                    // as with `\r` (npm, ora, and anything built on gauge emit
+                    // `ESC[2K ESC[1G`), and multi-line renderers (log-update, listr2,
+                    // buildkit) step back up with `CUU`. Left to the parser they are
+                    // stripped as decoration, which keeps every recorded frame.
                     let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
                     if let finalByte, let edit = Self.lineEdit(finalByte: finalByte, params: params)
                     {
-                        changed = true
                         switch edit {
-                        case .clearLine:
-                            output.removeSubrange(lineStart..<output.count)
+                        case .eraseLine:
+                            changed = true
+                            lines[current].erase()
+                            atLineStart = false
+                        case .eraseForward:
+                            guard atLineStart else {
+                                appendEscape(scalars[index..<end])  // nothing to erase
+                                index = end
+                                continue
+                            }
+                            changed = true
+                            lines[current].erase()
+                            atLineStart = false
+                        case .returnToLineStart:
+                            changed = true
+                            atLineStart = true
+                        case .moveLines(let delta):
+                            changed = true
+                            current = min(max(0, current + delta), lines.count - 1)
+                            atLineStart = true
                         case .clearTranscript:
-                            output.removeAll(keepingCapacity: true)
-                            lineStart = 0
+                            changed = true
+                            var reset = NormalizedLine()
+                            for line in lines {
+                                for bytes in line.stateEscapes {
+                                    reset.append(.escape(bytes, keepsState: true))
+                                }
+                            }
+                            lines = [reset]
+                            current = 0
+                            atLineStart = false
                         }
                         index = end
-                        break  // consumed: never re-emitted as text
+                        continue
                     }
-                    // Every other CSI (SGR above all) falls through untouched — its bytes
-                    // are all ≥ 0x20, so the parser still receives and interprets it.
+                    // Every other CSI (SGR above all) stays for the parser.
+                    appendEscape(scalars[index..<end], keepsState: finalByte == "m")
+                    index = end
+                    continue
                 }
-                // Preserve an OSC — or a DCS/SOS/PM/APC string sequence — intact so the
-                // stray-control stripping below never eats its BEL/ST terminator.
-                // Without this, an OSC 8 hyperlink (and the rest of its line) is
-                // swallowed as an unterminated OSC, and a BEL-terminated DCS body loses
-                // the terminator the parser's skip relies on, overrunning into real
-                // text. CSI needs no special case: its bytes are all ≥ 0x20 and already
-                // pass through.
-                output.append(scalar)  // ESC
-                index += 1
-                guard index < scalars.count,
-                    scalars[index] == "]" || ANSIParser.isStringSequenceIntroducer(scalars[index])
-                else { break }
-                // BEL ends an OSC (the xterm extension the app relies on for window
-                // titles and OSC 8), but inside a DCS/SOS/PM/APC body it is ordinary
-                // payload content — see `ANSIParser.skipStringSequence`. Copying with
-                // the wrong terminator would hand the parser a body the stray-control
-                // stripping had already chewed through.
-                let belTerminates = scalars[index] == "]"
-                output.append(scalars[index])  // `]`, or the string introducer (P/X/^/_)
-                index += 1
-                while index < scalars.count {
-                    let byte = scalars[index]
-                    output.append(byte)
-                    index += 1
-                    if belTerminates, byte == "\u{07}" { break }  // BEL terminator
-                    if byte == "\u{1B}", index < scalars.count, scalars[index] == "\\" {
-                        output.append(scalars[index])  // ST terminator's trailing `\`
-                        index += 1
-                        break
+                if next == "]" || ANSIParser.isStringSequenceIntroducer(next) {
+                    // Copy an OSC or DCS/SOS/PM/APC intact so the stray-control stripping
+                    // never eats its BEL/ST terminator. BEL ends an OSC (the xterm
+                    // extension OSC 8 relies on) but is payload inside a string sequence.
+                    let belTerminates = next == "]"
+                    var cursor = index + 2
+                    var terminated = false
+                    while cursor < scalars.count {
+                        let byte = scalars[cursor]
+                        cursor += 1
+                        if belTerminates, byte == "\u{07}" {
+                            terminated = true
+                            break
+                        }
+                        if byte == "\u{1B}", cursor < scalars.count, scalars[cursor] == "\\" {
+                            cursor += 1
+                            terminated = true
+                            break
+                        }
                     }
+                    appendEscape(scalars[index..<cursor], keepsState: belTerminates && terminated)
+                    index = cursor
+                    continue
                 }
+                // Charset designation (`ESC (B`) and other two-byte escapes form one
+                // piece so an erase never splits them. A control byte after ESC is left
+                // for the loop, as the parser drops the pair either way.
+                var end = index + 1
+                if (0x20...0x2F).contains(next.value) {
+                    while end < scalars.count, (0x20...0x2F).contains(scalars[end].value) {
+                        end += 1
+                    }
+                    end = min(end + 1, scalars.count)
+                } else if next.value >= 0x20 {
+                    end += 1
+                }
+                appendEscape(scalars[index..<end])
+                index = end
             default:
                 if scalar.value < 0x20, scalar != "\t" {
                     changed = true
                 } else {
-                    output.append(scalar)
+                    draw(.text(scalar))
                 }
                 index += 1
             }
@@ -370,7 +481,10 @@ public enum ANSIRenderer {
 
         guard changed else { return text }
         var view = String.UnicodeScalarView()
-        view.append(contentsOf: output)
+        for (number, line) in lines.enumerated() {
+            if number > 0 { view.append("\n") }
+            line.write(to: &view)
+        }
         return String(view)
     }
 

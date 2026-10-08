@@ -206,9 +206,10 @@ pipe; `--edit` (`-e`) opens the source in Vitrine's editor instead of rendering 
 to tweak before exporting; `--text-sidecar` writes a `.txt` of the output next to
 `--out` (terminal escapes stripped), while `--sidecars all` adds the Markdown and HTML
 embeds too. Each detects terminal output by its ANSI escapes when `--language` is
-omitted. `--edit` is free, including `vpane -e`, and is mutually exclusive with
-`--copy`/`--out`, sidecars, and render-only styles. It only opens the editor; it does not
-unlock PRO image-output automation.
+omitted. In current source `--edit` is free, including `vpane -e` (the v1.2.3 download
+still requires PRO for it), and is mutually exclusive with `--copy`/`--out`, sidecars,
+and render-only styles. It only opens the editor; it does not unlock PRO image-output
+automation.
 
 ## Notes
 
@@ -222,14 +223,14 @@ unlock PRO image-output automation.
 - **Nerd Font / Powerline / icon glyphs.** Private-Use-Area glyphs from `starship`,
   `eza --icons`, and Powerline separators render via a font **cascade** to a Nerd Font
   **you already have installed** (Symbols Nerd Font, a `…Nerd Font` patched family, etc.).
-  Vitrine bundles no font — so there is nothing to license and no multi-megabyte asset —
+  Vitrine bundles no Nerd Font — so there is nothing to license and no multi-megabyte asset —
   and falls back gracefully to the previous missing-glyph boxes when no Nerd Font is
   present. (Install any Nerd Font to light these up.)
 - **Copyable text alongside the image.** From the command line, `--text-sidecar` writes
   a `.txt` next to the rendered image holding the output as selectable, greppable text —
   the terminal escapes stripped to the visible lines. `--markdown-sidecar`,
   `--html-sidecar`, or `--sidecars all` add README/web embeds with the same stripped
-  visible text. In the app, **Settings ▸ Output ▸ Clipboard ▸ "Copyable text with
+  visible text. In the app, **Settings ▸ Export ▸ Clipboard ▸ "Copyable text with
   images"** does the same idea sandbox-safely: it adds the text to the clipboard when
   you copy (paste the image anywhere, paste the text into an editor) and writes a `.txt`
   beside each image in a multi-size export. Handy for accessibility and for pairing a

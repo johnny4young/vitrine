@@ -339,34 +339,6 @@ public enum RichPasteboard {
         return wrote
     }
 
-    /// Renders `config` and copies the image plus, when `includeRichText` is on,
-    /// highlighted RTF/HTML to the clipboard.
-    ///
-    /// All of it is main-actor work: the render drives `ImageRenderer` and the highlight
-    /// engine, and the styled-text serialization that follows is bounded by the size cap
-    /// and serializes the code (KB-scale), so it stays responsive. Returns whether the
-    /// image was placed on the pasteboard.
-    @discardableResult
-    static func copy(
-        _ config: SnapshotConfig,
-        scale: CGFloat,
-        fixedSize: CGSize?,
-        profile: ColorProfile,
-        includeRichText: Bool,
-        includePlainText: Bool = false,
-        concealed: Bool = false,
-        backgroundImageStore: BackgroundImageStore = .container,
-        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
-        to pasteboard: NSPasteboard = .general
-    ) -> Bool {
-        (try? copyChecked(
-            config, scale: scale, fixedSize: fixedSize, profile: profile,
-            includeRichText: includeRichText, includePlainText: includePlainText,
-            concealed: concealed,
-            backgroundImageStore: backgroundImageStore,
-            foregroundImageStore: foregroundImageStore, to: pasteboard)) ?? false
-    }
-
     /// Throwing rich-copy path used by the app and CLI to preserve render failures.
     @discardableResult
     static func copyChecked(
@@ -389,22 +361,6 @@ public enum RichPasteboard {
         return write(payload, concealed: concealed, to: pasteboard)
     }
 
-    /// Copies from an **already-rendered** `cgImage` — the quick-capture path passes
-    /// the single render shared with the file save, rather than re-rendering the config.
-    @discardableResult
-    static func copy(
-        cgImage: CGImage,
-        config: SnapshotConfig,
-        includeRichText: Bool,
-        includePlainText: Bool = false,
-        concealed: Bool = false,
-        to pasteboard: NSPasteboard = .general
-    ) -> Bool {
-        copyOutcome(
-            cgImage: cgImage, config: config, includeRichText: includeRichText,
-            includePlainText: includePlainText, concealed: concealed, to: pasteboard) == .copied
-    }
-
     /// Checked rich-copy path for an already-rendered raster. Payload creation can
     /// still fail during PNG/RTF/HTML encoding or representation-size validation.
     @discardableResult
@@ -425,26 +381,6 @@ public enum RichPasteboard {
     }
 
     // MARK: - Explicit single-representation copies
-
-    /// Copies the rendered image as a `data:image/png;base64,…` URI string.
-    /// Returns whether the string was placed on the pasteboard; `false`
-    /// if the image could not be rendered/encoded or the URI exceeded the cap.
-    ///
-    /// The base64 encoding is bounded by `maxRepresentationBytes` and is the only
-    /// non-trivial cost, so this stays responsive even for a large card.
-    @discardableResult
-    static func copyDataURI(
-        for config: SnapshotConfig,
-        scale: CGFloat,
-        fixedSize: CGSize?,
-        profile: ColorProfile,
-        concealed: Bool = false,
-        to pasteboard: NSPasteboard = .general
-    ) -> Bool {
-        copyDataURIOutcome(
-            for: config, scale: scale, fixedSize: fixedSize, profile: profile, concealed: concealed,
-            to: pasteboard) == .copied
-    }
 
     @discardableResult
     public static func copyDataURIOutcome(
@@ -473,23 +409,6 @@ public enum RichPasteboard {
         RenderingLog.export.info(
             "Copied PNG data URI to pasteboard (success \(wrote, privacy: .public))")
         return wrote ? .copied : .failed
-    }
-
-    /// Copies a complete Markdown snippet containing the rendered PNG and the
-    /// redaction-safe source. The pasteboard is changed only after render, encoding,
-    /// and the complete-document size check all succeed.
-    @discardableResult
-    static func copyMarkdown(
-        for config: SnapshotConfig,
-        scale: CGFloat,
-        fixedSize: CGSize?,
-        profile: ColorProfile,
-        concealed: Bool = false,
-        to pasteboard: NSPasteboard = .general
-    ) -> Bool {
-        copyMarkdownOutcome(
-            for: config, scale: scale, fixedSize: fixedSize, profile: profile, concealed: concealed,
-            to: pasteboard) == .copied
     }
 
     @discardableResult

@@ -10,14 +10,14 @@ import VitrineDomain
 struct ClipboardPrivacyTests {
     @Test func preferenceIsOptInPersistentAndResettable() {
         let defaults = testDefaults()
-        let settings = ExportSettings(defaults: defaults)
-        #expect(settings.concealClipboard == false)
-        settings.concealClipboard = true
-        #expect(ExportSettings(defaults: defaults).concealClipboard)
-        settings.resetToDefaults()
-        #expect(ExportSettings(defaults: defaults).concealClipboard == false)
+        let behavior = OutputBehavior(defaults: defaults)
+        #expect(behavior.concealClipboard == false)
+        behavior.concealClipboard = true
+        #expect(OutputBehavior(defaults: defaults).concealClipboard)
+        behavior.resetToDefaults()
+        #expect(OutputBehavior(defaults: defaults).concealClipboard == false)
         defaults.set("not a boolean", forKey: SettingsCodec.Keys.concealClipboard)
-        #expect(ExportSettings(defaults: defaults).concealClipboard == false)
+        #expect(OutputBehavior(defaults: defaults).concealClipboard == false)
         #expect(SettingsCodec.Keys.all.contains(SettingsCodec.Keys.concealClipboard))
     }
 
@@ -89,22 +89,22 @@ struct ClipboardPrivacyTests {
         #expect(pasteboard.data(forType: .rtf) != nil)
         #expect(pasteboard.data(forType: .html) != nil)
         check(
-            RichPasteboard.copy(
+            ((try? RichPasteboard.copyChecked(
                 config, scale: 1, fixedSize: nil, profile: .sRGB, includeRichText: true,
-                concealed: concealed, to: pasteboard))
+                concealed: concealed, to: pasteboard)) ?? false))
         check(
-            RichPasteboard.copy(
+            (RichPasteboard.copyOutcome(
                 cgImage: image, config: config, includeRichText: true, concealed: concealed,
-                to: pasteboard))
+                to: pasteboard) == .copied))
         check(RichPasteboard.copyHighlightedCode(for: config, concealed: concealed, to: pasteboard))
         check(
-            RichPasteboard.copyDataURI(
+            (RichPasteboard.copyDataURIOutcome(
                 for: config, scale: 1, fixedSize: nil, profile: .sRGB, concealed: concealed,
-                to: pasteboard))
+                to: pasteboard) == .copied))
         check(
-            RichPasteboard.copyMarkdown(
+            (RichPasteboard.copyMarkdownOutcome(
                 for: config, scale: 1, fixedSize: nil, profile: .sRGB, concealed: concealed,
-                to: pasteboard))
+                to: pasteboard) == .copied))
         let sharedImage = NSImage(
             cgImage: image, size: NSSize(width: image.width, height: image.height))
         check(ClipboardWriter.write([sharedImage], concealed: concealed, to: pasteboard))

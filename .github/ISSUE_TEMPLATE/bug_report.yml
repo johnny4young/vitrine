@@ -34,8 +34,8 @@ body:
     id: app-version
     attributes:
       label: Vitrine version
-      description: Settings ▸ About, or the About Vitrine panel (e.g. 0.3.0).
-      placeholder: "0.3.0"
+      description: Settings ▸ About, or the About Vitrine panel (e.g. 1.2.3).
+      placeholder: "x.y.z (e.g. 1.2.3)"
     validations:
       required: true
   - type: input

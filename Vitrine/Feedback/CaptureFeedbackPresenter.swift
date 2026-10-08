@@ -5,12 +5,9 @@ import Observation
 /// any recovery action the user chooses.
 ///
 /// This is the side-effecting counterpart to the pure `Notifier` policy: it asks
-/// `Notifier` what to say, then presents it through the in-app `CaptureHUD` so
-/// Notification Center is *not* used for routine success (
-/// "Notification Center is not used repeatedly for routine success if an in-app
-/// HUD is available."). Notification Center remains a fallback for when the HUD
-/// cannot be shown. The most recent feedback is published so the menu-bar menu can
-/// echo the last outcome and offer the same recovery actions there.
+/// `Notifier` what to say, then presents it through the in-app `CaptureHUD`. The most
+/// recent feedback is published so the menu-bar menu can echo the last outcome and
+/// offer the same recovery actions there.
 ///
 /// HUD presentation and recovery navigation enter as small operation values. The live
 /// adapters bridge to the reusable AppKit window owners; this coordinator remains
@@ -24,12 +21,8 @@ final class CaptureFeedbackPresenter {
     /// last result stays reachable after the transient HUD fades.
     private(set) var lastFeedback: Notifier.CaptureFeedback?
 
-    /// The URL detected by the last capture, if any — the payload the "Render as
-    /// Text" recovery acts on. Never logged (privacy policy).
-    private var pendingURLText: String?
-
     let display: FeedbackDisplay
-    private let routing: CaptureRecoveryRouting
+    let routing: CaptureRecoveryRouting
 
     init(
         display: FeedbackDisplay = .live,
@@ -50,13 +43,6 @@ final class CaptureFeedbackPresenter {
             copiedToClipboard: result.copiedToClipboard,
             savedToFile: result.savedToFile)
 
-        // Remember the URL so a later "Render as Text" tap has something to render.
-        if case .url(let text) = result.outcome {
-            pendingURLText = text
-        } else {
-            pendingURLText = nil
-        }
-
         lastFeedback = feedback
         display(feedback) { [weak self] action in
             self?.run(action, environment: environment)
@@ -66,51 +52,16 @@ final class CaptureFeedbackPresenter {
     /// Presents an already-resolved feedback value and keeps the panel's retained
     /// status in sync with the transient HUD.
     func present(_ feedback: Notifier.CaptureFeedback) {
-        pendingURLText = nil
         lastFeedback = feedback
         display(feedback)
     }
 
     /// Runs a recovery action the user picked from the HUD or the menu.
     func run(_ action: Notifier.RecoveryAction, environment: AppEnvironment) {
-        let settings = environment.appSettings
         switch action {
         case .openEditor:
-            // The deferred capture's combined source lives in `settings.config`; load
-            // it into the primary editor so the "Open Editor" recovery surfaces it even
-            // if the editor is already open.
-            routing.loadIntoPrimaryEditor(settings.config)
-        case .openWebSnapshot:
-            if let text = pendingURLText {
-                pendingURLText = nil
-                routing.showWebSnapshot(prefillURL: text)
-            } else {
-                routing.showWebSnapshot()
-            }
-        case .renderAsText:
-            renderPendingURLAsText(environment: environment)
-        }
-    }
-
-    /// Renders the previously-detected URL as plain text and confirms it.
-    /// Falls back to opening the editor if there is no pending URL to render, so
-    /// the action is never a no-op dead end.
-    private func renderPendingURLAsText(environment: AppEnvironment) {
-        guard let text = pendingURLText else {
+            // Show, never load: the editor may hold an unsaved document.
             routing.showEditor()
-            return
         }
-        pendingURLText = nil
-        let result = QuickCapture.renderText(
-            text,
-            settings: environment.appSettings,
-            recents: environment.recents,
-            historyConsent: HistoryConsentPrompt.resolve)
-        let feedback = Notifier.feedback(
-            for: result.outcome,
-            copiedToClipboard: result.copiedToClipboard,
-            savedToFile: result.savedToFile)
-        lastFeedback = feedback
-        display(feedback)
     }
 }

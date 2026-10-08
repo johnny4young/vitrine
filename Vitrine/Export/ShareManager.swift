@@ -14,17 +14,23 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
 
     private let picker: NSSharingServicePicker
     private let concealed: Bool
+    private let feedback: FeedbackDisplay
 
-    private init(image: NSImage, concealed: Bool) {
+    private init(image: NSImage, concealed: Bool, feedback: FeedbackDisplay) {
         self.concealed = concealed
+        self.feedback = feedback
         self.picker = NSSharingServicePicker(items: [image])
         super.init()
         self.picker.delegate = self
     }
 
     /// Shows the sharing picker anchored to `view`, retaining it until dismissed.
-    static func share(_ image: NSImage, relativeTo view: NSView, concealed: Bool = false) {
-        let presenter = ShareManager(image: image, concealed: concealed)
+    /// Compose targets report through `feedback`.
+    static func share(
+        _ image: NSImage, relativeTo view: NSView, concealed: Bool = false,
+        feedback: FeedbackDisplay = .live
+    ) {
+        let presenter = ShareManager(image: image, concealed: concealed, feedback: feedback)
         active = presenter  // keep it alive across the async popover
         presenter.picker.show(relativeTo: .zero, of: view, preferredEdge: .minY)
     }
@@ -68,16 +74,16 @@ final class ShareManager: NSObject, NSSharingServicePickerDelegate {
         return NSSharingService(
             title: network.title, image: NSImage(named: NSImage.shareTemplateName) ?? NSImage(),
             alternateImage: nil
-        ) { [concealed] in
+        ) { [concealed, feedback] in
             // Only open the compose page when the image actually reached the
             // pasteboard — with nothing to paste, opening the browser and claiming
             // success would mislead the user.
             guard ClipboardWriter.write([image], concealed: concealed) else {
-                CaptureHUDController.shared.present(ExportFeedback.copyOutcome(.failed))
+                feedback(ExportFeedback.copyOutcome(.failed))
                 return
             }
             NSWorkspace.shared.open(url)
-            CaptureHUDController.shared.present(
+            feedback(
                 Notifier.confirmation(
                     String(localized: "Image copied — paste it into your post")))
         }

@@ -31,18 +31,6 @@ public enum ExportFormat: String, CaseIterable, Identifiable, Codable, Sendable 
     /// self-documenting and keeps them from hard-coding a literal.
     public var fileExtension: String { rawValue }
 
-    /// Whether this format is a scalable vector format (true for `pdf`).
-    ///
-    /// Drives the "vector" label/help shown next to the format picker so the menu
-    /// states honestly which output is resolution-independent. Raster PNG,
-    /// HEIC, and AVIF are `false`; PDF is `true`.
-    public var isVector: Bool {
-        switch self {
-        case .png, .heic, .avif: false
-        case .pdf: true
-        }
-    }
-
     /// One-line guidance shown next to the format picker, naming the vector option
     /// so docs/slide workflows know which export scales.
     public var summary: String {

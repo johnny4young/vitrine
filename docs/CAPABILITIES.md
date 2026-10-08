@@ -79,8 +79,9 @@ For implementation details, see [rendering](RENDERING.md),
 ## Ownership and release boundary
 
 Domain owns pure content rules and models; Rendering owns deterministic
-composition and encoding; the app owns Keychain, purchases, WebKit and UI
-lifecycle. The CLI reuses pure rendering code but owns no network transport.
+composition and encoding, plus the bounded remote-image fetcher the app uses for
+user-requested image URLs; the app owns Keychain, purchases, WebKit and UI
+lifecycle. The CLI links that module but never opens a connection.
 The Xcode project is generated from `project.yml`, not edited in Xcode's
 generated project file. A source build, green unit suite, or marketing-site
 change is not a signed release. Both channels need their own optimized

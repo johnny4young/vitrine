@@ -32,6 +32,32 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
 
     private let loadWaiter = WebLoadWaiter()
 
+    /// Answers an HTTP Basic, Digest, or NTLM challenge; nil means none can be
+    /// answered here (the offscreen capture), so WebKit's default handling applies.
+    var credentialProvider: ((URLProtectionSpace, WKWebView) async -> URLCredential?)?
+
+    /// The authentication methods that need a user name and password.
+    static let interactiveAuthenticationMethods: Set<String> = [
+        NSURLAuthenticationMethodHTTPBasic, NSURLAuthenticationMethodHTTPDigest,
+        NSURLAuthenticationMethodNTLM,
+    ]
+
+    /// How to answer `challenge`: ask the provider for password-based methods, cancel a
+    /// declined or repeatedly failing sign-in, and defer everything else to WebKit.
+    static func response(
+        to challenge: URLAuthenticationChallenge,
+        credential: (URLProtectionSpace) async -> URLCredential?
+    ) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        let space = challenge.protectionSpace
+        guard interactiveAuthenticationMethods.contains(space.authenticationMethod) else {
+            return (.performDefaultHandling, nil)
+        }
+        guard challenge.previousFailureCount < 3, let answer = await credential(space) else {
+            return (.cancelAuthenticationChallenge, nil)
+        }
+        return (.useCredential, answer)
+    }
+
     /// Suspends until the page finishes loading or fails, or until `timeout` elapses
     /// (whichever comes first). Throws `WebSnapshotError.timedOut` on the timeout and
     /// `WebSnapshotError.loadFailed` on a navigation failure.
@@ -40,6 +66,13 @@ final class URLLoadCoordinator: NSObject, WKNavigationDelegate {
     }
 
     // MARK: WKNavigationDelegate
+
+    func webView(
+        _ webView: WKWebView, respondTo challenge: URLAuthenticationChallenge
+    ) async -> (URLSession.AuthChallengeDisposition, URLCredential?) {
+        guard let credentialProvider else { return (.performDefaultHandling, nil) }
+        return await Self.response(to: challenge) { await credentialProvider($0, webView) }
+    }
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         loadWaiter.complete(.success(()))

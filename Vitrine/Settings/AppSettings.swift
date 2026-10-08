@@ -31,6 +31,13 @@ final class AppSettings {
         }
     }
 
+    /// Bumped whenever new content replaces the document, so editor-only state tied to
+    /// the old content (annotation undo, selection) can reset.
+    private(set) var documentGeneration = 0
+
+    /// Records that new content replaced the document.
+    func noteDocumentReplaced() { documentGeneration &+= 1 }
+
     /// Whether ``documentCode`` is empty, observed separately from the text itself.
     ///
     /// It changes only when the answer does, so a view that needs just this (an action
@@ -107,7 +114,7 @@ final class AppSettings {
         didSet { SettingsCodec.persistSocialCard(socialCard, to: defaults) }
     }
 
-    /// The image-output settings (auto-copy, save, scale, format, color profile, rich
+    /// The per-capture image-output settings (scale, format, color profile, rich
     /// clipboard, and text sidecar), extracted into a focused sub-store
     /// rather than as members of this object. Access them through `export`,
     /// e.g. `settings.export.scale`. Both objects are `@Observable`, so a SwiftUI surface
@@ -117,6 +124,13 @@ final class AppSettings {
     /// Declared `var` (never reassigned after `init`) only so a `$settings.export.field`
     /// SwiftUI binding resolves — a `let` class property forms a read-only key path.
     var export: ExportSettings
+
+    /// App-wide clipboard and save behavior. An editor session references the app-wide
+    /// instance instead of seeding its own, so it can never read a stale default.
+    let outputBehavior: OutputBehavior
+
+    /// Only the app-wide instance resets the shared behavior.
+    private let ownsOutputBehavior: Bool
 
     /// What the global hotkey does.
     var hotkeyAction: HotkeyAction {
@@ -227,10 +241,23 @@ final class AppSettings {
 
     private typealias Keys = SettingsCodec.Keys
 
-    init(
-        defaults: UserDefaults = .standard,
-        brandKit: BrandKitStore = .shared,
-        entitlements: Entitlements = .shared
+    convenience init(
+        defaults: UserDefaults,
+        brandKit: BrandKitStore,
+        entitlements: Entitlements
+    ) {
+        self.init(
+            defaults: defaults, sharedBehavior: nil, brandKit: brandKit,
+            entitlements: entitlements)
+    }
+
+    /// `sharedBehavior` is the app-wide instance an editor session references; `nil`
+    /// builds the app-wide instance, which owns its behavior.
+    private init(
+        defaults: UserDefaults,
+        sharedBehavior: OutputBehavior?,
+        brandKit: BrandKitStore,
+        entitlements: Entitlements
     ) {
         self.defaults = defaults
         self.brandKit = brandKit
@@ -246,6 +273,8 @@ final class AppSettings {
         // Image-output settings (Output) live in their own focused sub-store,
         // read defensively from the same defaults suite.
         export = ExportSettings(defaults: defaults)
+        outputBehavior = sharedBehavior ?? OutputBehavior(defaults: defaults)
+        ownsOutputBehavior = sharedBehavior == nil
         hotkeyAction = HotkeyAction.resolve(defaults.string(forKey: Keys.hotkeyAction))
         let resolvedLanguage = AppLanguage.resolve(defaults.string(forKey: Keys.appLanguage))
         appLanguage = resolvedLanguage
@@ -298,9 +327,11 @@ final class AppSettings {
     ///
     /// Resolve the complete configuration against the real defaults before crossing the
     /// session boundary. Only value preferences travel; shared theme/preset catalogs and
-    /// app-global behavior never enter the ephemeral store.
+    /// app-global behavior never enter the ephemeral store. The session references
+    /// `outputBehavior`, the app-wide instance, rather than copying it.
     static func makeEditorSession(
         seededFrom source: UserDefaults,
+        sharing outputBehavior: OutputBehavior,
         store: InMemoryUserDefaults = InMemoryUserDefaults(),
         brandKit: BrandKitStore,
         entitlements: Entitlements
@@ -312,7 +343,7 @@ final class AppSettings {
         // enter another window. Production supplies a fresh exclusive store each time.
         store.removeAllValues()
         let session = AppSettings(
-            defaults: store, ephemeralStore: store,
+            defaults: store, ephemeralStore: store, sharedBehavior: outputBehavior,
             brandKit: brandKit, entitlements: entitlements)
         session.applyEditorPreferences(preferences)
         return session
@@ -323,10 +354,13 @@ final class AppSettings {
     private convenience init(
         defaults: InMemoryUserDefaults,
         ephemeralStore: InMemoryUserDefaults,
+        sharedBehavior: OutputBehavior,
         brandKit: BrandKitStore,
         entitlements: Entitlements
     ) {
-        self.init(defaults: defaults, brandKit: brandKit, entitlements: entitlements)
+        self.init(
+            defaults: defaults, sharedBehavior: sharedBehavior, brandKit: brandKit,
+            entitlements: entitlements)
         self.ephemeralStore = ephemeralStore
         isEphemeralSession = true
     }
@@ -383,6 +417,22 @@ final class AppSettings {
         return true
     }
 
+    /// Saves the custom-theme editor's result. An edit keeps the theme's id, and the
+    /// default follows it only when it already used that theme; a new theme becomes the
+    /// default so the editor's preview matches the canvas.
+    @discardableResult
+    func saveCustomTheme(
+        editingID: String?, name: String, palette: ThemePalette, in themes: CustomThemeStore
+    ) -> Theme {
+        if let editingID, let updated = themes.update(id: editingID, name: name, palette: palette) {
+            if style.theme.id == editingID { style.theme = updated }
+            return updated
+        }
+        let added = themes.addTheme(named: name, palette: palette)
+        style.theme = added
+        return added
+    }
+
     /// Apply through existing observable properties: typing remains independent from
     /// style, and output controls continue observing individual fields rather than a
     /// new aggregate store. Set the destination last so intermediate style writes cannot
@@ -412,6 +462,10 @@ final class AppSettings {
         export.scale = SettingsDefaults.clampExportScale(preset.scale)
         selectedPresetID = preset.id
     }
+
+    /// Re-selects a restored window's destination without re-applying its style, which
+    /// the restored document already carries.
+    func restoreDestination(_ preset: ExportPreset) { selectedPresetID = preset.id }
 
     /// Drops back to "Custom": no preset is applied and none is persisted. The
     /// current style is left exactly as-is.
@@ -457,14 +511,21 @@ final class AppSettings {
     ///   could not adopt. Callers can surface that boundary instead of silently
     ///   implying full parity.
     @discardableResult
-    func applyWorkspaceRecipe(_ recipe: WorkspaceRecipe) -> Bool {
+    func applyWorkspaceRecipe(_ recipe: WorkspaceRecipe, themes: CustomThemeStore) -> Bool {
         isApplyingPreset = true
         defer { isApplyingPreset = false }
 
         var updated = config
         let destination = recipe.output.destinationPresetID.flatMap(ExportPreset.preset(withID:))
         destination?.apply(to: &updated)
-        recipe.style.apply(to: &updated, resolvingThemeWith: recipe.theme(withID:))
+        recipe.style.apply(to: &updated) { id in
+            if let embedded = recipe.customTheme, embedded.id == id,
+                let adopted = themes.adopt(embedded)
+            {
+                return adopted
+            }
+            return recipe.theme(withID: id)
+        }
         if let windowTitle = recipe.metadata.windowTitle {
             updated.windowTitle = windowTitle
         }
@@ -527,6 +588,16 @@ final class AppSettings {
         return resolved
     }
 
+    /// An explicit pick from the language picker. Choosing Diff turns on the +/−
+    /// bands and the gutter they read best with; loaded documents keep their own.
+    func selectLanguageFromUser(_ language: Language) {
+        style.language = language
+        if language == .diff {
+            style.diffDecorations = true
+            style.showLineNumbers = true
+        }
+    }
+
     /// Records a language as recently used (MRU, capped at 6).
     func noteLanguageUsed(_ language: Language) {
         var list = recentLanguages.filter { $0 != language }
@@ -557,8 +628,8 @@ final class AppSettings {
             showChrome: config.showChrome,
             showShadow: config.showShadow,
             backgroundKind: config.background.diagnosticsKind,
-            autoCopy: export.autoCopy,
-            alsoSaveToFile: export.alsoSaveToFile,
+            autoCopy: outputBehavior.autoCopy,
+            alsoSaveToFile: outputBehavior.alsoSaveToFile,
             exportScale: export.scale,
             exportFormat: export.format.rawValue,
             colorProfile: export.colorProfile.rawValue,
@@ -595,6 +666,7 @@ final class AppSettings {
         // The output sub-store resets its own published state; its persisted
         // keys were cleared by the `Keys.all` sweep above.
         export.resetToDefaults()
+        if ownsOutputBehavior { outputBehavior.resetToDefaults() }
         hotkeyAction = .fallback
         appLanguage = .system
         treatURLsAsScreenshot = false

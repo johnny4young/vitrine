@@ -6,7 +6,7 @@ final class ComparisonBoardWindowController: NSObject, NSWindowDelegate {
     static let shared = ComparisonBoardWindowController(
         environment: .shared,
         feedback: .live,
-        presentation: .live)
+        presentation: .live(environment: .shared, feedback: .live))
 
     let environment: AppEnvironment
     let feedback: FeedbackDisplay
@@ -31,6 +31,7 @@ final class ComparisonBoardWindowController: NSObject, NSWindowDelegate {
         try ComparisonBoardDraft(
             captures: captures,
             baseConfig: environment.appSettings.exportConfig,
+            themes: environment.recents.themeLookup,
             profile: environment.appSettings.export.colorProfile,
             renderScale: CGFloat(environment.appSettings.export.scale))
     }
@@ -71,10 +72,11 @@ final class ComparisonBoardWindowController: NSObject, NSWindowDelegate {
         window.tabbingMode = .disallowed
         window.setAccessibilityIdentifier(Self.windowIdentifier)
         window.delegate = self
-        window.center()
+        // 1080 pt is wider than a 1024 pt display; fit before centering.
+        WindowPlacement.placeNew(window)
         self.window = window
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     func windowWillClose(_ notification: Notification) {

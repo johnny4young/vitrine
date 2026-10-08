@@ -70,8 +70,33 @@ struct FreeWatermarkDragHandle: View {
                         "\(Int((position.x * 100).rounded()))%, \(Int((position.y * 100).rounded()))%"
                 )
             )
-            .accessibilityHint("Drag to place the brand mark")
+            .accessibilityHint("Drag, or use the arrow keys, to place the brand mark")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: position = Self.nudged(position, dx: Self.step, dy: 0)
+                case .decrement: position = Self.nudged(position, dx: -Self.step, dy: 0)
+                @unknown default: break
+                }
+            }
             .accessibilityIdentifier("brand-kit-free-drag-handle")
+            // Keyboard placement; `.activate` keeps a click from taking focus.
+            .focusable(interactions: .activate)
+            .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
+                switch press.key {
+                case .leftArrow: position = Self.nudged(position, dx: -Self.step, dy: 0)
+                case .rightArrow: position = Self.nudged(position, dx: Self.step, dy: 0)
+                case .upArrow: position = Self.nudged(position, dx: 0, dy: -Self.step)
+                default: position = Self.nudged(position, dx: 0, dy: Self.step)
+                }
+                return .handled
+            }
+    }
+
+    /// One keyboard or VoiceOver step, as a fraction of the canvas.
+    static let step: CGFloat = 0.02
+
+    static func nudged(_ position: CGPoint, dx: CGFloat, dy: CGFloat) -> CGPoint {
+        Watermark.clampFreePosition(CGPoint(x: position.x + dx, y: position.y + dy))
     }
 
     private var dragGesture: some Gesture {

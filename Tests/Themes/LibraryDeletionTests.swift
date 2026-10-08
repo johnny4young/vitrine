@@ -20,7 +20,8 @@ struct LibraryDeletionTests {
         let document = settings.config
         let environment = AppEnvironment(defaults: defaults)
         let editor = AppSettings.makeEditorSession(
-            seededFrom: defaults, brandKit: environment.brandKit,
+            seededFrom: defaults, sharing: environment.appSettings.outputBehavior,
+            brandKit: environment.brandKit,
             entitlements: environment.entitlements)
         // The primary editor adopts the live document after creating its session.
         // Test deletion of an already-open document, not session seed resolution.
@@ -63,5 +64,50 @@ struct LibraryDeletionTests {
             #expect(!store.delete(id: builtIn.id))
             #expect(store.preset(withID: builtIn.id) == builtIn)
         }
+    }
+}
+
+@MainActor
+@Suite("Custom theme editing")
+struct CustomThemeEditingTests {
+    @Test func editingKeepsIdPositionAndPresetReferences() {
+        let defaults = ThemeTestFixtures.freshDefaults()
+        let themes = CustomThemeStore(defaults: defaults)
+        let settings = AppSettings(defaults: defaults)
+        let presets = PresetStore(defaults: defaults)
+        let original = themes.addTheme(named: "First", palette: ThemeTestFixtures.samplePalette())
+        themes.addTheme(named: "Second", palette: ThemeTestFixtures.samplePalette())
+        settings.config.theme = original
+        let preset = presets.savePreset(named: "Uses First", from: settings.config)
+        settings.config.theme = .dracula
+
+        var edited = ThemeTestFixtures.samplePalette()
+        edited.background = HexColor("#000000")!
+        let saved = settings.saveCustomTheme(
+            editingID: original.id, name: "First Edited", palette: edited, in: themes)
+
+        #expect(saved.id == original.id)
+        #expect(themes.customThemes.first?.id == original.id)
+        #expect(themes.customThemes.count == 2)
+        #expect(settings.config.theme == .dracula)
+        settings.applyStylePreset(preset, themes: themes)
+        #expect(settings.config.theme.id == original.id)
+        #expect(settings.config.theme.palette == edited)
+    }
+
+    @Test func editingTheDefaultRefreshesItAndANewThemeBecomesDefault() {
+        let defaults = ThemeTestFixtures.freshDefaults()
+        let themes = CustomThemeStore(defaults: defaults)
+        let settings = AppSettings(defaults: defaults)
+        let added = settings.saveCustomTheme(
+            editingID: nil, name: "New", palette: ThemeTestFixtures.samplePalette(), in: themes)
+        #expect(settings.config.theme == added)
+
+        var edited = ThemeTestFixtures.samplePalette()
+        edited.keyword = HexColor("#FF0000")!
+        settings.saveCustomTheme(editingID: added.id, name: "New", palette: edited, in: themes)
+        #expect(settings.config.theme.id == added.id)
+        #expect(settings.config.theme.palette == edited)
+        #expect(AppSettings(defaults: defaults).config.theme.palette == edited)
     }
 }

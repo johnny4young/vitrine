@@ -42,7 +42,8 @@ syntax colors only exist inside Highlightr at render time.
 
 > The app *chrome* already adapts to the system **Increase Contrast** setting via the
 > brand color set (see [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md)); that is verified
-> separately by the  contrast tests. This gallery covers the **exported image**.
+> separately by the contrast tests (`DesignTokenTests`, `ChromeContrastTests`). This
+> gallery covers the **exported image**.
 
 ## Regenerating the gallery
 

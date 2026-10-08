@@ -247,7 +247,7 @@ struct ComparisonBoardEditorView: View {
             feedback(
                 ExportFeedback.copyOutcome(
                     ExportManager.copyPNGToPasteboardOutcome(
-                        asset.cgImage, concealed: settings.export.concealClipboard)))
+                        asset.cgImage, concealed: settings.outputBehavior.concealClipboard)))
         } catch ComparisonBoardComposer.CompositionError.renderFailure(let error) {
             feedback(ExportFeedback.renderFailure(error))
         } catch {

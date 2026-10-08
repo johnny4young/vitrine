@@ -37,6 +37,7 @@ final class ComparisonBoardDraft {
     init(
         captures: [Capture],
         baseConfig: SnapshotConfig,
+        themes: ThemeLookup = Theme.theme(withID:),
         profile: ColorProfile,
         renderScale: CGFloat = 1,
         render: (SnapshotConfig, CGFloat, ColorProfile) throws(RenderBudgetError) -> CGImage = {
@@ -53,7 +54,7 @@ final class ComparisonBoardDraft {
 
         exportScale = renderScale
         items = try captures.enumerated().map { index, capture in
-            let config = capture.applying(to: baseConfig)
+            let config = capture.applying(to: baseConfig, themes: themes)
             let image: CGImage
             do throws(RenderBudgetError) {
                 image = try render(config, renderScale, profile)
@@ -64,7 +65,7 @@ final class ComparisonBoardDraft {
                 id: UUID(),
                 asset: RenderedAsset(cgImage: image, profile: profile),
                 label: Self.defaultLabel(index: index, count: captures.count),
-                detail: "\(capture.language.displayName) · \(capture.theme.displayName)")
+                detail: "\(capture.language.displayName) · \(config.theme.displayName)")
         }
     }
 

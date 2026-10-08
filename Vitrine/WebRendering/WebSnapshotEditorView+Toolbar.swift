@@ -21,16 +21,18 @@ extension WebSnapshotEditorView {
 
             if model.results.count > 1 {
                 iconButton(
-                    "web-snapshot-export-all-button", label: "Export all sizes",
+                    "web-snapshot-export-all-button", label: Text("Export all sizes"),
                     help: "Export every captured size, plus the board, to a folder",
                     systemImage: "rectangle.stack.badge.plus", action: exportAll)
             }
             iconButton(
-                "web-snapshot-save-button", label: VitrineCommand.saveImage.accessibilityLabel,
+                "web-snapshot-save-button",
+                label: Text(VitrineCommand.saveImage.accessibilityLabel),
                 help: "Save the snapshot as a file", systemImage: "square.and.arrow.down",
                 shortcut: KeyboardShortcut("s", modifiers: .command), action: saveImage)
             iconButton(
-                "web-snapshot-share-button", label: VitrineCommand.shareImage.accessibilityLabel,
+                "web-snapshot-share-button",
+                label: Text(VitrineCommand.shareImage.accessibilityLabel),
                 help: "Share the snapshot", systemImage: "square.and.arrow.up", action: shareImage)
 
             GradientCTAButton {
@@ -63,7 +65,7 @@ extension WebSnapshotEditorView {
 
     @ViewBuilder
     func iconButton(
-        _ identifier: String, label: String, help: String, systemImage: String,
+        _ identifier: String, label: Text, help: LocalizedStringKey, systemImage: String,
         shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void
     ) -> some View {
         let button = GlassIconButton(systemImage: systemImage, action: action)

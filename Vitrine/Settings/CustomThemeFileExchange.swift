@@ -17,55 +17,38 @@ enum CustomThemeFileExchange {
     static let maximumByteCount = 1_048_576
 
     /// Presents a save panel and writes the user's custom themes to the chosen file.
-    /// Returns the URL written, or `nil` on cancel/failure.
     @discardableResult
-    static func exportWithSavePanel(store: CustomThemeStore = .shared) -> URL? {
+    static func exportWithSavePanel(store: CustomThemeStore) -> FileExchangePanel.SaveOutcome {
         let data: Data
         do {
             data = try store.exportJSONData()
         } catch {
             Log.export.error("Failed to encode custom themes for export")
-            return nil
+            return .failed
         }
-
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [contentType]
-        panel.nameFieldStringValue = "vitrine-themes.json"
-        panel.title = "Export Themes"
-        panel.nameFieldLabel = "Save as:"
-        panel.message =
-            "Export your custom themes to a JSON file. Themes are saved only to the file you choose — nothing is sent anywhere."
-        panel.prompt = "Export"
-
-        Log.export.info("Presenting custom theme export save panel")
-        guard panel.runModal() == .OK, let url = panel.url else {
-            Log.export.info("Custom theme export cancelled")
-            return nil
-        }
-        do {
-            try data.write(to: url, options: .atomic)
-            Log.export.notice("Wrote \(data.count, privacy: .public) bytes of themes")
-            return url
-        } catch {
-            let nsError = error as NSError
-            Log.export.error(
-                "Failed to write theme file (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-            )
-            return nil
-        }
+        return FileExchangePanel.save(
+            data, contentType: contentType, suggestedFilename: "vitrine-themes.json",
+            copy: FileExchangePanel.Copy(
+                title: String(localized: "Export Themes"),
+                message: String(
+                    localized:
+                        "Export your custom themes to a JSON file. Themes are saved only to the file you choose — nothing is sent anywhere."
+                ),
+                prompt: String(localized: "panel.prompt.export", defaultValue: "Export")),
+            logLabel: "custom themes")
     }
 
     /// Presents an open panel and imports themes from the chosen file. Returns the
     /// number added on success, or throws the import error on an invalid file so the
     /// caller can show clear validation copy. Returns `0` if the user cancels.
-    static func importWithOpenPanel(store: CustomThemeStore = .shared) throws -> Int {
+    static func importWithOpenPanel(store: CustomThemeStore) throws -> Int {
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [contentType]
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
-        panel.title = "Import Themes"
-        panel.prompt = "Import"
-        panel.message = "Choose a Vitrine theme file (.json) to add its themes."
+        panel.title = String(localized: "Import Themes")
+        panel.prompt = String(localized: "Import")
+        panel.message = String(localized: "Choose a Vitrine theme file (.json) to add its themes.")
 
         Log.export.info("Presenting custom theme import open panel")
         guard panel.runModal() == .OK, let url = panel.url else {

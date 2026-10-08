@@ -71,14 +71,6 @@ struct BeautifyImageTests {
         #expect(ImageFrame.iPhone.isPro == true)
     }
 
-    @Test func onlyMacBookAndIPhoneAreDeviceFrames() {
-        #expect(ImageFrame.macBook.isDevice)
-        #expect(ImageFrame.iPhone.isDevice)
-        for frame in [ImageFrame.none, .macOSWindow, .browser] {
-            #expect(frame.isDevice == false)
-        }
-    }
-
     @Test func usesImageContentTracksTheForegroundImage() {
         var config = SnapshotConfig()
         #expect(config.usesImageContent == false)

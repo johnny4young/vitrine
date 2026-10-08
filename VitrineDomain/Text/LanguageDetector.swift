@@ -32,9 +32,9 @@ public enum LanguageDetector {
         // (colored by its own escapes) rather than scoring it as source code.
         if ANSIParser.containsANSI(raw) { return .terminal }
         let code = raw.lowercased()
-        guard !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return .plaintext
-        }
+        let trimmed = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .plaintext }
+        if isJSONDocument(trimmed) { return .json }
 
         var scores: [Language: Int] = [:]
         func add(_ language: Language, _ signals: [(needle: String, weight: Int)]) {
@@ -48,6 +48,12 @@ public enum LanguageDetector {
             [
                 ("import swiftui", 3), ("import foundation", 3), ("@state", 3),
                 ("guard let", 2), ("-> some view", 3), ("func ", 2), ("let ", 1), ("var ", 1),
+            ])
+        add(
+            .rust,
+            [
+                ("fn main(", 3), ("fn ", 1), ("let mut ", 3), ("println!", 3), ("impl ", 2),
+                ("use std::", 3),
             ])
         add(.go, [("package main", 3), ("func main(", 3), ("fmt.", 2), (":=", 2), ("import (", 2)])
         add(
@@ -68,12 +74,14 @@ public enum LanguageDetector {
                 ("interface ", 3), (": string", 2), (": number", 2),
                 (": boolean", 2), ("export type", 3), ("implements ", 2),
             ])
-        add(
-            .sql,
-            [
-                ("select ", 2), ("insert into", 3), ("update ", 2), ("delete from", 3),
-                (" where ", 2), (" join ", 2),
-            ])
+        if isSQLStatement(code) {
+            add(
+                .sql,
+                [
+                    ("select ", 2), ("insert into", 3), ("update ", 2), ("delete from", 3),
+                    (" where ", 2), (" join ", 2),
+                ])
+        }
         add(.html, [("<!doctype", 3), ("<html", 3), ("</div>", 2), ("<body", 2), ("<span", 1)])
         add(
             .bash,
@@ -93,6 +101,28 @@ public enum LanguageDetector {
         }
         guard let best = ranked.first, best.value > 0 else { return .plaintext }
         return best.key
+    }
+
+    /// An object or array that parses as JSON. JSON has no keywords to score.
+    private static func isJSONDocument(_ trimmed: String) -> Bool {
+        guard trimmed.hasPrefix("{") || trimmed.hasPrefix("["),
+            let data = trimmed.data(using: .utf8)
+        else { return false }
+        return (try? JSONSerialization.jsonObject(with: data)) != nil
+    }
+
+    /// Prose reuses SQL verbs ("select the file where…"), so SQL only scores when a line
+    /// opens with a statement verb and a clause keyword follows somewhere.
+    private static func isSQLStatement(_ code: String) -> Bool {
+        let verbs: Set<Substring> = ["select", "insert", "update", "delete"]
+        let opensStatement = code.split(whereSeparator: \.isNewline).contains { line in
+            line.split(whereSeparator: \.isWhitespace).first.map { verbs.contains($0) } ?? false
+        }
+        guard opensStatement else { return false }
+        let words = code.split {
+            $0.isWhitespace || $0 == "," || $0 == ";" || $0 == "(" || $0 == ")"
+        }
+        return words.contains { $0 == "from" || $0 == "into" || $0 == "set" }
     }
 
     // MARK: - File extensions

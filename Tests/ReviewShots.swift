@@ -207,9 +207,11 @@ struct ReviewShotsGeneratorTests {
         ]
         shots.append(("15-annotation-line", line, nil, 2))
 
-        // The hero: a multi-tool markup the way a finished CleanShot annotation looks.
+        // The hero (site and README): the secret line is truly redacted; the blur is
+        // visual only, so it covers an ordinary line.
         var hero = base()
         hero.windowTitle = "Counter.swift"
+        hero.redactedLineRanges = [9...9]
         hero.annotations = [
             Annotation(
                 kind: .rectangle, start: CGPoint(x: 0.05, y: 0.16), end: CGPoint(x: 0.74, y: 0.52),
@@ -218,12 +220,12 @@ struct ReviewShotsGeneratorTests {
                 kind: .counter, start: CGPoint(x: 0.07, y: 0.20), end: .zero, thickness: 6,
                 number: 1),
             Annotation(
-                kind: .blur, start: CGPoint(x: 0.10, y: 0.60), end: CGPoint(x: 0.72, y: 0.68)),
+                kind: .blur, start: CGPoint(x: 0.10, y: 0.81), end: CGPoint(x: 0.66, y: 0.87)),
             Annotation(
-                kind: .arrow, start: CGPoint(x: 0.80, y: 0.84), end: CGPoint(x: 0.55, y: 0.66),
+                kind: .arrow, start: CGPoint(x: 0.85, y: 0.63), end: CGPoint(x: 0.73, y: 0.675),
                 thickness: 6),
             Annotation(
-                kind: .text, start: CGPoint(x: 0.74, y: 0.91), end: .zero, text: "Redacted",
+                kind: .text, start: CGPoint(x: 0.80, y: 0.575), end: .zero, text: "Redacted",
                 color: red()),
         ]
         shots.append(("16-annotations-hero", hero, nil, 2))

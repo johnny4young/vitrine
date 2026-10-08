@@ -297,6 +297,17 @@ final class AppMenu {
         }
         annotationToolsItem.submenu = annotationToolsMenu
         menu.addItem(annotationToolsItem)
+        for action in AnnotationMarkAction.allCases {
+            let item = NSMenuItem(
+                title: action.localizedTitle,
+                action: #selector(EditorCommandResponder.performAnnotationMarkAction(_:)),
+                keyEquivalent: action.keyEquivalent)
+            item.keyEquivalentModifierMask = action.modifiers
+            item.representedObject = action.rawValue
+            item.target = editorCommands
+            item.setAccessibilityIdentifier("command-annotation-\(action.rawValue)")
+            menu.addItem(item)
+        }
 
         editMenuItem.submenu = menu
         return editMenuItem
@@ -314,14 +325,8 @@ final class AppMenu {
             title: String(localized: "Theme"), action: nil, keyEquivalent: "")
         themeItem.setAccessibilityIdentifier("menu-theme-submenu")
         let themeMenu = NSMenu(title: String(localized: "Theme"))
-        for theme in Theme.builtIns {
-            let item = NSMenuItem(
-                title: theme.displayName,
-                action: #selector(AppCommandResponder.selectTheme(_:)), keyEquivalent: "")
-            item.representedObject = theme.id
-            item.target = appCommands
-            themeMenu.addItem(item)
-        }
+        appCommands.populateThemeMenu(themeMenu)
+        themeMenu.delegate = appCommands
         themeItem.submenu = themeMenu
         menu.addItem(themeItem)
         menu.addItem(.separator())

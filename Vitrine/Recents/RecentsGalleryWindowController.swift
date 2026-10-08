@@ -38,7 +38,7 @@ final class RecentsGalleryWindowController {
         if window == nil {
             let hosting = NSHostingController(rootView: makeRootView())
             let window = NSWindow(contentViewController: hosting)
-            window.title = "Recents"
+            window.title = String(localized: "Recents")
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             window.setContentSize(NSSize(width: 760, height: 560))
             window.isReleasedWhenClosed = false
@@ -48,24 +48,11 @@ final class RecentsGalleryWindowController {
         }
         window?.makeKeyAndOrderFront(nil)
         if let window {
-            if let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
-                var availableFrame = visibleFrame
-                #if DEBUG
-                    // Forces the compact action-bar layout in UI automation without
-                    // coupling the assertion to the test machine's display width.
-                    if let rawWidth = ProcessInfo.processInfo.environment[
-                        "VITRINE_RECENTS_TEST_MAX_WIDTH"
-                    ], let requestedWidth = Double(rawWidth), requestedWidth > 0 {
-                        let width = min(CGFloat(requestedWidth), visibleFrame.width)
-                        availableFrame.origin.x = visibleFrame.midX - width / 2
-                        availableFrame.size.width = width
-                    }
-                #endif
-                window.setFrame(
-                    WindowFrameSolver.clamp(window.frame, into: availableFrame), display: true)
-                window.makeKeyAndOrderFront(nil)
-            }
+            // The Debug key forces the compact action bar in UI automation.
+            WindowPlacement.clampToVisibleScreen(
+                window, debugMaxWidthKey: "VITRINE_RECENTS_TEST_MAX_WIDTH")
+            window.makeKeyAndOrderFront(nil)
         }
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 }

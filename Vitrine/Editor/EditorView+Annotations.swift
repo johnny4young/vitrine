@@ -13,7 +13,8 @@ extension EditorView {
     }
 
     /// The toolbar color: the selected mark's color when one is selected, otherwise
-    /// the new-draw default. Writing it updates whichever target is active.
+    /// the new-draw default. Writing it updates whichever target is active; a mark
+    /// edit stays open until the toolbar reports the style edit ended.
     var annotationStyleColor: Binding<Color> {
         Binding(
             get: { selectedAnnotation?.color.color ?? newDrawColor },
@@ -22,6 +23,7 @@ extension EditorView {
                 if let id = selectedAnnotationID,
                     let index = settings.style.annotations.firstIndex(where: { $0.id == id })
                 {
+                    beginAnnotationEdit()
                     settings.style.annotations[index].color = RGBAColor(newValue)
                 }
             })
@@ -37,6 +39,7 @@ extension EditorView {
                 if let id = selectedAnnotationID,
                     let index = settings.style.annotations.firstIndex(where: { $0.id == id })
                 {
+                    beginAnnotationEdit()
                     settings.style.annotations[index].thickness = newValue
                 }
             })
@@ -115,6 +118,22 @@ extension EditorView {
         endAnnotationEdit()
     }
 
+    /// Delete/Backspace on the focused stage removes the selected mark as one undo step.
+    func deleteSelection() -> Bool {
+        guard let id = selectedAnnotationID, editingAnnotationID == nil else { return false }
+        beginAnnotationEdit()
+        settings.style.annotations.removeAll { $0.id == id }
+        selectedAnnotationID = nil
+        endAnnotationEdit()
+        return true
+    }
+
+    /// Escape drops the selection and returns to the Select tool.
+    func clearAnnotationSelection() {
+        selectedAnnotationID = nil
+        activeTool = .select
+    }
+
     /// Moves the selected mark by one arrow-key press: one canvas point normally or
     /// ten with Shift. Auto-repeat records only the initial undo snapshot.
     func nudgeSelection(_ key: KeyEquivalent, shift: Bool, isRepeat: Bool) -> Bool {
@@ -148,6 +167,15 @@ extension EditorView {
         activeTool != .select || selectedAnnotationID != nil
     }
 
+    /// Typing code hands ⌘Z back to the text view; reads only, so a keystroke with
+    /// no mark context invalidates nothing.
+    func leaveAnnotationContext() {
+        guard annotationContextActive else { return }
+        endAnnotationEdit()
+        selectedAnnotationID = nil
+        activeTool = .select
+    }
+
     /// Opens and closes an annotation edit transaction. History is recorded only if
     /// the marks actually changed, so no-op gestures preserve redo and cost no undo.
     func beginAnnotationEdit() {
@@ -163,6 +191,7 @@ extension EditorView {
         else { return }
         settings.style.annotations = previous
         selectedAnnotationID = nil
+        editingAnnotationID = nil
     }
 
     func redoAnnotations() {
@@ -170,5 +199,6 @@ extension EditorView {
         else { return }
         settings.style.annotations = next
         selectedAnnotationID = nil
+        editingAnnotationID = nil
     }
 }

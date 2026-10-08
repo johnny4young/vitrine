@@ -130,10 +130,12 @@ struct DocumentationPackageTests {
         let entitlement = Entitlements(provider: FreeProvider())
         let app = AppSettings(defaults: defaults, brandKit: kit, entitlements: entitlement)
         let first = AppSettings.makeEditorSession(
-            seededFrom: defaults, brandKit: BrandKitStore(defaults: testDefaults()),
+            seededFrom: defaults, sharing: app.outputBehavior,
+            brandKit: BrandKitStore(defaults: testDefaults()),
             entitlements: Entitlements(provider: FreeProvider()))
         let second = AppSettings.makeEditorSession(
-            seededFrom: defaults, brandKit: BrandKitStore(defaults: testDefaults()),
+            seededFrom: defaults, sharing: app.outputBehavior,
+            brandKit: BrandKitStore(defaults: testDefaults()),
             entitlements: Entitlements(provider: FreeProvider()))
         first.config.altText = try SnapshotAltText.normalized("First document only")
         #expect(second.config.altText == nil)

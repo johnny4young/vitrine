@@ -29,7 +29,6 @@ struct WebSnapshotConfigTests {
         // touches is persisted unless the caller deliberately opts in.
         let config = try WebSnapshotConfig(captureURL: try URLFixture.valid())
         #expect(config.dataStoreMode == .nonPersistent)
-        #expect(config.dataStoreMode.persistsWebsiteData == false)
     }
 
     @Test func defaultsMatchTheExporterDefaults() throws {
@@ -44,17 +43,6 @@ struct WebSnapshotConfigTests {
 
 @Suite("URL capture data-store mode is opt-in")
 struct URLDataStoreModeTests {
-    @Test func nonPersistentModeDoesNotRetainWebsiteData() {
-        let mode = WebSnapshotConfig.DataStoreMode.nonPersistent
-        #expect(mode.persistsWebsiteData == false)
-    }
-
-    @Test func persistentModeExplicitlyRetainsWebsiteData() {
-        // Both modes allow transient page cookies; only this one retains them.
-        let mode = WebSnapshotConfig.DataStoreMode.persistent
-        #expect(mode.persistsWebsiteData)
-    }
-
     @MainActor
     @Test func theEngineMapsNonPersistentModeToANonPersistentStore() {
         // The default mode resolves to a non-persistent `WKWebsiteDataStore`, the

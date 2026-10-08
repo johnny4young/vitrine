@@ -23,6 +23,11 @@ struct CodeFormatterJSONTests {
         #expect(CodeFormatter.formatJSON(input) == expected)
     }
 
+    @Test func formatJSONTreatsCRLFAsWhitespace() {
+        #expect(CodeFormatter.formatJSON("{\r\n  \"a\": 1\r\n}") == "{\n  \"a\": 1\n}")
+        #expect(CodeFormatter.formatJSON("{\r\n}") == "{}")
+    }
+
     /// Empty containers collapse onto a single line.
     @Test func formatJSONCollapsesEmptyContainers() {
         #expect(CodeFormatter.formatJSON(#"{"a":{},"b":[]}"#) == "{\n  \"a\": {},\n  \"b\": []\n}")

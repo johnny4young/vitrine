@@ -88,9 +88,7 @@ public enum CodeFormatter {
     /// byte-for-byte intact. Idempotent, and never touches indentation or tokens.
     public nonisolated static func trimmed(_ code: String, language: Language) -> String {
         func isBlank(_ line: String) -> Bool { line.allSatisfy { $0 == " " || $0 == "\t" } }
-        var lines = code.components(separatedBy: "\n")
-        // Pattern-match rather than `!=`: the synthesized Equatable is main-actor-
-        // isolated under the module's default isolation, and this helper is nonisolated.
+        var lines = code.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
         if case .leaveAlone = language.formatStrategy {
         } else {
             lines = lines.map { line in
@@ -113,7 +111,7 @@ public enum CodeFormatter {
     /// emptied so no trailing indentation survives. Returns `code` unchanged when the
     /// lines share no common leading whitespace.
     public nonisolated static func dedent(_ code: String) -> String {
-        let lines = code.components(separatedBy: "\n")
+        let lines = code.replacingOccurrences(of: "\r\n", with: "\n").components(separatedBy: "\n")
         func leading(_ line: String) -> String {
             String(line.prefix { $0 == " " || $0 == "\t" })
         }

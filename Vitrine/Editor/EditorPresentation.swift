@@ -31,7 +31,7 @@ struct EditorPresentation {
         presentShare: { image, view in
             ShareManager.share(
                 image, relativeTo: view,
-                concealed: AppEnvironment.shared.appSettings.export.concealClipboard)
+                concealed: AppEnvironment.shared.appSettings.outputBehavior.concealClipboard)
         },
         batchExport: .live)
 

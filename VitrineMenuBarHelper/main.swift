@@ -75,11 +75,17 @@ private final class MenuBarHelperDelegate: NSObject, NSApplicationDelegate {
             NSApp.terminate(nil)
             return
         }
+        // The main app activates cooperatively to present the panel.
+        NSApp.yieldActivation(toApplicationWithBundleIdentifier: Self.mainAppBundleID)
+        // Anchor on the icon, not the pointer: keyboard and VoiceOver clicks leave the
+        // pointer wherever it happens to be.
         MenuBarAnchor(
             appProcessID: configuration.appProcessID,
             helperProcessID: ProcessInfo.processInfo.processIdentifier,
             sessionToken: configuration.sessionToken,
-            clickLocation: NSEvent.mouseLocation
+            clickLocation: MenuBarHelperContract.anchorLocation(
+                buttonWindowFrame: statusItem?.button?.window?.frame,
+                mouseLocation: NSEvent.mouseLocation)
         ).post()
     }
 

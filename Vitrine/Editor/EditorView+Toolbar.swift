@@ -30,10 +30,6 @@ extension EditorView {
     /// "Copy image" CTA. Each action mirrors its File-menu command,
     /// sharing the command's VoiceOver label and keyboard shortcut.
     var editorToolbar: some View {
-        // `settings` arrives via @Environment (an @Observable), which has no projected
-        // value; this local @Bindable provides the `$settings.style.language` binding the
-        // language picker needs.
-        @Bindable var settings = settings
         @ViewBuilder func contents(_ density: EditorToolbarDensity) -> some View {
             HStack(spacing: density.spacing) {
                 // Just the app mark — the "Vitrine Editor" wordmark was redundant next to
@@ -43,8 +39,17 @@ extension EditorView {
                     .frame(width: 22, height: 22)
                     .accessibilityLabel("Vitrine Editor")
 
-                Picker("Language", selection: $settings.style.language) {
-                    ForEach(settings.orderedLanguages) { language in
+                // The recent-language order is app-wide, so read and record it there.
+                Picker(
+                    "Language",
+                    selection: Binding(
+                        get: { settings.style.language },
+                        set: { language in
+                            settings.selectLanguageFromUser(language)
+                            environment.appSettings.noteLanguageUsed(language)
+                        })
+                ) {
+                    ForEach(environment.appSettings.orderedLanguages) { language in
                         Text(language.displayName).tag(language)
                     }
                 }
@@ -53,16 +58,6 @@ extension EditorView {
                 .help("The language used to syntax-highlight the code.")
                 .accessibilityLabel("Language")
                 .accessibilityIdentifier("language-picker")
-                // Picking the Diff language is an unambiguous "I want diff rendering", so
-                // turn the +/− bands (and the line gutter they read best with) on
-                // automatically — the feature was previously undiscoverable behind an
-                // inspector toggle. The toggle stays as a manual override.
-                .onChange(of: settings.style.language) { _, newValue in
-                    if newValue == .diff {
-                        settings.style.diffDecorations = true
-                        settings.style.showLineNumbers = true
-                    }
-                }
 
                 Spacer(minLength: 8)
 
@@ -87,7 +82,8 @@ extension EditorView {
                     canSendToBack: canSendSelectionToBack,
                     onBringToFront: bringSelectionToFront,
                     onSendToBack: sendSelectionToBack,
-                    density: density.annotationDensity
+                    density: density.annotationDensity,
+                    onStyleEditEnded: endAnnotationEdit
                 )
                 .onChange(of: activeTool) { _, newTool in
                     if newTool != .select { selectedAnnotationID = nil }
@@ -145,7 +141,7 @@ extension EditorView {
     /// to the Copy Image command's shortcut so the menu and CTA stay in lockstep.
     @ViewBuilder func copyImageCTA(compact: Bool) -> some View {
         let button = GradientCTAButton {
-            Image(systemName: "doc.on.doc")
+            Image(systemName: VitrineCommand.copyImage.systemImageName)
                 .font(.system(size: 12, weight: .semibold))
             if !compact {
                 Text("Copy image")
@@ -176,10 +172,6 @@ extension EditorView {
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("save-button")
 
-            Button("Export for Documentation") { exportSheet = .documentationExport }
-                .disabled(!settings.hasRenderableContent)
-                .accessibilityIdentifier("documentation-action")
-
             Button(action: share) {
                 Label(VitrineCommand.shareImage.title, systemImage: "square.and.arrow.up")
             }
@@ -209,7 +201,11 @@ extension EditorView {
                         ? "Export carousel" : "Export carousel — Requires PRO",
                     systemImage: "rectangle.stack")
             }
-            .disabled(!settings.hasRenderableContent || settings.style.usesImageContent)
+            .disabled(
+                !settings.hasRenderableContent || settings.style.usesImageContent
+                    || !Self.carouselAccepts(settings.style)
+            )
+            .help(carouselHelp)
             .accessibilityIdentifier("export-carousel-button")
 
             Divider()
@@ -246,25 +242,18 @@ extension EditorView {
         // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
         // render/encode failure — mirroring the menu command and the quick-capture HUD.
         // The HUD shows near the menu bar regardless of `closeAfterCopy`.
-        let outcome = ExportManager.copyToPasteboardOutcome(
-            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
-            concealed: environment.appSettings.export.concealClipboard)
+        let outcome = RenderedImageCopy.copy(settings.exportConfig, settings: settings)
         session.feedback(ExportFeedback.copyOutcome(outcome))
-        // `closeAfterCopy` is an app-global behavior preference, so it is read from the
-        // environment's app-wide settings (what the Settings toggle edits) rather than
-        // this window's per-session copy. Close *this* window — captured via
-        // `WindowAccessor`, so it
-        // never depends on `keyWindow` being right — deferred past the button's action,
-        // and `close()` (not `performClose`) so it is unconditional.
+        // Close *this* window — captured via `WindowAccessor`, so it never depends on
+        // `keyWindow` being right — deferred past the button's action, and `close()`
+        // (not `performClose`) so it is unconditional.
         guard
             Self.shouldCloseAfterCopy(
                 copied: outcome == .copied,
-                preferenceEnabled: environment.appSettings.export.closeAfterCopy)
+                preferenceEnabled: settings.outputBehavior.closeAfterCopy)
         else { return }
         guard let editorWindow = editorWindow.value else { return }
-        DispatchQueue.main.async { editorWindow.close() }
+        Task { editorWindow.close() }
     }
 
     /// A failed clipboard write leaves the editor open so the user can retry or save
@@ -382,13 +371,30 @@ extension EditorView {
                     ProBadge().accessibilityHidden(true)
                 }
             }
-            .help("Split the snippet into numbered carousel slides (4:5)")
+            .help(carouselHelp)
             .disabled(
                 !settings.hasRenderableContent || settings.style.usesImageContent
+                    || !Self.carouselAccepts(settings.style)
             )
             .accessibilityLabel(Text("Export carousel"))
             .accessibilityValue(entitlements.proRequirementValue(for: .carouselExport))
             .accessibilityIdentifier("export-carousel-button")
+    }
+
+    /// Terminal transcripts can't be cut by raw lines, and blur boxes are placed against
+    /// the whole canvas, so neither can be carried onto slides safely.
+    static func carouselAccepts(_ style: SnapshotConfig) -> Bool {
+        style.language != .terminal && !style.annotations.contains { $0.kind == .blur }
+    }
+
+    private var carouselHelp: LocalizedStringKey {
+        if settings.style.language == .terminal {
+            return "Carousel export isn't available for terminal captures"
+        }
+        if settings.style.annotations.contains(where: { $0.kind == .blur }) {
+            return "Remove blur boxes, or use Redact secrets, to export a carousel"
+        }
+        return "Split the snippet into numbered carousel slides (4:5)"
     }
 
     /// Routes both toolbar densities through one presentation state and one sheet host.
@@ -561,7 +567,7 @@ extension EditorView {
                     scale: CGFloat(settings.effectiveExportScale),
                     fixedSize: settings.effectiveFixedSize,
                     profile: settings.export.colorProfile,
-                    concealed: environment.appSettings.export.concealClipboard)))
+                    concealed: settings.outputBehavior.concealClipboard)))
     }
 
     /// Copies a self-contained Markdown image embed followed by the visible,
@@ -574,7 +580,7 @@ extension EditorView {
                     scale: CGFloat(settings.effectiveExportScale),
                     fixedSize: settings.effectiveFixedSize,
                     profile: settings.export.colorProfile,
-                    concealed: environment.appSettings.export.concealClipboard)))
+                    concealed: settings.outputBehavior.concealClipboard)))
     }
 
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
@@ -584,7 +590,7 @@ extension EditorView {
             ExportFeedback.sourceCopyOutcome(
                 RichPasteboard.copyHighlightedCode(
                     for: settings.config,
-                    concealed: environment.appSettings.export.concealClipboard)))
+                    concealed: settings.outputBehavior.concealClipboard)))
     }
 
     /// Copies a self-contained `vitrine://open` link that reproduces this snapshot. The
@@ -594,7 +600,7 @@ extension EditorView {
         do {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
             let copied = ClipboardWriter.copy(
-                url.absoluteString, concealed: environment.appSettings.export.concealClipboard)
+                url.absoluteString, concealed: settings.outputBehavior.concealClipboard)
             session.feedback(ExportFeedback.shareLinkCopyOutcome(copied))
         } catch SnapshotShareLink.ShareLinkError.tooLarge {
             session.feedback(

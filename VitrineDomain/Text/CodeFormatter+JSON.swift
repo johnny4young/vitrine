@@ -27,7 +27,7 @@ extension CodeFormatter {
             out.append(String(repeating: indentUnit, count: level))
         }
         func isStructuralWhitespace(_ c: Character) -> Bool {
-            c == " " || c == "\t" || c == "\n" || c == "\r"
+            c == " " || c == "\t" || c == "\n" || c == "\r" || c == "\r\n"
         }
 
         var i = 0

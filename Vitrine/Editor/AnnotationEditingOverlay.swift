@@ -47,7 +47,9 @@ struct AnnotationEditingOverlay: View {
                         nextCounterNumber: nextCounterNumber,
                         stickerGlyph: stickerGlyph,
                         onBeginDraw: onBeginEdit,
-                        onEndDraw: onEndEdit,
+                        // A new callout's edit stays open until its inline field closes,
+                        // so a callout left blank leaves no undo step behind.
+                        onEndDraw: kind == .text ? {} : onEndEdit,
                         onCommit: { annotation in
                             settings.style.annotations.append(annotation)
                             selection = annotation.id
@@ -231,6 +233,11 @@ private struct AnnotationHandle: View {
     @State private var dragOrigin: Annotation?
     @State private var isResizing = false
 
+    private var kindTitle: String {
+        AnnotationTool.allCases.first { $0.kind == annotation.kind }?.localizedTitle
+            ?? String(localized: "Annotation")
+    }
+
     private var accent: Color { VitrineTokens.Accent.base }
     private var geometry: AnnotationInteractionGeometry {
         AnnotationInteractionGeometry(annotation: annotation, canvasSize: canvasSize)
@@ -240,6 +247,11 @@ private struct AnnotationHandle: View {
         ZStack {
             if isSelected { selectionChrome }
             bodyHitArea
+                .accessibilityElement()
+                .accessibilityLabel(kindTitle)
+                .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+                .accessibilityAction { onSelect() }
+                .accessibilityAction(named: Text("Delete")) { onDelete() }
             if isSelected && !annotation.kind.isPointPlaced { resizeHandles }
             if isSelected { deleteButton }
         }

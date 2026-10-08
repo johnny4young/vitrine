@@ -4,9 +4,9 @@ import VitrineRendering
 
 /// Performs and validates the editor/document commands (Copy / Save / Share
 /// Image) so they exist as real menu commands with keyboard shortcuts, not just
-/// toolbar buttons. These mirror the editor toolbar exactly: both reach
-/// the active editor settings and `ExportManager`, so the menu command and the
-/// toolbar button always produce the same image.
+/// toolbar buttons. Both reach the active editor settings and `ExportManager`, so the
+/// menu command and the toolbar button produce the same image, and Copy Image closes
+/// the editor afterward under the same app-wide preference.
 ///
 /// One instance retained by the main-menu owner is the explicit target of the
 /// editor menu items. Targeting it directly (rather than the responder chain)
@@ -27,17 +27,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     let feedback: FeedbackDisplay
     let presentation: EditorPresentation
 
-    /// Small snippets format synchronously so the menu command feels instant. Larger
-    /// snippets do the pure string work off the main actor and only return to AppKit
-    /// for the final text replacement; beyond this cap, formatting is refused instead
-    /// of risking an unresponsive editor.
-    private static let asyncFormatThresholdBytes = 64 * 1024
-    private static let maxInteractiveFormatBytes = 1 * 1024 * 1024
-    /// At most one large format may remain relevant. Replacing it cooperatively cancels
-    /// stale CPU work and, more importantly, prevents an older result from winning after
-    /// a newer command or a synchronous small edit.
-    private var formatTask: Task<Void, Never>?
-    private var formatGeneration: UInt = 0
+    /// Formats when no editor session is key (the unit-test host).
+    private let fallbackFormat: CodeFormatOperation
 
     init(
         settings: AppSettings,
@@ -47,11 +38,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         self.settings = settings
         self.feedback = feedback
         self.presentation = presentation
+        fallbackFormat = CodeFormatOperation(feedback: feedback)
         super.init()
-    }
-
-    isolated deinit {
-        formatTask?.cancel()
     }
 
     /// The settings the command should act on: the key editor window's own session,
@@ -96,22 +84,34 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
         case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
         case #selector(formatCode(_:)): canPerform(.formatCode)
-        case #selector(selectAnnotationTool(_:)): isEditorKey
+        case #selector(selectAnnotationTool(_:)), #selector(performAnnotationMarkAction(_:)):
+            isEditorKey
         default: true
         }
     }
 
     @objc func copyRenderedImage(_ sender: Any?) {
         guard canPerform(.copyImage) else { return }
-        let settings = activeSettings
-        // Surface the outcome so a render/encode failure from the menu isn't silent,
-        // mirroring the quick-capture HUD path.
-        let outcome = ExportManager.copyToPasteboardOutcome(
-            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            fixedSize: settings.effectiveFixedSize, profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard, plainText: settings.export.textSidecar,
-            concealed: self.settings.export.concealClipboard)
+        copyImage(from: activeSettings, editorWindow: NSApp.keyWindow ?? NSApp.mainWindow)
+    }
+
+    /// Copies `settings`' image and, when the app-wide "Close the editor after copying"
+    /// preference is on and the copy succeeded, closes `editorWindow` on a later turn.
+    /// Returns the close task, if one was scheduled.
+    @discardableResult
+    func copyImage(
+        from settings: AppSettings, editorWindow: NSWindow?, pasteboard: NSPasteboard = .general
+    ) -> Task<Void, Never>? {
+        let outcome = RenderedImageCopy.copy(
+            settings.exportConfig, settings: settings, pasteboard: pasteboard)
         feedback(ExportFeedback.copyOutcome(outcome))
+        guard
+            EditorView.shouldCloseAfterCopy(
+                copied: outcome == .copied,
+                preferenceEnabled: settings.outputBehavior.closeAfterCopy),
+            let editorWindow
+        else { return nil }
+        return Task { editorWindow.close() }
     }
 
     @objc func saveRenderedImage(_ sender: Any?) {
@@ -165,6 +165,21 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             userInfo: ["tool": rawValue])
     }
 
+    /// Routes a selected-mark command to the key editor window, which ignores it
+    /// when nothing is selected.
+    @objc func performAnnotationMarkAction(_ sender: Any?) {
+        guard isEditorKey,
+            let item = sender as? NSMenuItem,
+            let rawValue = item.representedObject as? String,
+            AnnotationMarkAction(rawValue: rawValue) != nil,
+            let window = NSApp.keyWindow ?? NSApp.mainWindow
+        else { return }
+        NotificationCenter.default.post(
+            name: .vitrineAnnotationMarkAction,
+            object: window,
+            userInfo: ["action": rawValue])
+    }
+
     /// Tidies the key editor's code in place: JSON is pretty-printed, brace and
     /// JSX/tag languages are re-indented by structure, indentation-significant languages
     /// are dedented, and diff/plain text is left alone (see `CodeFormatter.tidy`). The
@@ -175,80 +190,19 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     /// into `config.code`. A no-op (already tidy) changes nothing and registers no undo.
     @objc func formatCode(_ sender: Any?) {
         guard canPerform(.formatCode),
-            let textView = Self.editorTextView(in: NSApp.keyWindow ?? NSApp.mainWindow)
+            let textView = CodeFormatOperation.editorTextView(
+                in: NSApp.keyWindow ?? NSApp.mainWindow)
         else { return }
         formatCode(in: textView, language: activeSettings.config.language)
     }
 
-    /// Formats an already-resolved editor. Keeping the AppKit lookup at the command
-    /// boundary lets the asynchronous edit contract be exercised without relying on
-    /// process-global key-window state in the test host. Returns the asynchronous operation
-    /// when one was started; callers may await it even after a later command cancels it.
+    /// Formats an already-resolved editor through the key window's own operation, so
+    /// a large format outlives this call. Returns the asynchronous operation when one
+    /// was started.
     @discardableResult
     func formatCode(in textView: NSTextView, language: Language) -> Task<Void, Never>? {
-        let original = textView.string
-        let byteCount = original.utf8.count
-        formatTask?.cancel()
-        formatTask = nil
-        formatGeneration &+= 1
-        let generation = formatGeneration
-        guard byteCount <= Self.maxInteractiveFormatBytes else {
-            feedback(
-                Notifier.failure(String(localized: "Code is too large to format interactively")))
-            return nil
-        }
-
-        if byteCount > Self.asyncFormatThresholdBytes {
-            formatTask = Task(priority: .userInitiated) { [weak self, weak textView] in
-                defer {
-                    if self?.formatGeneration == generation {
-                        self?.formatTask = nil
-                    }
-                }
-                guard
-                    let tidied = try? await CodeFormatter.tidyConcurrently(
-                        original, language: language),
-                    !Task.isCancelled,
-                    let textView,
-                    textView.string == original
-                else { return }
-                Self.applyFormattedCode(tidied, original: original, to: textView)
-            }
-            return formatTask
-        }
-
-        let tidied = CodeFormatter.tidy(original, language: language)
-        Self.applyFormattedCode(tidied, original: original, to: textView)
-        return nil
-    }
-
-    /// Applies an already-computed format result through the text view's native edit
-    /// cycle, preserving delegate updates and undo behavior.
-    private static func applyFormattedCode(
-        _ tidied: String, original: String, to textView: NSTextView
-    ) {
-        guard tidied != original else { return }
-        let whole = NSRange(location: 0, length: (original as NSString).length)
-        guard textView.shouldChangeText(in: whole, replacementString: tidied) else { return }
-        textView.textStorage?.replaceCharacters(in: whole, with: tidied)
-        textView.didChangeText()  // fires the delegate → writes back to config.code
-        textView.undoManager?.setActionName(String(localized: "Format Code"))
-    }
-
-    /// The code editor's `NSTextView` in `window`, found by the accessibility identifier
-    /// `CodeEditorView` assigns it. Used so Format Code edits the real text view (and its
-    /// undo stack) rather than mutating the model behind its back.
-    private static func editorTextView(in window: NSWindow?) -> NSTextView? {
-        guard let root = window?.contentView else { return nil }
-        var stack: [NSView] = [root]
-        while let view = stack.popLast() {
-            if let textView = view as? NSTextView,
-                textView.accessibilityIdentifier() == "code-editor-text-view"
-            {
-                return textView
-            }
-            stack.append(contentsOf: view.subviews)
-        }
-        return nil
+        let operation =
+            EditorWindowController.shared.keyWindowSession?.codeFormat ?? fallbackFormat
+        return operation.format(textView, language: language)
     }
 }

@@ -44,6 +44,30 @@ struct HexColorTests {
         #expect(HexColor("FFFFF\u{FF10}") == nil)  // trailing fullwidth ０
     }
 
+    /// `Scanner` accepts a `0x` prefix and skips leading whitespace, which used to decode
+    /// `0x1E1E1E` as a nearly transparent RRGGBBAA color.
+    @Test func rgbaParserRejectsPrefixesTheLengthCheckMiscounts() {
+        #expect(RGBAColor(hex: "0x1E1E1E") == nil)
+        #expect(RGBAColor(hex: "0X1E1") == nil)
+        #expect(RGBAColor(hex: " FFF") == RGBAColor(red: 1, green: 1, blue: 1, opacity: 1))
+    }
+
+    @Test(arguments: [
+        "#1E1E1E", "1e1e1e", "#FFF", "#1234", "#11223380", " #ABC ", "0x1E1E1E", "0X1E1",
+        "#GGG", "", "#", "#12", "#1234567", "FFFFF\u{FF10}", "+FFF", "-FFF",
+    ])
+    func hexColorAndRGBAColorAgree(_ input: String) {
+        let strict = HexColor(input)
+        let rgba = RGBAColor(hex: input)
+        #expect((strict == nil) == (rgba == nil))
+        if let strict, let rgba {
+            #expect(
+                RGBAColor(
+                    red: strict.red, green: strict.green, blue: strict.blue, opacity: strict.alpha)
+                    == rgba)
+        }
+    }
+
     @Test func relativeLuminanceSeparatesDarkFromLight() {
         let black = try! #require(HexColor("#000000"))
         let white = try! #require(HexColor("#FFFFFF"))

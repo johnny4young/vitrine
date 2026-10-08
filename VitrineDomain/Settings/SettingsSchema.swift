@@ -279,10 +279,9 @@ public enum SettingsDefaults {
         clamp(value, to: cornerRadiusRange, fallback: cornerRadius)
     }
 
-    /// Shadow-depth bounds, matching the inspector's "Shadow depth" slider. The
-    /// style codec never persists the shadow radius, but the window-restoration
-    /// blob does — and a corrupt/hand-edited value there must never drive
-    /// `.shadow(radius:)` into a pathological blur allocation on restore.
+    /// Shadow-depth bounds, matching the "Shadow depth" sliders. Settings, presets and
+    /// window restoration all persist it, so a corrupt or hand-edited value must never
+    /// drive `.shadow(radius:)` into a pathological blur allocation.
     public static let shadowRadiusRange: ClosedRange<Double> = 0...40
     public static let shadowRadius = 20.0
 

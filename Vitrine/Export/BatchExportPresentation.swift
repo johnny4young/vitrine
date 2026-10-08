@@ -30,7 +30,7 @@ struct BatchExportPresentation {
             panel.canChooseFiles = false
             panel.canCreateDirectories = true
             panel.allowsMultipleSelection = false
-            panel.prompt = String(localized: "Export")
+            panel.prompt = String(localized: "panel.prompt.export", defaultValue: "Export")
             panel.message = message
             guard panel.runModal() == .OK else { return nil }
             return panel.url

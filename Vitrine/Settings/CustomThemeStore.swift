@@ -112,6 +112,36 @@ final class CustomThemeStore {
         return true
     }
 
+    /// Replaces a custom theme's name and palette in place. Keeping the id and position
+    /// means presets, restored windows, and the default that reference it still resolve.
+    /// Returns `nil` when `id` is not a custom theme.
+    @discardableResult
+    func update(id: String, name: String, palette: ThemePalette) -> Theme? {
+        guard let index = customThemes.firstIndex(where: { $0.id == id }) else { return nil }
+        let updated = Theme(id: id, displayName: uniqueName(name, excluding: id), palette: palette)
+        customThemes[index] = updated
+        return updated
+    }
+
+    /// Adds a theme carried by a workspace recipe under its own id so the persisted
+    /// default and restored windows resolve it after relaunch. An id that is already
+    /// stored with the same palette is reused; a built-in id is refused; a stored id
+    /// with a different palette is kept intact and the recipe's theme is re-keyed, reusing
+    /// an earlier re-keyed copy so repeated recipe applications never pile up duplicates.
+    func adopt(_ stored: StoredCustomTheme) -> Theme? {
+        let incoming = stored.theme
+        guard !isBuiltIn(id: incoming.id), let palette = incoming.palette else { return nil }
+        if let existing = customThemes.first(where: { $0.id == incoming.id }) {
+            if existing.palette == palette { return existing }
+            if let copy = customThemes.first(where: { $0.palette == palette }) { return copy }
+            return addTheme(named: incoming.displayName, palette: palette)
+        }
+        let adopted = Theme(
+            id: incoming.id, displayName: uniqueName(incoming.displayName), palette: palette)
+        customThemes.append(adopted)
+        return adopted
+    }
+
     /// Deletes a custom theme by id. Built-ins cannot be deleted, so an id that is
     /// not a custom theme is a no-op. Returns whether a delete happened.
     @discardableResult

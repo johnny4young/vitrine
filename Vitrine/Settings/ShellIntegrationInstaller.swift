@@ -24,6 +24,17 @@ enum ShellIntegrationInstaller {
     /// The line a startup file evaluates to load the helper. zsh/bash use
     /// `eval "$(…)"`; fish has no `$(…)` and sources a pipe instead
     /// (`vitrine shell-init fish | source`).
+    /// The shell a startup file belongs to, by its name; `fallback` (from `$SHELL`)
+    /// covers any other file.
+    static func shell(for file: URL, fallback: ShellInit.Shell) -> ShellInit.Shell {
+        switch file.lastPathComponent {
+        case ".zshrc", ".zprofile", ".zshenv", ".zlogin": .zsh
+        case ".bashrc", ".bash_profile", ".bash_login", ".profile": .bash
+        case "config.fish": .fish
+        default: fallback
+        }
+    }
+
     static func evalLine(for shell: ShellInit.Shell) -> String {
         switch shell {
         case .zsh, .bash: "eval \"$(vitrine shell-init \(shell.rawValue))\""

@@ -68,10 +68,6 @@ nonisolated public struct BackgroundImageStore: Sendable {
     /// an effectively unbounded frame table while still allowing normal animated images.
     nonisolated public static let maxImageFrameCount = 256
 
-    /// Bounded local reads grow in modest increments and stop one byte past the limit,
-    /// rather than allocating an entire file that changed after its metadata check.
-    nonisolated private static let localImageReadChunkBytes = 256 * 1024
-
     /// The directory holding copied background images. Created on demand.
     public let directory: URL
 
@@ -240,55 +236,20 @@ nonisolated public struct BackgroundImageStore: Sendable {
         return reference
     }
 
-    /// Reads a regular local file without ever retaining more than `maxBytes + 1`.
-    /// The metadata check rejects known-large inputs before opening them; the bounded
-    /// chunk loop remains authoritative if the file grows between that check and read.
+    /// Reads a regular local file without ever retaining more than `maxBytes + 1`, through
+    /// the descriptor-checked reader, so a FIFO cannot hang the caller and a file swapped
+    /// mid-read is refused.
     nonisolated public static func readBoundedImageData(
         from url: URL,
         maxBytes: Int = maxImportBytes
     ) throws -> Data {
-        let limit = max(0, maxBytes)
-        let values: URLResourceValues
         do {
-            values = try url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-        } catch {
-            throw ImportError.copyFailed
-        }
-
-        guard values.isRegularFile == true else { throw ImportError.copyFailed }
-        if let fileSize = values.fileSize, fileSize > limit {
+            return try BoundedFileReader.read(from: url, limit: max(0, maxBytes))
+        } catch BoundedFileReader.ReadError.tooLarge {
             throw ImportError.tooLarge
-        }
-
-        let handle: FileHandle
-        do {
-            handle = try FileHandle(forReadingFrom: url)
         } catch {
             throw ImportError.copyFailed
         }
-        defer { try? handle.close() }
-
-        var data = Data()
-        data.reserveCapacity(max(0, min(values.fileSize ?? 0, limit)))
-
-        do {
-            while true {
-                let remaining = limit - data.count
-                let nextRead =
-                    remaining >= localImageReadChunkBytes
-                    ? localImageReadChunkBytes : remaining + 1
-                guard let chunk = try handle.read(upToCount: nextRead), !chunk.isEmpty else {
-                    break
-                }
-                data.append(chunk)
-                guard data.count <= limit else { throw ImportError.tooLarge }
-            }
-        } catch let error as ImportError {
-            throw error
-        } catch {
-            throw ImportError.copyFailed
-        }
-        return data
     }
 
     /// Reads and validates one local image for callers that need the original bytes
@@ -311,33 +272,6 @@ nonisolated public struct BackgroundImageStore: Sendable {
         }
 
         _ = try validatedImageMetadata(in: source)
-    }
-
-    /// Pure geometry validation shared with focused boundary tests. The cumulative
-    /// budget matters for animated images: individually small frames can otherwise
-    /// expand to an unbounded decoded sequence.
-    @discardableResult
-    nonisolated public static func validateImageDimensions(
-        _ dimensions: [(width: Int, height: Int)]
-    ) throws -> Int {
-        guard !dimensions.isEmpty else { throw ImportError.notAnImage }
-        guard dimensions.count <= maxImageFrameCount else { throw ImportError.tooLarge }
-
-        var totalPixels = 0
-        for dimension in dimensions {
-            guard dimension.width > 0, dimension.height > 0 else {
-                throw ImportError.notAnImage
-            }
-            let (framePixels, frameOverflow) = dimension.width.multipliedReportingOverflow(
-                by: dimension.height)
-            guard !frameOverflow else { throw ImportError.tooLarge }
-            let (nextTotal, totalOverflow) = totalPixels.addingReportingOverflow(framePixels)
-            guard !totalOverflow, nextTotal <= maxDecodedPixelCount else {
-                throw ImportError.tooLarge
-            }
-            totalPixels = nextTotal
-        }
-        return totalPixels
     }
 
     /// Extracts and validates complete metadata without decoding any frame. ImageIO's source and

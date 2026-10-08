@@ -431,17 +431,41 @@ struct QuickCaptureFenceTests {
         #expect(settings.selectedPresetID == nil)
     }
 
-    @Test func destinationPresetIsAppliedWhenSeveralBlocksDeferToEditor() {
-        let settings = AppSettings(defaults: quickCaptureDefaults())
-        let outcome = QuickCapture.run(
+    @Test func destinationPresetFramesTheDeferredDocumentWithoutChangingDefaults() throws {
+        let defaults = quickCaptureDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let original = settings.config
+        let result = QuickCapture.capture(
             settings: settings,
             recents: RecentsStore(defaults: quickCaptureDefaults()),
             destinationPreset: .twitter,
             clipboard: { "```swift\nlet a = 1\n```\n\n```swift\nlet b = 2\n```" })
 
-        #expect(outcome == .deferredToEditor(blocks: 2))
-        #expect(settings.config.padding == ExportPreset.twitter.padding)
-        #expect(settings.config.background == ExportPreset.twitter.background)
+        #expect(result.outcome == .deferredToEditor(blocks: 2))
+        let document = try #require(result.editorDocument)
+        #expect(document.padding == ExportPreset.twitter.padding)
+        #expect(document.background == ExportPreset.twitter.background)
+        #expect(settings.config == original)
+        #expect(settings.selectedPresetID == nil)
+        #expect(AppSettings(defaults: defaults).config.padding == original.padding)
+    }
+
+    @Test func copiedURLRendersAsTextWhenThisBuildCannotCaptureIt() {
+        let settings = AppSettings(defaults: quickCaptureDefaults())
+        settings.treatURLsAsScreenshot = true
+        let result = QuickCapture.capture(
+            settings: settings,
+            recents: RecentsStore(defaults: quickCaptureDefaults()),
+            clipboard: { "https://example.com" },
+            urlCaptureEnabled: false)
+        #expect(result.outcome != .url("https://example.com"))
+        #expect(
+            QuickCapture.capture(
+                settings: settings,
+                recents: RecentsStore(defaults: quickCaptureDefaults()),
+                clipboard: { "https://example.com" },
+                urlCaptureEnabled: true
+            ).outcome == .url("https://example.com"))
     }
 
     @Test func singleFenceIsStrippedBeforeStoring() {
@@ -469,16 +493,16 @@ struct QuickCaptureFenceTests {
             let b = 2
             ```
             """
-        let outcome = QuickCapture.run(
+        let result = QuickCapture.capture(
             settings: settings, recents: recents, clipboard: { clip })
 
-        #expect(outcome == .deferredToEditor(blocks: 2))
-        // Nothing is recorded or copied for a deferred multi-block paste, but the
-        // combined source is loaded into the live config for the editor to show.
+        #expect(result.outcome == .deferredToEditor(blocks: 2))
+        // Nothing is recorded or copied for a deferred multi-block paste; the combined
+        // source travels to the editor in the result.
         #expect(recents.captures.isEmpty)
-        #expect(settings.config.code.contains("let a = 1"))
-        #expect(settings.config.code.contains("let b = 2"))
-        #expect(settings.config.language == .swift)
+        #expect(result.editorDocument?.code.contains("let a = 1") == true)
+        #expect(result.editorDocument?.code.contains("let b = 2") == true)
+        #expect(result.editorDocument?.language == .swift)
     }
 
     @Test func filePathClipboardHintsLanguage() {
@@ -539,5 +563,22 @@ struct QuickCaptureRasterPreflightTests {
     func noDestinationsSkipRaster() {
         #expect(
             !QuickCapture.rasterIsRequired(autoCopy: false, savesToFile: false, format: .png))
+    }
+}
+
+extension QuickCapture {
+    /// The outcome-only form the older tests use; production reads the full `Result`.
+    @discardableResult
+    static func run(
+        settings: AppSettings,
+        recents: RecentsStore,
+        destinationPreset: ExportPreset? = nil,
+        clipboard: () -> String? = { nil },
+        urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
+    ) -> Outcome {
+        capture(
+            settings: settings, recents: recents, destinationPreset: destinationPreset,
+            clipboard: clipboard, urlCaptureEnabled: urlCaptureEnabled
+        ).outcome
     }
 }

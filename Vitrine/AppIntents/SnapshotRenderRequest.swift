@@ -66,6 +66,10 @@ struct SnapshotRenderRequest: Equatable {
     /// over any preset background. Off by default.
     var transparent: Bool = false
 
+    /// A fixed canvas size used when no preset pins one, so the Services action can
+    /// match the size of the user's selected destination.
+    var fixedSizeOverride: CGSize?
+
     /// The live exported style an automation starts from before applying its overrides.
     /// Defaults to the factory configuration so a request can be built and tested
     /// without any app-wide store.
@@ -88,8 +92,9 @@ struct SnapshotRenderRequest: Equatable {
         var config = baseStyle.styled(
             presetID: presetID, themeID: themeID, transparent: transparent,
             themeResolver: themeResolver)
-        config.code = code
-        config.language = resolvedLanguage
+        let intake = resolvedIntake
+        config.code = intake.code
+        config.language = intake.language
         return config
     }
 
@@ -97,8 +102,14 @@ struct SnapshotRenderRequest: Equatable {
     /// language inferred from the text using the same interpreter quick capture
     /// uses, so automation gets the app's smart detection (Markdown fences,
     /// file-path hints, then content scoring).
-    var resolvedLanguage: Language {
-        language ?? LanguageDetector.interpret(code).language
+    var resolvedLanguage: Language { resolvedIntake.language }
+
+    /// Without an explicit language the text is read like a quick capture, so a
+    /// Markdown fence is unwrapped rather than rendered; an explicit language keeps it.
+    private var resolvedIntake: (code: String, language: Language) {
+        if let language { return (code, language) }
+        let interpreted = LanguageDetector.interpret(code)
+        return (interpreted.code, interpreted.language)
     }
 
     /// The resolved destination preset, or `nil` when none was requested.
@@ -115,7 +126,7 @@ struct SnapshotRenderRequest: Equatable {
 
     /// The exact logical canvas size to render, when the active preset pins one
     /// (e.g. OpenGraph 1200×630); `nil` lets the canvas hug its content.
-    var fixedSize: CGSize? { resolvedPreset?.sizing.fixedSize }
+    var fixedSize: CGSize? { resolvedPreset?.sizing.fixedSize ?? fixedSizeOverride }
 
     /// Whether the request carries usable (non-empty) code. An automation that hands
     /// over empty or whitespace-only text has nothing to render and is rejected up

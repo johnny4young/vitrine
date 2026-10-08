@@ -30,7 +30,11 @@ public enum AsciinemaCast {
     /// recordings are occasionally truncated mid-write — but a malformed *header*
     /// rejects the file, so ordinary JSON never masquerades as a recording.
     public static func terminalText(from text: String) -> String? {
-        var lines = text.split(separator: "\n", omittingEmptySubsequences: true)[...]
+        // Split on line breaks only: JSON escapes CR and LF inside strings, but an event
+        // may carry a raw U+2028, U+2029, or NEL that `isNewline` would cut in half.
+        var lines = text.split(omittingEmptySubsequences: true) {
+            $0 == "\n" || $0 == "\r\n" || $0 == "\r"
+        }[...]
 
         guard let headerLine = lines.first,
             let headerData = String(headerLine).data(using: .utf8),

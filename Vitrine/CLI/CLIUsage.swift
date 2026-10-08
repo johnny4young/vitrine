@@ -8,7 +8,7 @@ nonisolated enum CLIUsage {
         vitrine — render code to an image from the command line.
 
         USAGE:
-          vitrine terminal-capture <capture-file> (--copy | --edit) [--terminal-width <n>] [--filename <text> --title <text>]
+          vitrine terminal-capture <capture-file> (--copy [--filename <text>] [--title <text>] | --edit) [--terminal-width <n>]
           vitrine render <input-file> --out <image> [options]
           vitrine render --image <input-image> --out <image> [options]
           vitrine render --stdin --copy [options]

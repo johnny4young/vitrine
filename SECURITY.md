@@ -27,8 +27,11 @@ stay anonymous).
 
 Vitrine is deliberately small in attack surface:
 
-- The app is **sandboxed** and ships **without the network entitlement** — code
-  rendering is fully local, with no account, no server, and no telemetry.
+- The app is **sandboxed**. The App Store build has no network entitlement; the
+  direct-download build (DMG and Homebrew) adds `com.apple.security.network.client`
+  only for Sparkle updates, license activation, explicit URL capture, and
+  user-requested remote images. Code rendering is fully local, with no account, no
+  server, and no telemetry.
 - Pasted-HTML rendering is local and blocks remote resource loads.
 - The update channel is EdDSA-signed (Sparkle); the release pipeline notarizes
   every DMG and publishes a SHA-256 alongside it.

@@ -51,9 +51,10 @@ struct RichExportTests {
         // The unchanged one-shortcut copy: a single PNG representation, no rich
         // text, decodable back to a PNG (the existing round-trip still passes).
         let pasteboard = Self.scratchPasteboard()
-        let copied = RichPasteboard.copy(
-            Self.sampleConfig(), scale: 1, fixedSize: nil, profile: .sRGB,
-            includeRichText: false, to: pasteboard)
+        let copied =
+            ((try? RichPasteboard.copyChecked(
+                Self.sampleConfig(), scale: 1, fixedSize: nil, profile: .sRGB,
+                includeRichText: false, to: pasteboard)) ?? false)
         #expect(copied)
 
         let png = pasteboard.data(forType: RichPasteboard.pngType)
@@ -68,9 +69,10 @@ struct RichExportTests {
         // With the opt-in, the same copy carries the PNG *and* RTF *and* HTML on a
         // single item, so a destination picks whichever it prefers.
         let pasteboard = Self.scratchPasteboard()
-        let copied = RichPasteboard.copy(
-            Self.sampleConfig(), scale: 1, fixedSize: nil, profile: .sRGB,
-            includeRichText: true, to: pasteboard)
+        let copied =
+            ((try? RichPasteboard.copyChecked(
+                Self.sampleConfig(), scale: 1, fixedSize: nil, profile: .sRGB,
+                includeRichText: true, to: pasteboard)) ?? false)
         #expect(copied)
 
         let png = pasteboard.data(forType: RichPasteboard.pngType)
@@ -88,13 +90,13 @@ struct RichExportTests {
         let config = Self.sampleConfig()
 
         #expect(
-            RichPasteboard.copy(
+            ((try? RichPasteboard.copyChecked(
                 config, scale: 1, fixedSize: nil, profile: .sRGB,
-                includeRichText: false, to: plain))
+                includeRichText: false, to: plain)) ?? false))
         #expect(
-            RichPasteboard.copy(
+            ((try? RichPasteboard.copyChecked(
                 config, scale: 1, fixedSize: nil, profile: .sRGB,
-                includeRichText: true, to: rich))
+                includeRichText: true, to: rich)) ?? false))
 
         let plainPNG = plain.data(forType: RichPasteboard.pngType)
         let richPNG = rich.data(forType: RichPasteboard.pngType)
@@ -153,9 +155,10 @@ struct RichExportTests {
         // of the rich-text opt-in (plain only → PNG + string, no RTF/HTML).
         let pasteboard = Self.scratchPasteboard()
         let config = Self.sampleConfig()
-        let copied = RichPasteboard.copy(
-            config, scale: 1, fixedSize: nil, profile: .sRGB,
-            includeRichText: false, includePlainText: true, to: pasteboard)
+        let copied =
+            ((try? RichPasteboard.copyChecked(
+                config, scale: 1, fixedSize: nil, profile: .sRGB,
+                includeRichText: false, includePlainText: true, to: pasteboard)) ?? false)
         #expect(copied)
         #expect(pasteboard.data(forType: RichPasteboard.pngType) != nil)
         #expect(pasteboard.string(forType: .string) == config.sidecarText)
@@ -268,9 +271,10 @@ struct RichExportTests {
 
     @Test func copyDataURIPutsAStringOnThePasteboard() throws {
         let pasteboard = Self.scratchPasteboard()
-        let copied = RichPasteboard.copyDataURI(
-            for: Self.sampleConfig(), scale: 1, fixedSize: nil, profile: .sRGB,
-            to: pasteboard)
+        let copied =
+            (RichPasteboard.copyDataURIOutcome(
+                for: Self.sampleConfig(), scale: 1, fixedSize: nil, profile: .sRGB,
+                to: pasteboard) == .copied)
         #expect(copied)
 
         let string = try #require(pasteboard.string(forType: .string))
@@ -362,9 +366,9 @@ struct RichExportTests {
     @Test func copyMarkdownPlacesOnlyTheDocumentStringOnPasteboard() throws {
         let pasteboard = Self.scratchPasteboard()
         #expect(
-            RichPasteboard.copyMarkdown(
+            (RichPasteboard.copyMarkdownOutcome(
                 for: Self.sampleConfig(), scale: 1, fixedSize: nil, profile: .sRGB,
-                to: pasteboard))
+                to: pasteboard) == .copied))
 
         let markdown = try #require(pasteboard.string(forType: .string))
         #expect(markdown.contains("data:image/png;base64,"))
@@ -527,9 +531,9 @@ struct RichExportTests {
         let config = Self.sampleConfig { $0.code = "" }
         let pasteboard = Self.scratchPasteboard()
         #expect(
-            RichPasteboard.copy(
+            ((try? RichPasteboard.copyChecked(
                 config, scale: 1, fixedSize: nil, profile: .sRGB,
-                includeRichText: true, to: pasteboard))
+                includeRichText: true, to: pasteboard)) ?? false))
 
         let png = try #require(pasteboard.data(forType: RichPasteboard.pngType))
         #expect(Array(png.prefix(4)) == Self.pngSignature)

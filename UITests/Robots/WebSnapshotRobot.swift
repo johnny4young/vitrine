@@ -10,6 +10,7 @@ struct WebSnapshotRobot {
     var inspector: XCUIElement { testCase.element("web-snapshot-inspector", in: app) }
     var previewStage: XCUIElement { testCase.element("web-snapshot-preview-stage", in: app) }
     var htmlMode: XCUIElement { testCase.element("web-snapshot-mode-html", in: app) }
+    var urlMode: XCUIElement { testCase.element("web-snapshot-mode-url", in: app) }
     var htmlEditor: XCUIElement { app.textViews["web-snapshot-html-editor"] }
     var captureButton: XCUIElement {
         testCase.hittableElement("web-snapshot-capture-button", in: app)

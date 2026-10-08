@@ -58,4 +58,34 @@ struct EditorDocumentSyncTests {
         Self.settle(hosting.view)
         #expect(textView.string.isEmpty)
     }
+
+    @Test func anOutsideReplacementDropsTypingUndoFromThePreviousDocument() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 53), environment: environment,
+            feedback: .noOp, presentation: .noOp)
+        defer { session.discard() }
+        let hosting = EditorWindowController.makeHostingController(
+            environment: environment, session: session)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1_180, height: 680),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentViewController = hosting
+        defer { window.contentViewController = nil }
+        Self.settle(hosting.view)
+        let textView = try #require(Self.firstTextView(in: hosting.view))
+        window.makeFirstResponder(textView)
+        textView.insertText("abc", replacementRange: NSRange(location: 0, length: 0))
+        textView.breakUndoCoalescing()
+        Self.settle(hosting.view)
+        #expect(textView.undoManager?.canUndo == true)
+
+        session.settings.documentCode = "hello world"
+        Self.settle(hosting.view)
+
+        #expect(textView.string == "hello world")
+        #expect(textView.undoManager?.canUndo == false)
+    }
 }

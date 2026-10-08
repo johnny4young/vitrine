@@ -14,9 +14,14 @@ struct CodeEditorView: NSViewRepresentable {
     var fontLigatures: Bool
     var reindentOnPaste: Bool
     /// Called when a paste replaced the *entire* document (a select-all paste or a
-    /// paste into an empty editor) — i.e. a new capture — so the editor can clear
-    /// content-bound marks that no longer apply. A mid-edit insert does not fire it.
-    var onReplaceAllPaste: () -> Void = {}
+    /// paste into an empty editor) — i.e. a new capture. It receives the pasted text and
+    /// returns how to interpret it, so the document is tidied with the pasted language
+    /// rather than the previous one. A mid-edit insert does not fire it.
+    var onReplaceAllPaste: (String) -> LanguageDetector.Interpretation = {
+        LanguageDetector.interpret($0)
+    }
+    /// Called on each user edit, so a draw tool or selected mark stops owning ⌘Z.
+    var onUserEdit: () -> Void = {}
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -64,10 +69,14 @@ struct CodeEditorView: NSViewRepresentable {
         // coordinator checks the user's preference and uses the undo-aware edit cycle.
         textView.onPaste = { [weak textView] replacedEntireDocument in
             guard let textView else { return }
-            context.coordinator.reindentAfterPaste(textView)
-            // A select-all paste (or a paste into an empty editor) is a new capture, so
-            // drop content-bound marks that were positioned over the old code.
-            if replacedEntireDocument { context.coordinator.parent.onReplaceAllPaste() }
+            let coordinator = context.coordinator
+            if replacedEntireDocument {
+                let intake = coordinator.parent.onReplaceAllPaste(textView.string)
+                coordinator.replaceAfterPaste(
+                    textView, with: intake.code, language: intake.language)
+            } else {
+                coordinator.reindentAfterPaste(textView)
+            }
         }
 
         context.coordinator.configureIfFontChanged(textView)
@@ -83,7 +92,9 @@ struct CodeEditorView: NSViewRepresentable {
 
         if textView.string != text {
             // External change (e.g. reopening a recent capture): sync + recolor now.
+            // Typing undo recorded against the previous text would edit the new one.
             textView.string = text
+            textView.undoManager?.removeAllActions()
             coordinator.applyHighlight(to: textView)
         } else if coordinator.styleChanged {
             // Theme/language/font changed: recolor now (text edits are debounced).
@@ -256,6 +267,7 @@ struct CodeEditorView: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard !isHighlighting, let textView = notification.object as? NSTextView else { return }
             parent.text = textView.string
+            parent.onUserEdit()
             // Recoloring is debounced; the surface must not lag an empty/nonempty flip.
             if textView.drawsBackground == textView.string.isEmpty {
                 applySurface(to: textView)
@@ -287,12 +299,30 @@ struct CodeEditorView: NSViewRepresentable {
         /// root; tests can override it explicitly without touching shared defaults.
         func reindentAfterPaste(_ textView: NSTextView, isEnabled: Bool? = nil) {
             guard isEnabled ?? parent.reindentOnPaste else { return }
+            replaceWholeText(
+                textView, with: CodeFormatter.tidy(textView.string, language: parent.language))
+        }
+
+        /// A paste that replaced the whole document becomes `code` (a Markdown fence
+        /// unwrapped), tidied with the pasted `language` when re-indent is on.
+        func replaceAfterPaste(
+            _ textView: NSTextView, with code: String, language: Language,
+            isEnabled: Bool? = nil
+        ) {
+            let tidied =
+                isEnabled ?? parent.reindentOnPaste
+                ? CodeFormatter.tidy(code, language: language) : code
+            replaceWholeText(textView, with: tidied)
+        }
+
+        private func replaceWholeText(_ textView: NSTextView, with replacement: String) {
             let original = textView.string
-            let tidied = CodeFormatter.tidy(original, language: parent.language)
-            guard tidied != original else { return }
+            guard replacement != original else { return }
             let whole = NSRange(location: 0, length: (original as NSString).length)
-            guard textView.shouldChangeText(in: whole, replacementString: tidied) else { return }
-            textView.textStorage?.replaceCharacters(in: whole, with: tidied)
+            guard textView.shouldChangeText(in: whole, replacementString: replacement) else {
+                return
+            }
+            textView.textStorage?.replaceCharacters(in: whole, with: replacement)
             textView.didChangeText()  // fires the delegate → writes back to the binding
             textView.undoManager?.setActionName(String(localized: "Format Code"))
         }

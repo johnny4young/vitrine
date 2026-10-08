@@ -5,8 +5,10 @@
 > the contract for that identity: the tokens, the brand vocabulary, and the do/don't
 > rules every contributor follows.
 
-The tokens live in [`Vitrine/DesignSystem/`](../Vitrine/DesignSystem). They are the single
-source of truth — views read them instead of hardcoding numbers or colors.
+Render-facing `Brand` tokens live in
+[`VitrineRendering/DesignSystem/`](../VitrineRendering/DesignSystem); app-chrome
+`VitrineTokens` live in [`Vitrine/DesignSystem/`](../Vitrine/DesignSystem). They are the
+single source of truth — views read them instead of hardcoding numbers or colors.
 
 ## Brand identity
 
@@ -17,9 +19,10 @@ source of truth — views read them instead of hardcoding numbers or colors.
   bottom-trailing). The export preset `GradientPreset.aurora` uses the *same* colors and
   direction, so a rendered screenshot is unmistakably "Vitrine". `aurora` is the default
   canvas background.
-- **App glyph:** one SF Symbol, named once in `Brand.symbolName` (`camera.viewfinder`).
-  The menu-bar extra, the About pane, and every empty state render this same symbol via
-  `BrandMark`, so the mark never drifts between surfaces.
+- **App glyph:** `BrandMark` renders one SF Symbol, named once in `Brand.symbolName`
+  (`camera.viewfinder`), in empty states and other in-app marks. The menu-bar extra uses
+  the `vitrine-menubar` template image (code chevrons inside viewfinder corners), and
+  About shows the app icon.
 - **Silhouette:** soft, continuous rounded rectangles; thin, low-opacity strokes that
   read as glass rather than heavy outlines; offset shadows for gentle elevation.
 
@@ -112,7 +115,8 @@ Run before shipping any change that touches UI chrome, the canvas, or exports:
 - [ ] Light mode and Dark mode both look correct (toggle in System Settings ▸ Appearance).
 - [ ] Increase Contrast on (System Settings ▸ Accessibility ▸ Display) keeps text legible
       and borders visible; nothing washes out.
-- [ ] The menu-bar symbol, the About pane mark, and empty states show the same glyph.
+- [ ] Empty states show the `BrandMark` glyph, the menu-bar extra shows the
+      `vitrine-menubar` template image, and About shows the app icon.
 - [ ] Empty editor state shows the brand mark plus a "Paste Code" action.
 - [ ] Native controls still feel native — no reskinned `Picker`/`Toggle`/buttons.
 - [ ] `make lint && make build && make test` are green (contrast + token tests included).

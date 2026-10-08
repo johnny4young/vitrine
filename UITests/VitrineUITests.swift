@@ -869,13 +869,10 @@ final class VitrineUITests: XCTestCase {
             revealToolbarAction(
                 "annotation-tool-arrow", from: "annotation-tool-picker", in: app
             ).click()
-            // SwiftUI forwards the stage identifier to both the code and status text.
             // Target the synthetic demo's rendered code, not the status capsule.
-            let stage = app.staticTexts.matching(
-                NSPredicate(
-                    format: "identifier == %@ AND value BEGINSWITH %@",
-                    "editor-preview-stage", "import SwiftUI")
-            ).element
+            let stage = element("editor-preview-stage", in: app).staticTexts.matching(
+                NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+            ).firstMatch
             assertExists(stage, in: app)
             let center = stage.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
             let delete = app.buttons["Delete annotation"]
@@ -924,8 +921,7 @@ final class VitrineUITests: XCTestCase {
                     "annotation-tool-text", from: "annotation-tool-picker", in: app
                 ).click()
                 center.click()
-                // The stage identifier also overrides the inline field's own identifier.
-                let field = app.textFields.matching(identifier: "editor-preview-stage").firstMatch
+                let field = app.textFields.matching(identifier: "annotation-text-field").firstMatch
                 assertExists(field, in: app)
                 // A new callout owns keyboard focus: type without clicking the field.
                 field.typeText("Callout\r")
@@ -958,15 +954,12 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         app.typeKey("5", modifierFlags: .command)
-        let stage = app.staticTexts.matching(
-            NSPredicate(
-                format: "identifier == %@ AND value BEGINSWITH %@",
-                "editor-preview-stage", "import SwiftUI")
-        ).element
+        let stage = element("editor-preview-stage", in: app).staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
         assertExists(stage, in: app, timeout: 3)
         stage.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
-        // The stage identifier also overrides the inline field's own identifier.
-        let field = app.textFields.matching(identifier: "editor-preview-stage").firstMatch
+        let field = app.textFields.matching(identifier: "annotation-text-field").firstMatch
         assertExists(field, in: app, timeout: 3)
         field.typeText("Callout")
         XCTAssertEqual(field.value as? String, "Callout")
@@ -1350,8 +1343,8 @@ final class VitrineUITests: XCTestCase {
         if failsPersistence {
             let message =
                 language == "es"
-                ? "No se pudo activar esa clave de licencia. Revísala e inténtalo de nuevo."
-                : "That license key couldn't be activated. Check it and try again."
+                ? "La licencia fue aceptada, pero Vitrine no pudo guardarla en esta Mac. Vuelve a intentarlo."
+                : "The license was accepted, but Vitrine couldn't store it on this Mac. Try again."
             assertExists(app.staticTexts[message], in: app, timeout: 5)
             assertExists(element("pro-paywall-sheet", in: app), in: app)
             let cancel = app.buttons[language == "es" ? "Ahora no" : "Not now"].firstMatch
@@ -2152,9 +2145,9 @@ final class VitrineUITests: XCTestCase {
         while pasteboard.string(forType: .string) == "sentinel", Date() < deadline {
             Thread.sleep(forTimeInterval: 0.2)
         }
+        // The panel lists captures newest first, so the last demo capture leads.
         XCTAssertEqual(
-            pasteboard.string(forType: .string),
-            "func greet(name string) string { return \"Hello, \" + name }")
+            pasteboard.string(forType: .string), "fn main() { println!(\"Hello from Rust\"); }")
         XCTAssertNil(pasteboard.data(forType: .png))
     }
 

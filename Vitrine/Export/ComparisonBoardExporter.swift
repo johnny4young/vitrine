@@ -28,7 +28,10 @@ enum ComparisonBoardExporter {
         }
 
         if case .pdf = format {
-            guard let data = ExportManager.pdfData(from: asset.cgImage) else {
+            guard
+                let data = ExportManager.pdfData(
+                    from: asset.cgImage, scale: draft.exportScale)
+            else {
                 throw .encodingFailed
             }
             return (data, .pdf, "pdf")

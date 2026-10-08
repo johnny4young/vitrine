@@ -128,7 +128,9 @@ extension WebSnapshotEditorView {
 
     var optionsSection: some View {
         InspectorSection(title: Text("Output")) {
-            WebCaptureControls(settings: settings, collapsesAdvanced: true)
+            WebCaptureControls(
+                settings: settings, collapsesAdvanced: true,
+                showsURLCaptureOptions: model.mode.usesURLCaptureOptions)
         }
     }
 
@@ -149,7 +151,9 @@ extension WebSnapshotEditorView {
 
             if model.mode == .url {
                 Label {
-                    Text("Loads the page locally in WebKit — nothing is sent to a server.")
+                    Text(
+                        "Loads the page in WebKit on your Mac. The website receives the request, but no remote screenshot service is used."
+                    )
                 } icon: {
                     Image(systemName: "lock.shield")
                 }

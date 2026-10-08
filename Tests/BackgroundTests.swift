@@ -456,18 +456,43 @@ struct BackgroundTests {
         #expect(!FileManager.default.fileExists(atPath: store.directory.path))
     }
 
+    private static func importPixelBudget(
+        _ dimensions: [(width: Int, height: Int)]
+    ) throws(ImageDecodePolicy.Failure) -> Int {
+        try ImageDecodePolicy.totalSourcePixels(
+            of: dimensions, maximumFrameCount: BackgroundImageStore.maxImageFrameCount,
+            maximumSourcePixelCount: BackgroundImageStore.maxDecodedPixelCount)
+    }
+
+    /// Image reads share the descriptor-checked reader: a FIFO is refused, never opened
+    /// with a blocking read.
+    @Test func boundedImageReadRefusesANamedPipe() throws {
+        let fifo = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: fifo) }
+        let result = fifo.withUnsafeFileSystemRepresentation { path in
+            guard let path else { return Int32(-1) }
+            return mkfifo(path, 0o600)
+        }
+        try #require(result == 0)
+
+        #expect(throws: BackgroundImageStore.ImportError.copyFailed) {
+            _ = try BackgroundImageStore.readBoundedImageData(from: fifo)
+        }
+    }
+
     @Test func imageDimensionBudgetAllowsBoundaryAndRejectsCumulativeOverflow() throws {
         #expect(
-            try BackgroundImageStore.validateImageDimensions([(width: 8_000, height: 8_000)])
+            try Self.importPixelBudget([(width: 8_000, height: 8_000)])
                 == BackgroundImageStore.maxDecodedPixelCount)
         #expect(
-            try BackgroundImageStore.validateImageDimensions([
+            try Self.importPixelBudget([
                 (width: 4_000, height: 8_000),
                 (width: 4_000, height: 8_000),
             ]) == BackgroundImageStore.maxDecodedPixelCount)
 
-        #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
-            _ = try BackgroundImageStore.validateImageDimensions([
+        #expect(throws: ImageDecodePolicy.Failure.tooLarge) {
+            _ = try Self.importPixelBudget([
                 (width: 4_000, height: 8_000),
                 (width: 4_000, height: 8_000),
                 (width: 1, height: 1),
@@ -476,19 +501,17 @@ struct BackgroundTests {
     }
 
     @Test func imageDimensionBudgetRejectsInvalidOverflowingAndExcessiveFrames() {
-        #expect(throws: BackgroundImageStore.ImportError.notAnImage) {
-            _ = try BackgroundImageStore.validateImageDimensions([])
+        #expect(throws: ImageDecodePolicy.Failure.invalidImage) {
+            _ = try Self.importPixelBudget([])
         }
-        #expect(throws: BackgroundImageStore.ImportError.notAnImage) {
-            _ = try BackgroundImageStore.validateImageDimensions([(width: 0, height: 100)])
+        #expect(throws: ImageDecodePolicy.Failure.invalidImage) {
+            _ = try Self.importPixelBudget([(width: 0, height: 100)])
         }
-        #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
-            _ = try BackgroundImageStore.validateImageDimensions([
-                (width: Int.max, height: 2)
-            ])
+        #expect(throws: ImageDecodePolicy.Failure.tooLarge) {
+            _ = try Self.importPixelBudget([(width: Int.max, height: 2)])
         }
-        #expect(throws: BackgroundImageStore.ImportError.tooLarge) {
-            _ = try BackgroundImageStore.validateImageDimensions(
+        #expect(throws: ImageDecodePolicy.Failure.tooLarge) {
+            _ = try Self.importPixelBudget(
                 Array(
                     repeating: (width: 1, height: 1),
                     count: BackgroundImageStore.maxImageFrameCount + 1))

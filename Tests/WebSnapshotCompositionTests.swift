@@ -175,7 +175,7 @@ struct WebSnapshotCompositionTests {
         #expect(presentation.sharedImages.map(\.size) == [NSSize(width: 1, height: 1)])
     }
 
-    @Test func exportAllUsesTheInjectedDirectoryAndRevealsOnlyACompleteBatch() throws {
+    @Test func exportAllUsesTheInjectedDirectoryAndRevealsOnlyACompleteBatch() async throws {
         let directory = try Self.makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let defaults = testDefaults()
@@ -193,11 +193,12 @@ struct WebSnapshotCompositionTests {
             feedback: display.display,
             presentation: presentation.presentation)
 
-        root.exportAll()
+        await root.exportAllSizes()
 
+        // Named from the actual capture (a 1×1 fixture at 1×), not the 1440×900 preset.
         #expect(
             FileManager.default.fileExists(
-                atPath: directory.appendingPathComponent("vitrine-web-desktop-1440x900.png").path))
+                atPath: directory.appendingPathComponent("vitrine-web-desktop-1x1.png").path))
         #expect(
             FileManager.default.fileExists(
                 atPath: directory.appendingPathComponent("vitrine-web-responsive-board.png").path))
@@ -210,13 +211,16 @@ struct WebSnapshotCompositionTests {
                 == [Notifier.confirmation(String(localized: "Images exported"))])
     }
 
-    @Test func partialExportReportsFailureAndDoesNotRevealTheDirectory() throws {
+    @Test func failedExportReportsFailureAndDoesNotRevealTheDirectory() async throws {
         let directory = try Self.makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let blockedOutput = directory.appendingPathComponent("vitrine-web-responsive-board.png")
-        try FileManager.default.createDirectory(
-            at: blockedOutput,
-            withIntermediateDirectories: false)
+        // A read-only folder makes every write fail; existing names are never replaced.
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        defer {
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: directory.path)
+            try? FileManager.default.removeItem(at: directory)
+        }
         let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let model = WebSnapshotModel()
@@ -232,18 +236,15 @@ struct WebSnapshotCompositionTests {
             feedback: display.display,
             presentation: presentation.presentation)
         let failure = try #require(
-            BatchExportCompletion(written: 1, failed: 1, expected: 2).failureNote)
+            BatchExportCompletion(written: 0, failed: 2, expected: 2).failureNote)
 
-        root.exportAll()
+        await root.exportAllSizes()
 
-        #expect(
-            FileManager.default.fileExists(
-                atPath: directory.appendingPathComponent("vitrine-web-desktop-1440x900.png").path))
         #expect(presentation.revealedDirectories.isEmpty)
         #expect(display.feedback == [Notifier.failure(failure)])
     }
 
-    @Test func cancelledExportDoesNotWriteOrPresentFeedback() throws {
+    @Test func cancelledExportDoesNotWriteOrPresentFeedback() async throws {
         let defaults = testDefaults()
         let environment = AppEnvironment(defaults: defaults)
         let model = WebSnapshotModel()
@@ -257,7 +258,7 @@ struct WebSnapshotCompositionTests {
             feedback: display.display,
             presentation: presentation.presentation)
 
-        root.exportAll()
+        await root.exportAllSizes()
 
         #expect(presentation.selectionMessages.count == 1)
         #expect(presentation.revealedDirectories.isEmpty)

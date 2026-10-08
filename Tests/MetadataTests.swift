@@ -23,7 +23,6 @@ struct SnapshotMetadataModelTests {
         #expect(metadata.caption == nil)
         #expect(metadata.showLanguageBadge == false)
         #expect(metadata.isEmpty)
-        #expect(metadata.hasText == false)
     }
 
     @Test func trimsAndCollapsesBlankFieldsToNil() {
@@ -50,13 +49,6 @@ struct SnapshotMetadataModelTests {
         #expect(!SnapshotMetadata(title: "Title").isEmpty)
         #expect(!SnapshotMetadata(caption: "Caption").isEmpty)
         #expect(!SnapshotMetadata(showLanguageBadge: true).isEmpty)
-    }
-
-    @Test func hasTextIgnoresTheBadgeOnlyCase() {
-        // A badge with no text fields is not "text"; the header still shows, but
-        // only the badge row.
-        #expect(SnapshotMetadata(showLanguageBadge: true).hasText == false)
-        #expect(SnapshotMetadata(filename: "a.swift").hasText)
     }
 
     @Test func equatableComparesNormalizedValues() {

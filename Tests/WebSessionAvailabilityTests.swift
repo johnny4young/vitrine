@@ -10,12 +10,9 @@ import WebKit
 @MainActor
 @Suite("Web capture sign-in availability")
 struct WebSessionAvailabilityTests {
-    private let site = "https://github.com/cognosos/node-packages/releases"
+    private let site = "https://example.com/team/releases"
 
     @Test func signInIsOfferedOnceEveryRequirementIsMet() {
-        #expect(
-            WebSessionAvailability.canSignIn(
-                isCaptureEnabled: true, usesLoggedInSession: true, urlText: site))
         #expect(
             WebSessionAvailability.blocker(
                 isCaptureEnabled: true, usesLoggedInSession: true, urlText: site) == nil)
@@ -57,14 +54,14 @@ struct WebSessionAvailabilityTests {
                 isCaptureEnabled: true, usesLoggedInSession: true,
                 urlText: "http://localhost:3000", allowsLoopback: false) == .noValidURL)
         #expect(
-            WebSessionAvailability.canSignIn(
+            WebSessionAvailability.blocker(
                 isCaptureEnabled: true, usesLoggedInSession: true,
-                urlText: "http://localhost:3000", allowsLoopback: true))
+                urlText: "http://localhost:3000", allowsLoopback: true) == nil)
     }
 
     /// The button names the site, so the user can tell what a sign-in would apply to.
     @Test func theSiteLabelIsTheHost() {
-        #expect(WebSessionAvailability.siteLabel(for: site) == "github.com")
+        #expect(WebSessionAvailability.siteLabel(for: site) == "example.com")
         #expect(WebSessionAvailability.siteLabel(for: "https://example.com") == "example.com")
         #expect(WebSessionAvailability.siteLabel(for: "not a url") == nil)
     }

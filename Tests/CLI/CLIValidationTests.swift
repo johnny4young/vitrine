@@ -504,7 +504,7 @@ struct CLIValidationTests: CLITestSupport {
                     FileInputLoader.LoadedFile(
                         text: "x", language: .terminal, filename: "session.log")
                 },
-                stage: { _, _ in nil },
+                stage: { _ in nil },
                 open: { _ in
                     Issue.record("open must not run without a handoff URL")
                     return true
@@ -800,7 +800,8 @@ struct CLIValidationTests: CLITestSupport {
             .unsupportedOutputFormat("AVIF"), .outputExists(path: "/x"),
             .writeFailed(path: "/x"), .batchEmpty(skipped: 1),
             .batchSkipped(rendered: 1, skipped: 1), .editorOpenFailed,
-            .editorHandoffFailed, .proRequired,
+            .editorHandoffFailed, .proRequired, .unexpectedArgument("b.swift"),
+            .inputTooLarge(path: "/x"), .editorHandoffEmpty,
         ]
         for error in errors {
             #expect(!error.message.isEmpty)

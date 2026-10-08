@@ -7,6 +7,7 @@ import VitrineRendering
 struct WorkspaceRecipeSettingsSection: View {
     @Bindable var settings: AppSettings
     var store: WorkspaceRecipeStore
+    var themes: CustomThemeStore
 
     @State private var selectedID: UUID?
     @State private var showExportPrompt = false
@@ -144,7 +145,7 @@ struct WorkspaceRecipeSettingsSection: View {
         guard let selectedID else { return }
         do {
             let resolved = try store.resolvedRecipe(id: selectedID)
-            let ignoredCanvas = settings.applyWorkspaceRecipe(resolved.recipe)
+            let ignoredCanvas = settings.applyWorkspaceRecipe(resolved.recipe, themes: themes)
             let message =
                 ignoredCanvas
                 ? String(

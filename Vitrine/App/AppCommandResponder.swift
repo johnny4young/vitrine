@@ -1,10 +1,11 @@
 import AppKit
+import VitrineDomain
 import VitrineRendering
 
 /// Performs the app-scoped commands (New Capture, Open Editor, Settings, Help,
 /// About) from the main menu. A small `@objc` target rather than free functions
 /// so menu items can wire to selectors and AppKit's standard validation applies.
-final class AppCommandResponder: NSObject {
+final class AppCommandResponder: NSObject, NSMenuItemValidation, NSMenuDelegate {
     let environment: AppEnvironment
     let feedback: CaptureFeedbackPresenter
 
@@ -65,10 +66,51 @@ final class AppCommandResponder: NSObject {
     @objc func selectTheme(_ sender: Any?) {
         guard let item = sender as? NSMenuItem, let themeID = item.representedObject as? String
         else { return }
-        let theme = environment.customThemes.theme(withID: themeID)
-        let target =
-            EditorWindowController.shared.keyWindowSession?.settings ?? environment.appSettings
-        target.config.theme = theme
+        themeTarget.config.theme = environment.customThemes.theme(withID: themeID)
+    }
+
+    /// The settings View ▸ Theme acts on: the key editor, else the app-wide default.
+    private var themeTarget: AppSettings {
+        EditorWindowController.shared.keyWindowSession?.settings ?? environment.appSettings
+    }
+
+    /// Rebuilds the theme submenu each time it opens, so custom themes appear as soon
+    /// as they are created.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        populateThemeMenu(menu)
+    }
+
+    func populateThemeMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        for theme in Theme.builtIns {
+            menu.addItem(themeItem(for: theme))
+        }
+        let custom = environment.customThemes.customThemes
+        if !custom.isEmpty {
+            menu.addItem(.separator())
+            for theme in custom { menu.addItem(themeItem(for: theme)) }
+        }
+    }
+
+    private func themeItem(for theme: Theme) -> NSMenuItem {
+        let item = NSMenuItem(
+            title: theme.displayName, action: #selector(selectTheme(_:)), keyEquivalent: "")
+        item.representedObject = theme.id
+        item.target = self
+        return item
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        switch menuItem.action {
+        case #selector(selectTheme(_:)):
+            menuItem.state =
+                menuItem.representedObject as? String == themeTarget.config.theme.id ? .on : .off
+            return true
+        case #selector(checkForUpdates(_:)):
+            return !SoftwareUpdater.isStarted || SoftwareUpdater.shared.canCheckForUpdates
+        default:
+            return true
+        }
     }
 
     /// Starts a user-initiated update check on the direct-download build. The

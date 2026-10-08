@@ -42,8 +42,9 @@ struct DestinationSegmentedPicker: View {
     }
 
     private var presetHelp: String {
-        settings.selectedPreset?.summary
-            ?? "Custom: your own size and style, with no destination preset applied."
+        settings.selectedPreset?.localizedSummary
+            ?? String(
+                localized: "Custom: your own size and style, with no destination preset applied.")
     }
 
     private var selectionBinding: Binding<String> {

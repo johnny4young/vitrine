@@ -5,9 +5,8 @@ import VitrineRendering
 /// A short-lived, in-app heads-up display anchored near the menu bar that
 /// confirms a quick capture without a Notification Center banner.
 ///
-/// The HUD is the preferred surface for *routine* success so the app does not
-/// post a system notification for every ordinary capture; Notification Center is
-/// kept as a fallback only (see `CaptureFeedbackPresenter`). It is a borderless,
+/// The HUD is the surface for capture feedback, so the app never posts a system
+/// notification for an ordinary capture. It is a borderless,
 /// non-activating panel so it never steals focus from the app the user is working
 /// in, and it draws itself with the brand glass material rather than the system
 /// notification chrome.
@@ -126,8 +125,34 @@ final class CaptureHUDController {
 
     private var panel: NSPanel?
     private var dismissTask: Task<Void, Never>?
+    private let postAnnouncement: @MainActor (Announcement) -> Void
 
-    private init() {}
+    /// What VoiceOver hears for one feedback value. The panel never becomes key, so
+    /// without an announcement a hotkey capture is silent to VoiceOver users.
+    struct Announcement: Equatable {
+        let message: String
+        let isUrgent: Bool
+    }
+
+    init(postAnnouncement: @escaping @MainActor (Announcement) -> Void = CaptureHUDController.post)
+    {
+        self.postAnnouncement = postAnnouncement
+    }
+
+    static func announcement(for feedback: Notifier.CaptureFeedback) -> Announcement {
+        Announcement(message: feedback.message, isUrgent: feedback.category == .failure)
+    }
+
+    /// Speaks `feedback` through the injected announcer.
+    func announce(_ feedback: Notifier.CaptureFeedback) {
+        postAnnouncement(Self.announcement(for: feedback))
+    }
+
+    private static func post(_ announcement: Announcement) {
+        var text = AttributedString(announcement.message)
+        text.accessibilitySpeechAnnouncementPriority = announcement.isUrgent ? .high : .default
+        AccessibilityNotification.Announcement(text).post()
+    }
 
     /// Shows `feedback` in the HUD, optionally animating its entrance, and routes
     /// any recovery-action tap to `onAction` before dismissing.
@@ -153,6 +178,7 @@ final class CaptureHUDController {
         panel.contentViewController = hosting
         position(panel, fitting: hosting.view.fittingSize)
         panel.orderFrontRegardless()
+        announce(feedback)
 
         scheduleDismiss(after: CaptureHUD.displayDuration(hasActions: !feedback.actions.isEmpty))
     }

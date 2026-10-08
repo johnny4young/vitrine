@@ -34,8 +34,9 @@ struct ComparisonBoardExportTests {
 
         #expect(pngImage.width == expected.pixelWidth)
         #expect(pngImage.height == expected.pixelHeight)
-        #expect(Int(mediaBox.width) == expected.pixelWidth)
-        #expect(Int(mediaBox.height) == expected.pixelHeight)
+        // The PDF page is in points, so the 2× export keeps the 1× page size.
+        #expect(mediaBox.width == CGFloat(expected.pixelWidth) / draft.exportScale)
+        #expect(mediaBox.height == CGFloat(expected.pixelHeight) / draft.exportScale)
     }
 
     private func capture(_ code: String) -> Capture {

@@ -82,6 +82,7 @@ struct PaywallSheet: View {
     #else
         @State private var working = false
         @State private var purchaseFailed = false
+        @State private var storeNotice: String?
         @State private var displayPrice: String?
         @State private var loadingPrice = true
         @State private var priceRequest = 0
@@ -172,9 +173,9 @@ struct PaywallSheet: View {
                 Button {
                     Task {
                         activation.begin()
-                        let ok = await entitlements.activate(licenseKey: licenseKey)
-                        activation.finish(succeeded: ok, isPro: entitlements.isPro)
-                        if ok { dismiss() }
+                        let result = await entitlements.activate(licenseKey: licenseKey)
+                        activation.finish(result, isPro: entitlements.isPro)
+                        if result.succeeded { dismiss() }
                     }
                 } label: {
                     Text("Activate").frame(maxWidth: .infinity)
@@ -186,11 +187,12 @@ struct PaywallSheet: View {
                 )
                 .accessibilityIdentifier("pro-activate-button")
                 .keyboardShortcut(.defaultAction)
-                if activation.failed {
-                    Text("That license key couldn't be activated. Check it and try again.")
+                if let message = activation.failureMessage {
+                    Text(verbatim: message)
                         .font(.system(size: VitrineTokens.FontSize.caption))
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("pro-activation-error")
                 }
             }
         #else
@@ -215,7 +217,15 @@ struct PaywallSheet: View {
                     Task {
                         working = true
                         purchaseFailed = false
-                        purchaseFailed = await entitlements.purchase() == .failed
+                        storeNotice = nil
+                        let outcome = await entitlements.purchase()
+                        purchaseFailed = outcome == .failed
+                        if outcome == .pending {
+                            storeNotice = String(
+                                localized:
+                                    "Purchase pending approval. PRO unlocks as soon as it's approved."
+                            )
+                        }
                         working = false
                     }
                 } label: {
@@ -228,7 +238,10 @@ struct PaywallSheet: View {
                 Button {
                     Task {
                         working = true
-                        await entitlements.restorePurchases()
+                        storeNotice = nil
+                        if !(await entitlements.restorePurchases()) {
+                            storeNotice = String(localized: "No previous purchase was found.")
+                        }
                         working = false
                     }
                 } label: {
@@ -243,6 +256,13 @@ struct PaywallSheet: View {
                         .foregroundStyle(.red)
                         .multilineTextAlignment(.center)
                 }
+                if let storeNotice {
+                    Text(verbatim: storeNotice)
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("pro-store-notice")
+                }
             }
         #endif
     }
@@ -253,19 +273,21 @@ struct PaywallSheet: View {
     /// paywall open. Any other unlock, including one from another window, closes it.
     struct PaywallActivationState {
         private(set) var isWorking = false
-        private(set) var failed = false
+        private(set) var failureMessage: String?
         private var retainsPartialActivation = false
+
+        var failed: Bool { failureMessage != nil }
 
         mutating func begin() {
             isWorking = true
-            failed = false
+            failureMessage = nil
             retainsPartialActivation = false
         }
 
-        mutating func finish(succeeded: Bool, isPro: Bool) {
+        mutating func finish(_ result: LicenseActivationResult, isPro: Bool) {
             isWorking = false
-            failed = !succeeded
-            retainsPartialActivation = !succeeded && isPro
+            failureMessage = result.message
+            retainsPartialActivation = !result.succeeded && isPro
         }
 
         func dismissesOnUnlock(isPro: Bool) -> Bool {

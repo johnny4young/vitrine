@@ -11,13 +11,13 @@ struct GeneralSettingsView: View {
     var themes: CustomThemeStore
     var brandKit: BrandKitStore
     var workspaceRecipes: WorkspaceRecipeStore
-    @State private var launchAtLogin = LaunchAtLogin.isEnabled
+    @State private var launchAtLogin = LaunchAtLoginModel()
     @State private var showResetConfirmation = false
 
     /// Where the `vitrine` CLI is currently linked, if anywhere.
     @State private var cliInstalledAt: URL?
-    /// A failed install attempt's message; drives the fallback alert.
-    @State private var cliInstallError: String?
+    /// A failed install attempt's reason; drives the fallback alert.
+    @State private var cliInstallError: CLIToolInstaller.FailureReason?
     /// The folder the most recent failed in-app CLI install attempted, so the
     /// failure alert's fallback command targets that exact folder.
     @State private var cliInstallFailedDirectory: URL?
@@ -29,6 +29,9 @@ struct GeneralSettingsView: View {
     @State private var shellIntegrationAddedAt: URL?
     /// A failed shell-integration install's message; drives its fallback alert.
     @State private var shellIntegrationError: String?
+    /// The shell of the file last chosen for the integration, so the fallback command
+    /// matches that file rather than `$SHELL`.
+    @State private var shellIntegrationShell: ShellInit.Shell?
 
     var body: some View {
         SettingsPaneScroll {
@@ -49,13 +52,9 @@ struct GeneralSettingsView: View {
                     .accessibilityLabel("Hotkey runs")
                 }
                 TokenRow(label: Text("Launch at login")) {
-                    Toggle("Launch at login", isOn: $launchAtLogin)
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                        .accessibilityIdentifier("launch-at-login-toggle")
-                        .onChange(of: launchAtLogin) { _, newValue in
-                            LaunchAtLogin.setEnabled(newValue)
-                        }
+                    LaunchAtLoginToggle(
+                        model: launchAtLogin, title: "Launch at login",
+                        identifier: "launch-at-login-toggle")
                 }
             }
 
@@ -120,7 +119,8 @@ struct GeneralSettingsView: View {
                                 .accessibilityIdentifier("install-shell-integration-button")
                             Button("Copy Command") {
                                 copyToClipboard(
-                                    ShellIntegrationInstaller.terminalCommand(for: resolvedShell))
+                                    ShellIntegrationInstaller.terminalCommand(
+                                        for: shellIntegrationShell ?? resolvedShell))
                             }
                             .help("Copy the equivalent Terminal command.")
                             .accessibilityIdentifier("copy-shell-command-button")
@@ -132,7 +132,7 @@ struct GeneralSettingsView: View {
 
                 TokenRow(
                     label: Text("Reset"),
-                    caption: Text("Restores every preference to its default")
+                    caption: Text("Restores Vitrine's style, export, and input preferences")
                 ) {
                     Button("Reset All Settings…", role: .destructive) {
                         showResetConfirmation = true
@@ -152,19 +152,20 @@ struct GeneralSettingsView: View {
             isPresented: Binding(
                 get: { cliInstallError != nil }, set: { if !$0 { cliInstallError = nil } })
         ) {
-            Button("Copy Command") {
-                if let cli = CLIToolInstaller.embeddedCLI {
-                    copyToClipboard(
-                        CLIToolInstaller.terminalCommand(
-                            for: cli, into: cliInstallFailedDirectory))
+            // `sudo ln -s` fails the same way when a regular file is in the way.
+            if cliInstallError?.needsAdministrator == true {
+                Button("Copy Command") {
+                    if let cli = CLIToolInstaller.embeddedCLI {
+                        copyToClipboard(
+                            CLIToolInstaller.terminalCommand(
+                                for: cli, into: cliInstallFailedDirectory))
+                    }
+                    cliInstallError = nil
                 }
-                cliInstallError = nil
             }
             Button("OK", role: .cancel) { cliInstallError = nil }
         } message: {
-            Text(
-                "\(cliInstallError ?? "") System folders need an administrator: run the copied command in Terminal instead."
-            )
+            Text(verbatim: cliInstallError?.message ?? "")
         }
         .alert(
             "Couldn't Add the Shell Integration",
@@ -173,7 +174,9 @@ struct GeneralSettingsView: View {
                 set: { if !$0 { shellIntegrationError = nil } })
         ) {
             Button("Copy Command") {
-                copyToClipboard(ShellIntegrationInstaller.terminalCommand(for: resolvedShell))
+                copyToClipboard(
+                    ShellIntegrationInstaller.terminalCommand(
+                        for: shellIntegrationShell ?? resolvedShell))
                 shellIntegrationError = nil
             }
             Button("OK", role: .cancel) { shellIntegrationError = nil }
@@ -196,12 +199,12 @@ struct GeneralSettingsView: View {
                     brandKit: brandKit,
                     workspaceRecipes: workspaceRecipes
                 ).reset()
-                launchAtLogin = LaunchAtLogin.isEnabled
+                launchAtLogin.refresh()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(
-                "This cannot be undone. Your recent languages, saved presets, custom themes, workspace recipe associations, and Brand Kit are also cleared."
+                "This cannot be undone. Your recent languages, saved presets, custom themes, workspace recipe associations, Brand Kit, and working social card are also cleared."
             )
         }
     }
@@ -240,8 +243,8 @@ struct GeneralSettingsView: View {
             cliInstalledAt = link
             cliInstallError = nil
             cliInstallFailedDirectory = nil
-        case .failed(let message):
-            cliInstallError = message
+        case .failed(let reason):
+            cliInstallError = reason
             // Remembered so the failure alert's "Copy Command" targets the very
             // folder this install just attempted, not an unrelated default prefix.
             cliInstallFailedDirectory = directory
@@ -281,7 +284,9 @@ struct GeneralSettingsView: View {
         )
         panel.prompt = String(localized: "Add")
         guard panel.runModal() == .OK, let file = panel.url else { return }
-        switch ShellIntegrationInstaller.install(resolvedShell, into: file) {
+        let shell = ShellIntegrationInstaller.shell(for: file, fallback: resolvedShell)
+        shellIntegrationShell = shell
+        switch ShellIntegrationInstaller.install(shell, into: file) {
         case .installed(let url), .alreadyInstalled(let url):
             shellIntegrationAddedAt = url
             shellIntegrationError = nil

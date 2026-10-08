@@ -61,7 +61,7 @@ nonisolated enum CLIVersion {
     static func output(
         format: Format,
         infoDictionary: [String: Any]? = Bundle.main.infoDictionary,
-        executablePath: String = CommandLine.arguments.first ?? ""
+        executablePath: String = CLIEnvironment.executableURL?.path ?? ""
     ) -> String {
         let values = values(infoDictionary: infoDictionary, executablePath: executablePath)
         switch format {
@@ -77,7 +77,7 @@ nonisolated enum CLIVersion {
 
     static func values(
         infoDictionary: [String: Any]? = Bundle.main.infoDictionary,
-        executablePath: String = CommandLine.arguments.first ?? ""
+        executablePath: String = CLIEnvironment.executableURL?.path ?? ""
     ) -> Values {
         let dictionaries = [
             infoDictionary, enclosingAppInfoDictionary(executablePath: executablePath),

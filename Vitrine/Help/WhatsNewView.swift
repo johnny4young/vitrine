@@ -67,7 +67,7 @@ struct WhatsNewView: View {
                 Text("What's New")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(VitrineTokens.Text.primary)
-                Text("\(note.headline) · Version \(note.version)")
+                Text("\(note.localizedHeadline) · Version \(note.version)")
                     .font(.system(size: VitrineTokens.FontSize.body))
                     .foregroundStyle(VitrineTokens.Text.secondary)
             }
@@ -79,7 +79,7 @@ struct WhatsNewView: View {
 
     private var highlights: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ForEach(Array(note.highlights.enumerated()), id: \.offset) { _, highlight in
+            ForEach(Array(note.localizedHighlights.enumerated()), id: \.offset) { _, highlight in
                 HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
                     Circle()
                         .fill(VitrineTokens.Accent.system)
@@ -155,6 +155,17 @@ struct WhatsNewView: View {
     }
 }
 
+extension ReleaseNote {
+    var localizedHeadline: String { Self.localized(headline) }
+    var localizedHighlights: [String] { highlights.map { Self.localized($0) } }
+
+    /// Looks the English text up as a String Catalog key, falling back to English.
+    /// `localizedString(forKey:)` never parses format specifiers, so a literal `%` stays literal.
+    static func localized(_ english: String, in bundle: Bundle = .main) -> String {
+        bundle.localizedString(forKey: english, value: english, table: nil)
+    }
+}
+
 /// Owns and presents the version-gated "What's New" window.
 ///
 /// Mirrors `WelcomeWindowController`: the version gate lives in
@@ -187,7 +198,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     /// - Returns: whether the window was presented, which the launch path can use
     ///   to avoid stacking it over another just-opened window.
     @discardableResult
-    func presentIfNewVersion(settings: AppSettings = .shared) -> Bool {
+    func presentIfNewVersion(settings: AppSettings) -> Bool {
         guard let latest = ReleaseNotes.latest else { return false }
 
         if settings.lastSeenWhatsNewVersion == nil {
@@ -209,7 +220,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
     /// Shows (creating if needed) and focuses the window for `note`. Public so a
     /// launch hook can force it open for manual and UI testing, independent of the
     /// gate.
-    func show(settings: AppSettings = .shared, note: ReleaseNote? = ReleaseNotes.latest) {
+    func show(settings: AppSettings, note: ReleaseNote? = ReleaseNotes.latest) {
         guard let note else { return }
         presentedSettings = settings
         presentedNote = note
@@ -231,7 +242,7 @@ final class WhatsNewWindowController: NSObject, NSWindowDelegate {
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     /// Closes the window without releasing the controller, so a later forced

@@ -36,7 +36,8 @@ struct AlternativeTextField: View {
         }
         .onAppear { draft.restore(settings.style.altText) }
         .onChange(of: settings.style.altText) { _, value in draft.synchronize(value) }
-        .onChange(of: settings.documentCode) { _, _ in
+        // The generation, not the text, so typing never re-evaluates the inspector.
+        .onChange(of: settings.documentGeneration) { _, _ in
             draft.contentChanged(settings.style.altText)
         }
         .onChange(of: settings.style.foregroundImage) { _, _ in

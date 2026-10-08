@@ -149,7 +149,7 @@ struct CLIArgumentParser {
             } else {
                 // The first non-flag token is the input path; a second positional is
                 // unexpected and rejected so a stray argument is not silently ignored.
-                guard inputPath == nil else { throw CLIError.unknownFlag(token) }
+                guard inputPath == nil else { throw CLIError.unexpectedArgument(token) }
                 inputPath = token
             }
         }

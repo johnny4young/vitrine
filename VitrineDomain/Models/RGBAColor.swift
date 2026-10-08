@@ -41,43 +41,57 @@ public struct RGBAColor: Equatable, Hashable, Codable, Sendable {
     /// `Color(hex:)` initializer and `HexColor` build on it and add the SwiftUI bridge
     /// and the DEBUG typo assertions.
     public init?(hex: String) {
-        let cleaned = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#")).uppercased()
-        var value: UInt64 = 0
-        // `scanHexInt64` succeeds on any leading hex digits, so also require the scanner
-        // to have consumed the whole string — otherwise mixed input of a valid length
-        // ("12GG34") would silently decode the partial value into a wrong color.
-        let scanner = Scanner(string: cleaned)
-        guard scanner.scanHexInt64(&value), scanner.isAtEnd else { return nil }
+        guard let components = Self.hexComponents(hex) else { return nil }
+        self.init(
+            red: components.red, green: components.green, blue: components.blue,
+            opacity: components.alpha)
+    }
 
-        let r: Double
-        let g: Double
-        let b: Double
-        let a: Double
+    /// The one hex parser behind `RGBAColor` and `HexColor`: unquantized sRGB components for
+    /// a 3/4/6/8-digit string with an optional `#` and surrounding whitespace.
+    static func hexComponents(
+        _ hex: String
+    ) -> (red: Double, green: Double, blue: Double, alpha: Double)? {
+        let cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        // `Scanner` also accepts a `0x` prefix and leading whitespace, and `isHexDigit`
+        // admits fullwidth digits, so only ASCII hex digits may reach the scan.
+        guard !cleaned.isEmpty, cleaned.allSatisfy({ $0.isASCII && $0.isHexDigit }),
+            let value = UInt64(cleaned, radix: 16)
+        else { return nil }
+
         switch cleaned.count {
         case 8:  // RRGGBBAA
-            r = Double((value & 0xFF00_0000) >> 24) / 255
-            g = Double((value & 0x00FF_0000) >> 16) / 255
-            b = Double((value & 0x0000_FF00) >> 8) / 255
-            a = Double(value & 0x0000_00FF) / 255
+            return (
+                Double((value & 0xFF00_0000) >> 24) / 255,
+                Double((value & 0x00FF_0000) >> 16) / 255,
+                Double((value & 0x0000_FF00) >> 8) / 255,
+                Double(value & 0x0000_00FF) / 255
+            )
         case 6:  // RRGGBB
-            r = Double((value & 0xFF_0000) >> 16) / 255
-            g = Double((value & 0x00_FF00) >> 8) / 255
-            b = Double(value & 0x00_00FF) / 255
-            a = 1
+            return (
+                Double((value & 0xFF_0000) >> 16) / 255,
+                Double((value & 0x00_FF00) >> 8) / 255,
+                Double(value & 0x00_00FF) / 255,
+                1
+            )
         case 4:  // RGBA shorthand → each nibble doubled (e.g. F → FF)
-            r = Double((value & 0xF000) >> 12) / 15
-            g = Double((value & 0x0F00) >> 8) / 15
-            b = Double((value & 0x00F0) >> 4) / 15
-            a = Double(value & 0x000F) / 15
+            return (
+                Double((value & 0xF000) >> 12) / 15,
+                Double((value & 0x0F00) >> 8) / 15,
+                Double((value & 0x00F0) >> 4) / 15,
+                Double(value & 0x000F) / 15
+            )
         case 3:  // RGB shorthand
-            r = Double((value & 0xF00) >> 8) / 15
-            g = Double((value & 0x0F0) >> 4) / 15
-            b = Double(value & 0x00F) / 15
-            a = 1
+            return (
+                Double((value & 0xF00) >> 8) / 15,
+                Double((value & 0x0F0) >> 4) / 15,
+                Double(value & 0x00F) / 15,
+                1
+            )
         default:
             return nil
         }
-        self.init(red: r, green: g, blue: b, opacity: a)
     }
 
     /// The canonical `#RRGGBBAA` hex string for these components.

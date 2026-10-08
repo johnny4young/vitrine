@@ -316,7 +316,7 @@ public struct SnapshotCanvas: View, Equatable {
         guard config.showShadow else { return .none }
         return Brand.ShadowStyle(
             color: Brand.Shadow.elevated.color,
-            radius: config.shadowRadius,
+            radius: config.effectiveShadowRadius,
             x: Brand.Shadow.elevated.x,
             y: Brand.Shadow.elevated.y
         )

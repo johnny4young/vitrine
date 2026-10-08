@@ -107,9 +107,9 @@ struct BrandKit: Equatable, Codable {
 /// backgrounds use, so only an in-container file name is stored.
 ///
 /// The resolver is the single gate: it returns `nil` — no watermark — unless the
-/// user enabled it, PRO is unlocked, and the kit actually has content. So the brand
-/// kit can be configured for free, but it only marks an export once PRO is active,
-/// and it is the caller's `isPro` (read from `Entitlements`) that decides.
+/// user enabled it, PRO is unlocked, and the kit actually has content. A stored kit
+/// marks an export only while PRO is active, and the caller's `isPro` (read from
+/// `Entitlements`) decides.
 @Observable
 final class BrandKitStore {
     /// The shared store, constructed by the composition root (``AppEnvironment``) and

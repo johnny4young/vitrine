@@ -19,7 +19,9 @@ struct InputSettingsView: View {
                 }
                 TokenRow(
                     label: Text("Treat copied URLs as a screenshot target"),
-                    caption: Text("When off, a copied URL is rendered as text")
+                    caption: NetworkCapability.isURLCaptureEnabled
+                        ? Text("When off, a copied URL is rendered as text")
+                        : Text("Direct-download only. A copied URL is rendered as text.")
                 ) {
                     Toggle(
                         "Treat copied URLs as a screenshot target",
@@ -27,6 +29,7 @@ struct InputSettingsView: View {
                     )
                     .toggleStyle(.switch)
                     .labelsHidden()
+                    .disabled(!NetworkCapability.isURLCaptureEnabled)
                 }
             }
 
@@ -92,6 +95,9 @@ struct WebCaptureControls: View {
     /// `InspectorDisclosure` so the Web Snapshot inspector leads with the viewport
     /// selection; Settings passes the default `false` and shows every row inline.
     var collapsesAdvanced = false
+    /// False for pasted HTML, which always renders the visible viewport without a
+    /// network wait, a saved session, or localhost access.
+    var showsURLCaptureOptions = true
     @State private var showAdvanced = false
 
     /// WebKit site labels with saved data, not proof of an active login. Read from
@@ -99,6 +105,7 @@ struct WebCaptureControls: View {
     @State private var sitesWithSavedData: [String] = []
     @State private var sessionRevision = 0
     @State private var isClearingSessions = false
+    @State private var confirmsClearingSessions = false
 
     var body: some View {
         viewportsRow
@@ -106,7 +113,7 @@ struct WebCaptureControls: View {
             widthRow
             heightRow
         }
-        if collapsesAdvanced {
+        if showsURLCaptureOptions, collapsesAdvanced {
             InspectorDisclosure(
                 label: Text("Capture options"), identifier: "web-advanced-disclosure",
                 isExpanded: $showAdvanced
@@ -118,7 +125,7 @@ struct WebCaptureControls: View {
                 savedSitesRow
                 loopbackCaptureRow
             }
-        } else {
+        } else if showsURLCaptureOptions {
             captureModeRow
             waitRow
             if settings.webCapture.waitKind != .domContentLoaded { extraWaitRow }
@@ -142,6 +149,7 @@ struct WebCaptureControls: View {
             )
             .toggleStyle(.switch)
             .labelsHidden()
+            .disabled(!NetworkCapability.isURLCaptureEnabled)
             .accessibilityIdentifier("web-allow-loopback-toggle")
             .onChange(of: settings.webCapture.allowsLoopbackCapture) { _, allowed in
                 if !allowed { WebSessionWindowController.shared.close() }
@@ -167,6 +175,7 @@ struct WebCaptureControls: View {
             Toggle("Use my logged-in session", isOn: $settings.webCapture.usesLoggedInSession)
                 .toggleStyle(.switch)
                 .labelsHidden()
+                .disabled(!NetworkCapability.isURLCaptureEnabled)
                 .accessibilityIdentifier("web-logged-in-session-toggle")
                 .onChange(of: settings.webCapture.usesLoggedInSession) { _, enabled in
                     if !enabled { WebSessionWindowController.shared.close() }
@@ -201,14 +210,8 @@ struct WebCaptureControls: View {
                 label: Text("Sites with saved data"),
                 caption: Text(verbatim: sitesWithSavedData.joined(separator: ", "))
             ) {
-                Button("Clear All Web Data") {
-                    isClearingSessions = true
-                    // A live sign-in page could immediately recreate its data.
-                    WebSessionWindowController.shared.close()
-                    Task {
-                        await WebSessionStore.clearSessions()
-                        isClearingSessions = false
-                    }
+                Button("Clear All Web Data", role: .destructive) {
+                    confirmsClearingSessions = true
                 }
                 .disabled(isClearingSessions)
                 .accessibilityHint(
@@ -216,6 +219,28 @@ struct WebCaptureControls: View {
                 )
                 .accessibilityIdentifier("web-clear-sessions-button")
             }
+            .confirmationDialog(
+                "Clear all web data?", isPresented: $confirmsClearingSessions,
+                titleVisibility: .visible
+            ) {
+                Button("Clear All Web Data", role: .destructive) { clearSessions() }
+                    .accessibilityIdentifier("web-confirm-clear-sessions")
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(
+                    "This signs Vitrine out of \(sitesWithSavedData.joined(separator: ", ")) and removes their saved website data. It does not end sessions on those servers."
+                )
+            }
+        }
+    }
+
+    private func clearSessions() {
+        isClearingSessions = true
+        // A live sign-in page could immediately recreate its data.
+        WebSessionWindowController.shared.close()
+        Task {
+            await WebSessionStore.clearSessions()
+            isClearingSessions = false
         }
     }
 

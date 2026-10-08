@@ -123,6 +123,12 @@ extension BackgroundStyle: Codable {
             // An unknown preset name degrades to the signature default rather than
             // failing the whole decode (documented fallback).
             let raw = try container.decode(String.self, forKey: .preset)
+            if decoder.userInfo[StyleSnapshot.strictDecodingKey] as? Bool == true,
+                GradientPreset(rawValue: raw) == nil
+            {
+                throw DecodingError.dataCorruptedError(
+                    forKey: .preset, in: container, debugDescription: "Unknown gradient preset.")
+            }
             self = .gradient(GradientPreset(rawValue: raw) ?? .aurora)
         case .customGradient:
             self = .customGradient(

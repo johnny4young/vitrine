@@ -15,7 +15,7 @@ before/after explanation, review, release note, or visual decision record.
    - **Auto** keeps two or three captures in one row and uses a two-by-two grid for four.
    - **Row**, **Column**, and **Grid** force a deterministic arrangement.
 6. Copy, save, or share the finished board. Save follows the output format and color
-   profile selected in **Settings ▸ Output**. The resolution scale is captured when the
+   profile selected in **Settings ▸ Export**. The resolution scale is captured when the
    board opens so later Settings changes cannot upscale its already rendered source pixels.
 
 Every card receives the same image area and preserves its aspect ratio. Labels are
@@ -41,7 +41,7 @@ editing a board never mutates capture history or the app's saved style.
 
 Board composition is deterministic for the same pixels, captions, layout, scale, and
 color profile. The result uses the shared Vitrine encoders and can be exported as PNG,
-HEIC, or PDF according to the current Output setting, plus AVIF when the running macOS
+HEIC, or PDF according to the current Export setting, plus AVIF when the running macOS
 ImageIO stack provides an AVIF writer (Tahoe and newer). PDF contains the finished
 board image on one correctly sized page; it does not recreate each source capture as
 editable vector content.

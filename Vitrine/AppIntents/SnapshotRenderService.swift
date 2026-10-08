@@ -33,18 +33,22 @@ enum SnapshotRenderService {
         /// Rendering was cancelled before producing an artifact.
         case cancelled
 
+        /// Localized copy; render failures share the in-app wording so the two
+        /// surfaces cannot drift apart.
         var description: String {
+            guard let failureKind else {
+                return String(localized: "There is no code to render. Provide some text first.")
+            }
+            return Notifier.renderFailureMessage(failureKind)
+        }
+
+        private var failureKind: Notifier.RenderFailureKind? {
             switch self {
-            case .emptyCode:
-                "There is no code to render. Provide some text first."
-            case .tooLarge:
-                "That image is too large to render safely. Reduce the canvas size, scale, or source length."
-            case .allocationFailed:
-                "Vitrine could not allocate the image buffer. Reduce the canvas size or scale and try again."
-            case .encodingFailed:
-                "Vitrine rendered the image but could not encode the selected format."
-            case .cancelled:
-                "Rendering was cancelled before an image was produced."
+            case .emptyCode: nil
+            case .tooLarge: .tooLarge
+            case .allocationFailed: .allocationFailed
+            case .encodingFailed: .encodingFailed
+            case .cancelled: .cancelled
             }
         }
 

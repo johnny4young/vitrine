@@ -170,6 +170,44 @@ struct ANSIRenderTests {
         #expect(ANSIRenderer.normalize("\(esc)[31mred\(esc)[0m") == "\(esc)[31mred\(esc)[0m")
     }
 
+    /// `script` adds a CR before every LF, so a program that writes CRLF records `\r\r\n`.
+    @Test func normalizeKeepsLinesEndingInDoubledCarriageReturns() {
+        #expect(ANSIRenderer.normalize("hello\r\r\nworld\r\r\n") == "hello\nworld\n")
+        #expect(ANSIRenderer.plainText("hello\r\r\nworld\r\r\n") == "hello\nworld\n")
+        // A return with nothing drawn after it leaves the line as a terminal does.
+        #expect(ANSIRenderer.normalize("50%\r") == "50%")
+        #expect(ANSIRenderer.normalize("10%\r\(esc)[KDone") == "Done")
+    }
+
+    /// The eraseLines idiom (log-update, listr2, buildkit) steps up with `CUU` and
+    /// redraws each line, so only the final frame belongs in the transcript.
+    @Test func normalizeRedrawsMultiLineBlocksAfterCursorUp() {
+        let frames = "a 10%\nb 10%\(esc)[2K\(esc)[1A\(esc)[2K\(esc)[Ga 20%\nb 20%\n"
+        #expect(ANSIRenderer.plainText(frames) == "a 20%\nb 20%\n")
+        // Updating one line in place (cursor up, redraw, cursor down) keeps the others.
+        let inPlace = "one\ntwo 1\nthree\n\(esc)[2A\(esc)[2Ktwo 2\r\(esc)[2Bdone\n"
+        #expect(ANSIRenderer.plainText(inPlace) == "one\ntwo 2\nthree\ndone\n")
+        // Moving up never reaches above the first line.
+        #expect(ANSIRenderer.plainText("x\(esc)[9A\(esc)[2Ky") == "y")
+    }
+
+    /// A redraw erases glyphs, not the pen state emitted on that line.
+    @Test func lineErasesKeepStyleEscapes() throws {
+        let reset = ANSIParser.parse(
+            ANSIRenderer.normalize("\(esc)[31mline1\nprogress\(esc)[0m\rdone\n"))
+        let done = try #require(reset.first { $0.text.contains("done") })
+        #expect(done.style == ANSIStyle())
+        let yellow = ANSIParser.parse(ANSIRenderer.normalize("\(esc)[33m10%\r20%\(esc)[0m"))
+        #expect(yellow == [ANSIRun(text: "20%", style: ANSIStyle(foreground: .indexed(3)))])
+        // Charset designations are whole pieces, so an erase never strands their ESC.
+        #expect(ANSIRenderer.plainText("\(esc)(Babc\rxyz") == "xyz")
+    }
+
+    @Test func backspaceRemovesAGlyphNotEscapeBytes() {
+        let spinner = "\(esc)[32m⠋\(esc)[0m\u{08}\(esc)[32m⠙\(esc)[0m\n"
+        #expect(ANSIRenderer.plainText(spinner) == "⠙\n")
+    }
+
     /// End to end: the styled runs a spinner capture renders to carry no frame residue.
     @Test func progressBarCaptureRendersOnlyItsFinalLine() {
         let capture = "\(esc)[2K\(esc)[1G⠋ auditing\(esc)[2K\(esc)[1G9 vulnerabilities\n"

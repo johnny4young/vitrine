@@ -96,6 +96,36 @@ struct CodeEditorReindentTests {
             "A no-op reformat must not push an undo entry")
     }
 
+    @Test func wholeDocumentPasteTidiesWithThePastedLanguage() throws {
+        let python = "def f():\n    return 1"
+        let coordinator = makeCoordinator(language: .swift)
+        let (window, textView) = makeHostedTextView(python)
+        defer { window.close() }
+
+        let intake = LanguageDetector.interpret(python)
+        coordinator.replaceAfterPaste(
+            textView, with: intake.code, language: intake.language, isEnabled: true)
+
+        #expect(intake.language == .python)
+        #expect(textView.string == python)
+    }
+
+    @Test func wholeDocumentPasteUnwrapsAFenceInOneUndoableEdit() throws {
+        let fenced = "```swift\nlet x = 1\n```"
+        let coordinator = makeCoordinator(language: .plaintext)
+        let (window, textView) = makeHostedTextView(fenced)
+        defer { window.close() }
+
+        let intake = LanguageDetector.interpret(fenced)
+        coordinator.replaceAfterPaste(
+            textView, with: intake.code, language: intake.language, isEnabled: false)
+
+        #expect(textView.string == "let x = 1")
+        let undoManager = try #require(textView.undoManager)
+        undoManager.undo()
+        #expect(textView.string == fenced)
+    }
+
     @Test func leaveAloneLanguageNeverRewritesThePaste() {
         // Diff hunks carry meaningful leading characters; the formatter routes them
         // to `.leaveAlone`, so a paste in a diff document must never be rewritten.

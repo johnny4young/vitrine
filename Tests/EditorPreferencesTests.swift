@@ -49,7 +49,8 @@ struct EditorPreferencesTests {
         environment.appSettings.selectTheme(theme)
         let store = InMemoryUserDefaults()
         let session = AppSettings.makeEditorSession(
-            seededFrom: defaults, store: store, brandKit: environment.brandKit,
+            seededFrom: defaults, sharing: environment.appSettings.outputBehavior, store: store,
+            brandKit: environment.brandKit,
             entitlements: environment.entitlements)
         defer { session.discardEphemeralStore() }
         #expect(session.style.theme == theme)
@@ -109,10 +110,10 @@ struct EditorPreferencesTests {
     func makeDefaultPromotesCaptureOptionsButNotGlobalBehavior(concealed: Bool) {
         let environment = environment()
         let shared = environment.appSettings
-        shared.export.autoCopy = false
-        shared.export.alsoSaveToFile = true
-        shared.export.closeAfterCopy = false
-        shared.export.concealClipboard = concealed
+        shared.outputBehavior.autoCopy = false
+        shared.outputBehavior.alsoSaveToFile = true
+        shared.outputBehavior.closeAfterCopy = false
+        shared.outputBehavior.concealClipboard = concealed
         let session = environment.makeEditorSessionSettings()
         defer { session.discardEphemeralStore() }
         session.documentCode = "Keep the editor document"
@@ -123,7 +124,6 @@ struct EditorPreferencesTests {
         session.export.colorProfile = .displayP3
         session.export.richClipboard = true
         session.export.textSidecar = true
-        session.export.concealClipboard = !concealed
         let document = session.config
         var expected = document
         expected.code = ""
@@ -137,15 +137,16 @@ struct EditorPreferencesTests {
         #expect(shared.export.colorProfile == .displayP3)
         #expect(shared.export.richClipboard)
         #expect(shared.export.textSidecar)
-        #expect(shared.export.concealClipboard == concealed)
-        #expect(!shared.export.autoCopy)
-        #expect(shared.export.alsoSaveToFile)
-        #expect(!shared.export.closeAfterCopy)
+        #expect(shared.outputBehavior.concealClipboard == concealed)
+        #expect(!shared.outputBehavior.autoCopy)
+        #expect(shared.outputBehavior.alsoSaveToFile)
+        #expect(!shared.outputBehavior.closeAfterCopy)
         let next = environment.makeEditorSessionSettings()
         defer { next.discardEphemeralStore() }
         #expect(next.config == expected)
         #expect(next.export.scale == 3)
-        // Global privacy is read from the environment, not seeded.
-        #expect(!next.export.concealClipboard)
+        // Sessions reference the app-wide behavior instead of seeding a copy.
+        #expect(next.outputBehavior === shared.outputBehavior)
+        #expect(session.outputBehavior === shared.outputBehavior)
     }
 }

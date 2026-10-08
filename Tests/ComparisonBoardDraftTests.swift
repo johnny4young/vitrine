@@ -80,7 +80,9 @@ struct ComparisonBoardDraftTests {
         #expect(draft.items.map(\.label) == ["Before", "After"])
         #expect(draft.exportScale == 2)
         #expect(draft.items[0].detail.contains(captures[0].language.displayName))
-        #expect(draft.items[1].detail.contains(captures[1].theme.displayName))
+        #expect(
+            draft.items[1].detail.contains(
+                captures[1].theme(resolvedBy: Theme.theme(withID:)).displayName))
     }
 
     @Test func threeCaptureDefaultsRemainOrderedAndDescriptive() throws {

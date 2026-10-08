@@ -17,6 +17,8 @@ nonisolated enum CLIError: Error, Equatable {
     case unknownCommand(String)
     /// A flag the parser does not recognize.
     case unknownFlag(String)
+    /// A positional argument after the one input path the command reads.
+    case unexpectedArgument(String)
     /// A flag that needs a value was the last token (its value is missing).
     case missingValue(flag: String)
     /// A required positional/option was not supplied (e.g. the input file or `--out`).
@@ -25,8 +27,14 @@ nonisolated enum CLIError: Error, Equatable {
     case invalidValue(flag: String, value: String)
     /// Two otherwise-valid options were combined in a way that would be ambiguous.
     case incompatibleOptions(String)
+    /// A planned output would replace an input, an image resource, or another output of
+    /// the same run. Found against the filesystem rather than in the command line, so it
+    /// exits 1 like other runtime failures and does not print the usage text.
+    case outputConflict(String)
     /// The input source file could not be read.
     case inputUnreadable(path: String)
+    /// The input source file or stdin exceeds the shared 5 MB source limit.
+    case inputTooLarge(path: String)
     /// The explicitly named workspace recipe could not be read as a regular file.
     case recipeUnreadable(path: String)
     /// The recipe document was readable but failed schema or value validation.
@@ -70,6 +78,8 @@ nonisolated enum CLIError: Error, Equatable {
     case editorOpenFailed
     /// The private pasteboard payload could not be paired with a valid local handoff URL.
     case editorHandoffFailed
+    /// `--edit` read an empty source; the editor would discard it, so report it instead.
+    case editorHandoffEmpty
     /// The PRO tier is required for an advanced command-line automation capability but
     /// is not active. Reported before any file work; basic `vgrab` capture stays free.
     case proRequired
@@ -83,6 +93,8 @@ nonisolated enum CLIError: Error, Equatable {
             "Unknown command \"\(command)\". The commands are \"terminal-capture\", \"render\", \"multi-size\", \"batch\", \"recipe\", \"list\", \"shell-init\", and \"version\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
+        case .unexpectedArgument(let argument):
+            "Unexpected argument \"\(argument)\". Pass one input path per command."
         case .missingValue(let flag):
             "Option \"\(flag)\" needs a value."
         case .missingRequired(let what):
@@ -91,8 +103,12 @@ nonisolated enum CLIError: Error, Equatable {
             "\"\(value)\" is not a valid value for \"\(flag)\"."
         case .incompatibleOptions(let message):
             message
+        case .outputConflict(let message):
+            message
         case .inputUnreadable(let path):
             "Could not read the input file at \"\(path)\"."
+        case .inputTooLarge(let path):
+            "The input at \"\(path)\" is too large to render (maximum 5 MB)."
         case .recipeUnreadable(let path):
             "Could not read the workspace recipe at \"\(path)\"."
         case .invalidRecipe(let message):
@@ -136,6 +152,8 @@ nonisolated enum CLIError: Error, Equatable {
             "Could not open Vitrine to receive the output. Is Vitrine installed?"
         case .editorHandoffFailed:
             "Could not prepare the local Vitrine editor handoff."
+        case .editorHandoffEmpty:
+            "The source is empty, so there is nothing to open in the editor."
         case .proRequired:
             "Vitrine PRO is required for advanced command-line automation. "
                 + "Basic vgrab terminal capture is free, as is render --edit; activate PRO in the Vitrine app "
@@ -143,12 +161,25 @@ nonisolated enum CLIError: Error, Equatable {
         }
     }
 
-    /// The process exit code this failure maps to. `0` is reserved for success and
-    /// for the help request (which is not a failure); every genuine error is `1`.
+    /// The process exit code this failure maps to: `0` for the help request, `2` for a
+    /// command-line usage error (matching `list`, `recipe`, `version`, and `shell-init`),
+    /// and `1` for every runtime failure.
     var exitCode: Int32 {
         switch self {
         case .helpRequested: 0
-        default: 1
+        default: isUsageError ? 2 : 1
+        }
+    }
+
+    /// Whether the invocation itself was malformed, so the usage text helps; runtime
+    /// failures print only their message to keep CI and agent logs readable.
+    var isUsageError: Bool {
+        switch self {
+        case .unknownCommand, .unknownFlag, .unexpectedArgument, .missingValue,
+            .missingRequired, .invalidValue, .incompatibleOptions:
+            true
+        default:
+            false
         }
     }
 

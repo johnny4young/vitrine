@@ -37,6 +37,10 @@ final class WebSnapshotModel {
     /// batch; when present it is the primary preview/export.
     var boardAsset: RenderedAsset?
 
+    /// The export scale the current results were captured at, so exports size PDF
+    /// pages and name files in points even if the setting changes afterwards.
+    var captureScale: CGFloat = 1
+
     /// Downsampled copy of ``boardAsset`` for the filmstrip. The full board stays in
     /// ``boardAsset`` for export, while the UI keeps layout cheap.
     var boardThumbnailAsset: RenderedAsset?
@@ -132,6 +136,24 @@ final class WebSnapshotModel {
     /// disabled rather than auto-firing into an error. Pure for testability.
     static func shouldAutoCapture(mode: WebInputMode, urlCaptureEnabled: Bool) -> Bool {
         mode == .url && urlCaptureEnabled
+    }
+
+    /// The export file name for one capture, from its real size in points: a full-page
+    /// capture is named by the height it reached, not by its viewport preset.
+    static func exportName(for result: CapturedViewport, scale: CGFloat) -> String {
+        let pointScale = scale > 0 ? scale : 1
+        let width = Int((CGFloat(result.asset.pixelWidth) / pointScale).rounded())
+        let height = Int((CGFloat(result.asset.pixelHeight) / pointScale).rounded())
+        return "vitrine-web-\(result.kind.rawValue)-\(width)x\(height)"
+    }
+
+    /// Whether a capture must first show the privacy disclosure. A build that cannot
+    /// reach the network skips it: the capture fails fast with its own explanation
+    /// instead of offering a confirmation that could never load anything.
+    static func needsDisclosure(
+        mode: WebInputMode, consentGiven: Bool, urlCaptureEnabled: Bool
+    ) -> Bool {
+        mode == .url && !consentGiven && urlCaptureEnabled
     }
 
     /// Loads a URL supplied by quick capture or another presenter, clearing all prior

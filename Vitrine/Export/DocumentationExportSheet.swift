@@ -10,6 +10,8 @@ struct DocumentationExportSheet: View {
     let fixedSize: CGSize?
     let profile: ColorProfile
     let feedback: FeedbackDisplay
+    /// The folder picker and Finder reveal, shared with the other batch exports.
+    var batchExport: BatchExportPresentation = .live
     @Environment(\.dismiss) private var dismiss
     @State private var representations: Set<DocumentationRepresentation> = [.markdown]
     @State private var name = ""
@@ -75,14 +77,11 @@ struct DocumentationExportSheet: View {
     }
 
     private func export() {
-        let panel = NSOpenPanel()
-        panel.title = String(localized: "Choose Parent Folder…")
-        panel.prompt = String(localized: "Export Here")
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.canCreateDirectories = true
-        guard panel.runModal() == .OK, let parent = panel.url else { return }
+        guard
+            let parent = batchExport.chooseDirectory(
+                message: String(
+                    localized: "Choose the folder to create the documentation package in."))
+        else { return }
         writing = true
         errorMessage = nil
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -99,8 +98,10 @@ struct DocumentationExportSheet: View {
                 }
                 let package = DocumentationPackage(
                     config: config, png: png, representations: representations)
-                _ = try await DocumentationPackageWriter.write(package, parent: parent, name: name)
+                let folder = try await DocumentationPackageWriter.write(
+                    package, parent: parent, name: name)
                 feedback(Notifier.confirmation(String(localized: "Documentation exported")))
+                batchExport.reveal(folder)
                 dismiss()
             } catch is CancellationError {
                 // Cancellation before commit is silent, just like a dismissed save panel.

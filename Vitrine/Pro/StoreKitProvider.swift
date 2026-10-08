@@ -8,6 +8,8 @@ import os
 enum PurchaseOutcome: Equatable {
     case unlocked
     case cancelled
+    /// Waiting on approval, such as Ask to Buy.
+    case pending
     case failed
 }
 
@@ -147,8 +149,10 @@ final class StoreKitProvider: LiveEntitlementProvider {
                 // Never trust a purchase-sheet result directly. Only a verified,
                 // non-revoked current entitlement can unlock the cached state.
                 return await currentIsPro() ? .unlocked : .failed
-            case .userCancelled, .pending:
+            case .userCancelled:
                 return .cancelled
+            case .pending:
+                return .pending
             case .failed:
                 return .failed
             }

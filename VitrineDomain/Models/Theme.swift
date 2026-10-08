@@ -370,40 +370,10 @@ public struct HexColor: Hashable, Sendable {
     /// Parses a hex string, returning `nil` for any malformed input. Accepts an
     /// optional leading `#` and the 3/4/6/8-digit forms; rejects everything else.
     public init?(_ string: String) {
-        let cleaned = string.trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-            .uppercased()
-        // `isHexDigit` alone also accepts fullwidth digits (e.g. "Ｆ"), which stop
-        // the Scanner mid-string and would decode a wrong-but-accepted color;
-        // require ASCII so the scan below always consumes the whole string.
-        guard cleaned.allSatisfy({ $0.isHexDigit && $0.isASCII }) else { return nil }
-        var value: UInt64 = 0
-        guard Scanner(string: cleaned).scanHexInt64(&value) else { return nil }
-
-        switch cleaned.count {
-        case 8:  // RRGGBBAA
-            red = Double((value & 0xFF00_0000) >> 24) / 255
-            green = Double((value & 0x00FF_0000) >> 16) / 255
-            blue = Double((value & 0x0000_FF00) >> 8) / 255
-            alpha = Double(value & 0x0000_00FF) / 255
-        case 6:  // RRGGBB
-            red = Double((value & 0xFF_0000) >> 16) / 255
-            green = Double((value & 0x00_FF00) >> 8) / 255
-            blue = Double(value & 0x00_00FF) / 255
-            alpha = 1
-        case 4:  // RGBA shorthand → each nibble doubled
-            red = Double((value & 0xF000) >> 12) / 15
-            green = Double((value & 0x0F00) >> 8) / 15
-            blue = Double((value & 0x00F0) >> 4) / 15
-            alpha = Double(value & 0x000F) / 15
-        case 3:  // RGB shorthand
-            red = Double((value & 0xF00) >> 8) / 15
-            green = Double((value & 0x0F0) >> 4) / 15
-            blue = Double(value & 0x00F) / 15
-            alpha = 1
-        default:
-            return nil
-        }
+        guard let components = RGBAColor.hexComponents(string) else { return nil }
+        self.init(
+            red: components.red, green: components.green, blue: components.blue,
+            alpha: components.alpha)
     }
 
     /// Opaque black, constructed directly from components so it cannot fail — the

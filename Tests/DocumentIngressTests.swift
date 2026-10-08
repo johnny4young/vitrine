@@ -116,12 +116,11 @@ struct DocumentIngressTests {
     }
 
     @Test func urlAsTextRecoveryExportsNewTextInsteadOfOldImageOrRedactions() throws {
-        let settings = AppSettings(
-            defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+        let settings = AppSettings(defaults: testDefaults())
         let source = markedDocument()
         settings.config = source
-        settings.export.autoCopy = true
-        settings.export.alsoSaveToFile = false
+        settings.outputBehavior.autoCopy = true
+        settings.outputBehavior.alsoSaveToFile = false
         settings.export.textSidecar = true
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
@@ -151,8 +150,9 @@ struct DocumentIngressTests {
             settings: environment.appSettings, recents: environment.recents, clipboard: { text })
         #expect(result.outcome == .deferredToEditor(blocks: 2))
         expectFresh(
-            environment.appSettings.config, source: source,
+            try #require(result.editorDocument), source: source,
             code: LanguageDetector.interpret(text).code)
+        #expect(environment.appSettings.config == source)
         #expect(environment.recents.captures.isEmpty)
     }
 }

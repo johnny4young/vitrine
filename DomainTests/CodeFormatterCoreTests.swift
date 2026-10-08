@@ -7,6 +7,11 @@ struct CodeFormatterCoreTests {
 
     /// A block copied from deep inside a file loses its uniform left margin but keeps
     /// its relative indentation.
+    @Test func dedentAndTrimHandleCRLF() {
+        #expect(CodeFormatter.dedent("    a\r\n\r\n    b") == "a\n\nb")
+        #expect(CodeFormatter.trimmed("\r\n  a  \r\n\r\n", language: .swift) == "  a")
+    }
+
     @Test func dedentStripsTheCommonLeadingMargin() {
         let input = "        let a = 1\n            let b = 2\n        return a + b"
         let expected = "let a = 1\n    let b = 2\nreturn a + b"

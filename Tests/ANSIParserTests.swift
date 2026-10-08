@@ -228,7 +228,7 @@ struct ANSIParserTests {
         let stream = "\(esc)[2;1Hrow\(esc)Ptmux;wrapped-escape\(esc)\\ok"
         var screen = TerminalScreen(columns: 40)
         screen.feed(stream)
-        #expect(screen.plainText() == "\nrowok")
+        #expect(screen.runs().map(\.text).joined() == "\nrowok")
     }
 
     /// Feeding a fixed-width screen is not enough: `TerminalScreen.runs` sizes the grid
@@ -293,7 +293,7 @@ struct ANSIParserTests {
         // standard they walk the cursor mid-frame.
         var screen = TerminalScreen(columns: 20)
         screen.feed("\(esc)[3;1Hbase\(esc)[>2Aup")
-        #expect(screen.plainText() == "\n\nbaseup")
+        #expect(screen.runs().map(\.text).joined() == "\n\nbaseup")
     }
 
     @Test func privateParameterSequencesNeverSelectTheGridOrWidenInference() {

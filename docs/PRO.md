@@ -15,7 +15,7 @@ output and unlocks *new* surfaces.
 | Signed license token | `VitrineDomain/Licensing/LicenseToken.swift` — Ed25519 `LicenseToken`/`LicenseVerifier`/`LicenseSigner`, shared by the app and CLI |
 | Direct-download provider | `Vitrine/Pro/LicenseKey.swift` — device-only `LicenseActivationRecord`, `#if VITRINE_DIRECT_DOWNLOAD LicenseKeyProvider` |
 | CLI entitlement (out-of-process) | `Vitrine/CLI/CLIEntitlement.swift` — offline token verify + Debug bypass |
-| Gating UI | `Vitrine/Pro/ProGate.swift` — `View.proGated(_:action:)`, `ProBadge`, `PaywallSheet` |
+| Gating UI | `Vitrine/Pro/ProGate.swift` — `View.proGated(_:entitlements:action:)`, `ProBadge`, `PaywallSheet` |
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `VitrineRendering/Models/SnapshotConfig.swift` (`Watermark`), `VitrineRendering/Canvas/WatermarkBadge.swift` |
 | Feature: multi-size export | `Vitrine/Export/ExportManager+Batch.swift` (`exportPresetSizes`), `Vitrine/Export/MultiSizeExportView.swift` |
 | Feature: carousel export | `Vitrine/Export/ExportManager+Batch.swift` (`exportCarousel`), `Vitrine/Export/CarouselExportView.swift`, `Vitrine/Export/CarouselPaginator.swift` |
@@ -116,10 +116,10 @@ unaffected.
 
 ## Gating UI
 
-`ProGate.swift` provides `someLabel.proGated(.feature) { action }` — runs `action` when unlocked,
+`ProGate.swift` provides `someLabel.proGated(.feature, entitlements: entitlements) { action }` — runs `action` when unlocked,
 otherwise presents `PaywallSheet` and shows a discreet `ProBadge`. It is **non-nagging**: the
 paywall appears only on a tap of a gated action, never on launch. Settings panes that hold many
-controls (the Brand Kit sub-tab) use an explicit locked→upsell / unlocked→controls split instead
+controls (the Brand Kit pane) use an explicit locked→upsell / unlocked→controls split instead
 of the modifier. `PaywallSheet` reads its copy from the `ProFeature` and shows the per-build
 unlock path (StoreKit buy + Restore, or a license-key field). Locked controls expose a
 localized `Requires PRO` accessibility value. Compact toolbar menus include the same

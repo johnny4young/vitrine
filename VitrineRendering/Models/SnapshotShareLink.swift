@@ -92,7 +92,8 @@ public struct SharedSnapshot: Codable, Equatable {
         languageID = try container.decode(String.self, forKey: .languageID)
         style = try container.decode(StyleSnapshot.self, forKey: .style)
         annotations = Self.sanitizedAnnotations(
-            (try? container.decode([Annotation].self, forKey: .annotations)) ?? [])
+            (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
+                .compactMap(\.value) ?? [])
         windowTitle = (try? container.decode(String.self, forKey: .windowTitle)) ?? ""
         metadata =
             (try? container.decode(SnapshotMetadata.self, forKey: .metadata))
