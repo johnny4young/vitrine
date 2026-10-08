@@ -23,6 +23,13 @@ struct TerminalRoutingTests {
         #expect(ANSIRenderer.plainText("\(esc)[32mok\(esc)[0m\nnext") == "ok\nnext")
     }
 
+    @Test(arguments: ["你", "🚀"])
+    func rendererPreservesWideGlyphsShiftedOnTheAlternateScreen(_ glyph: String) {
+        let tui = "\(esc)[?1049h\(glyph)Z\(esc)[1G\(esc)[@\(esc)[?1049lshell$ "
+        #expect(TerminalScreen.usesScreenAddressing(tui))
+        #expect(ANSIRenderer.plainText(tui, columns: 8) == " \(glyph)Z")
+    }
+
     @Test func explicitColumnsOverrideInferenceInGridMode() {
         // `--terminal-width` flows through ANSIRenderer to the grid emulator. Absolute
         // positioning puts the stream in grid mode (a lone ED no longer does — that is

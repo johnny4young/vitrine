@@ -181,6 +181,8 @@ can never drift.
 - The terminal emulator erases with the current background color, line mode follows
   cursor-up redraws and `\r\r\n` output, foreground images honor their DPI, and the
   secret scanner recognizes PGP keys, bearer headers, URL credentials, and `:=`/`=>`.
+- Preserve complete CJK and emoji characters when terminal insertion shifts them
+  from their leading cell; split or right-edge-truncated glyphs still clear safely.
 - Social cards with image backgrounds export on an opaque matte, and raster PDFs use
   point-sized pages.
 
