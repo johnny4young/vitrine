@@ -148,19 +148,17 @@ struct URLRenderer: Renderer {
 }
 
 extension URLRenderer {
-    /// Builds a renderer configured from the user's persisted web-capture settings:
-    /// the chosen viewport preset, capture mode, and wait strategy, plus
-    /// the shared export scale and color profile.
-    ///
-    /// This is the seam that connects the Input pane's controls to the URL render
-    /// path. URL capture stays gated on the network entitlement, so the resulting
-    /// renderer is still inert in a network-free build; when the entitlement is added, the
-    /// coordinator can build the renderer from settings so a capture uses exactly the
-    /// viewport and timing the user selected.
-    static func configured(from settings: AppSettings) -> URLRenderer {
+    /// Builds a renderer from the user's persisted web-capture settings: the capture
+    /// mode, wait strategy, session and loopback policies, plus the shared export scale
+    /// and color profile. This is the one settings-to-renderer mapping production uses;
+    /// a multi-viewport batch passes each `viewportPreset` explicitly.
+    static func configured(
+        from settings: AppSettings,
+        viewportPreset: WebSnapshotConfig.ViewportPreset? = nil
+    ) -> URLRenderer {
         URLRenderer(
             scale: CGFloat(settings.export.scale),
-            viewportPreset: settings.webCapture.viewportPreset,
+            viewportPreset: viewportPreset ?? settings.webCapture.viewportPreset,
             captureMode: settings.webCapture.captureMode,
             waitStrategy: settings.webCapture.waitStrategy,
             profile: settings.export.colorProfile,

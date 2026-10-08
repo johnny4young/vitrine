@@ -188,6 +188,60 @@ struct LocalizationTests {
         }
     }
 
+    /// Every catalog key without a format specifier is still a literal somewhere in the
+    /// sources, so removed copy does not linger in the catalog and its translations.
+    @Test func everyPlainCatalogKeyIsStillUsed() throws {
+        let catalog = try decodedCatalog()
+        let root = Self.repositoryRoot
+        var source = ""
+        for module in ["Vitrine", "VitrineDomain", "VitrineRendering", "VitrineCLI"] {
+            let url = root.appendingPathComponent(module, isDirectory: true)
+            guard
+                let files = FileManager.default.enumerator(at: url, includingPropertiesForKeys: nil)
+            else { continue }
+            for case let file as URL in files where file.pathExtension == "swift" {
+                source += try String(contentsOf: file, encoding: .utf8)
+            }
+        }
+        // NSString search keeps a few thousand lookups over megabytes of source fast.
+        let haystack = source as NSString
+        func contains(_ text: String) -> Bool {
+            haystack.range(of: text, options: .literal).location != NSNotFound
+        }
+        // Release notes are concatenated in source, so their keys never appear as literals.
+        let releaseNoteText = Set(ReleaseNotes.all.flatMap { [$0.headline] + $0.highlights })
+        for key in catalog.strings.keys where !key.contains("%") && !releaseNoteText.contains(key) {
+            let literal = key.replacingOccurrences(of: "\\", with: "\\\\")
+                .replacingOccurrences(of: "\"", with: "\\\"")
+                .replacingOccurrences(of: "\n", with: "\\n")
+            #expect(
+                contains(literal) || contains(key),
+                "Catalog key \"\(key)\" is no longer used in the sources.")
+        }
+    }
+
+    /// What's New looks every release note up by its English text, so each release must
+    /// ship its headline and highlights translated.
+    @Test func everyReleaseNoteIsTranslated() throws {
+        let catalog = try decodedCatalog()
+        for note in ReleaseNotes.all {
+            for text in [note.headline] + note.highlights {
+                #expect(
+                    catalog.strings[text]?.localizations["es"]?.isTranslated == true,
+                    "Release note \(note.version) text \"\(text)\" has no Spanish catalog entry.")
+            }
+        }
+    }
+
+    @Test func releaseNotesResolveToSpanishAndFallBackVerbatim() throws {
+        let spanish = try #require(bundle(for: "es"))
+        #expect(
+            ReleaseNote.localized("An editor that keeps up", in: spanish)
+                == "Un editor que sigue tu ritmo")
+        let missing = "Not in the catalog: 100% of %@ stays literal."
+        #expect(ReleaseNote.localized(missing, in: spanish) == missing)
+    }
+
     /// Localizable views must not smuggle user-facing copy past the catalog with a
     /// verbatim initializer. Flags `Text("…" + "…")` (the verbatim `String`
     /// overload) and raw `NSAttributedString(string: "literal")` in the surfaces
@@ -501,5 +555,31 @@ struct AppLanguageTests {
         // "Español".
         #expect(AppLanguage.english.displayName == "English")
         #expect(AppLanguage.spanish.displayName == "Español")
+    }
+}
+
+/// AppKit panel and window titles take a plain `String`, so a literal there is shown
+/// verbatim in every language.
+@Suite("Unlocalized AppKit copy")
+struct UnlocalizedAppKitCopyTests {
+    @Test func panelsAndWindowTitlesGoThroughTheCatalog() throws {
+        let pattern = try NSRegularExpression(
+            pattern:
+                #"(panel|Panel)\.(title|message|prompt|nameFieldLabel)\s*=\s*"|window\.title\s*=\s*""#
+        )
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Vitrine")
+        let enumerator = try #require(
+            FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
+        var offenders: [String] = []
+        for case let url as URL in enumerator where url.pathExtension == "swift" {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            let range = NSRange(text.startIndex..<text.endIndex, in: text)
+            if pattern.firstMatch(in: text, range: range) != nil {
+                offenders.append(url.lastPathComponent)
+            }
+        }
+        #expect(offenders.isEmpty, "Unlocalized panel or window copy in: \(offenders)")
     }
 }

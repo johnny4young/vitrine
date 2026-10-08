@@ -61,7 +61,9 @@ struct OpenCodeInEditorIntent: AppIntent {
     func loadCode(environment: AppEnvironment, loadEditor: @MainActor (SnapshotConfig) -> Void) {
         // Resolve the language the same way quick capture does when none is given,
         // so a snippet loads with correct highlighting out of the box.
-        let resolved = language.language ?? LanguageDetector.interpret(code).language
+        let interpreted = LanguageDetector.interpret(code)
+        let resolved = language.language ?? interpreted.language
+        let text = language.language == nil ? interpreted.code : code
 
         let settings = environment.appSettings
         settings.noteLanguageUsed(resolved)
@@ -69,7 +71,7 @@ struct OpenCodeInEditorIntent: AppIntent {
         // Load the snippet into the primary editor window over the user's default
         // style, so it appears even if the editor was already open; a plain `show()`
         // no longer clobbers an open window's per-window document.
-        let document = settings.config.replacingContent(with: code, language: resolved)
+        let document = settings.config.replacingContent(with: text, language: resolved)
         loadEditor(document)
         Log.app.notice("Open Code in Editor intent loaded a snippet into the editor")
     }

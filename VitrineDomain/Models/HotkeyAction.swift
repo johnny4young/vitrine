@@ -7,13 +7,6 @@ public enum HotkeyAction: String, CaseIterable, Identifiable, Codable, Sendable 
 
     public var id: String { rawValue }
 
-    public var displayName: String {
-        switch self {
-        case .quickCapture: "Quick capture from clipboard"
-        case .openEditor: "Open the editor"
-        }
-    }
-
     /// The value used when nothing is persisted or a stored string no longer
     /// maps to a case (documented fallback).
     public static let fallback: HotkeyAction = .quickCapture
