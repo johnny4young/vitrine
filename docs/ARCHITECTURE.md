@@ -1205,7 +1205,14 @@ close-after-copy targets only the concrete window captured by the editor root; a
 clipboard write leaves it open for recovery. Multi-size and carousel sheets receive the
 session's feedback operation plus a narrow `BatchExportPresentation` value for directory
 selection and Finder reveal. Their pure completion policy requires every expected output
-before dismissing, so an inconsistent writer result cannot silently claim success. The
+before dismissing, so an inconsistent writer result cannot silently claim success.
+Preset and carousel exports plan all image/sidecar names together before rendering,
+allocating numeric suffixes around occupied names. Complete files are staged privately
+and published with exclusive rename, preserving destinations created after planning.
+Volumes that refuse exclusive rename fall back to an exclusive, non-following create.
+A requested nonempty sidecar failure leaves its completed image in place and reports
+an incomplete export. Cancellation stops further admission and publication; already
+committed files remain available. The
 application-menu editor responder receives the feedback and presentation operations from
 the lifecycle-owned menu. Reusable styles, custom-theme resolution, watermark previews,
 feature gates, upgrade sheets, feedback, pinning, sharing, and batch export presentation

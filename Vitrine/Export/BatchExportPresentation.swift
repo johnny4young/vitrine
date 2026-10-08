@@ -64,7 +64,8 @@ struct BatchExportCompletion: Equatable {
                 "\(written)/\(expected) — "
                     + String(
                         localized:
-                            "Some images couldn't be written. Check the folder and try again.")
+                            "Some export files couldn't be written. Check the folder and try again."
+                    )
             }
     }
 }
