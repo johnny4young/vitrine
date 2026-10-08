@@ -21,6 +21,15 @@ final class DocumentationExportUITests: XCTestCase {
         for language in ["en", "es"] {
             for dark in [false, true] {
                 for request in requests {
+                    let state = "\(language)-\(dark ? "dark" : "light")-\(request.label)"
+                    var segmentStarted = ProcessInfo.processInfo.systemUptime
+                    func recordSegment(_ phase: String) {
+                        let now = ProcessInfo.processInfo.systemUptime
+                        print(
+                            "DOCUMENTATION_UI_SEGMENT state=\(state) phase=\(phase) "
+                                + "seconds=\(now - segmentStarted)")
+                        segmentStarted = now
+                    }
                     let robot = VitrineAppRobot(testCase: self, suitePrefix: "documentation-export")
                     let app = robot.launch(
                         arguments: VitrineLaunchArguments.editor + [
@@ -30,6 +39,7 @@ final class DocumentationExportUITests: XCTestCase {
                         environment: [
                             "VITRINE_UI_TEST_EDITOR_VIEWPORT": request.viewport
                         ])
+                    recordSegment("launch")
                     defer { app.terminate() }
                     let window = element("editor-window", in: app)
                     XCTAssertTrue(window.waitForExistence(timeout: 8), app.debugDescription)
@@ -52,6 +62,7 @@ final class DocumentationExportUITests: XCTestCase {
                     XCTAssertTrue(output.waitForExistence(timeout: 8), app.debugDescription)
                     reveal("inspector-disclosure-output", in: app)
                     output.click()
+                    recordSegment("navigation")
                     let description = element("alternative-text-field", in: app)
                     XCTAssertTrue(description.waitForExistence(timeout: 3), app.debugDescription)
                     reveal("alternative-text-field", in: app)
@@ -67,6 +78,7 @@ final class DocumentationExportUITests: XCTestCase {
                                     predicate: descriptionAccepted, object: nil)
                             ], timeout: 3), .completed,
                         "The description must be entered in its own field")
+                    recordSegment("description")
                     let options = element("copy-options-menu", in: app)
                     XCTAssertTrue(options.wait(for: \.isHittable, toEqual: true, timeout: 3))
                     options.click()
@@ -85,6 +97,7 @@ final class DocumentationExportUITests: XCTestCase {
                     screenshot.name = name
                     screenshot.lifetime = .keepAlways
                     add(screenshot)
+                    recordSegment("package-setup")
                     element("documentation-export", in: app).click()
                     app.typeKey("g", modifierFlags: [.command, .shift])
                     app.typeText(parent.path)
@@ -96,10 +109,12 @@ final class DocumentationExportUITests: XCTestCase {
                     let choose = panel.buttons["OKButton"]
                     XCTAssertTrue(choose.waitForExistence(timeout: 5), app.debugDescription)
                     XCTAssertTrue(choose.wait(for: \.isHittable, toEqual: true, timeout: 5))
+                    recordSegment("panel")
                     choose.click()
                     XCTAssertTrue(
                         element("documentation-cancel", in: app).waitForNonExistence(timeout: 10),
                         app.debugDescription)
+                    recordSegment("export")
                     let directory = parent.appendingPathComponent(name)
                     XCTAssertEqual(
                         Set(try FileManager.default.contentsOfDirectory(atPath: directory.path)),
@@ -114,7 +129,9 @@ final class DocumentationExportUITests: XCTestCase {
                     let source = try String(
                         contentsOf: directory.appendingPathComponent("source.txt"), encoding: .utf8)
                     XCTAssertFalse(source.contains("Documentation example"), source)
+                    recordSegment("validation")
                     app.terminate()
+                    recordSegment("termination")
                 }
             }
         }

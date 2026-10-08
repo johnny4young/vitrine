@@ -435,7 +435,9 @@ frame in a fresh process. Mode switching is restricted to disposable GitHub-host
 runners; local and self-hosted invocations are rejected. An unsupported display
 fails the lane rather than skipping the journey. The `documentation-ui` artifact
 contains its display receipt and all eight EN/ES, light/dark, minimum/1280×800
-screenshots; missing or duplicate states fail evidence extraction.
+screenshots; missing or duplicate states fail evidence extraction. The same journey
+prints per-phase timing markers; [docs/DOCUMENTATION-UI-PROFILING.md](DOCUMENTATION-UI-PROFILING.md)
+explains how to summarize them without turning diagnostics into performance claims.
 
 For local runs, keep Vitrine/XCTest frontmost while the suite is active. XCUITest
 can report unrelated windows as "interrupting elements" (Slack, browsers, or an
