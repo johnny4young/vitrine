@@ -43,9 +43,9 @@ struct CLIAgentCookbookTests: CLITestSupport {
         let result = try object(
             CLIRenderer.openInEditor(
                 options,
-                stage: { text, language in
-                    staged = text
-                    #expect(language == .swift)
+                stage: { payload in
+                    staged = payload.content
+                    #expect(payload.language == .swift)
                     return handoff
                 }, open: { $0 == handoff }))
         #expect(staged == "let answer = 42")
@@ -57,7 +57,7 @@ struct CLIAgentCookbookTests: CLITestSupport {
             try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["example.swift"]
         )
         #expect(throws: CLIError.editorOpenFailed) {
-            try CLIRenderer.openInEditor(options, stage: { _, _ in handoff }, open: { _ in false })
+            try CLIRenderer.openInEditor(options, stage: { _ in handoff }, open: { _ in false })
         }
         #expect(throws: CLIError.self) {
             try CLIArguments.parse([

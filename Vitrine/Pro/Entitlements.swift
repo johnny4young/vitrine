@@ -42,6 +42,13 @@ final class Entitlements {
 
         /// Actor reentrancy must not allocate a second remote seat while the first awaits.
         private var licenseActivationInFlight = false
+
+        /// Whether a seat release started from Settings is still running. It is owned
+        /// here, not by the About view, so switching panes neither cancels it nor drops
+        /// its result.
+        private(set) var isDeactivatingLicense = false
+        /// The finished seat release the About pane has not shown yet.
+        private(set) var unacknowledgedDeactivationOutcome: LicenseDeactivationOutcome?
     #endif
 
     /// Seeds `isPro` from the provider's cached flag — instant and offline, so the first
@@ -126,11 +133,13 @@ final class Entitlements {
     }
 
     /// Restore Purchases (an App Store requirement): asks the provider to restore, then
-    /// refreshes so a prior purchase re-grants on a clean install. A no-op for providers
-    /// without a purchase flow.
-    func restorePurchases() async {
+    /// refreshes so a prior purchase re-grants on a clean install. Returns whether PRO is
+    /// unlocked afterward, so the caller can say when there was nothing to restore.
+    @discardableResult
+    func restorePurchases() async -> Bool {
         _ = await provider.restore()
         await refresh()
+        return isPro
     }
 
     #if VITRINE_DIRECT_DOWNLOAD
@@ -144,14 +153,14 @@ final class Entitlements {
         }
 
         /// Activates a Lemon Squeezy license key on the direct-download build (
-        /// embedded-key activation model), returning whether this activation persisted successfully.
+        /// embedded-key activation model), reporting why an attempt did not unlock PRO.
         ///
         /// Validates the key once online via `LicenseActivationService`, which on success mints
         /// a locally-signed token; that token is handed to the `LicenseKeyProvider`, which
         /// persists it to the Keychain and mirrors it to the CLI file, and a `refresh()`
         /// publishes the unlock. A build without the injected signing key cannot mint a token,
         /// so it reports `notConfigured` and stays free (the open-source / pre-key state).
-        func activate(licenseKey: String) async -> Bool {
+        func activate(licenseKey: String) async -> LicenseActivationResult {
             let service =
                 licenseActivationService
                 ?? LicenseActivationService(
@@ -165,32 +174,63 @@ final class Entitlements {
         func activate(
             licenseKey: String,
             using service: LicenseActivationService
-        ) async -> Bool {
-            guard !licenseActivationInFlight,
-                let licenseProvider = provider as? LicenseKeyProvider,
-                licenseProvider.activationRecordForDeactivation == nil
-            else { return false }
+        ) async -> LicenseActivationResult {
+            guard !licenseActivationInFlight else { return .busy }
+            guard let licenseProvider = provider as? LicenseKeyProvider else {
+                return .notConfigured
+            }
+            guard licenseProvider.activationRecordForDeactivation == nil else {
+                return .recordedSeatNeedsRelease
+            }
             licenseActivationInFlight = true
             defer { licenseActivationInFlight = false }
 
             licenseOperationGeneration += 1
             let generation = licenseOperationGeneration
             let outcome = await service.activate(licenseKey: licenseKey)
-            guard generation == licenseOperationGeneration else { return false }
-            var persisted = false
-            if case .activated(let signedToken, let record) = outcome {
-                persisted = licenseProvider.setActivation(
+            guard generation == licenseOperationGeneration else { return .busy }
+            let result: LicenseActivationResult
+            switch outcome {
+            case .activated(let signedToken, let record):
+                let persisted = licenseProvider.setActivation(
                     signedToken: signedToken,
                     record: record)
+                await refresh()
+                return persisted && isPro ? .activated : .persistenceFailed
+            case .invalidKey: result = .invalidKey
+            case .activationLimitReached: result = .limitReached
+            case .network: result = .network
+            case .notConfigured: result = .notConfigured
             }
             await refresh()
-            return persisted && isPro
+            return result
         }
 
         /// Releases this machine's direct-download seat and clears entitlement state only
         /// after a conclusive provider verdict. Network and refusal outcomes preserve PRO.
         func deactivateLicense() async -> LicenseDeactivationOutcome {
             await deactivateLicense(using: licenseDeactivationService)
+        }
+
+        /// Starts a seat release that outlives the view that asked for it. The outcome is
+        /// kept until `acknowledgeDeactivationOutcome()`.
+        @discardableResult
+        func startLicenseDeactivation(
+            using service: LicenseDeactivationService? = nil
+        ) -> Task<Void, Never>? {
+            guard !isDeactivatingLicense else { return nil }
+            isDeactivatingLicense = true
+            unacknowledgedDeactivationOutcome = nil
+            let service = service ?? licenseDeactivationService
+            return Task {
+                let outcome = await deactivateLicense(using: service)
+                unacknowledgedDeactivationOutcome = outcome
+                isDeactivatingLicense = false
+            }
+        }
+
+        func acknowledgeDeactivationOutcome() {
+            unacknowledgedDeactivationOutcome = nil
         }
 
         /// Injectable form used by deterministic tests. The full record is captured before
@@ -253,6 +293,57 @@ final class Entitlements {
 }
 
 #if VITRINE_DIRECT_DOWNLOAD
+    /// Why a paywall activation did or did not unlock PRO, each with its own guidance.
+    enum LicenseActivationResult: Equatable {
+        case activated
+        case invalidKey
+        case limitReached
+        case network
+        case notConfigured
+        /// An earlier seat is still recorded and must be released in Settings first.
+        case recordedSeatNeedsRelease
+        /// Another activation is already in progress.
+        case busy
+        /// The provider accepted the key but this Mac could not store the license.
+        case persistenceFailed
+
+        var succeeded: Bool { self == .activated }
+
+        /// The paywall's explanation, or `nil` on success.
+        var message: String? {
+            switch self {
+            case .activated:
+                nil
+            case .invalidKey:
+                String(localized: "That license key couldn't be activated. Check it and try again.")
+            case .limitReached:
+                String(
+                    localized:
+                        "This license is already active on its maximum number of Macs. Deactivate it on another Mac, then try again."
+                )
+            case .network:
+                String(
+                    localized:
+                        "The license service couldn't be reached. Check your internet connection and try again."
+                )
+            case .notConfigured:
+                String(localized: "This build of Vitrine can't activate licenses.")
+            case .recordedSeatNeedsRelease:
+                String(
+                    localized:
+                        "This Mac still has a recorded license seat. Release it in Settings ▸ About, then try again."
+                )
+            case .busy:
+                String(localized: "An activation is already in progress.")
+            case .persistenceFailed:
+                String(
+                    localized:
+                        "The license was accepted, but Vitrine couldn't store it on this Mac. Try again."
+                )
+            }
+        }
+    }
+
     /// Secret-free state for the About pane's direct-download license section.
     enum DirectLicenseManagementState: Equatable {
         case unavailable

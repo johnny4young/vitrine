@@ -35,8 +35,8 @@ numbers. Copy, save, or share the result from the toolbar or the **File** menu.
   card, or a slide.
 - **Style presets** save a look you like so you can reapply it in one click.
 
-Choose destination presets in **Settings ▸ Style**. Manage saved style presets and
-custom themes in **Settings ▸ Library**.
+Choose destination presets in **Settings ▸ Style** or **Settings ▸ Export**. Manage
+saved style presets and custom themes in **Settings ▸ Library**.
 
 Deleting a saved preset or custom theme asks for confirmation and names the item.
 **Cancel** (also Return or Escape) leaves it unchanged. Preset deletion does not alter

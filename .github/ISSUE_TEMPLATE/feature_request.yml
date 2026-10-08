@@ -7,8 +7,9 @@ body:
     attributes:
       value: |
         Ideas are welcome — themes and language tweaks especially. Before
-        filing, skim the README's **Status** section: URL capture / OG cards
-        are deliberately deferred to web capture.
+        filing, skim the README's **Status** section and docs/SCREEN-CAPTURE.md:
+        arbitrary screen/window capture and hosted render services are
+        deliberate non-goals.
   - type: textarea
     id: problem
     attributes:
