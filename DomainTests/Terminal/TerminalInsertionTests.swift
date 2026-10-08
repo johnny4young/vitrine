@@ -75,6 +75,23 @@ struct TerminalInsertionTests {
         #expect(screen.cursorCol == 0)
     }
 
+    @Test func repairErasesEveryOrphanedHalfWithThePenBackground() {
+        // The repair also covers shapes no single operation produces on its own: a
+        // headless continuation, a head whose continuation was overwritten, and a head
+        // at the margin. Each orphan erases with the pen fill, never an unstyled blank.
+        var screen = TerminalScreen(columns: 6, rows: 2)
+        screen.feed("\(esc)[42m")
+        let green = TerminalCell(content: .grapheme(" "), style: ANSIStyle(background: .indexed(2)))
+        let head = TerminalCell(content: .grapheme("你"), style: ANSIStyle())
+        let tail = TerminalCell(content: .continuation, style: ANSIStyle())
+        let narrow = TerminalCell(content: .grapheme("A"), style: ANSIStyle())
+        screen.rows[0] = [tail, head, narrow, head, tail, head]
+
+        screen.repairWideClusters(row: 0)
+
+        #expect(screen.rows[0] == [green, green, narrow, head, tail, green])
+    }
+
     @Test func insertionPreservesGlyphStyleAndUsesTheOrdinaryBlankPolicy() {
         let setup = "\(esc)[31;44m"
         let insert = "\(esc)[0m\(esc)[42m\(esc)[1G\(esc)[@"
