@@ -47,6 +47,9 @@ extension EditorView {
                 guard let url = try await readFileURL(from: provider) else { continue }
                 do {
                     offerLoaded(try FileInputLoader.load(from: url))
+                } catch is CancellationError {
+                    // A replacement drop or closed editor is lifecycle, not an unreadable file.
+                    return
                 } catch let error as FileInputLoader.LoadError {
                     dropError = error
                 } catch {
@@ -88,19 +91,21 @@ extension EditorView {
     }
 
     /// Loads immediately into an empty editor, or defers to the replace/append
-    /// prompt when the editor already holds code.
+    /// prompt when the editor already holds code or shows an image.
     func offerLoaded(
         _ loaded: FileInputLoader.LoadedFile,
         startsLivingSnapshot: Bool = false
     ) {
-        if settings.config.code.isEmpty {
+        let showsImage = settings.style.usesImageContent
+        if settings.config.code.isEmpty && !showsImage {
             apply(
                 loaded, replacing: true,
                 startsLivingSnapshot: startsLivingSnapshot)
         } else {
             pendingDrop = PendingDrop(
                 loaded: loaded,
-                startsLivingSnapshot: startsLivingSnapshot)
+                startsLivingSnapshot: startsLivingSnapshot,
+                replacesImage: showsImage)
         }
     }
 
@@ -131,12 +136,14 @@ extension EditorView {
             session.livingSnapshot.stop()
         }
         if replacing, let sourceURL = loaded.sourceURL,
-            environment.workspaceRecipes.applyRecipe(for: sourceURL, to: settings) != nil
+            environment.workspaceRecipes.applyRecipe(
+                for: sourceURL, to: settings, themes: environment.customThemes) != nil
         {
             Log.capture.info("Applied a workspace recipe to an explicitly loaded file")
         }
         loaded.apply(to: &settings.config, replacing: replacing)
-        settings.noteLanguageUsed(settings.config.language)
+        if replacing { settings.noteDocumentReplaced() }
+        environment.appSettings.noteLanguageUsed(settings.config.language)
         if startsLivingSnapshot {
             session.livingSnapshot.start(with: loaded)
         }
@@ -247,6 +254,7 @@ extension EditorView {
         session.livingSnapshot.stop()
         settings.config.clearContentMarks()
         settings.config.foregroundImage = reference
+        settings.noteDocumentReplaced()
         Log.capture.info("Editor drop loaded a foreground image")
     }
 

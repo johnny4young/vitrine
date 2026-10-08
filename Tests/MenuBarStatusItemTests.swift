@@ -72,6 +72,7 @@ struct MenuBarStatusItemTests {
         #expect(item.isVisible)
         #expect(item.button?.image != nil)
         #expect(item.button?.bounds.width ?? 0 > 0)
+        #expect(item.button?.accessibilityLabel() == "Vitrine")
 
         // A second call must not stack a duplicate icon.
         controller.attach()

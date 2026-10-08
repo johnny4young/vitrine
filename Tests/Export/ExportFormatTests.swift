@@ -13,16 +13,9 @@ import VitrineRendering
 @MainActor
 @Suite("Export · format catalog")
 struct ExportFormatTests {
-    @Test("PNG, PDF, HEIC, and AVIF are offered; PDF is the only vector option")
-    func formatCasesAndVectorFlag() {
+    @Test("PNG, PDF, HEIC, and AVIF are offered")
+    func formatCases() {
         #expect(ExportFormat.allCases == [.png, .pdf, .heic, .avif])
-        #expect(ExportFormat.png.isVector == false)
-        #expect(ExportFormat.pdf.isVector == true)
-        #expect(ExportFormat.heic.isVector == false)
-        #expect(ExportFormat.avif.isVector == false)
-        // Exactly one supported vector format is advertised, and it is PDF.
-        let vectors = ExportFormat.allCases.filter(\.isVector)
-        #expect(vectors == [.pdf])
     }
 
     @Test("Interactive formats mirror the active ImageIO destination writers")

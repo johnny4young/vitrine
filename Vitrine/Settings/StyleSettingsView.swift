@@ -87,6 +87,7 @@ struct StyleSettingsView: View {
                     "style-subtab-appearance", "style-subtab-lines", "style-subtab-background",
                 ]
             )
+            .accessibilityLabel("Style section")
         }
         .padding(.top, 18)
         .padding(.horizontal, 26)
@@ -161,19 +162,22 @@ struct StyleSettingsView: View {
                     .accessibilityIdentifier("ligatures-toggle")
             }
             TokenRow(label: Text("Font size")) {
-                Slider(value: $settings.config.fontSize, in: 10...20, step: 1)
-                    .frame(width: 130)
-                    .accessibilityLabel("Font size")
-                    .accessibilityIdentifier("font-size-slider")
+                ValueSlider(
+                    label: "Font size", value: $settings.config.fontSize,
+                    range: Self.fontSizeRange, step: 1, identifier: "font-size-slider")
             }
         }
 
         TokenGroup(title: Text("Canvas")) {
             TokenRow(label: Text("Padding")) {
-                Slider(value: $settings.config.padding, in: 16...64, step: 4)
-                    .frame(width: 130)
-                    .accessibilityLabel("Padding")
-                    .accessibilityIdentifier("padding-slider")
+                ValueSlider(
+                    label: "Padding", value: $settings.config.padding,
+                    range: Self.paddingRange, step: 4, identifier: "padding-slider")
+            }
+            TokenRow(label: Text("Corner radius")) {
+                ValueSlider(
+                    label: "Corner radius", value: $settings.config.cornerRadius,
+                    range: Self.cornerRadiusRange, step: 2, identifier: "corner-radius-slider")
             }
             TokenRow(label: Text("Window chrome")) {
                 Toggle("Window chrome", isOn: $settings.config.showChrome)
@@ -181,14 +185,44 @@ struct StyleSettingsView: View {
                     .labelsHidden()
                     .accessibilityIdentifier("window-chrome-toggle")
             }
+            // A Make Default or a recipe can set a title; this is where it is cleared.
+            if settings.config.showChrome {
+                TokenRow(
+                    label: Text("Title"),
+                    caption: Text(
+                        "Shown in the window chrome of new captures. Leave empty for none.")
+                ) {
+                    TokenTextField(
+                        prompt: Text(verbatim: "ContentView.swift"),
+                        text: $settings.config.windowTitle
+                    )
+                    .frame(width: 180)
+                    .accessibilityLabel("Title")
+                    .accessibilityIdentifier("window-title-field")
+                }
+            }
             TokenRow(label: Text("Drop shadow")) {
                 Toggle("Drop shadow", isOn: $settings.config.showShadow)
                     .toggleStyle(.switch)
                     .labelsHidden()
                     .accessibilityIdentifier("drop-shadow-toggle")
             }
+            if settings.config.showShadow {
+                TokenRow(label: Text("Shadow depth")) {
+                    ValueSlider(
+                        label: "Shadow depth", value: $settings.config.shadowRadius,
+                        range: Self.shadowRadiusRange, step: 2,
+                        identifier: "shadow-radius-slider")
+                }
+            }
         }
     }
+
+    // The persisted clamps are the slider bounds, so a stored value is always reachable.
+    static let fontSizeRange = SettingsDefaults.fontSizeRange
+    static let paddingRange = SettingsDefaults.paddingRange
+    static let cornerRadiusRange = SettingsDefaults.cornerRadiusRange
+    static let shadowRadiusRange = SettingsDefaults.shadowRadiusRange
 
     /// Whether the selected font ships programming ligatures, gating the toggle
     /// so it reads as inert for a font that has none.
@@ -196,10 +230,10 @@ struct StyleSettingsView: View {
         CodeFont.hasLigatures(settings.config.fontName)
     }
 
-    private var ligatureHelp: String {
+    private var ligatureHelp: Text {
         fontHasLigatures
-            ? "Render programming ligatures (->, =>, !=) for this font."
-            : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
+            ? Text("Render programming ligatures (->, =>, !=) for this font.")
+            : Text("The selected font has no ligatures; choose Fira Code or JetBrains Mono.")
     }
 
     // MARK: Lines & header
@@ -257,102 +291,9 @@ struct StyleSettingsView: View {
     // MARK: Background
 
     @ViewBuilder private var backgroundGroup: some View {
-        TokenGroup(title: Text("Gradient preset")) {
-            HStack(spacing: VitrineTokens.Spacing.xs) {
-                ForEach(GradientPreset.allCases) { preset in
-                    GradientSwatch(
-                        preset: preset, isSelected: selectedGradientPreset == preset
-                    ) {
-                        settings.config.background = .gradient(preset)
-                    }
-                }
-                CustomBackgroundSwatch {
-                    settings.config.background = BackgroundKind.solid.makeDefault(
-                        from: settings.config.background, imageStore: .container)
-                }
-            }
-            .padding(.vertical, VitrineTokens.Spacing.sm)
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel("Gradient preset")
-            .accessibilityIdentifier("background-gradient-preset")
-
-            TokenRow(
-                label: Text("Kind"),
-                caption: Text("Gradient preset, solid color, or image")
-            ) {
-                TokenSegmentedPicker(
-                    options: [
-                        (BackgroundKind.gradient, Text("Gradient")),
-                        (.customGradient, Text("Custom")),
-                        (.solid, Text("Solid")),
-                        (.image, Text("Image")),
-                        (.transparent, Text("Transparent")),
-                    ],
-                    selection: backgroundKindBinding
-                )
-                .accessibilityLabel("Kind")
-                .accessibilityIdentifier("background-kind-picker")
-            }
-
-            backgroundDetail
+        TokenGroup(title: Text("Background")) {
+            BackgroundControls(background: $settings.config.background, layout: .settings)
         }
-    }
-
-    /// The controls for the active background kind, hosted as tile rows.
-    @ViewBuilder private var backgroundDetail: some View {
-        switch settings.config.background {
-        case .gradient:
-            EmptyView()
-        case .customGradient(let gradient):
-            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
-                CustomGradientEditor(
-                    gradient: Binding(
-                        get: { gradient },
-                        set: { settings.config.background = .customGradient($0) }))
-            }
-            .padding(.vertical, 9)
-        case .solid(let color):
-            TokenRow(label: Text("Color")) {
-                ColorPicker(
-                    "Color",
-                    selection: Binding(
-                        get: { color.color },
-                        set: { settings.config.background = .solid(RGBAColor($0)) }),
-                    supportsOpacity: true
-                )
-                .labelsHidden()
-                .accessibilityIdentifier("background-solid-color")
-            }
-        case .image(let image):
-            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
-                ImageBackgroundEditor(
-                    image: Binding(
-                        get: { image }, set: { settings.config.background = .image($0) }),
-                    imageStore: .container)
-            }
-            .padding(.vertical, 9)
-        case .transparent:
-            TokenRow(caption: Text("Exports with a real transparent (alpha) background.")) {
-                EmptyView()
-            }
-        }
-    }
-
-    /// The active background kind; switching seeds a sensible default from the
-    /// current style, mirroring `BackgroundEditor`'s behavior.
-    private var backgroundKindBinding: Binding<BackgroundKind> {
-        Binding(
-            get: { BackgroundKind(settings.config.background) },
-            set: {
-                settings.config.background = $0.makeDefault(
-                    from: settings.config.background, imageStore: .container)
-            }
-        )
-    }
-
-    private var selectedGradientPreset: GradientPreset? {
-        if case .gradient(let preset) = settings.config.background { return preset }
-        return nil
     }
 
     /// Config used for the preview — falls back to a sample snippet when the editor

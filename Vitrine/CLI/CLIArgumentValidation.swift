@@ -93,6 +93,11 @@ extension CLIArgumentParser {
         if concealClipboard, !copyToClipboard {
             throw CLIError.incompatibleOptions("--conceal-clipboard requires --copy.")
         }
+        // The clipboard always receives a PNG; another format only applies to a file.
+        if copyToClipboard, outputPath == nil, let explicitFormat, explicitFormat != .png {
+            throw CLIError.incompatibleOptions(
+                "--copy always copies a PNG; --format \(explicitFormat.rawValue) requires --out.")
+        }
         if quiet, jsonOutput {
             throw CLIError.incompatibleOptions("Cannot combine --quiet with --json.")
         }
@@ -278,9 +283,16 @@ extension CLIArgumentParser {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --wrap-columns.")
             }
-            if styleOptionsRequested {
+            if styleOptionsRequested || themeID != nil {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with render-only style options.")
+            }
+            // The handoff carries text, language, and terminal width only.
+            if presetID != nil || scale != nil || explicitFormat != nil || profile != nil
+                || noOverwrite
+            {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with render-only output options.")
             }
         }
         // A sidecar sits next to a written image, so it needs an `--out` path —
@@ -288,6 +300,11 @@ extension CLIArgumentParser {
         if textSidecar, outputPath == nil {
             throw CLIError.incompatibleOptions(
                 "--text-sidecar needs an --out path to write beside.")
+        }
+        if seenOptionIDs.contains(.altText), !markdownSidecar, !htmlSidecar {
+            throw CLIError.incompatibleOptions(
+                "--alt-text requires --markdown-sidecar or --html-sidecar; it is not drawn on the image."
+            )
         }
         if markdownSidecar, outputPath == nil {
             throw CLIError.incompatibleOptions(

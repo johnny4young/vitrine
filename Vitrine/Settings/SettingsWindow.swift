@@ -20,7 +20,7 @@ final class SettingsWindowManager {
         let window = self.window ?? makeWindow()
         self.window = window
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     private func makeWindow() -> NSWindow {

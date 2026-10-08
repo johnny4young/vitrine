@@ -35,7 +35,14 @@ public enum SecretScanner {
         ("stripe-key", #"\b(?:sk|rk|pk)_(?:live|test)_[0-9A-Za-z]{16}[0-9A-Za-z]*\b"#),
         ("openai-key", #"\bsk-[A-Za-z0-9_\-]{20}[A-Za-z0-9_\-]*\b"#),
         ("jwt", #"\beyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\b"#),
-        ("private-key", #"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----"#),
+        ("private-key", #"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY(?: BLOCK)?-----"#),
+        ("bearer-token", #"(?i)\bbearer[^\S\r\n]+[A-Za-z0-9._~+/-]{16}[A-Za-z0-9._~+/-]*"#),
+        // A scheme starts only after a non-scheme character, so a long dotted or
+        // hyphenated line is not retried at every position.
+        (
+            "url-credentials",
+            #"(?i)(?<![a-z0-9+.-])[a-z][a-z0-9+.-]{0,31}://[^/\s:@]+:[^@\s/]{6}[^@\s/]*@"#
+        ),
     ].map { kind, pattern in
         Rule(kind: kind, regex: expression(pattern))
     }
@@ -46,7 +53,7 @@ public enum SecretScanner {
     /// simple greedy quantifier: ICU's possessive form exhausts its matching stack
     /// on megabyte identifiers and can silently omit subsequent assignments.
     private static let assignment = expression(
-        #"(?<![A-Za-z0-9_-])([A-Za-z0-9_-]+)["']?[^\S\r\n]*[:=][^\S\r\n]*(["']?)([A-Za-z0-9+/_-]{16}[A-Za-z0-9+/_-]*)"#
+        #"(?<![A-Za-z0-9_-])([A-Za-z0-9_-]+)["']?[^\S\r\n]*(?::=|=>|[:=])[^\S\r\n]*(["']?)([A-Za-z0-9+/_-]{16}[A-Za-z0-9+/_-]*)"#
     )
     private static let secretName = expression(
         #"(?i)(?:api[_-]?key|secret|token|password|passwd|pwd|access[_-]?key|client[_-]?secret|bearer)"#
@@ -100,8 +107,8 @@ public enum SecretScanner {
 
     /// Every detected secret in line order (a line may match more than one rule).
     ///
-    /// Per-line and stateless, with one deliberate exception: a PEM private key spans
-    /// many lines but only its `-----BEGIN … PRIVATE KEY-----` banner matches the rule
+    /// Per-line and stateless, with one deliberate exception: a PEM or armored PGP private
+    /// key spans many lines but only its `-----BEGIN … PRIVATE KEY-----` banner matches the rule
     /// above, so the scanner carries a flag across lines and also reports every line of
     /// the block — the base64 key material and the `-----END …` banner (through EOF when
     /// the block is never closed). Without this, one-click redaction would cover the
@@ -119,7 +126,7 @@ public enum SecretScanner {
             if containsAssignedSecret(line, range: range) {
                 matches.append(Match(line: index + 1, kind: "assigned-secret"))
             }
-            let closesBlock = line.contains("-----END") && line.contains("PRIVATE KEY-----")
+            let closesBlock = line.contains("-----END") && line.contains("PRIVATE KEY")
             if insidePrivateKeyBlock {
                 if !matchedPrivateKeyBanner {
                     matches.append(Match(line: index + 1, kind: "private-key"))

@@ -241,6 +241,28 @@ struct EditorWindowStateTests {
         #expect(state.config() == expectedAfterRestore(session.config))
     }
 
+    @Test func destinationAndOutputSurviveWindowRestoration() throws {
+        let environment = AppEnvironment(
+            defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+        let source = environment.makeEditorSessionSettings()
+        defer { source.discardEphemeralStore() }
+        let linkedIn = try #require(ExportPreset.preset(withID: "linkedin"))
+        source.selectPreset(linkedIn)
+        source.export.scale = 3
+        source.export.colorProfile = .displayP3
+
+        let data = try #require(EditorWindowState(settings: source).encoded())
+        let state = try #require(EditorWindowState.decoded(from: data))
+        let restored = environment.makeEditorSessionSettings()
+        defer { restored.discardEphemeralStore() }
+        restored.config = state.config()
+        state.applyOutput(to: restored)
+
+        #expect(restored.selectedPreset?.id == "linkedin")
+        #expect(restored.export.scale == 3)
+        #expect(restored.export.colorProfile == .displayP3)
+    }
+
     @Test func defaultConfigRoundTripsToItself() {
         // The empty default draft must survive a round trip unchanged so a brand-new
         // window restores to exactly the factory configuration.
@@ -262,6 +284,33 @@ struct EditorWindowStateTests {
             let state = try #require(EditorWindowState.decoded(from: Data(input.utf8)))
             #expect(state.config().altText == nil)
         }
+    }
+
+    @Test func anUnknownAnnotationKindDropsOnlyThatAnnotation() throws {
+        let arrow = Annotation(kind: .arrow, start: .zero, end: CGPoint(x: 1, y: 1))
+        let known = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(arrow)) as? [String: Any])
+        var future = known
+        future["kind"] = "lasso"
+        future["id"] = UUID().uuidString
+        let payload: [String: Any] = ["code": "x = 1", "annotations": [known, future]]
+
+        let state = try #require(
+            EditorWindowState.decoded(from: JSONSerialization.data(withJSONObject: payload)))
+        #expect(state.config().annotations == [arrow])
+    }
+
+    @Test func persistedAnnotationsDropOnlyAnUnknownKind() throws {
+        let arrow = Annotation(kind: .arrow, start: .zero, end: CGPoint(x: 1, y: 1))
+        let known = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(arrow)) as? [String: Any])
+        var future = known
+        future["kind"] = "lasso"
+        let defaults = testDefaults()
+        defaults.set(
+            try JSONSerialization.data(withJSONObject: [known, future]),
+            forKey: SettingsCodec.Keys.annotations)
+        #expect(SettingsCodec.readAnnotations(from: defaults) == [arrow])
     }
 
     @Test func aPartialPayloadDecodesToFieldDefaults() throws {
@@ -461,6 +510,7 @@ struct EditorSessionIndependenceTests {
         let environment = makeEnvironment(defaults: defaults)
         return AppSettings.makeEditorSession(
             seededFrom: defaults,
+            sharing: environment.appSettings.outputBehavior,
             store: store,
             brandKit: environment.brandKit,
             entitlements: environment.entitlements
