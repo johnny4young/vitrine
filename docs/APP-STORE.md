@@ -10,8 +10,9 @@
 
 The App Store channel is optional; the primary channel is the signed,
 notarized DMG (see [`docs/RELEASING.md`](RELEASING.md)). The **same** app target ships
-through both channels: there is no separate "App Store build" that secretly drops or adds a
-capability. This file is the App Store companion to two existing references:
+through both channels; the App Store archive differs only at documented build boundaries
+(no Sparkle, no network entitlement, no embedded CLI). This file is the App Store
+companion to two existing references:
 
 - [`docs/PERMISSIONS.md`](PERMISSIONS.md) — the per-channel entitlement audit
   table. Its "Distribution channels — App Store vs. direct download" section is the

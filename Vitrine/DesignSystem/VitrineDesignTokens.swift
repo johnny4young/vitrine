@@ -34,10 +34,18 @@ enum VitrineTokens {
         /// never chose an accent.
         static var system: Color { system(brand: base) }
         nonisolated static func system(brand: Color) -> Color {
-            usesSystemAccentOverride(
-                accentColorValue: UserDefaults.standard.object(forKey: "AppleAccentColor"))
+            !forcesBrandAccent
+                && usesSystemAccentOverride(
+                    accentColorValue: UserDefaults.standard.object(forKey: "AppleAccentColor"))
                 ? Color(nsColor: .controlAccentColor) : brand
         }
+        /// The `--brand-accent` Debug hook, so screenshot tours match on any Mac.
+        #if DEBUG
+            nonisolated private static let forcesBrandAccent =
+                ProcessInfo.processInfo.arguments.contains("--brand-accent")
+        #else
+            nonisolated private static let forcesBrandAccent = false
+        #endif
         /// Whether a stored `AppleAccentColor` value means the user chose a specific
         /// macOS accent (vs. the default "Multicolor", where the key is absent → `nil`).
         /// macOS stores an integer once set (0–6, or `-1` for graphite). Kept a pure
@@ -66,16 +74,6 @@ enum VitrineTokens {
             }
         }
 
-        /// `--accent-hover` — one step brighter on hover.
-        static let hover = Brand.BrandColor(
-            light: Color(hex: "#4339D4"),
-            dark: Color(hex: "#8E9CFF")
-        ).color
-        /// `--accent-press` — one step further on press.
-        static let press = Brand.BrandColor(
-            light: Color(hex: "#3A30C4"),
-            dark: Color(hex: "#AEB8FF")
-        ).color
         /// `--accent-secondary` — the gradient's far stop (re-exported).
         static let secondary = Brand.Palette.accentSecondary.color
         /// `--accent-contrast` — text and glyphs over accent fills.
@@ -148,15 +146,11 @@ enum VitrineTokens {
             light: Color(hex: "#1A1B22").opacity(0.09),
             dark: Color(hex: "#FFFFFF").opacity(0.08)
         ).color
-        /// `--control-track` — the off track behind custom toggles.
-        static let controlTrack = Brand.BrandColor(
-            light: Color(hex: "#1A1B22").opacity(0.16),
-            dark: Color(hex: "#FFFFFF").opacity(0.18)
-        ).color
-        /// `--focus-ring` — the 1.5 pt accent focus stroke.
-        static let focusRing = Brand.Palette.accent.color
+        /// `--focus-ring` — the 1.5 pt accent focus stroke. Follows the system accent, like
+        /// the selections it surrounds.
+        static var focusRing: Color { Accent.system }
         /// `--ring-focus` — the soft outer glow behind the focus stroke.
-        static let focusGlow = Brand.Palette.accent.color.opacity(0.35)
+        static var focusGlow: Color { Accent.system.opacity(0.35) }
     }
 
     // MARK: - Gradients (135°, topLeading → bottomTrailing)
@@ -172,15 +166,6 @@ enum VitrineTokens {
         static let callToAction = LinearGradient(
             colors: [Brand.Palette.accent.lightHighContrast, Color(hex: "#06566D")],
             startPoint: .topLeading, endPoint: .bottomTrailing)
-        /// `--grad-signature-wash` — 18 % wash for hero backgrounds.
-        static let signatureWash = Brand.Gradient.signatureWash()
-        /// `--grad-aurora` … `--grad-carbon` — the built-in canvas presets.
-        static let aurora = GradientPreset.aurora.gradient
-        static let ocean = GradientPreset.ocean.gradient
-        static let sunset = GradientPreset.sunset.gradient
-        static let forest = GradientPreset.forest.gradient
-        static let night = GradientPreset.night.gradient
-        static let carbon = GradientPreset.carbon.gradient
     }
 
     // MARK: - Spacing (4-pt scale, re-exported)
@@ -199,7 +184,7 @@ enum VitrineTokens {
 
     // MARK: - Corner radius (continuous style)
 
-    /// `tokens/elevation.css` radii — re-exported plus the pill shape.
+    /// `tokens/elevation.css` radii, re-exported.
     enum Radius {
         static let sm = Brand.Radius.sm
         static let md = Brand.Radius.md
@@ -207,26 +192,6 @@ enum VitrineTokens {
         static let xl = Brand.Radius.xl
         /// The exported code-card corner radius.
         static let card = Brand.Radius.card
-        /// `--radius-pill` — fully rounded capsules and chips.
-        static let pill: CGFloat = 999
-    }
-
-    // MARK: - Shadows (app chrome only)
-
-    /// Shadow recipes from `tokens/elevation.css`, translated for SwiftUI
-    /// (`shadow(radius:)` takes half the CSS blur). These style the current designed
-    /// chrome; the exported card keeps `Brand.Shadow` so renders stay
-    /// byte-identical to the earlier goldens.
-    enum Shadows {
-        /// `--shadow-card` — subtle lift for cards inside the app chrome.
-        static let card = Brand.ShadowStyle(
-            color: .black.opacity(0.18), radius: 6, x: 0, y: 6)
-        /// `--shadow-elevated` — the deep offset under prominent cards.
-        static let elevated = Brand.ShadowStyle(
-            color: .black.opacity(0.35), radius: 10, x: 0, y: 8)
-        /// `--shadow-popover` — floating panels and the menu-bar window.
-        static let popover = Brand.ShadowStyle(
-            color: .black.opacity(0.22), radius: 17, x: 0, y: 10)
     }
 
     // MARK: - Chrome component fills
@@ -258,9 +223,9 @@ enum VitrineTokens {
             light: Color(hex: "#1A1B22").opacity(0.04),
             dark: Color(hex: "#FFFFFF").opacity(0.05)
         ).color
-        /// Selected font-pill wash — the lifted accent at 12 % in both
-        /// appearances (the design uses one fixed value).
-        static let pillSelectedFill = Color(hex: "#7C8CFF").opacity(0.12)
+        /// Selected font-pill wash — the system accent at 12 % in both appearances, so
+        /// it matches the selected pill's border.
+        static var pillSelectedFill: Color { Accent.system.opacity(0.12) }
         /// Selected gradient-swatch border — accent in light, white over the
         /// dark stage.
         static let swatchSelectedBorder = Brand.BrandColor(
@@ -289,8 +254,6 @@ enum VitrineTokens {
     enum FontSize {
         /// 28 — welcome / about hero.
         static let largeTitle: CGFloat = 28
-        /// 17 — window titles, section heroes.
-        static let title: CGFloat = 17
         /// 15 — group headers, emphasized labels.
         static let headline: CGFloat = 15
         /// 13 — the macOS control body size.
@@ -299,7 +262,5 @@ enum VitrineTokens {
         static let subhead: CGFloat = 12
         /// 11 — captions, badges, footnotes.
         static let caption: CGFloat = 11
-        /// 14 — the default code size in the editor.
-        static let code: CGFloat = 14
     }
 }

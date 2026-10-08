@@ -341,7 +341,8 @@ final class LivingSnapshotSession {
             return
         }
 
-        guard settings.documentCode == lastLoadedText else {
+        // Marks are local edits too: a silent refresh would drop redactions before export.
+        guard settings.documentCode == lastLoadedText, !settings.style.hasContentMarks else {
             status = .changeAvailable
             return
         }
@@ -355,7 +356,7 @@ final class LivingSnapshotSession {
             return
         }
         loaded.apply(to: &settings.config, replacing: true)
-        settings.noteLanguageUsed(settings.config.language)
+        settings.noteDocumentReplaced()
         lastLoadedText = loaded.text
         status = .watching
         Log.capture.info(

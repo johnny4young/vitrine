@@ -19,6 +19,36 @@ struct AnnotationHistoryTests {
         #expect(!history.canRedo)
     }
 
+    @Test func aBlankCalloutLeavesNoUndoStepAndKeepsRedo() {
+        var history = AnnotationHistory()
+        let one = [mark(0.1)]
+        history.record([])
+        #expect(history.undo(current: one) == [])
+        #expect(history.canRedo)
+
+        // Placement opens the edit; the blank callout is removed before it closes.
+        history.beginEdit([])
+        history.endEdit(current: [])
+
+        #expect(!history.canUndo)
+        #expect(history.canRedo, "a discarded callout must not invalidate redo")
+    }
+
+    @Test func slidingAStyleIsOneUndoStep() {
+        var history = AnnotationHistory()
+        var marks = [mark(0.1)]
+        // Every slider tick reopens the edit; only the first snapshot counts.
+        for thickness in [2.0, 3.0, 4.0] {
+            history.beginEdit(marks)
+            marks[0].thickness = thickness
+        }
+        history.endEdit(current: marks)
+
+        let restored = history.undo(current: marks)
+        #expect(restored?.first?.thickness == mark(0.1).thickness)
+        #expect(!history.canUndo)
+    }
+
     @Test func undoAndRedoWalkTheStackBothWays() {
         var history = AnnotationHistory()
         let empty: [Annotation] = []

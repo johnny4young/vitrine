@@ -10,7 +10,8 @@ import VitrineRendering
 struct CLIAlternativeTextTests: CLITestSupport {
     @Test func optionUsesSharedValidationAndDoesNotDrawAHeader() throws {
         let options = try CLIArguments.parse([
-            "render", "input.swift", "--out", "image.png", "--alt-text", "  Description 👩🏽‍💻  ",
+            "render", "input.swift", "--out", "image.png", "--markdown-sidecar", "--alt-text",
+            "  Description 👩🏽‍💻  ",
         ])
         let config = options.makeConfig(code: "print(42)", language: .swift)
         #expect(config.altText?.text == "Description 👩🏽‍💻")
@@ -26,6 +27,9 @@ struct CLIAlternativeTextTests: CLITestSupport {
     @Test(arguments: [
         ["render", "input.swift", "--edit", "--alt-text", "Description"],
         ["terminal-capture", "input.log", "--copy", "--alt-text", "Description"],
+        ["render", "input.swift", "--out", "image.png", "--alt-text", "Description"],
+        ["render", "input.swift", "--copy", "--alt-text", "Description"],
+        ["render", "input.swift", "--out", "image.png", "--text-sidecar", "--alt-text", "x"],
         [
             "render", "input.swift", "--out", "image.png", "--alt-text",
             String(repeating: "x", count: 1_025),

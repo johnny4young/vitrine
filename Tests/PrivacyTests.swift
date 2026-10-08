@@ -100,42 +100,21 @@ struct WebSnapshotPrivacyUXTests {
         #expect(source.localizedCaseInsensitiveContains("never leaves your Mac"))
     }
 
-    /// The disclosure view defaults its enabled state to the real network-capability
-    /// gate, so a network-free build (no network entitlement) shows the action disabled and a
-    /// capable build shows it enabled — the UI never implies a capability the build lacks.
-    ///
-    /// This asserts the *wiring* as a value, not as source text: a default-constructed
-    /// view adopts `NetworkCapability.isURLCaptureEnabled` verbatim, so the gate cannot
-    /// be silently hard-coded to `true`. (That the confirm button's `.disabled` binding
-    /// reads this flag is the one fact only the rendered `body` can show, so it stays a
-    /// source check below; everything else is behavioral.)
-    @Test func theDisclosureViewDefaultsToTheRealNetworkCapabilityGate() {
-        let view = WebPrivacyDisclosureView(onConfirm: {}, onCancel: {})
-        #expect(view.isURLCaptureEnabled == NetworkCapability.isURLCaptureEnabled)
-    }
-
-    /// The gate is injectable, so the disclosure renders in both states regardless of
-    /// the host build's entitlement: a network-free build (gate off) and a capable build
-    /// (gate on) are both representable. This is what lets the view show the disabled
-    /// action plus the direct-download note on a build with no network entitlement, and
-    /// the live confirm action on one that has it.
-    @Test func theDisclosureViewGateIsInjectableInBothStates() {
-        let disabled = WebPrivacyDisclosureView(
-            onConfirm: {}, onCancel: {}, isURLCaptureEnabled: false)
-        #expect(disabled.isURLCaptureEnabled == false)
-        let enabled = WebPrivacyDisclosureView(
-            onConfirm: {}, onCancel: {}, isURLCaptureEnabled: true)
-        #expect(enabled.isURLCaptureEnabled)
-    }
-
-    /// The confirm button's `.disabled(!isURLCaptureEnabled)` binding is a property of
-    /// the rendered `body`, which cannot be inspected here without driving SwiftUI and
-    /// CoreText off the main actor (unsafe under the parallel test runner). Pinning the
-    /// binding in source keeps the disabled-when-incapable contract from regressing; the
-    /// flag it reads is asserted behaviorally above.
-    @Test func theConfirmActionBindsItsDisabledStateToTheGate() throws {
-        let source = try Self.text("Vitrine", "WebRendering", "WebPrivacyDisclosureView.swift")
-        #expect(source.contains("disabled(!isURLCaptureEnabled)"))
+    /// The disclosure appears only for a first URL capture on a build that can load it,
+    /// so it never offers a confirmation that cannot proceed.
+    @Test func theDisclosureIsPresentedOnlyWhenACaptureCanProceed() {
+        #expect(
+            WebSnapshotModel.needsDisclosure(
+                mode: .url, consentGiven: false, urlCaptureEnabled: true))
+        #expect(
+            !WebSnapshotModel.needsDisclosure(
+                mode: .url, consentGiven: true, urlCaptureEnabled: true))
+        #expect(
+            !WebSnapshotModel.needsDisclosure(
+                mode: .url, consentGiven: false, urlCaptureEnabled: false))
+        #expect(
+            !WebSnapshotModel.needsDisclosure(
+                mode: .html, consentGiven: false, urlCaptureEnabled: true))
     }
 
     /// The first-use copy itself makes both phase facts explicit: a URL capture loads

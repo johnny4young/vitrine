@@ -197,6 +197,12 @@ public struct SnapshotConfig: Equatable {
         terminalColumns = nil
     }
 
+    /// Whether the document carries marks that a content replacement would discard.
+    public var hasContentMarks: Bool {
+        altText != nil || !annotations.isEmpty || !highlightedLineRanges.isEmpty
+            || !redactedLineRanges.isEmpty
+    }
+
     /// Clears the marks tied to *this specific content* — alternative text, free-form annotations
     /// (arrows / text / blur), highlighted/redacted line ranges, and any beautified
     /// foreground image — so loading new content (paste, drop, quick capture) starts

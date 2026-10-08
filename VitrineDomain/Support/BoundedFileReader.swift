@@ -1,7 +1,12 @@
 import Darwin
 import Foundation
 
-/// Reads one stable regular-file descriptor without retaining more than `limit + 1` bytes.
+/// Reads one regular-file descriptor without retaining more than `limit + 1` bytes.
+/// Rejects observed size, modification-time or change-time changes during the read.
+/// Metadata checks do not guarantee a snapshot against arbitrary uncooperative writers.
+/// Change time also moves for metadata-only events (extended attributes, permissions),
+/// so a read racing one of those fails closed as `unreadable`; callers may simply retry.
+/// Cancellation between chunks surfaces as `CancellationError`, never as a read error.
 ///
 /// Callers remain responsible for security-scoped access and for translating these
 /// transport errors into their domain-specific messages. Opening with `O_NONBLOCK`
@@ -18,6 +23,16 @@ public enum BoundedFileReader {
     private static let chunkByteCount = 64 * 1024
 
     public static func read(from url: URL, limit: Int) throws -> Data {
+        try read(from: url, limit: limit, afterChunk: nil)
+    }
+
+    /// Internal observer lets descriptor interleavings be tested without timing or live files.
+    static func read(
+        from url: URL,
+        limit: Int,
+        afterChunk: ((Int) throws -> Void)?
+    ) throws -> Data {
+        try Task.checkCancellation()
         guard limit >= 0, limit < Int.max else { throw ReadError.unreadable }
 
         let descriptor = url.withUnsafeFileSystemRepresentation { path in
@@ -56,6 +71,7 @@ public enum BoundedFileReader {
 
         do {
             while data.count < retainedByteCount {
+                try Task.checkCancellation()
                 let remaining = retainedByteCount - data.count
                 let requestByteCount = min(chunkByteCount, remaining)
                 guard
@@ -65,11 +81,15 @@ public enum BoundedFileReader {
                     break
                 }
                 data.append(chunk)
+                try afterChunk?(data.count)
             }
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             throw ReadError.unreadable
         }
 
+        try Task.checkCancellation()
         guard data.count <= limit else { throw ReadError.tooLarge }
 
         var finalStatus = stat()
@@ -88,7 +108,19 @@ public enum BoundedFileReader {
             initialByteCount: initialByteCount,
             finalByteCount: finalByteCount,
             readByteCount: data.count)
+        try validateChangeEvidence(initial: initialStatus, final: finalStatus)
         return data
+    }
+
+    static func validateChangeEvidence(initial: stat, final: stat) throws {
+        guard
+            initial.st_mtimespec.tv_sec == final.st_mtimespec.tv_sec,
+            initial.st_mtimespec.tv_nsec == final.st_mtimespec.tv_nsec,
+            initial.st_ctimespec.tv_sec == final.st_ctimespec.tv_sec,
+            initial.st_ctimespec.tv_nsec == final.st_ctimespec.tv_nsec
+        else {
+            throw ReadError.unreadable
+        }
     }
 
     private static func isRegular(_ status: stat) -> Bool {

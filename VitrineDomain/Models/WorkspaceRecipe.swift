@@ -232,7 +232,9 @@ public struct WorkspaceRecipeDocument: Codable, Equatable, Sendable {
 
         let document: WorkspaceRecipeDocument
         do {
-            document = try JSONDecoder().decode(WorkspaceRecipeDocument.self, from: data)
+            let decoder = JSONDecoder()
+            decoder.userInfo[StyleSnapshot.strictDecodingKey] = true
+            document = try decoder.decode(WorkspaceRecipeDocument.self, from: data)
         } catch let error as DecodingError {
             throw ImportError.invalidDocument(Self.message(for: error))
         } catch {

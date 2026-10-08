@@ -119,6 +119,7 @@ struct RecentsGalleryView: View {
                         ForEach(filteredCaptures) { capture in
                             RecentsCard(
                                 capture: capture,
+                                themeName: recents.theme(for: capture).displayName,
                                 thumbnail: recents.thumbnail(for: capture),
                                 action: { cardAction(capture) },
                                 comparisonIndex: comparisonSelection.index(of: capture.id),
@@ -151,7 +152,9 @@ struct RecentsGalleryView: View {
             Button("Clear Recents", role: .destructive) { recents.clear() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes every recent capture and its cached preview. This can't be undone.")
+            Text(
+                "This deletes every capture, including pinned captures, and cached previews from Vitrine. It does not erase backups or copies outside the app."
+            )
         }
         .confirmationDialog(
             "Clear Unpinned?",
@@ -312,11 +315,26 @@ struct RecentsGalleryView: View {
     private var filteredCaptures: [Capture] {
         sortOrder.sorted(
             recents.captures.filter {
-                (!showsPinnedOnly || $0.isPinned) && $0.matchesSearch(searchQuery)
+                (!showsPinnedOnly || $0.isPinned)
+                    && $0.matchesSearch(searchQuery, themes: recents.themeLookup)
             })
     }
 
-    private var emptyState: some View {
+    @ViewBuilder private var emptyState: some View {
+        if recents.isEnabled {
+            capturesEmptyState
+        } else {
+            EmptyStateView(
+                title: "History is off",
+                message:
+                    "New captures aren't saved. Turn on Save capture history in Settings ▸ Export to keep them here.",
+                actionTitle: "Open Editor",
+                action: open
+            )
+        }
+    }
+
+    private var capturesEmptyState: some View {
         EmptyStateView(
             title: "No recent captures",
             message:
@@ -335,7 +353,7 @@ struct RecentsGalleryView: View {
     /// *and* left the editor on its previous content; this matches the menu's semantics so
     /// the two recents surfaces behave identically.
     private func open(_ capture: Capture) {
-        navigation.loadIntoPrimaryEditor(capture.applying(to: settings.config))
+        navigation.loadIntoPrimaryEditor(recents.document(for: capture, over: settings.config))
     }
 
     private func cardAction(_ capture: Capture) {
@@ -373,15 +391,11 @@ struct RecentsGalleryView: View {
     private func render(_ capture: Capture, as preset: ExportPreset) {
         // `exportConfig`, not `config`: every export surface renders through it so
         // the PRO Brand Kit watermark is applied at the export seam.
-        var config = capture.applying(to: settings.exportConfig)
+        var config = recents.document(for: capture, over: settings.exportConfig)
         preset.apply(to: &config)
-        let outcome = ExportManager.copyToPasteboardOutcome(
-            config,
-            scale: CGFloat(preset.scale),
-            fixedSize: preset.sizing.fixedSize,
-            profile: settings.export.colorProfile,
-            richText: settings.export.richClipboard,
-            plainText: settings.export.textSidecar, concealed: settings.export.concealClipboard)
+        let outcome = RenderedImageCopy.copy(
+            config, output: settings.export, behavior: settings.outputBehavior,
+            scale: CGFloat(preset.scale), fixedSize: preset.sizing.fixedSize)
         feedback(ExportFeedback.copyOutcome(outcome))
     }
 
@@ -389,7 +403,7 @@ struct RecentsGalleryView: View {
         feedback(
             ExportFeedback.sourceCopyOutcome(
                 ExportManager.copySourceToPasteboard(
-                    capture.code, concealed: settings.export.concealClipboard)))
+                    capture.code, concealed: settings.outputBehavior.concealClipboard)))
     }
 
     private func open() {
@@ -414,6 +428,7 @@ extension RecentsSortOrder {
 /// relative capture date.
 private struct RecentsCard: View {
     let capture: Capture
+    let themeName: String
     let thumbnail: NSImage?
     let action: () -> Void
     let comparisonIndex: Int?
@@ -505,12 +520,12 @@ private struct RecentsCard: View {
             // A locale-neutral separator dot, shown verbatim.
             Text(verbatim: "·")
                 .foregroundStyle(Brand.Palette.textSecondary.color)
-            Text(capture.theme.displayName)
+            Text(themeName)
                 .font(.subheadline)
                 .foregroundStyle(Brand.Palette.textSecondary.color)
                 .lineLimit(1)
             Spacer(minLength: Brand.Spacing.xs)
-            Text(Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date()))
+            Text(capture.relativeDateText(using: Self.dateFormatter))
                 .font(.caption)
                 .foregroundStyle(Brand.Palette.textSecondary.color)
                 .lineLimit(1)
@@ -581,8 +596,8 @@ private struct RecentsCard: View {
     /// One concise VoiceOver announcement combining the metadata the card shows
     /// visually, so the card reads usefully without the user inspecting each label.
     private var accessibilityLabel: String {
-        let when = Self.dateFormatter.localizedString(for: capture.date, relativeTo: Date())
-        let details = "\(capture.language.displayName), \(capture.theme.displayName), \(when)"
+        let when = capture.relativeDateText(using: Self.dateFormatter)
+        let details = "\(capture.language.displayName), \(themeName), \(when)"
         if let comparisonIndex {
             return "\(String(localized: "Selected \(comparisonIndex + 1)")), \(details)"
         }
@@ -599,6 +614,8 @@ private struct RecentsCard: View {
     private static let dateFormatter: RelativeDateTimeFormatter = {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
+        // Named, so a capture made this second reads "now", not "in 0 s".
+        formatter.dateTimeStyle = .named
         return formatter
     }()
 }
