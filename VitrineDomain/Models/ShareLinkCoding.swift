@@ -38,8 +38,12 @@ public enum Zlib {
             stream.deallocate()
         }
 
-        // Clamp before adding the sentinel byte so Int.max remains a valid ceiling.
-        let bufferSize = min(maxOutputBytes, 64 * 1024 - 1) + 1
+        // Chunk size: the limit plus one spare byte, capped at 64 KiB. Clamping before the
+        // `+ 1` keeps `Int.max` a valid ceiling, and the lower bound keeps the capacity at
+        // least 1 even if the guard above ever changes (a negative capacity traps). For a
+        // limit below the cap, the spare byte exposes an overrun inside the same chunk;
+        // above it, the overrun surfaces on the next iteration instead.
+        let bufferSize = min(max(maxOutputBytes, 0), 64 * 1024 - 1) + 1
         let destination = UnsafeMutablePointer<UInt8>.allocate(capacity: bufferSize)
         defer { destination.deallocate() }
 
