@@ -12,6 +12,10 @@ enum WebInputMode: String, CaseIterable, Identifiable {
     case html
 
     var id: String { rawValue }
+
+    /// Whether the capture-mode, wait, session, and localhost settings apply. HTML always
+    /// renders the visible viewport locally, so showing them there would be inert.
+    var usesURLCaptureOptions: Bool { self == .url }
 }
 
 /// One viewport's capture in a multi-resolution batch: the size it was
@@ -98,14 +102,7 @@ struct WebSnapshotViewportRenderer {
                 profile: settings.export.colorProfile)
             return try await renderer.render(input, config: settings.config)
         case .url:
-            let renderer = URLRenderer(
-                scale: CGFloat(settings.export.scale),
-                viewportPreset: preset,
-                captureMode: settings.webCapture.captureMode,
-                waitStrategy: settings.webCapture.waitStrategy,
-                profile: settings.export.colorProfile,
-                dataStoreMode: settings.webCapture.dataStoreMode,
-                allowsLoopbackCapture: settings.webCapture.allowsLoopbackCapture)
+            let renderer = URLRenderer.configured(from: settings, viewportPreset: preset)
             return try await renderer.render(input, config: settings.config)
         case .code:
             // The Web Snapshot flow only resolves `.url`/`.html`; keep an impossible

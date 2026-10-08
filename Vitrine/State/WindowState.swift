@@ -130,6 +130,11 @@ struct EditorWindowState: Codable, Equatable {
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
     var annotations: [Annotation]
+    /// The window's destination and per-capture output, absent in older archives.
+    var destinationID: String?
+    var exportScale: Int?
+    var exportFormatID: String?
+    var colorProfileID: String?
 
     /// Captures `config` for archiving. Line ranges are flattened to their canonical
     /// spec string and the theme/language to their ids, matching how the rest of the
@@ -162,12 +167,38 @@ struct EditorWindowState: Codable, Equatable {
         annotations = config.annotations
     }
 
+    /// Captures a window's document together with its destination and output choices.
+    init(settings: AppSettings) {
+        self.init(config: settings.config)
+        destinationID = settings.selectedPreset?.id
+        exportScale = settings.export.scale
+        exportFormatID = settings.export.format.rawValue
+        colorProfileID = settings.export.colorProfile.rawValue
+    }
+
+    /// Re-applies the archived output after the document, destination last so the
+    /// style write cannot drop it back to Custom.
+    func applyOutput(to settings: AppSettings) {
+        if let exportScale {
+            settings.export.scale = SettingsDefaults.clampExportScale(exportScale)
+        }
+        if let format = exportFormatID.flatMap(ExportFormat.init(rawValue:)) {
+            settings.export.format = format.availableOrFallback
+        }
+        if let profile = colorProfileID.flatMap(ColorProfile.init(rawValue:)) {
+            settings.export.colorProfile = profile
+        }
+        if let preset = ExportPreset.preset(withID: destinationID) {
+            settings.restoreDestination(preset)
+        }
+    }
+
     /// Rebuilds a `SnapshotConfig`, resolving the theme through `themes` (so a custom
     /// theme survives) and the language from its raw value, and re-parsing the
     /// line-highlight spec. Numeric fields are clamped to their documented ranges so a
     /// corrupt value can never drive the renderer out of bounds, mirroring
     /// `AppSettings.readConfig`.
-    func config(themes: CustomThemeStore = .shared) -> SnapshotConfig {
+    func config(themes: CustomThemeStore) -> SnapshotConfig {
         var config = SnapshotConfig()
         config.code = code
         if let language = Language(rawValue: languageID) { config.language = language }
@@ -205,6 +236,7 @@ struct EditorWindowState: Codable, Equatable {
         case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
+        case destinationID, exportScale, exportFormatID, colorProfileID
     }
 
     /// A defensive decoder: every field tolerates being absent or the wrong type by
@@ -260,7 +292,12 @@ struct EditorWindowState: Codable, Equatable {
         diffDecorations =
             (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? fallback.diffDecorations
         annotations =
-            (try? container.decode([Annotation].self, forKey: .annotations)) ?? fallback.annotations
+            (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
+            .compactMap(\.value) ?? fallback.annotations
+        destinationID = try? container.decodeIfPresent(String.self, forKey: .destinationID)
+        exportScale = try? container.decodeIfPresent(Int.self, forKey: .exportScale)
+        exportFormatID = try? container.decodeIfPresent(String.self, forKey: .exportFormatID)
+        colorProfileID = try? container.decodeIfPresent(String.self, forKey: .colorProfileID)
     }
 
     /// JSON for archiving this draft into an `NSCoder` restoration record.

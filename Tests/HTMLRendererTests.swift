@@ -470,17 +470,17 @@ struct WebSnapshotSizingTests {
 
     @Test func pixelDimensionsAreSourceSizeTimesScale() {
         // The determinism contract as pure arithmetic: each axis is points × scale.
-        let oneX = WebSnapshotView.pixelDimensions(
+        let oneX = pixelDimensions(
             forSourceSize: CGSize(width: 600, height: 400), scale: 1)
         #expect(oneX.width == 600)
         #expect(oneX.height == 400)
 
-        let twoX = WebSnapshotView.pixelDimensions(
+        let twoX = pixelDimensions(
             forSourceSize: CGSize(width: 600, height: 400), scale: 2)
         #expect(twoX.width == 1200)
         #expect(twoX.height == 800)
 
-        let threeX = WebSnapshotView.pixelDimensions(
+        let threeX = pixelDimensions(
             forSourceSize: CGSize(width: 200, height: 100), scale: 3)
         #expect(threeX.width == 600)
         #expect(threeX.height == 300)
@@ -489,7 +489,7 @@ struct WebSnapshotSizingTests {
     @Test func pixelDimensionsRoundUpToContainEveryDevicePixel() {
         // A fractional point size rounds up, so the bitmap is always a whole number
         // of device pixels without shaving a row or column from the source.
-        let rounded = WebSnapshotView.pixelDimensions(
+        let rounded = pixelDimensions(
             forSourceSize: CGSize(width: 100.1, height: 100.6), scale: 1.5)
         #expect(rounded.width == Int((100.1 * 1.5).rounded(.up)))  // 151
         #expect(rounded.height == Int((100.6 * 1.5).rounded(.up)))  // 151
@@ -499,17 +499,17 @@ struct WebSnapshotSizingTests {
         // A degenerate size signals "no bitmap" as (0, 0), which the draw path turns
         // into a `snapshotFailed` rather than a zero-pixel image.
         #expect(
-            WebSnapshotView.pixelDimensions(forSourceSize: CGSize(width: 0, height: 400), scale: 2)
+            pixelDimensions(forSourceSize: CGSize(width: 0, height: 400), scale: 2)
                 == (0, 0))
         #expect(
-            WebSnapshotView.pixelDimensions(
+            pixelDimensions(
                 forSourceSize: CGSize(width: 600, height: 400), scale: .infinity)
                 == (0, 0))
         #expect(
-            WebSnapshotView.pixelDimensions(forSourceSize: CGSize(width: 600, height: 0), scale: 2)
+            pixelDimensions(forSourceSize: CGSize(width: 600, height: 0), scale: 2)
                 == (0, 0))
         #expect(
-            WebSnapshotView.pixelDimensions(
+            pixelDimensions(
                 forSourceSize: CGSize(width: 600, height: 400), scale: 0)
                 == (0, 0))
     }
@@ -669,4 +669,15 @@ struct HTMLRenderingCapabilityTests {
             .appendingPathComponent("Resources", isDirectory: true)
             .appendingPathComponent("Vitrine.entitlements", isDirectory: false)
     }
+}
+
+/// The pixel size the export budget allocates for a capture, or `(0, 0)` when refused.
+private func pixelDimensions(
+    forSourceSize sourceSize: CGSize, scale: CGFloat
+)
+    -> (width: Int, height: Int)
+{
+    guard let allocation = try? RenderBudget.export.allocation(for: sourceSize, scale: scale)
+    else { return (0, 0) }
+    return (allocation.pixelWidth, allocation.pixelHeight)
 }

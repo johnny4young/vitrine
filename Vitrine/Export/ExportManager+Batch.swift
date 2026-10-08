@@ -25,19 +25,32 @@ extension ExportManager {
     /// preset's pinned `fixedSize` and `scale` through the same color-managed
     /// `encodedPayload` path. So each written file is byte-for-byte what a single
     /// export with THAT preset selected (at its pinned scale) produces. Files are
-    /// named `vitrine-<preset id>.<ext>`. Returns how many were written and how many
+    /// named `vitrine-<preset id>.<ext>`, with a numeric suffix when any image or
+    /// requested sidecar name is occupied. Returns how many were written and how many
     /// presets failed, so the caller can give precise feedback. Only the
     /// format/counts are logged, never the chosen folder path.
     @discardableResult
     static func exportPresetSizes(
         _ baseConfig: SnapshotConfig, presets: [ExportPreset], to directory: URL,
         format: ExportFormat = .png, profile: ColorProfile = .sRGB, textSidecar: Bool = false,
-        onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
+        onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil,
+        writeFile: @escaping @Sendable (Data, URL) throws -> Void = {
+            try BatchOutputFiles.publish($0, to: $1)
+        }
     ) async -> BatchExportResult {
         var written = 0
         var failed = 0
         var firstRenderFailure: RenderBudgetError?
         let total = presets.count
+        let outputs: [BatchOutputFiles.Item]
+        do {
+            outputs = try BatchOutputFiles.plan(
+                filenames: presets.map { "vitrine-\($0.id).\(format.fileExtension)" },
+                in: directory, textSidecars: textSidecar)
+        } catch {
+            onProgress?(total, total)
+            return BatchExportResult(written: 0, failed: total, firstRenderFailure: nil)
+        }
         // Pipeline the batch: each preset renders on the main actor (`ImageRenderer`
         // requires it), then its CPU-bound encode + disk write run off-main as a child
         // task while the main actor immediately moves on to render the next preset. So
@@ -46,7 +59,11 @@ extension ExportManager {
         // `vitrine-<preset id>` file, so the concurrent writes never collide.
         var completed = 0
         await withTaskGroup(of: BatchItemOutcome.self) { group in
-            for preset in presets {
+            for (preset, output) in zip(presets, outputs) {
+                guard !Task.isCancelled else {
+                    group.addTask { .failed }
+                    continue
+                }
                 var config = baseConfig
                 preset.apply(to: &config)
                 let size = preset.sizing.fixedSize
@@ -75,11 +92,10 @@ extension ExportManager {
                 // The chosen folder is a user-granted directory, so a `.txt` sidecar
                 // beside each image is sandbox-safe here (unlike a single save panel).
                 let sidecar = textSidecar ? config.sidecarText : ""
-                let url = directory.appendingPathComponent(
-                    "vitrine-\(preset.id).\(format.fileExtension)", isDirectory: false)
                 group.addTask {
                     await writePreset(
-                        raster: raster, pdf: pdf, format: format, to: url, sidecarText: sidecar)
+                        raster: raster, pdf: pdf, format: format, output: output,
+                        sidecarText: sidecar, writeFile: writeFile)
                 }
                 // Release the main actor after dispatching each render so the encode/write
                 // tasks get to run and the next render doesn't monopolize the run loop.
@@ -111,11 +127,12 @@ extension ExportManager {
     /// actor — the CPU-bound ImageIO encode plus the disk write for a single preset,
     /// hopped off main via `@concurrent` so the UI stays live during a batch. The
     /// render itself stays on main; only `Sendable` finished pixels (`CGImage`) or
-    /// bytes (`Data`) cross the hop. Returns whether the image file was written; a
-    /// sidecar failure is best-effort and never fails the image.
+    /// bytes (`Data`) cross the hop. Every requested nonempty sidecar must succeed;
+    /// partial publication is reported as failure and keeps any completed image.
     @concurrent nonisolated private static func writePreset(
         raster cgImage: CGImage?, pdf pdfData: Data?, format: ExportFormat,
-        to url: URL, sidecarText: String
+        output: BatchOutputFiles.Item, sidecarText: String,
+        writeFile: @Sendable (Data, URL) throws -> Void
     ) async -> BatchItemOutcome {
         let data: Data? =
             if case .pdf = format { pdfData } else {
@@ -126,11 +143,11 @@ extension ExportManager {
             return .renderFailed(.encodingFailed)
         }
         do {
-            try data.write(to: url)
-            if !sidecarText.isEmpty {
-                let sidecarURL = url.deletingPathExtension().appendingPathExtension("txt")
-                // A missing sidecar must not fail the image it accompanies.
-                try? Data(sidecarText.utf8).write(to: sidecarURL)
+            try Task.checkCancellation()
+            try writeFile(data, output.image)
+            if !sidecarText.isEmpty, let sidecar = output.sidecar {
+                try Task.checkCancellation()
+                try writeFile(Data(sidecarText.utf8), sidecar)
             }
             return .written
         } catch {
@@ -154,28 +171,46 @@ extension ExportManager {
     /// Renders one slide per page into `directory` as `carousel-01.png` … — the
     /// carousel export. Each slide is `baseConfig` with only its `code`
     /// replaced by that page's lines, rendered at the fixed 4:5 slide frame through
-    /// the standard pipeline; content marks that belong to the whole document
-    /// (annotations, highlighted/redacted lines) are cleared so a page never carries a
-    /// mark positioned against different lines. Pipelined like `exportPresetSizes`:
+    /// the standard pipeline. Highlighted and redacted lines follow their lines onto
+    /// the slide; positional annotations are dropped because they are placed against
+    /// the whole canvas. Pipelined like `exportPresetSizes`:
     /// render on the main actor, PNG-encode + write off it, results drain in
     /// completion order with count-based progress. Two-digit numbering keeps the
     /// files sorted everywhere; only counts are logged.
     @discardableResult
     static func exportCarousel(
-        _ baseConfig: SnapshotConfig, pages: [String], to directory: URL,
+        _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide], to directory: URL,
         profile: ColorProfile = .sRGB,
-        onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil
+        onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil,
+        writeFile: @escaping @Sendable (Data, URL) throws -> Void = {
+            try BatchOutputFiles.publish($0, to: $1)
+        }
     ) async -> BatchExportResult {
         var written = 0
         var failed = 0
         var firstRenderFailure: RenderBudgetError?
-        let total = pages.count
+        let total = slides.count
+        let outputs: [BatchOutputFiles.Item]
+        do {
+            outputs = try BatchOutputFiles.plan(
+                filenames: slides.indices.map { String(format: "carousel-%02d.png", $0 + 1) },
+                in: directory)
+        } catch {
+            onProgress?(total, total)
+            return BatchExportResult(written: 0, failed: total, firstRenderFailure: nil)
+        }
         var completed = 0
         await withTaskGroup(of: BatchItemOutcome.self) { group in
-            for (index, page) in pages.enumerated() {
+            for (slide, output) in zip(slides, outputs) {
+                guard !Task.isCancelled else {
+                    group.addTask { .failed }
+                    continue
+                }
                 var config = baseConfig
                 config.clearContentMarks()
-                config.code = page
+                config.code = slide.text
+                config.highlightedLineRanges = slide.localRanges(baseConfig.highlightedLineRanges)
+                config.redactedLineRanges = slide.localRanges(baseConfig.redactedLineRanges)
                 config.fontSize = max(config.fontSize, carouselMinimumFontSize)
                 let raster: CGImage?
                 do throws(RenderBudgetError) {
@@ -188,11 +223,10 @@ extension ExportManager {
                     group.addTask { .renderFailed(error) }
                     continue
                 }
-                let url = directory.appendingPathComponent(
-                    String(format: "carousel-%02d.png", index + 1), isDirectory: false)
                 group.addTask {
                     await writePreset(
-                        raster: raster, pdf: nil, format: .png, to: url, sidecarText: "")
+                        raster: raster, pdf: nil, format: .png, output: output,
+                        sidecarText: "", writeFile: writeFile)
                 }
                 await Task.yield()
             }
@@ -215,5 +249,85 @@ extension ExportManager {
         )
         return BatchExportResult(
             written: written, failed: failed, firstRenderFailure: firstRenderFailure)
+    }
+
+    /// One finished raster in an image-set export, named without its extension.
+    nonisolated struct NamedRaster: Sendable {
+        let name: String
+        let image: CGImage
+    }
+
+    /// Writes already-rendered rasters into `directory` in `format`, encoding off the main
+    /// actor. PDF pages are sized in points at `scale`; an existing file is never replaced,
+    /// the new one takes the next free `name-2`, `name-3`, … instead.
+    @discardableResult
+    static func exportRasters(
+        _ items: [NamedRaster], to directory: URL, format: ExportFormat, scale: CGFloat
+    ) async -> BatchExportResult {
+        var claimed: Set<String> = []
+        let targets = items.map { item in
+            let url = availableFileURL(
+                in: directory, name: item.name, fileExtension: format.fileExtension,
+                isTaken: {
+                    claimed.contains($0.lastPathComponent)
+                        || FileManager.default.fileExists(atPath: $0.path)
+                })
+            claimed.insert(url.lastPathComponent)
+            return (item.image, url)
+        }
+        var written = 0
+        var failed = 0
+        await withTaskGroup(of: Bool.self) { group in
+            for (image, url) in targets {
+                group.addTask {
+                    await writeRaster(image, format: format, scale: scale, to: url)
+                }
+            }
+            for await succeeded in group {
+                if succeeded { written += 1 } else { failed += 1 }
+            }
+        }
+        Log.export.notice(
+            "Image-set export wrote \(written, privacy: .public), failed \(failed, privacy: .public)"
+        )
+        return BatchExportResult(written: written, failed: failed, firstRenderFailure: nil)
+    }
+
+    /// The first `name.ext`, `name-2.ext`, … in `directory` that `isTaken` does not claim.
+    static func availableFileURL(
+        in directory: URL, name: String, fileExtension: String, isTaken: (URL) -> Bool
+    ) -> URL {
+        var candidate = directory.appendingPathComponent("\(name).\(fileExtension)")
+        var suffix = 2
+        while isTaken(candidate) {
+            candidate = directory.appendingPathComponent("\(name)-\(suffix).\(fileExtension)")
+            suffix += 1
+        }
+        return candidate
+    }
+
+    @concurrent nonisolated private static func writeRaster(
+        _ image: CGImage, format: ExportFormat, scale: CGFloat, to url: URL
+    ) async -> Bool {
+        let data: Data? =
+            if case .pdf = format {
+                pdfData(from: image, scale: scale)
+            } else {
+                rasterData(from: image, format: format)
+            }
+        guard let data else {
+            Log.export.error("Image-set export: encode returned nil")
+            return false
+        }
+        do {
+            try data.write(to: url, options: .withoutOverwriting)
+            return true
+        } catch {
+            let nsError = error as NSError
+            Log.export.error(
+                "Image-set export write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            return false
+        }
     }
 }

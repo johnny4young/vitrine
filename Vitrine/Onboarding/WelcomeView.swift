@@ -30,7 +30,7 @@ struct WelcomeView: View {
     /// The launch-at-login state is mirrored locally (like the General settings
     /// pane) so the toggle reflects the system registration without binding through
     /// `AppSettings`. It is offered, never forced.
-    @State private var launchAtLogin = LaunchAtLogin.isEnabled
+    @State private var launchAtLogin = LaunchAtLoginModel()
     @State private var captureShortcut = KeyboardShortcuts.getShortcut(for: .quickCapture)
 
     /// The sample capture's outcome, surfaced inline so the user sees that the loop
@@ -43,6 +43,9 @@ struct WelcomeView: View {
     /// returning user's existing style is never overwritten just by opening the
     /// quick-start.
     @State private var selectedBackground: GradientPreset = .aurora
+
+    /// Keeps the sample render out of every body pass; it changes only with the swatch.
+    @State private var sampleRenders = SampleRenderCache()
 
     /// Outcome of the in-window sample capture, for an inline status line.
     private enum SampleStatus: Equatable {
@@ -320,11 +323,15 @@ struct WelcomeView: View {
     /// The sample render: the bundled snippet, One Dark, the chosen gradient,
     /// compact padding — preview-only, never the user's live document.
     private var sampleImage: NSImage? {
+        sampleRenders.image(for: selectedBackground)
+    }
+
+    fileprivate static func renderSample(on background: GradientPreset) -> NSImage? {
         var config = SnapshotConfig()
         config.code = EditorPreview.sampleCode
         config.language = .swift
         config.theme = .oneDark
-        config.background = .gradient(selectedBackground)
+        config.background = .gradient(background)
         config.padding = 24
         config.fontSize = 12.5
         return ExportManager.renderNSImage(config, scale: 2, profile: .sRGB, budget: .preview)
@@ -365,14 +372,9 @@ struct WelcomeView: View {
 
                 Spacer(minLength: 0)
 
-                Toggle("Launch Vitrine at login", isOn: $launchAtLogin)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .font(.system(size: VitrineTokens.FontSize.body))
-                    .accessibilityIdentifier("welcome-launch-at-login-toggle")
-                    .onChange(of: launchAtLogin) { _, newValue in
-                        LaunchAtLogin.setEnabled(newValue)
-                    }
+                LaunchAtLoginToggle(
+                    model: launchAtLogin, title: "Launch Vitrine at login", hidesLabel: false,
+                    identifier: "welcome-launch-at-login-toggle")
             }
             Text("shortcut.scope.help")
                 .font(.system(size: VitrineTokens.FontSize.subhead))
@@ -418,7 +420,7 @@ struct WelcomeView: View {
     /// user's chosen style and auto-copy preference.
     private func runSampleCapture() {
         let result = QuickCapture.renderText(
-            EditorPreview.sampleCode, language: .swift, settings: settings)
+            EditorPreview.sampleCode, language: .swift, settings: settings, recents: nil)
         switch result.outcome {
         case .copied: sampleStatus = .copied
         case .rendered: sampleStatus = .rendered
@@ -447,11 +449,14 @@ struct WelcomeView: View {
 /// `RecentsGalleryWindowController`): an AppKit window hosting the SwiftUI view,
 /// created lazily and reused. `presentIfFirstRun` is the single entry the app
 /// lifecycle calls so the per-defaults-suite gate lives in one place.
-final class WelcomeWindowController {
+final class WelcomeWindowController: NSObject, NSWindowDelegate {
     static let shared = WelcomeWindowController()
 
     let navigation: WelcomeNavigation
     private var window: NSWindow?
+
+    /// Retained so closing the window by any path records the quick-start as seen.
+    private var presentedSettings: AppSettings?
 
     init(navigation: WelcomeNavigation = .live) {
         self.navigation = navigation
@@ -461,7 +466,7 @@ final class WelcomeWindowController {
     /// suite. Returns whether it was presented, which the launch path uses
     /// to decide whether to also open another window.
     @discardableResult
-    func presentIfFirstRun(settings: AppSettings = .shared) -> Bool {
+    func presentIfFirstRun(settings: AppSettings) -> Bool {
         guard !settings.hasSeenWelcome else { return false }
         show(settings: settings)
         return true
@@ -469,7 +474,8 @@ final class WelcomeWindowController {
 
     /// Shows (creating if needed) and focuses the quick-start window. Public so a
     /// launch hook can force it open for manual and UI testing.
-    func show(settings: AppSettings = .shared) {
+    func show(settings: AppSettings) {
+        presentedSettings = settings
         if window == nil {
             let hosting = NSHostingController(
                 rootView: makeRootView(settings: settings))
@@ -485,42 +491,21 @@ final class WelcomeWindowController {
             window.titleVisibility = .hidden
             window.isReleasedWhenClosed = false
             window.setAccessibilityIdentifier("welcome-window")
+            window.delegate = self
             window.center()
             self.window = window
         }
         window?.makeKeyAndOrderFront(nil)
         if let window {
-            if let visibleFrame = (window.screen ?? NSScreen.main)?.visibleFrame {
-                var availableFrame = visibleFrame
-                #if DEBUG
-                    // Deterministic compact-display seams for UI validation. They are
-                    // compiled out of release builds and let the suite prove the adaptive
-                    // layout without depending on the attached display dimensions.
-                    if let rawWidth = ProcessInfo.processInfo.environment[
-                        "VITRINE_WELCOME_TEST_MAX_WIDTH"
-                    ], let requestedWidth = Double(rawWidth), requestedWidth > 0 {
-                        let width = min(CGFloat(requestedWidth), visibleFrame.width)
-                        availableFrame.origin.x = visibleFrame.midX - width / 2
-                        availableFrame.size.width = width
-                    }
-                    if let rawHeight = ProcessInfo.processInfo.environment[
-                        "VITRINE_WELCOME_TEST_MAX_HEIGHT"
-                    ], let requestedHeight = Double(rawHeight), requestedHeight > 0 {
-                        let height = min(CGFloat(requestedHeight), visibleFrame.height)
-                        availableFrame.origin.y = visibleFrame.midY - height / 2
-                        availableFrame.size.height = height
-                    }
-                #endif
-                // Keep the adaptive quick-start surface fully inside the visible screen after
-                // AppKit assigns it to a display. Mixed-display setups and menu-bar/Dock
-                // insets can otherwise leave the footer actions just off-screen even
-                // though the window exists.
-                window.setFrame(
-                    WindowFrameSolver.clamp(window.frame, into: availableFrame), display: true)
-                window.makeKeyAndOrderFront(nil)
-            }
+            // Clamp once AppKit has assigned a display, so the footer actions stay
+            // reachable. The Debug keys simulate compact displays in UI tests.
+            WindowPlacement.clampToVisibleScreen(
+                window,
+                debugMaxWidthKey: "VITRINE_WELCOME_TEST_MAX_WIDTH",
+                debugMaxHeightKey: "VITRINE_WELCOME_TEST_MAX_HEIGHT")
+            window.makeKeyAndOrderFront(nil)
         }
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     /// Closes the window without releasing the controller, so a later forced
@@ -534,6 +519,25 @@ final class WelcomeWindowController {
             settings: settings,
             navigation: navigation,
             onDismiss: { [weak self] in self?.close() })
+    }
+
+    /// The title-bar close button and ⌘W dismiss the quick-start like Skip does.
+    func windowWillClose(_ notification: Notification) {
+        guard (notification.object as? NSWindow) === window else { return }
+        presentedSettings?.hasSeenWelcome = true
+        presentedSettings = nil
+    }
+}
+
+/// Memoizes the quick-start sample per swatch without making the view observe it.
+private final class SampleRenderCache {
+    private var images: [GradientPreset: NSImage] = [:]
+
+    func image(for background: GradientPreset) -> NSImage? {
+        if let cached = images[background] { return cached }
+        let rendered = WelcomeView.renderSample(on: background)
+        images[background] = rendered
+        return rendered
     }
 }
 

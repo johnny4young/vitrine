@@ -7,11 +7,15 @@ struct AboutSettingsView: View {
     @Bindable var settings: AppSettings
     let entitlements: Entitlements
 
+    @State private var diagnosticsExportFailed = false
+
     #if VITRINE_DIRECT_DOWNLOAD
         @State private var showsDeactivationConfirmation = false
-        @State private var deactivationRequestID: UUID?
         @State private var showsDeactivationResult = false
         @State private var deactivationResultMessage = ""
+    #else
+        @State private var isRestoring = false
+        @State private var restoreMessage: String?
     #endif
 
     var body: some View {
@@ -47,10 +51,24 @@ struct AboutSettingsView: View {
                         licenseManagement
                             .padding(.top, 14)
                     }
+                #else
+                    storePurchase
+                        .padding(.top, 14)
                 #endif
 
+                if SoftwareUpdater.isSupported {
+                    Button("Check for Updates…") {
+                        SoftwareUpdater.shared.checkForUpdates()
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("about-check-for-updates-button")
+                    .padding(.top, 14)
+                }
+
                 Button("Export Diagnostics…") {
-                    DiagnosticsExporter.exportWithSavePanel(settings: settings)
+                    if DiagnosticsExporter.exportWithSavePanel(settings: settings) == .failed {
+                        diagnosticsExportFailed = true
+                    }
                 }
                 .buttonStyle(.bordered)
                 .accessibilityIdentifier("export-diagnostics-button")
@@ -72,13 +90,20 @@ struct AboutSettingsView: View {
             .padding(.bottom, 28)
         }
         .accessibilityIdentifier("settings-about-pane")
+        .alert("Diagnostics Not Saved", isPresented: $diagnosticsExportFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(
+                "Vitrine couldn't write the diagnostics file. Choose another location and try again."
+            )
+        }
         #if VITRINE_DIRECT_DOWNLOAD
             .confirmationDialog(
                 "Deactivate Vitrine PRO on this Mac?",
                 isPresented: $showsDeactivationConfirmation
             ) {
                 Button("Deactivate This Mac", role: .destructive) {
-                    deactivationRequestID = UUID()
+                    entitlements.startLicenseDeactivation()
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
@@ -89,9 +114,10 @@ struct AboutSettingsView: View {
             } message: {
                 Text(deactivationResultMessage)
             }
-            .task(id: deactivationRequestID) {
-                guard deactivationRequestID != nil else { return }
-                await deactivateLicense()
+            // Shown when the release finishes, or on return if the user left the pane.
+            .onAppear { presentDeactivationOutcomeIfNeeded() }
+            .onChange(of: entitlements.unacknowledgedDeactivationOutcome) {
+                presentDeactivationOutcomeIfNeeded()
             }
         #endif
     }
@@ -118,8 +144,9 @@ struct AboutSettingsView: View {
                         showsDeactivationConfirmation = true
                     }
                     .buttonStyle(.bordered)
-                    .disabled(deactivationRequestID != nil)
+                    .disabled(entitlements.isDeactivatingLicense)
                     .accessibilityIdentifier("deactivate-license-button")
+                    deactivationProgress
                 case .legacy:
                     Text(
                         "Vitrine PRO is active. This activation predates in-app seat management; use your purchase portal or support to release it."
@@ -134,8 +161,9 @@ struct AboutSettingsView: View {
                         showsDeactivationConfirmation = true
                     }
                     .buttonStyle(.bordered)
-                    .disabled(deactivationRequestID != nil)
+                    .disabled(entitlements.isDeactivatingLicense)
                     .accessibilityIdentifier("deactivate-license-button")
+                    deactivationProgress
                 case .unavailable:
                     EmptyView()
                 }
@@ -148,10 +176,17 @@ struct AboutSettingsView: View {
             .accessibilityIdentifier("license-management-section")
         }
 
-        private func deactivateLicense() async {
-            let outcome = await entitlements.deactivateLicense()
-            guard !Task.isCancelled else { return }
-            deactivationRequestID = nil
+        @ViewBuilder private var deactivationProgress: some View {
+            if entitlements.isDeactivatingLicense {
+                ProgressView("Releasing the seat…")
+                    .controlSize(.small)
+                    .accessibilityIdentifier("deactivate-license-progress")
+            }
+        }
+
+        private func presentDeactivationOutcomeIfNeeded() {
+            guard let outcome = entitlements.unacknowledgedDeactivationOutcome else { return }
+            entitlements.acknowledgeDeactivationOutcome()
             deactivationResultMessage =
                 switch outcome {
                 case .deactivated:
@@ -185,6 +220,46 @@ struct AboutSettingsView: View {
                     )
                 }
             showsDeactivationResult = true
+        }
+    #else
+        /// The App Store build's PRO status, with Restore reachable without a gated action.
+        private var storePurchase: some View {
+            VStack(spacing: 8) {
+                Divider()
+                    .frame(width: 360)
+                    .padding(.bottom, 6)
+                Text(
+                    entitlements.isPro
+                        ? "Vitrine PRO is active on this Mac."
+                        : "Vitrine PRO is not active on this Mac."
+                )
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .accessibilityIdentifier("store-pro-status")
+                if !entitlements.isPro {
+                    Button("Restore Purchases") {
+                        Task {
+                            isRestoring = true
+                            restoreMessage = nil
+                            if !(await entitlements.restorePurchases()) {
+                                restoreMessage = String(
+                                    localized: "No previous purchase was found.")
+                            }
+                            isRestoring = false
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(isRestoring)
+                    .accessibilityIdentifier("store-restore-button")
+                }
+                if let restoreMessage {
+                    Text(verbatim: restoreMessage)
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                }
+            }
+            .font(.system(size: VitrineTokens.FontSize.body))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: 400)
         }
     #endif
 }

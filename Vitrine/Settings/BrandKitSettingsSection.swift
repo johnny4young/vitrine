@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-/// Brand Kit controls for the Style pane.
+/// Brand Kit controls for the Brand Kit settings pane.
 ///
 /// Keeping the PRO-gated Brand Kit flow in its own section keeps the main Style pane
 /// focused on layout and preview composition, while this view owns the paywall,
@@ -84,7 +84,10 @@ struct BrandKitSettingsSection: View {
             TokenRow(
                 label: Text("Placement"),
                 caption: brandKit.brandKit.placement == .free
-                    ? Text("Drag the mark in the preview to place it anywhere.") : nil
+                    ? Text(
+                        "Drag the mark in the Style pane preview, or in an editor, to place it anywhere."
+                    )
+                    : nil
             ) {
                 Picker("Placement", selection: placement) {
                     ForEach(Watermark.Placement.allCases, id: \.self) { placement in

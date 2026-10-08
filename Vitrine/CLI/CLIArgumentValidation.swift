@@ -93,6 +93,11 @@ extension CLIArgumentParser {
         if concealClipboard, !copyToClipboard {
             throw CLIError.incompatibleOptions("--conceal-clipboard requires --copy.")
         }
+        // The clipboard always receives a PNG; another format only applies to a file.
+        if copyToClipboard, outputPath == nil, let explicitFormat, explicitFormat != .png {
+            throw CLIError.incompatibleOptions(
+                "--copy always copies a PNG; --format \(explicitFormat.rawValue) requires --out.")
+        }
         if quiet, jsonOutput {
             throw CLIError.incompatibleOptions("Cannot combine --quiet with --json.")
         }
@@ -163,41 +168,7 @@ extension CLIArgumentParser {
             throw CLIError.incompatibleOptions(
                 "--watermark-x and --watermark-y require --watermark-position free.")
         }
-        if calloutText == nil,
-            calloutX != nil || calloutY != nil || calloutColor != nil || calloutSize != nil
-        {
-            throw CLIError.incompatibleOptions(
-                "--callout-x, --callout-y, --callout-color, and --callout-size require --callout.")
-        }
-        if (calloutX == nil) != (calloutY == nil) {
-            throw CLIError.incompatibleOptions(
-                "--callout-x and --callout-y must be provided together.")
-        }
-        if counterNumber == nil,
-            counterX != nil || counterY != nil || counterColor != nil || counterSize != nil
-        {
-            throw CLIError.incompatibleOptions(
-                "--counter-x, --counter-y, --counter-color, and --counter-size require --counter.")
-        }
-        if (counterX == nil) != (counterY == nil) {
-            throw CLIError.incompatibleOptions(
-                "--counter-x and --counter-y must be provided together.")
-        }
-        if arrowSegments.isEmpty, arrowColor != nil || arrowSize != nil {
-            throw CLIError.incompatibleOptions(
-                "--arrow-color and --arrow-size require --arrow.")
-        }
-        if lineSegments.isEmpty, lineColor != nil || lineSize != nil {
-            throw CLIError.incompatibleOptions(
-                "--line-color and --line-size require --line.")
-        }
-        if rectangleRegions.isEmpty, rectangleColor != nil || rectangleSize != nil {
-            throw CLIError.incompatibleOptions(
-                "--rectangle-color and --rectangle-size require --rectangle.")
-        }
-        if highlighterRegions.isEmpty, highlighterColor != nil {
-            throw CLIError.incompatibleOptions("--highlighter-color requires --highlighter.")
-        }
+        try annotations.validate()
         if imageInputPath == nil, imageFrame != nil || frameAppearance != nil {
             throw CLIError.incompatibleOptions(
                 "--frame and --frame-appearance require --image.")
@@ -241,13 +212,7 @@ extension CLIArgumentParser {
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
             || watermarkContentRequested
-            || calloutText != nil
-            || counterNumber != nil
-            || !arrowSegments.isEmpty
-            || !lineSegments.isEmpty
-            || !rectangleRegions.isEmpty
-            || !highlighterRegions.isEmpty
-            || !blurBoxRegions.isEmpty
+            || annotations.hasContent
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
@@ -318,9 +283,16 @@ extension CLIArgumentParser {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --wrap-columns.")
             }
-            if styleOptionsRequested {
+            if styleOptionsRequested || themeID != nil {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with render-only style options.")
+            }
+            // The handoff carries text, language, and terminal width only.
+            if presetID != nil || scale != nil || explicitFormat != nil || profile != nil
+                || noOverwrite
+            {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with render-only output options.")
             }
         }
         // A sidecar sits next to a written image, so it needs an `--out` path —
@@ -328,6 +300,11 @@ extension CLIArgumentParser {
         if textSidecar, outputPath == nil {
             throw CLIError.incompatibleOptions(
                 "--text-sidecar needs an --out path to write beside.")
+        }
+        if seenOptionIDs.contains(.altText), !markdownSidecar, !htmlSidecar {
+            throw CLIError.incompatibleOptions(
+                "--alt-text requires --markdown-sidecar or --html-sidecar; it is not drawn on the image."
+            )
         }
         if markdownSidecar, outputPath == nil {
             throw CLIError.incompatibleOptions(
@@ -382,38 +359,6 @@ extension CLIArgumentParser {
             } else {
                 nil
             }
-        let calloutPosition: CGPoint? =
-            if let calloutX, let calloutY {
-                CGPoint(x: calloutX, y: calloutY)
-            } else {
-                nil
-            }
-        let counterPosition: CGPoint? =
-            if let counterX, let counterY {
-                CGPoint(x: counterX, y: counterY)
-            } else {
-                nil
-            }
-        let arrows = arrowSegments.map {
-            CLIOptions.SegmentAnnotation(
-                start: $0.start, end: $0.end, color: arrowColor, size: arrowSize)
-        }
-        let lines = lineSegments.map {
-            CLIOptions.SegmentAnnotation(
-                start: $0.start, end: $0.end, color: lineColor, size: lineSize)
-        }
-        let rectangles = rectangleRegions.map {
-            CLIOptions.SegmentAnnotation(
-                start: $0.start, end: $0.end, color: rectangleColor, size: rectangleSize)
-        }
-        let highlighters = highlighterRegions.map {
-            CLIOptions.SegmentAnnotation(
-                start: $0.start, end: $0.end, color: highlighterColor, size: nil)
-        }
-        let blurBoxes = blurBoxRegions.map {
-            CLIOptions.SegmentAnnotation(
-                start: $0.start, end: $0.end, color: nil, size: nil)
-        }
         let resolvedMultiSizePresetIDs =
             mode == .multiSize
             ? ExportPreset.all.filter {
@@ -460,19 +405,19 @@ extension CLIArgumentParser {
             watermarkColor: watermarkColor,
             watermarkPosition: watermarkPosition,
             watermarkFreePosition: watermarkFreePosition,
-            calloutText: calloutText,
-            calloutPosition: calloutPosition,
-            calloutColor: calloutColor,
-            calloutSize: calloutSize,
-            counterNumber: counterNumber,
-            counterPosition: counterPosition,
-            counterColor: counterColor,
-            counterSize: counterSize,
-            arrows: arrows,
-            lines: lines,
-            rectangles: rectangles,
-            highlighters: highlighters,
-            blurBoxes: blurBoxes,
+            calloutText: annotations.calloutText,
+            calloutPosition: annotations.callout.position,
+            calloutColor: annotations.callout.color,
+            calloutSize: annotations.callout.size,
+            counterNumber: annotations.counterNumber,
+            counterPosition: annotations.counter.position,
+            counterColor: annotations.counter.color,
+            counterSize: annotations.counter.size,
+            arrows: annotations.arrows.materialized,
+            lines: annotations.lines.materialized,
+            rectangles: annotations.rectangles.materialized,
+            highlighters: annotations.highlighters.materialized,
+            blurBoxes: annotations.blurBoxes.materialized,
             imageFrame: imageFrame,
             frameAppearance: frameAppearance,
             noOverwrite: noOverwrite,

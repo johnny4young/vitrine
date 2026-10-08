@@ -25,6 +25,7 @@ EXPECTED = {
     "loopbackSubresourcesRequireExplicitOptIn()",
     "pendingLoadHonorsItsTimeout()",
     "realFullPageCaptureHonorsTheHeightCap()",
+    "networkQuietWaitsForALateFetch()",
     "clearingSessionsRemovesCachedPrivateResponses()",
 }
 PREFIX = "WebCaptureIntegrationTests/"

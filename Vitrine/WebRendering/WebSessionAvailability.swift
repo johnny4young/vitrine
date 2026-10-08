@@ -45,18 +45,6 @@ enum WebSessionAvailability {
         return nil
     }
 
-    /// Whether the sign-in affordance should be offered for this state.
-    static func canSignIn(
-        isCaptureEnabled: Bool,
-        usesLoggedInSession: Bool,
-        urlText: String,
-        allowsLoopback: Bool = false
-    ) -> Bool {
-        blocker(
-            isCaptureEnabled: isCaptureEnabled, usesLoggedInSession: usesLoggedInSession,
-            urlText: urlText, allowsLoopback: allowsLoopback) == nil
-    }
-
     /// The site a sign-in would apply to, for use in UI copy ("Sign in to github.com").
     /// `nil` when the text is not a capturable address.
     static func siteLabel(for urlText: String, allowsLoopback: Bool = false) -> String? {

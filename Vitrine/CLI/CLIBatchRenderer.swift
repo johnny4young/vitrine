@@ -6,7 +6,7 @@ import VitrineRendering
 /// Owns folder discovery, output planning, reporting, and batch render orchestration.
 enum CLIBatchRenderer {
     /// One skipped input in the optional batch JSON report.
-    private struct SkippedReportEntry: Encodable, Equatable {
+    private struct SkippedReportEntry: Codable, Equatable {
         /// Slash-separated input path relative to the batch input folder.
         var path: String
         /// Stable user-facing reason matching the stderr line.
@@ -21,7 +21,7 @@ enum CLIBatchRenderer {
     }
 
     /// One successful (or dry-run planned) batch output in the optional manifest.
-    private struct BatchManifestEntry: Encodable, Equatable {
+    private struct BatchManifestEntry: Codable, Equatable {
         /// Slash-separated input path relative to the batch input folder.
         var input: String
         /// Slash-separated output path relative to the batch output folder.
@@ -68,22 +68,15 @@ enum CLIBatchRenderer {
 
         let inputDirectory = URL(fileURLWithPath: options.inputPath)
         let outputDirectory = URL(fileURLWithPath: options.outputPath)
-        if !options.dryRunBatch {
-            do {
-                try FileManager.default.createDirectory(
-                    at: outputDirectory, withIntermediateDirectories: true)
-            } catch {
-                throw CLIError.writeFailed(path: options.outputPath)
-            }
-        }
-
+        // Discover before creating the output folder, so a missing input leaves nothing
+        // behind, and never treat earlier artifacts as new inputs on a re-run.
         let files = try batchInputFiles(
             in: inputDirectory,
             recursive: options.recursiveBatch,
             includeExtensions: options.batchIncludeExtensions,
             excludeExtensions: options.batchExcludeExtensions,
+            excluding: excludedArtifacts(options, inputDirectory: inputDirectory),
             directoryLister: directoryLister)
-
         var loadedInputs: [BatchLoadedInput] = []
         var skipped = 0
         var skippedReport: [SkippedReportEntry] = []
@@ -112,10 +105,20 @@ enum CLIBatchRenderer {
         // `.md`/`.txt`/`.html` sidecar can land exactly on file B. Checked against every
         // discovered input, not just the current one, and before the render loop so a
         // rejected run leaves the folder untouched.
-        let batchInputs = loadedInputs.map(\.file)
-        for outputURL in outputURLs.values {
-            try CLIOutputWriter.guardSidecarsDoNotOverwriteInputs(
-                beside: outputURL, options: options, inputs: batchInputs)
+        // Ordered by source key so the first reported conflict is the same on every run.
+        let plannedOutputs = outputURLs.keys.sorted().compactMap { outputURLs[$0] }
+        try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
+            beside: plannedOutputs, options: options, inputs: files)
+        try guardReportTargets(
+            options, outputURLs: plannedOutputs, inputs: files, inputDirectory: inputDirectory,
+            outputDirectory: outputDirectory)
+        if !options.dryRunBatch {
+            do {
+                try FileManager.default.createDirectory(
+                    at: outputDirectory, withIntermediateDirectories: true)
+            } catch {
+                throw CLIError.writeFailed(path: options.outputPath)
+            }
         }
 
         var rendered = 0
@@ -166,7 +169,7 @@ enum CLIBatchRenderer {
                 rendered += 1
             } catch {
                 skipped += 1
-                let reason = "render or write failed"
+                let reason = (error as? CLIError)?.message ?? "render or write failed"
                 skippedReport.append(
                     skippedReportEntry(for: file, under: inputDirectory, reason: reason))
                 reportSkipped(file, reason: reason)
@@ -202,6 +205,130 @@ enum CLIBatchRenderer {
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
     }
 
+    /// Paths a batch writes inside its own input tree: the output folder (unless it is the
+    /// input folder itself) and the manifest and skipped-report files.
+    private static func excludedArtifacts(
+        _ options: CLIOptions, inputDirectory: URL
+    ) -> (directory: String?, files: Set<String>) {
+        let input = canonicalPath(inputDirectory)
+        let output = canonicalPath(URL(fileURLWithPath: options.outputPath))
+        let files = [options.batchManifestPath, options.skippedReportPath]
+            .compactMap { $0 }.filter { !$0.isEmpty }
+            .map { canonicalPath(URL(fileURLWithPath: $0)) }
+        return (output == input ? nil : output, Set(files))
+    }
+
+    private static func canonicalPath(_ url: URL) -> String {
+        url.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
+    /// Reports are outputs too: writing one over an image, sidecar, or the other
+    /// report silently destroyed an artifact after the render loop claimed success.
+    /// Check the complete plan before any output is created, including dry runs,
+    /// which still write reports. Fold names like the image planner does so aliases
+    /// on the default case-insensitive Mac filesystem cannot bypass the guard.
+    private static func guardReportTargets(
+        _ options: CLIOptions, outputURLs: [URL], inputs: [URL], inputDirectory: URL,
+        outputDirectory: URL
+    ) throws {
+        let requested: [(path: String?, isManifest: Bool)] = [
+            (options.batchManifestPath, true), (options.skippedReportPath, false),
+        ]
+        let reports: [(url: URL, isManifest: Bool)] = requested.compactMap { request in
+            guard let path = request.path, !path.isEmpty else { return nil }
+            return (URL(fileURLWithPath: path), request.isManifest)
+        }
+        guard !reports.isEmpty else { return }
+        let resources = [options.backgroundImagePath, options.watermarkLogoPath]
+            .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
+        let artifactKeys = outputURLs.flatMap {
+            ([$0] + CLIOutputWriter.sidecarURLs(options, beside: $0)).map(CLIOutputWriter.claimKey)
+        }
+        let outputDirectoryKey = CLIOutputWriter.claimKey(outputDirectory)
+        // Discovered inputs, skipped ones included, are claimed too: a report spelled with
+        // different case than the source escapes the exact-path discovery exclusion.
+        var claimed = Set(artifactKeys + (inputs + resources).map(CLIOutputWriter.claimKey))
+        for (report, isManifest) in reports {
+            let key = CLIOutputWriter.claimKey(report)
+            // A report cannot sit where the run creates a folder, or below a file it writes.
+            let nested =
+                key == outputDirectoryKey
+                || artifactKeys.contains { $0.hasPrefix(key + "/") || key.hasPrefix($0 + "/") }
+            guard !nested, claimed.insert(key).inserted else {
+                throw CLIError.outputConflict(
+                    "The batch report at \"\(report.path)\" conflicts with an input resource "
+                        + "or another output. Choose distinct paths for resources and outputs.")
+            }
+            if options.noOverwrite, FileManager.default.fileExists(atPath: report.path) {
+                throw CLIError.outputExists(path: report.path)
+            }
+            try guardExistingInputReport(
+                report, isManifest: isManifest, inputDirectory: inputDirectory)
+        }
+    }
+
+    /// A named report is excluded from discovery for repeat runs. That must not
+    /// silently turn an existing source into an output. Recognize only the bounded,
+    /// matching legacy report structure inside the input tree; this is structural
+    /// recognition, not proof that Vitrine created the file.
+    static let maximumExistingReportBytes = FileInputLoader.maximumByteCount
+
+    private static func guardExistingInputReport(
+        _ report: URL, isManifest: Bool, inputDirectory: URL
+    ) throws {
+        func contains(_ path: String, under root: String) -> Bool {
+            path == root || path.hasPrefix(root.hasSuffix("/") ? root : root + "/")
+        }
+        let insideInput =
+            contains(
+                CLIOutputWriter.claimKey(report), under: CLIOutputWriter.claimKey(inputDirectory))
+            || contains(
+                report.standardizedFileURL.path, under: inputDirectory.standardizedFileURL.path)
+        guard insideInput, FileManager.default.fileExists(atPath: report.path) else { return }
+        guard
+            let data = try? BoundedFileReader.read(from: report, limit: maximumExistingReportBytes),
+            matchesReportStructure(data, isManifest: isManifest)
+        else {
+            throw CLIError.outputConflict(
+                "The batch report at \"\(report.path)\" would replace an unrecognized input file. "
+                    + "Choose a new report path or move the report outside the input folder.")
+        }
+    }
+
+    private static func matchesReportStructure(_ data: Data, isManifest: Bool) -> Bool {
+        guard let objects = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+            return false
+        }
+        let required: Set<String> =
+            isManifest
+            ? ["input", "output", "sidecars", "language", "format", "status"]
+            : ["path", "reason"]
+        let allowed = isManifest ? required.union(["width", "height"]) : required
+        let recognizedKeys = objects.allSatisfy {
+            let keys = Set($0.keys)
+            return required.isSubset(of: keys) && keys.isSubset(of: allowed)
+        }
+        guard recognizedKeys else { return false }
+        let decoder = JSONDecoder()
+        if isManifest {
+            guard let entries = try? decoder.decode([BatchManifestEntry].self, from: data) else {
+                return false
+            }
+            return entries.allSatisfy {
+                !$0.input.isEmpty && !$0.output.isEmpty
+                    && Language(rawValue: $0.language) != nil
+                    && $0.sidecars.allSatisfy { !$0.isEmpty }
+                    && ExportFormat(rawValue: $0.format) != nil
+                    && (($0.status == "planned" && $0.width == nil && $0.height == nil)
+                        || ($0.status == "rendered" && ($0.width ?? 0) > 0 && ($0.height ?? 0) > 0))
+            }
+        }
+        guard let entries = try? decoder.decode([SkippedReportEntry].self, from: data) else {
+            return false
+        }
+        return entries.allSatisfy { !$0.path.isEmpty && !$0.reason.isEmpty }
+    }
+
     /// Lists regular files for batch rendering. Non-recursive mode keeps the legacy
     /// top-level behavior; recursive mode uses FileManager's enumerator so nested
     /// folders can be mirrored under the output directory.
@@ -210,18 +337,31 @@ enum CLIBatchRenderer {
         recursive: Bool,
         includeExtensions: Set<String>,
         excludeExtensions: Set<String>,
+        excluding excluded: (directory: String?, files: Set<String>),
         directoryLister: (URL) throws -> [URL]
     ) throws -> [URL] {
         let entries: [URL]
         do {
             if recursive {
+                var isDirectory: ObjCBool = false
                 guard
+                    FileManager.default.fileExists(
+                        atPath: inputDirectory.path, isDirectory: &isDirectory),
+                    isDirectory.boolValue,
                     let enumerator = FileManager.default.enumerator(
                         at: inputDirectory,
                         includingPropertiesForKeys: [.isRegularFileKey],
                         options: [.skipsHiddenFiles])
                 else { throw CLIError.inputUnreadable(path: inputDirectory.path) }
-                entries = enumerator.compactMap { $0 as? URL }
+                var found: [URL] = []
+                while let entry = enumerator.nextObject() as? URL {
+                    if let directory = excluded.directory, canonicalPath(entry) == directory {
+                        enumerator.skipDescendants()
+                        continue
+                    }
+                    found.append(entry)
+                }
+                entries = found
             } else {
                 entries = try directoryLister(inputDirectory)
             }
@@ -233,6 +373,7 @@ enum CLIBatchRenderer {
 
         return
             entries
+            .filter { !excluded.files.contains(canonicalPath($0)) }
             .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
             .filter {
                 isIncludedByBatchExtensionFilters(
