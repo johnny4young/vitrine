@@ -7,10 +7,15 @@ import math
 import re
 from pathlib import Path
 
+LOCALES = ("en", "es")
+APPEARANCES = ("light", "dark")
+SIZES = ("minimum", "1280")
 STATES = {f"{locale}-{appearance}-{size}" for locale, appearance, size in
-          itertools.product(("en", "es"), ("light", "dark"), ("minimum", "1280"))}
+          itertools.product(LOCALES, APPEARANCES, SIZES)}
 PHASES = ("launch", "navigation", "description", "package-setup", "panel", "export", "validation", "termination")
 PATTERN = re.compile(r"DOCUMENTATION_UI_SEGMENT state=(\S+) phase=(\S+) seconds=(\S+)")
+# The test that emits the markers; its labels must stay in lockstep with the constants above.
+SOURCE = Path(__file__).resolve().parent.parent / "UITests" / "DocumentationExportUITests.swift"
 
 
 def summarize(text):
@@ -33,21 +38,46 @@ def summarize(text):
             "qualification": "diagnostic timings only; no controlled performance improvement claim"}
 
 
+def check_source(source):
+    """Fail when the UI test's marker labels drift from the constants the summarizer expects."""
+    phases = tuple(re.findall(r'recordSegment\("([^"]+)"\)', source))
+    languages = re.search(r"for language in \[([^\]]+)\]", source)
+    locales = tuple(re.findall(r'"([^"]+)"', languages.group(1) if languages else ""))
+    ternary = re.search(r'dark \? "([^"]+)" : "([^"]+)"', source)
+    appearances = (ternary.group(2), ternary.group(1)) if ternary else ()
+    sizes = tuple(re.findall(r'label: "([^"]+)"', source))
+    found = (phases, locales, appearances, sizes)
+    if found != (PHASES, LOCALES, APPEARANCES, SIZES):
+        raise ValueError(f"Test marker labels {found} differ from summarizer labels "
+                         f"{(PHASES, LOCALES, APPEARANCES, SIZES)}")
+
+
 def self_test():
+    check_source(SOURCE.read_text(encoding="utf-8"))
     valid = "\n".join(f"DOCUMENTATION_UI_SEGMENT state={s} phase={p} seconds=1.25"
                       for s in sorted(STATES) for p in PHASES)
-    assert summarize(valid)["total_seconds"] == 80
+    if summarize(valid)["total_seconds"] != 80:
+        raise AssertionError("Complete timing evidence was not summed correctly")
     for invalid in ("", valid.split("\n", 1)[1], valid + "\n" + valid.splitlines()[0],
                     valid.replace("seconds=1.25", "seconds=nan", 1),
                     valid.replace("seconds=1.25", "seconds=-1", 1),
-                    valid.replace("state=en-dark-1280", "state=unknown", 1),
-                    valid.replace("phase=launch", "phase=unknown", 1)):
+                    valid.replace("seconds=1.25", "seconds=soon", 1),
+                    valid + "\nDOCUMENTATION_UI_SEGMENT state=unknown phase=launch seconds=1.25",
+                    valid + "\nDOCUMENTATION_UI_SEGMENT state=en-dark-1280 phase=unknown seconds=1.25"):
         try:
             summarize(invalid)
         except ValueError:
             pass
         else:
             raise AssertionError("Malformed/incomplete timing evidence was accepted")
+    for drifted in (SOURCE.read_text(encoding="utf-8").replace('recordSegment("panel")', 'recordSegment("dialog")'),
+                    SOURCE.read_text(encoding="utf-8").replace('label: "1280"', 'label: "large"')):
+        try:
+            check_source(drifted)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Drifted test marker labels were accepted")
     print("documentation UI timing self-tests passed")
 
 
@@ -60,7 +90,9 @@ if __name__ == "__main__":
         self_test()
     elif args.log:
         try:
-            print(json.dumps(summarize(args.log.read_text()), indent=2))
+            # Marker lines are ASCII; a stray byte elsewhere in a large job log is not evidence.
+            text = args.log.read_text(encoding="utf-8", errors="replace")
+            print(json.dumps(summarize(text), indent=2))
         except (ValueError, OSError) as error:
             parser.exit(1, f"Invalid documentation UI timing evidence: {error}\n")
     else:
