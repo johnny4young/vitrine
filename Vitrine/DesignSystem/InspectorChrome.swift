@@ -121,6 +121,7 @@ struct InspectorDisclosure<Content: View>: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityValue(isExpanded ? Text("Expanded") : Text("Collapsed"))
             .accessibilityIdentifier(identifier)
 
             if isExpanded {

@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import time
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from socketserver import TCPServer
@@ -128,6 +129,17 @@ class Handler(BaseHTTPRequestHandler):
             return
         if route == "script":
             self.reply(b"window.fixtureLoaded = true;", "application/javascript")
+            return
+        if route == "late-fetch":
+            body = ("<!doctype html><body style='margin:0;background:#ff0000'><script>"
+                    f"fetch('/slow-data/{key}').then(() => "
+                    "{ document.body.style.background = '#00ff00'; });"
+                    "</script></body>")
+            self.reply(body.encode(), "text/html")
+            return
+        if route == "slow-data":
+            time.sleep(1.5)
+            self.reply(b"ok", "text/plain")
             return
         if route == "tall":
             self.reply(b"<!doctype html><body style='height:100000px;background:green'></body>", "text/html")

@@ -20,34 +20,19 @@ import VitrineRendering
 /// pieces out, so the reviewable privacy sentence lives in exactly one place and is
 /// reused wherever the disclosure appears.
 ///
-/// ## Capability-aware
-///
-/// The confirm action is enabled only when the build can actually reach the network
-/// (`NetworkCapability.isURLCaptureEnabled`). A network-free build shows the same
-/// disclosure with the action disabled and an explicit direct-download note, so the
-/// UI never implies a capability the build does not have.
-///
 /// ## Presentation
 ///
 /// The Web Snapshot window hosts this in a modal `.sheet` on the first URL capture,
 /// persists the confirmation in `AppSettings.webCapture.consentGiven`, and lets
-/// `onConfirm` gate the load. URL capture itself stays gated on the network
-/// entitlement (`NetworkCapability`): the App Store build ships without
-/// `com.apple.security.network.client`, so there the confirm action is disabled and
-/// the disclosure explains that capture is only available in the direct-download
-/// build.
+/// `onConfirm` gate the load. It is presented only where URL capture is available
+/// (`NetworkCapability`); a build without network client access fails the capture
+/// with an explanation instead of offering a confirmation it cannot honor.
 struct WebPrivacyDisclosureView: View {
-    /// Called when the user confirms; the caller proceeds with the capture. Only
-    /// reachable when the build can reach the network.
+    /// Called when the user confirms; the caller proceeds with the capture.
     let onConfirm: () -> Void
 
     /// Called when the user cancels; nothing is loaded.
     let onCancel: () -> Void
-
-    /// Whether this build can actually reach the network for a capture. Injectable
-    /// so the disclosure renders in both states for previews and tests; defaults to
-    /// the running app's real entitlement, so production matches the build.
-    var isURLCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
 
     /// The reviewable, localized copy. Sourced once from `WebSnapshotConfig` so the
     /// privacy sentence is identical everywhere it is shown.
@@ -68,12 +53,6 @@ struct WebPrivacyDisclosureView: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             promiseRow
-
-            // In a network-free build the action is disabled; say why, plainly,
-            // rather than leaving a dead button unexplained.
-            if !isURLCaptureEnabled {
-                networkUnavailableNote
-            }
 
             actions
         }
@@ -130,25 +109,7 @@ struct WebPrivacyDisclosureView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Shown only in a build without the network entitlement: the direct-download
-    /// channel can capture webpages, while a network-free build refuses plainly so
-    /// the disabled action is never a mystery.
-    private var networkUnavailableNote: some View {
-        Label {
-            Text("Webpage capture requires the direct-download build with local network access.")
-                .font(.callout)
-                .foregroundStyle(Brand.Palette.textSecondary.color)
-                .fixedSize(horizontal: false, vertical: true)
-        } icon: {
-            Image(systemName: "network.slash")
-                .foregroundStyle(Brand.Palette.textSecondary.color)
-        }
-        .accessibilityElement(children: .combine)
-    }
-
-    /// Cancel (always available) and the capture confirmation (enabled only when the
-    /// build can reach the network). The confirm button stays the prominent default
-    /// action so a capable build reads as ready to proceed.
+    /// Cancel and the capture confirmation, the prominent default action.
     private var actions: some View {
         HStack(spacing: Brand.Spacing.sm) {
             Spacer()
@@ -160,30 +121,14 @@ struct WebPrivacyDisclosureView: View {
             Button(disclosure.confirmTitle, action: onConfirm)
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(!isURLCaptureEnabled)
-                .help(confirmHelp)
+                .help("Load this webpage locally in WebKit and capture it.")
                 .accessibilityIdentifier("web-privacy-confirm")
         }
     }
-
-    /// The confirm button's tooltip, matching its state: in a capable build it names
-    /// the action; in a network-free build (where the button is disabled) it gives the same
-    /// reason as the inline note, so hovering the dead control is never a mystery.
-    private var confirmHelp: LocalizedStringKey {
-        isURLCaptureEnabled
-            ? "Load this webpage locally in WebKit and capture it."
-            : "Webpage capture requires the direct-download build with local network access."
-    }
 }
 
-#Preview("Capture enabled") {
-    WebPrivacyDisclosureView(onConfirm: {}, onCancel: {}, isURLCaptureEnabled: true)
-        .padding(Brand.Spacing.xxl)
-        .background(Brand.Palette.stage.color)
-}
-
-#Preview("local rendering (capture disabled)") {
-    WebPrivacyDisclosureView(onConfirm: {}, onCancel: {}, isURLCaptureEnabled: false)
+#Preview("Privacy disclosure") {
+    WebPrivacyDisclosureView(onConfirm: {}, onCancel: {})
         .padding(Brand.Spacing.xxl)
         .background(Brand.Palette.stage.color)
 }

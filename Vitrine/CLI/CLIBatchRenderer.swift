@@ -68,6 +68,15 @@ enum CLIBatchRenderer {
 
         let inputDirectory = URL(fileURLWithPath: options.inputPath)
         let outputDirectory = URL(fileURLWithPath: options.outputPath)
+        // Discover before creating the output folder, so a missing input leaves nothing
+        // behind, and never treat earlier artifacts as new inputs on a re-run.
+        let files = try batchInputFiles(
+            in: inputDirectory,
+            recursive: options.recursiveBatch,
+            includeExtensions: options.batchIncludeExtensions,
+            excludeExtensions: options.batchExcludeExtensions,
+            excluding: excludedArtifacts(options, inputDirectory: inputDirectory),
+            directoryLister: directoryLister)
         if !options.dryRunBatch {
             do {
                 try FileManager.default.createDirectory(
@@ -76,13 +85,6 @@ enum CLIBatchRenderer {
                 throw CLIError.writeFailed(path: options.outputPath)
             }
         }
-
-        let files = try batchInputFiles(
-            in: inputDirectory,
-            recursive: options.recursiveBatch,
-            includeExtensions: options.batchIncludeExtensions,
-            excludeExtensions: options.batchExcludeExtensions,
-            directoryLister: directoryLister)
 
         var loadedInputs: [BatchLoadedInput] = []
         var skipped = 0
@@ -114,7 +116,7 @@ enum CLIBatchRenderer {
         // rejected run leaves the folder untouched.
         let batchInputs = loadedInputs.map(\.file)
         for outputURL in outputURLs.values {
-            try CLIOutputWriter.guardSidecarsDoNotOverwriteInputs(
+            try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
                 beside: outputURL, options: options, inputs: batchInputs)
         }
 
@@ -166,7 +168,7 @@ enum CLIBatchRenderer {
                 rendered += 1
             } catch {
                 skipped += 1
-                let reason = "render or write failed"
+                let reason = (error as? CLIError)?.message ?? "render or write failed"
                 skippedReport.append(
                     skippedReportEntry(for: file, under: inputDirectory, reason: reason))
                 reportSkipped(file, reason: reason)
@@ -202,6 +204,23 @@ enum CLIBatchRenderer {
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
     }
 
+    /// Paths a batch writes inside its own input tree: the output folder (unless it is the
+    /// input folder itself) and the manifest and skipped-report files.
+    private static func excludedArtifacts(
+        _ options: CLIOptions, inputDirectory: URL
+    ) -> (directory: String?, files: Set<String>) {
+        let input = canonicalPath(inputDirectory)
+        let output = canonicalPath(URL(fileURLWithPath: options.outputPath))
+        let files = [options.batchManifestPath, options.skippedReportPath]
+            .compactMap { $0 }.filter { !$0.isEmpty }
+            .map { canonicalPath(URL(fileURLWithPath: $0)) }
+        return (output == input ? nil : output, Set(files))
+    }
+
+    private static func canonicalPath(_ url: URL) -> String {
+        url.standardizedFileURL.resolvingSymlinksInPath().path
+    }
+
     /// Lists regular files for batch rendering. Non-recursive mode keeps the legacy
     /// top-level behavior; recursive mode uses FileManager's enumerator so nested
     /// folders can be mirrored under the output directory.
@@ -210,18 +229,31 @@ enum CLIBatchRenderer {
         recursive: Bool,
         includeExtensions: Set<String>,
         excludeExtensions: Set<String>,
+        excluding excluded: (directory: String?, files: Set<String>),
         directoryLister: (URL) throws -> [URL]
     ) throws -> [URL] {
         let entries: [URL]
         do {
             if recursive {
+                var isDirectory: ObjCBool = false
                 guard
+                    FileManager.default.fileExists(
+                        atPath: inputDirectory.path, isDirectory: &isDirectory),
+                    isDirectory.boolValue,
                     let enumerator = FileManager.default.enumerator(
                         at: inputDirectory,
                         includingPropertiesForKeys: [.isRegularFileKey],
                         options: [.skipsHiddenFiles])
                 else { throw CLIError.inputUnreadable(path: inputDirectory.path) }
-                entries = enumerator.compactMap { $0 as? URL }
+                var found: [URL] = []
+                while let entry = enumerator.nextObject() as? URL {
+                    if let directory = excluded.directory, canonicalPath(entry) == directory {
+                        enumerator.skipDescendants()
+                        continue
+                    }
+                    found.append(entry)
+                }
+                entries = found
             } else {
                 entries = try directoryLister(inputDirectory)
             }
@@ -233,6 +265,7 @@ enum CLIBatchRenderer {
 
         return
             entries
+            .filter { !excluded.files.contains(canonicalPath($0)) }
             .filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
             .filter {
                 isIncludedByBatchExtensionFilters(

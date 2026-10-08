@@ -1,5 +1,6 @@
 import AppKit
 import Testing
+import VitrineDomain
 import VitrineRendering
 
 @testable import Vitrine
@@ -34,6 +35,49 @@ struct PublishWorkflowTests {
         #expect(CarouselPaginator.pages(for: "\n\n", maxLinesPerSlide: 12).isEmpty)
     }
 
+    @Test func slideLineMarksFollowTheirLines() {
+        let slides = CarouselPaginator.slides(for: "1\n2\n3\n4\n5\n6", maxLinesPerSlide: 3)
+        #expect(slides.map(\.firstLine) == [1, 4])
+        #expect(slides[0].localRanges([2...5]) == [2...3])
+        #expect(slides[1].localRanges([2...5]) == [1...2])
+        #expect(slides[1].localRanges([1...3]).isEmpty)
+    }
+
+    @Test func redactedLinesStayRedactedOnSlides() async throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrineCarousel-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var base = SnapshotConfig()
+        base.code = "one\ntwo\nsecret\nfour"
+        base.redactedLineRanges = [3...3]
+        let slides = CarouselPaginator.slides(for: base.code, maxLinesPerSlide: 2)
+        let result = await ExportManager.exportCarousel(base, slides: slides, to: dir)
+        #expect(result.written == 2)
+
+        let written = try #require(
+            GoldenComparator.loadImage(at: dir.appendingPathComponent("carousel-02.png")))
+        var redacted = base
+        redacted.clearContentMarks()
+        redacted.code = "secret\nfour"
+        redacted.redactedLineRanges = [1...1]
+        redacted.fontSize = max(redacted.fontSize, ExportManager.carouselMinimumFontSize)
+        let reference = try #require(
+            ExportManager.renderCGImage(
+                redacted, scale: 1, fixedSize: ExportManager.carouselSlideSize))
+        #expect(try Self.pixelComparison(written, reference).matches)
+    }
+
+    @Test func carouselRefusesTerminalAndBlurredDocuments() {
+        var style = SnapshotConfig()
+        #expect(EditorView.carouselAccepts(style))
+        style.language = .terminal
+        #expect(!EditorView.carouselAccepts(style))
+        style.language = .swift
+        style.annotations = [Annotation(kind: .blur, start: .zero, end: CGPoint(x: 1, y: 1))]
+        #expect(!EditorView.carouselAccepts(style))
+    }
+
     /// The export writes one numbered PNG per page at the 4:5 slide frame, and each
     /// slide matches a single render of that page at the normalized-pixel layer.
     /// ImageIO may encode identical pixels into different PNG byte streams, so the
@@ -46,10 +90,11 @@ struct PublishWorkflowTests {
 
         var base = SnapshotConfig()
         base.code = "one\ntwo\nthree\nfour"
-        let pages = CarouselPaginator.pages(for: base.code, maxLinesPerSlide: 2)
+        let slides = CarouselPaginator.slides(for: base.code, maxLinesPerSlide: 2)
+        let pages = slides.map(\.text)
         #expect(pages.count == 2)
 
-        let result = await ExportManager.exportCarousel(base, pages: pages, to: dir)
+        let result = await ExportManager.exportCarousel(base, slides: slides, to: dir)
         #expect(result.written == 2)
         #expect(result.failed == 0)
 

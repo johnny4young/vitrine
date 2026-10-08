@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Locates resources the `vitrine` executable ships with.
@@ -15,7 +16,25 @@ enum CLIEnvironment {
     /// The directory holding the bundled monospaced fonts, or `nil` when it cannot
     /// be located (in which case the CLI falls back to system fonts).
     static var bundledFontsDirectory: URL? {
-        let executableDirectory = URL(fileURLWithPath: CommandLine.arguments[0])
+        bundledFontsDirectory(executableURL: executableURL)
+    }
+
+    /// The running binary's absolute path from dyld. `argv[0]` is a bare `vitrine` when
+    /// the tool runs from PATH, which would resolve against the working directory.
+    nonisolated static var executableURL: URL? {
+        var size: UInt32 = 0
+        _ = _NSGetExecutablePath(nil, &size)
+        var buffer = [CChar](repeating: 0, count: Int(size) + 1)
+        guard _NSGetExecutablePath(&buffer, &size) == 0 else { return Bundle.main.executableURL }
+        return buffer.withUnsafeBufferPointer { pointer in
+            pointer.baseAddress.map { URL(fileURLWithPath: String(cString: $0)) }
+        }
+    }
+
+    static func bundledFontsDirectory(executableURL: URL?) -> URL? {
+        guard let executableURL else { return nil }
+        let executableDirectory =
+            executableURL
             .resolvingSymlinksInPath()
             .deletingLastPathComponent()
 

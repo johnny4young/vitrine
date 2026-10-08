@@ -458,17 +458,6 @@ extension WebSnapshotConfig {
             }
         }
 
-        /// The extra wait applied *after* the navigation settles, before the snapshot.
-        /// Zero for `.domContentLoaded`; the configured value otherwise. Exposed so the
-        /// engine and the tests share one definition of the post-load delay.
-        var postLoadDelay: Duration {
-            switch self {
-            case .domContentLoaded: .zero
-            case .fixedDelay(let delay): delay
-            case .networkQuiet(let budget): budget
-            }
-        }
-
         /// A short, localized label for the strategy, used in the settings picker.
         /// Flows through the String Catalog so it reads in the user's
         /// language, matching the localized chrome around it.
@@ -595,10 +584,6 @@ extension WebSnapshotConfig {
         /// cookies and website data are available to the page and updates persist.
         /// A user chooses this deliberately; it is never reached by default.
         case persistent
-
-        /// Whether this mode persists cookies and website data to disk. `false` for
-        /// the default per-render store, `true` only for the explicit opt-in.
-        var persistsWebsiteData: Bool { self == .persistent }
     }
 }
 

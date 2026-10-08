@@ -35,7 +35,7 @@ npm test
 
 The build validator checks both language routes, canonical and alternate-language
 metadata, structured data, core gallery sections, browser-script syntax, crawl files,
-internal links, and the social-card dimensions. Both home pages render all 93 marketing
+internal links, and the social-card dimensions. Both home pages render all 100 marketing
 messages from `src/i18n/content.ts` at build time; navigation, accessible labels and image
 descriptions share the typed locale catalog. Rich-text messages are trusted repository
 content only, never user input or release API data.
@@ -81,8 +81,10 @@ the dependency is patched regardless. No public vulnerability exception is requi
 ## Deployment
 
 `.github/workflows/deploy-site.yml` builds this package and deploys `dist/` to the
-`vitrine-web` Cloudflare Pages project. Deployments run when `site/` changes, when a
-GitHub release is published, or through a manual workflow dispatch.
+`vitrine-web` Cloudflare Pages project. A push to `main` that changes `site/` only
+validates the build; production changes only when the release workflow calls it with the
+promoted tag, or through a manual dispatch whose `release_ref` names a published stable
+tag.
 
 ### Visual accessibility checks
 
