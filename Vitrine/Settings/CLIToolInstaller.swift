@@ -98,16 +98,19 @@ enum CLIToolInstaller {
     ) -> String {
         let link = "sudo ln -s \(ShellCommandQuoter.singleQuoted(canonicalURL(target).path)) "
         if let directory {
-            return link + directory.appendingPathComponent("vitrine").path
+            let destination = directory.appendingPathComponent("vitrine")
+            return link + ShellCommandQuoter.singleQuoted(destination.path)
         }
         let resolvedArchitecture = architecture ?? currentArchitecture
         let candidates = binDirectories(for: resolvedArchitecture)
         if let existing = candidates.first(where: directoryExists) {
-            return link + existing.appendingPathComponent("vitrine").path
+            let destination = existing.appendingPathComponent("vitrine")
+            return link + ShellCommandQuoter.singleQuoted(destination.path)
         }
         let traditional = candidates.first { $0.path == "/usr/local/bin" } ?? candidates[0]
-        return "sudo mkdir -p \(traditional.path) && "
-            + link + traditional.appendingPathComponent("vitrine").path
+        let destination = traditional.appendingPathComponent("vitrine")
+        return "sudo mkdir -p \(ShellCommandQuoter.singleQuoted(traditional.path)) && "
+            + link + ShellCommandQuoter.singleQuoted(destination.path)
     }
 
     /// The result of an install attempt into a powerbox-granted folder.

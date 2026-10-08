@@ -477,11 +477,17 @@ is the only entry point: it selects one source file, applies the same bounded te
 used by drag and drop, and retains that file's security scope only while the editor
 window remains open. Filesystem access sits behind an async, `Sendable` `FileClient`.
 Swift 6.2 `@concurrent` entry points move metadata lookup and the bounded descriptor read
-off the main actor; decoding policy stays centralized, and editor state is applied only
+off the main actor; the shared bounded reader rejects descriptor size, modification-time,
+and change-time changes between admission and completion, including same-length
+in-place rewrites. It does not promise snapshot isolation against arbitrary writers.
+Decoding policy stays centralized, and editor state is applied only
 on the main actor. A 650 ms task compares file size, modification date, resource
 identifier, and filesystem file/volume numbers; including inode identity detects editors
 that save by atomically replacing the file instead of mutating its original inode.
-Content is read only after the stamp changes.
+Content is read only after the stamp changes. Explicit reload brackets its content
+read with metadata checks and remembers a stamp only if both checks agree. Changed
+or unavailable evidence leaves the stamp unknown, so the next poll retries instead
+of associating newer path metadata with older bytes.
 
 The session records the last text it applied. When the editor still equals that baseline,
 a saved version replaces it and clears content-bound marks through the normal
@@ -641,7 +647,9 @@ relative symlink destinations, prefers `/opt/homebrew/bin` on Apple Silicon and
 `/usr/local/bin` on Intel, and retains the other prefix as a fallback. New links are staged
 as unique siblings and installed with `RENAME_EXCL` or `RENAME_SWAP`, so a regular file
 named `vitrine` is never removed and stale links have no unlink/recreate gap. The copyable
-Terminal fallback intentionally omits `ln -f` for the same fail-closed rule.
+Terminal fallback intentionally omits `ln -f` for the same fail-closed rule. Every
+filesystem argument, including a user-selected destination and prefix creation, uses
+the same POSIX single-quote encoder. Command-generation tests inspect strings only.
 
 **Share-link encoding.** `vitrine://open` accepts one bounded, canonical RFC 4648
 base64url representation. The decoder rejects padding, whitespace, standard base64
@@ -1197,7 +1205,14 @@ close-after-copy targets only the concrete window captured by the editor root; a
 clipboard write leaves it open for recovery. Multi-size and carousel sheets receive the
 session's feedback operation plus a narrow `BatchExportPresentation` value for directory
 selection and Finder reveal. Their pure completion policy requires every expected output
-before dismissing, so an inconsistent writer result cannot silently claim success. The
+before dismissing, so an inconsistent writer result cannot silently claim success.
+Preset and carousel exports plan all image/sidecar names together before rendering,
+allocating numeric suffixes around occupied names. Complete files are staged privately
+and published with exclusive rename, preserving destinations created after planning.
+Volumes that refuse exclusive rename fall back to an exclusive, non-following create.
+A requested nonempty sidecar failure leaves its completed image in place and reports
+an incomplete export. Cancellation stops further admission and publication; already
+committed files remain available. The
 application-menu editor responder receives the feedback and presentation operations from
 the lifecycle-owned menu. Reusable styles, custom-theme resolution, watermark previews,
 feature gates, upgrade sheets, feedback, pinning, sharing, and batch export presentation
