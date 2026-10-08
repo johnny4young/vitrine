@@ -83,7 +83,7 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
         let window = self.window ?? makeWindow()
         self.window = window
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        AppActivation.bringForward()
     }
 
     private func makeWindow() -> NSWindow {
@@ -101,14 +101,7 @@ final class WebSnapshotWindowController: NSObject, NSWindowDelegate {
         window.delegate = self
         window.setAccessibilityIdentifier(Self.windowIdentifier)
 
-        window.setFrameAutosaveName(Self.frameAutosaveName)
-        if !window.setFrameUsingName(Self.frameAutosaveName) {
-            if let visible = (window.screen ?? NSScreen.main)?.visibleFrame {
-                window.setFrame(
-                    WindowFrameSolver.clamp(window.frame, into: visible), display: false)
-            }
-            window.center()
-        }
+        WindowPlacement.placeNew(window, autosaveName: Self.frameAutosaveName)
         return window
     }
 

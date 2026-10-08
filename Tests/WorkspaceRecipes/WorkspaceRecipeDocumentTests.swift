@@ -94,6 +94,43 @@ struct WorkspaceRecipeDocumentTests {
         }
     }
 
+    /// Style values are part of the checked contract too: a mistyped value must not
+    /// silently fall back to a default the author never chose.
+    @Test(arguments: [
+        ("fontSize", #""18""#, "has the wrong value type."),
+        ("showLineNumbers", #""true""#, "has the wrong value type."),
+        ("background", #"{"kind":"gradiant","preset":"Ocean"}"#, "contains an invalid value."),
+        ("background", #"{"kind":"gradient","preset":"Ocen"}"#, "contains an invalid value."),
+    ])
+    func rejectsMistypedStyleValues(_ key: String, _ json: String, _ problem: String) throws {
+        let value = try JSONSerialization.jsonObject(
+            with: Data(json.utf8), options: .fragmentsAllowed)
+        let data = try WorkspaceRecipeDocument(recipe: sampleRecipe()).jsonData()
+        var root = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var recipe = try #require(root["recipe"] as? [String: Any])
+        var style = try #require(recipe["style"] as? [String: Any])
+        style[key] = value
+        recipe["style"] = style
+        root["recipe"] = recipe
+
+        do {
+            _ = try WorkspaceRecipeDocument.recipe(
+                from: JSONSerialization.data(withJSONObject: root))
+            Issue.record("A mistyped \(key) was accepted.")
+        } catch let WorkspaceRecipeDocument.ImportError.invalidDocument(message) {
+            #expect(message.hasPrefix("The field \"recipe.style.\(key)"))
+            #expect(message.hasSuffix(problem))
+        }
+    }
+
+    /// Presets and preferences keep the tolerant decoder.
+    @Test func presetStyleDecodingStaysTolerant() throws {
+        let json = #"{"themeID":"dracula","fontSize":"18","background":{"kind":"gradiant"}}"#
+        let style = try JSONDecoder().decode(StyleSnapshot.self, from: Data(json.utf8))
+        #expect(style.fontSize == SettingsDefaults.fontSize)
+        #expect(style.background == .gradient(.aurora))
+    }
+
     @Test func validatesCatalogReferencesAndOutputBounds() throws {
         var unknownPreset = sampleRecipe()
         unknownPreset.output.destinationPresetID = "unknown"

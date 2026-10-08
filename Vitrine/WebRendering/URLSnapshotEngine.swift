@@ -89,6 +89,9 @@ struct URLSnapshotEngine {
         configuration.userContentController.add(
             try await Self.privateNetworkBlockList(
                 allowsLoopback: config.allowsLoopbackCapture))
+        if case .networkQuiet = config.waitStrategy {
+            configuration.userContentController.addUserScript(Self.networkActivityScript)
+        }
 
         let frame = CGRect(origin: .zero, size: viewport)
         let webView = WKWebView(frame: frame, configuration: configuration)
@@ -191,36 +194,23 @@ struct URLSnapshotEngine {
         }
     }
 
-    /// Best-effort network-quiet wait: polls until the document reports it has
-    /// finished loading and stays settled for a short idle window, or until `budget`
-    /// elapses — whichever comes first. Bounded by the budget so a page that polls
-    /// forever still returns.
+    /// Best-effort network-quiet wait: polls until the document has loaded, no
+    /// fetch/XHR is in flight, and no new resource has started for an idle window, or
+    /// until `budget` elapses — whichever comes first. Bounded by the budget so a page
+    /// that polls forever still returns.
     private func waitForNetworkQuiet(
         on webView: WKWebView, budget: Duration, deadline totalDeadline: ContinuousClock.Instant
     ) async throws {
         let deadline = min(ContinuousClock.now.advanced(by: budget), totalDeadline)
-        let idleWindow = Duration.milliseconds(400)
         let pollInterval = Duration.milliseconds(100)
-        var settledSince: ContinuousClock.Instant?
+        var tracker = NetworkQuietTracker(idleWindow: .milliseconds(500))
 
         while ContinuousClock.now < deadline {
-            let isComplete = await documentIsComplete(webView)
-            let now = ContinuousClock.now
-            if isComplete {
-                if let since = settledSince {
-                    if since.duration(to: now) >= idleWindow { return }
-                } else {
-                    settledSince = now
-                }
-            } else {
-                settledSince = nil
-            }
-            // Sleep one poll interval, never overshooting the budget deadline. Budget
-            // exhaustion is a normal best-effort exit (the loop condition ends it and the page
-            // is snapshotted anyway), NOT a failure — so this must not throw `.timedOut` the way
-            // the deadline-enforcing `sleep(_:within:)` does. Only the absolute total deadline,
-            // checked after the loop, fails the capture. (A sub-interval remaining budget made
-            // the old `sleep(within:)` throw here and surface as `renderFailed`.)
+            let sample = await networkActivity(webView)
+            if tracker.record(sample, at: ContinuousClock.now) { return }
+            // Budget exhaustion is a normal best-effort exit (the page is snapshotted
+            // anyway), so this sleep must not throw `.timedOut`; only the absolute total
+            // deadline, checked after the loop, fails the capture.
             let remaining = ContinuousClock.now.duration(to: deadline)
             guard remaining > .zero else { break }
             try await Task.sleep(for: min(pollInterval, remaining))
@@ -228,13 +218,70 @@ struct URLSnapshotEngine {
         if ContinuousClock.now >= totalDeadline { throw WebSnapshotError.timedOut }
     }
 
-    /// Whether `document.readyState` is `complete` — the cheapest available "page has
-    /// settled" signal. Any evaluation failure conservatively reports `false`, so a
-    /// flaky probe never short-circuits the quiet wait early.
-    private func documentIsComplete(_ webView: WKWebView) async -> Bool {
-        let state = try? await webView.evaluateJavaScript("document.readyState") as? String
-        return state == "complete"
+    /// One reading of the page's load state, in-flight request count, and resource
+    /// count. Any evaluation failure reads as busy, so a flaky probe never ends the wait
+    /// early.
+    private func networkActivity(_ webView: WKWebView) async -> NetworkQuietTracker.Sample {
+        let script = """
+            [document.readyState === "complete",
+             window.__vitrineNetworkActivity ? window.__vitrineNetworkActivity.pending : 0,
+             performance.getEntriesByType("resource").length]
+            """
+        guard
+            let values = try? await webView.evaluateJavaScript(script) as? [Any],
+            values.count == 3,
+            let isComplete = values[0] as? Bool,
+            let pending = (values[1] as? NSNumber)?.intValue,
+            let resources = (values[2] as? NSNumber)?.intValue
+        else {
+            return NetworkQuietTracker.Sample(
+                isComplete: false, pendingRequests: 1, resourceCount: 0)
+        }
+        return NetworkQuietTracker.Sample(
+            isComplete: isComplete, pendingRequests: pending, resourceCount: resources)
     }
+
+    /// Counts in-flight `fetch` and `XMLHttpRequest` calls from document start, so the
+    /// network-quiet wait can see requests a client-rendered page issues after `load`.
+    /// Injected only for that strategy and only into the offscreen capture view.
+    static let networkActivityScript = WKUserScript(
+        source: """
+            (() => {
+              if (window.__vitrineNetworkActivity) { return; }
+              const activity = { pending: 0 };
+              Object.defineProperty(window, "__vitrineNetworkActivity", { value: activity });
+              const settle = () => { activity.pending = Math.max(0, activity.pending - 1); };
+              if (performance.setResourceTimingBufferSize) {
+                performance.setResourceTimingBufferSize(10000);
+              }
+              const originalFetch = window.fetch;
+              if (originalFetch) {
+                window.fetch = function (...args) {
+                  activity.pending += 1;
+                  try {
+                    const result = originalFetch.apply(this, args);
+                    Promise.resolve(result).then(settle, settle);
+                    return result;
+                  } catch (error) {
+                    settle();
+                    throw error;
+                  }
+                };
+              }
+              const send = XMLHttpRequest.prototype.send;
+              XMLHttpRequest.prototype.send = function (...args) {
+                activity.pending += 1;
+                this.addEventListener("loadend", settle, { once: true });
+                try {
+                  return send.apply(this, args);
+                } catch (error) {
+                  settle();
+                  throw error;
+                }
+              };
+            })();
+            """,
+        injectionTime: .atDocumentStart, forMainFrameOnly: true, in: .page)
 
     /// The rect to snapshot for `config`. For a visible-viewport capture this is
     /// exactly the preset viewport. For a full-page capture it runs the bounded

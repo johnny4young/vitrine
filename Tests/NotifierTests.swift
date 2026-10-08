@@ -98,10 +98,16 @@ struct NotifierFeedbackTests {
         #expect(Notifier.feedback(for: .empty).actions == [.openEditor])
     }
 
-    @Test func urlFeedbackOffersWebSnapshotAndRenderAsText() {
-        let actions = Notifier.feedback(for: .url("https://example.com")).actions
-        #expect(actions.contains(.openWebSnapshot))
-        #expect(actions.contains(.renderAsText))
+    @Test func urlFeedbackOffersNoAction() {
+        // `QuickCapture.perform` opens Web Snapshot itself for a URL.
+        #expect(Notifier.feedback(for: .url("https://example.com")).actions.isEmpty)
+    }
+
+    @Test func aCaptureThatWasNeitherCopiedNorSavedIsNotASuccess() {
+        let feedback = Notifier.feedback(
+            for: .rendered, copiedToClipboard: false, savedToFile: false)
+        #expect(feedback.category == .info)
+        #expect(feedback.message.contains("Settings"))
     }
 
     @Test func routineSuccessHasNoRecoveryActions() {
@@ -121,15 +127,11 @@ struct NotifierFeedbackTests {
 
     @Test func recoveryActionTitlesAreHumanReadable() {
         #expect(!Notifier.RecoveryAction.openEditor.title.isEmpty)
-        #expect(!Notifier.RecoveryAction.openWebSnapshot.title.isEmpty)
-        #expect(!Notifier.RecoveryAction.renderAsText.title.isEmpty)
     }
 
     @Test func recoveryActionAccessibilityTokensAreStableAndNonLocalized() {
         // Accessibility identifiers must not be localized (UI tests rely on them).
         #expect(Notifier.RecoveryAction.openEditor.accessibilityToken == "open-editor")
-        #expect(Notifier.RecoveryAction.openWebSnapshot.accessibilityToken == "open-web-snapshot")
-        #expect(Notifier.RecoveryAction.renderAsText.accessibilityToken == "render-as-text")
     }
 }
 
@@ -201,8 +203,8 @@ struct CaptureResultDestinationTests {
 
     @Test func copyOnlyResultReportsCopiedNotSaved() {
         let settings = AppSettings(defaults: freshDefaults())
-        settings.export.autoCopy = true
-        settings.export.alsoSaveToFile = false
+        settings.outputBehavior.autoCopy = true
+        settings.outputBehavior.alsoSaveToFile = false
         let result = QuickCapture.capture(
             settings: settings,
             recents: RecentsStore(defaults: freshDefaults()),
@@ -214,8 +216,8 @@ struct CaptureResultDestinationTests {
 
     @Test func autoCopyOffReportsRenderedAndOffersNoSave() {
         let settings = AppSettings(defaults: freshDefaults())
-        settings.export.autoCopy = false
-        settings.export.alsoSaveToFile = false
+        settings.outputBehavior.autoCopy = false
+        settings.outputBehavior.alsoSaveToFile = false
         let result = QuickCapture.capture(
             settings: settings,
             recents: RecentsStore(defaults: freshDefaults()),
@@ -223,12 +225,12 @@ struct CaptureResultDestinationTests {
         #expect(result.outcome == .rendered)
         #expect(!result.copiedToClipboard)
         #expect(!result.savedToFile)
-        // The feedback for this result still reads as success, not a failure.
+        // Nothing reached the user, so the feedback says how to fix it, not "success".
         #expect(
             Notifier.feedback(
                 for: result.outcome, copiedToClipboard: result.copiedToClipboard,
                 savedToFile: result.savedToFile
-            ).category == .success)
+            ).category == .info)
     }
 
     @Test func nonProducingOutcomesReportNeitherCopiedNorSaved() {
