@@ -23,6 +23,9 @@ can never drift.
 
 ### Changed
 
+- Make the first CLI capture free and self-contained, label paid automation explicitly,
+  and qualify editor-handoff instructions for the published v1.2.3 release.
+
 - Distinguish current-source privacy, history, shortcut, and free editor-handoff
   improvements from the published v1.2.3 download in the website and capability docs.
 

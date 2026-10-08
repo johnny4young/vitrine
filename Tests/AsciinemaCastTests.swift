@@ -27,6 +27,12 @@ struct AsciinemaCastTests {
         #expect(AsciinemaCast.terminalText(from: cast) == "ok")
     }
 
+    @Test func keepsUnicodeLineSeparatorsInsideEvents() {
+        // JSON allows raw U+2028, U+2029, and NEL inside strings; only CR/LF end a line.
+        let cast = header + "\n" + "[0.1, \"o\", \"a\u{2028}b\u{85}c\"]"
+        #expect(AsciinemaCast.terminalText(from: cast) == "a\u{2028}b\u{85}c")
+    }
+
     @Test func skipsNonOutputEvents() {
         // Input echoes, resizes, and markers carry no screen bytes.
         let cast = """

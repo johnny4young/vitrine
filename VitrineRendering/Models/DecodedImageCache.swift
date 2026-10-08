@@ -112,28 +112,28 @@ nonisolated public enum DecodedImageCache {
             cgImage: cgImage, pointSize: pointSize(in: source, decoded: cgImage), cost: cost)
     }
 
-    /// The logical size in points: the oriented source pixels at the file's resolution, so
-    /// a 144-DPI Retina screenshot lays out at half its pixel size. Never larger than the
-    /// pixels, so a low-DPI file is not upscaled.
+    /// The logical size in points: the decoded (already oriented and budget-bounded)
+    /// pixels at the file's resolution, so a 144-DPI Retina screenshot lays out at half its
+    /// pixel size. Never larger than the decoded pixels, so neither a low-DPI file nor a
+    /// source downsampled to the decode budget is upscaled.
     static func pointSize(in source: CGImageSource, decoded: CGImage) -> CGSize {
         let options = [kCGImageSourceShouldCache: false] as CFDictionary
         let properties =
             CGImageSourceCopyPropertiesAtIndex(source, 0, options) as? [CFString: Any] ?? [:]
         func number(_ key: CFString) -> Double? { (properties[key] as? NSNumber)?.doubleValue }
-        guard let width = number(kCGImagePropertyPixelWidth),
-            let height = number(kCGImagePropertyPixelHeight), width > 0, height > 0
-        else { return CGSize(width: decoded.width, height: decoded.height) }
         func scale(_ dpi: Double?) -> Double {
             guard let dpi, dpi.isFinite, dpi > 72 else { return 1 }
             return 72 / dpi
         }
-        let horizontal = width * scale(number(kCGImagePropertyDPIWidth))
-        let vertical = height * scale(number(kCGImagePropertyDPIHeight))
-        // EXIF orientations 5–8 rotate a quarter turn, which the decode already applied.
+        let horizontalScale = scale(number(kCGImagePropertyDPIWidth))
+        let verticalScale = scale(number(kCGImagePropertyDPIHeight))
+        // EXIF orientations 5–8 rotate a quarter turn, which the decode already applied,
+        // so the source's horizontal resolution then runs along the decoded height.
         let orientation = (properties[kCGImagePropertyOrientation] as? NSNumber)?.intValue ?? 1
-        return (5...8).contains(orientation)
-            ? CGSize(width: vertical, height: horizontal)
-            : CGSize(width: horizontal, height: vertical)
+        let rotated = (5...8).contains(orientation)
+        return CGSize(
+            width: Double(decoded.width) * (rotated ? verticalScale : horizontalScale),
+            height: Double(decoded.height) * (rotated ? horizontalScale : verticalScale))
     }
 
     /// The cache cost of a decoded surface: its actual backing bytes

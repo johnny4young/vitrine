@@ -141,6 +141,26 @@ struct WorkspaceRecipeApplicationTests {
         #expect(settings.config.theme.palette == other)
     }
 
+    @Test func reappliedCollidingThemeReusesItsReKeyedCopy() throws {
+        let defaults = try isolatedDefaults()
+        let settings = AppSettings(defaults: defaults)
+        let themes = CustomThemeStore(defaults: defaults)
+        let local = themes.addTheme(named: "Local", palette: ThemeTestFixtures.samplePalette())
+        var other = ThemeTestFixtures.samplePalette()
+        other.background = HexColor("#FFFFFF")!
+        let recipe = WorkspaceRecipe(
+            name: "Collision",
+            style: StyleSnapshot(themeID: local.id, background: .gradient(.forest)),
+            customTheme: StoredCustomTheme(id: local.id, name: "Remote", palette: other))
+
+        settings.applyWorkspaceRecipe(recipe, themes: themes)
+        let firstCopy = settings.config.theme.id
+        settings.applyWorkspaceRecipe(recipe, themes: themes)
+
+        #expect(settings.config.theme.id == firstCopy)
+        #expect(themes.customThemes.count == 2)
+    }
+
     @Test func appExportCannotWriteARecipeThatImportWouldReject() throws {
         let settings = AppSettings(defaults: try isolatedDefaults())
         let document = WorkspaceRecipeDocument(recipe: settings.workspaceRecipe(named: "   "))
