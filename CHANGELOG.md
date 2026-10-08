@@ -68,8 +68,11 @@ can never drift.
 
 ### Fixed
 
-- Preserve complete CJK and emoji characters when terminal insertion shifts them
-  from their leading cell; split or right-edge-truncated glyphs still clear safely.
+- Reject batch report paths that collide with images, sidecars, input resources, or each other before
+  writing outputs. `--no-overwrite` protects reports too, and skipped inputs remain
+  protected from sidecar replacement.
+- Refuse to replace an existing in-input report destination unless it is a bounded,
+  structurally matching prior report; preserve repeat runs and empty reports.
 - A `render`/`multi-size` output or sidecar that would replace an input or image resource
   now exits 1 with only its message, like other runtime failures, instead of exit 2 with the
   usage text; the check also folds case, so `NOTES.md` cannot replace `notes.md`.
@@ -174,6 +177,8 @@ can never drift.
 - The terminal emulator erases with the current background color, line mode follows
   cursor-up redraws and `\r\r\n` output, foreground images honor their DPI, and the
   secret scanner recognizes PGP keys, bearer headers, URL credentials, and `:=`/`=>`.
+- Preserve complete CJK and emoji characters when terminal insertion shifts them
+  from their leading cell; split or right-edge-truncated glyphs still clear safely.
 - Social cards with image backgrounds export on an opaque matte, and raster PDFs use
   point-sized pages.
 
