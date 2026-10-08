@@ -279,20 +279,29 @@ final class LivingSnapshotSession {
             return .loaded(loaded, stamp: stamp, replacingLocalEdits: false)
 
         case .reload:
+            // Path metadata collected after a load may describe an atomic replacement,
+            // not the bytes we just read. Admit a stamp only when it brackets the load.
+            let previousStamp = try await optionalStamp(from: sourceURL, using: client)
             let loaded = try await client.load(sourceURL)
             try Task.checkCancellation()
-            let stamp: FileStamp?
-            do {
-                stamp = try await client.stamp(sourceURL)
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                // The content is already coherent and bounded. Preserve existing behavior by
-                // accepting it even when a following metadata lookup races an atomic save.
-                stamp = nil
-            }
+            let followingStamp = try await optionalStamp(from: sourceURL, using: client)
+            // Unknown or changed evidence must remain retryable on the next poll.
+            let stamp = previousStamp == followingStamp ? followingStamp : nil
             try Task.checkCancellation()
             return .loaded(loaded, stamp: stamp, replacingLocalEdits: true)
+        }
+    }
+
+    nonisolated private static func optionalStamp(
+        from sourceURL: URL,
+        using client: FileClient
+    ) async throws -> FileStamp? {
+        do {
+            return try await client.stamp(sourceURL)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return nil
         }
     }
 
