@@ -477,7 +477,10 @@ is the only entry point: it selects one source file, applies the same bounded te
 used by drag and drop, and retains that file's security scope only while the editor
 window remains open. Filesystem access sits behind an async, `Sendable` `FileClient`.
 Swift 6.2 `@concurrent` entry points move metadata lookup and the bounded descriptor read
-off the main actor; decoding policy stays centralized, and editor state is applied only
+off the main actor; the shared bounded reader rejects descriptor size, modification-time,
+and change-time changes between admission and completion, including same-length
+in-place rewrites. It does not promise snapshot isolation against arbitrary writers.
+Decoding policy stays centralized, and editor state is applied only
 on the main actor. A 650 ms task compares file size, modification date, resource
 identifier, and filesystem file/volume numbers; including inode identity detects editors
 that save by atomically replacing the file instead of mutating its original inode.
