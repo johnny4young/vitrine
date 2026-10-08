@@ -43,6 +43,17 @@ struct SocialCardPersistenceTests {
         #expect(reloaded.socialCard == card)
     }
 
+    @Test func aCustomThemeSurvivesRelaunch() {
+        let defaults = testDefaults()
+        let custom = CustomThemeStore(defaults: defaults).addTheme(
+            named: "Card", palette: ThemeTestFixtures.samplePalette())
+        var card = sampleCard()
+        card.theme = custom
+        AppSettings(defaults: defaults).socialCard = card
+
+        #expect(AppSettings(defaults: defaults).socialCard.theme == custom)
+    }
+
     @Test func aFreshStoreYieldsTheDefaultCard() {
         let defaults = testDefaults()
         let settings = AppSettings(defaults: defaults)

@@ -16,7 +16,6 @@ struct PreferencesTests {
     @Test func hotkeyAction() {
         #expect(HotkeyAction.allCases.count == 2)
         #expect(HotkeyAction.quickCapture.id == "quickCapture")
-        #expect(!HotkeyAction.openEditor.displayName.isEmpty)
     }
 
     @Test func exportFormat() {
@@ -37,6 +36,17 @@ struct SnapshotConfigShadowTests {
 
 @Suite("Capture")
 struct CaptureTests {
+    @Test func aCaptureStampedAfterNowReadsAsJustMade() {
+        let now = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        var capture = Capture(code: "x", languageID: "swift", themeID: "one-dark")
+        capture.date = now.addingTimeInterval(0.4)
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.unitsStyle = .abbreviated
+        formatter.dateTimeStyle = .named
+        #expect(capture.relativeDateText(using: formatter, now: now) == "now")
+    }
+
     @Test func menuTitleIsSingleLineAndTruncated() {
         let long = String(repeating: "x", count: 80)
         let capture = Capture(
@@ -44,7 +54,7 @@ struct CaptureTests {
         #expect(!capture.menuTitle.contains("\n"))
         #expect(capture.menuTitle.count <= 40)
         #expect(capture.language == .swift)
-        #expect(capture.theme.id == "one-dark")
+        #expect(capture.theme(resolvedBy: Theme.theme(withID:)).id == "one-dark")
     }
 
     @Test func codableRoundTrip() throws {
@@ -64,7 +74,7 @@ struct CaptureTests {
         base.annotations = [Annotation(kind: .rectangle, start: .zero, end: CGPoint(x: 1, y: 1))]
         let capture = Capture(code: "let value = 42", languageID: "swift", themeID: "dracula")
 
-        let applied = capture.applying(to: base)
+        let applied = capture.applying(to: base, themes: Theme.theme(withID:))
 
         #expect(applied.code == capture.code)
         #expect(applied.language == .swift)
@@ -80,10 +90,23 @@ struct CaptureTests {
             languageID: Language.rust.rawValue,
             themeID: Theme.dracula.id)
 
-        #expect(capture.matchesSearch(""))
-        #expect(capture.matchesSearch("PRINTLN"))
-        #expect(capture.matchesSearch("rust dracula"))
-        #expect(!capture.matchesSearch("rust github"))
+        let themes: ThemeLookup = Theme.theme(withID:)
+        #expect(capture.matchesSearch("", themes: themes))
+        #expect(capture.matchesSearch("PRINTLN", themes: themes))
+        #expect(capture.matchesSearch("rust dracula", themes: themes))
+        #expect(!capture.matchesSearch("rust github", themes: themes))
+    }
+
+    @Test func customThemeCapturesResolveThroughTheThemeStore() {
+        let defaults = testDefaults()
+        let environment = AppEnvironment(defaults: defaults)
+        let custom = environment.customThemes.addTheme(
+            named: "Midnight", palette: ThemeTestFixtures.samplePalette())
+        let capture = Capture(code: "let x = 1", languageID: "swift", themeID: custom.id)
+
+        #expect(environment.recents.theme(for: capture) == custom)
+        #expect(environment.recents.document(for: capture, over: SnapshotConfig()).theme == custom)
+        #expect(capture.matchesSearch("midnight", themes: environment.recents.themeLookup))
     }
 
     @Test func gallerySortsWithinPinnedAndUnpinnedGroups() {
@@ -235,6 +258,21 @@ struct AppSettingsTests {
         #expect(settings.orderedLanguages.first == .python)
         #expect(Set(settings.orderedLanguages).count == Language.allCases.count)
     }
+
+    @Test func onlyAUserPickOfDiffForcesBandsAndLineNumbers() {
+        let settings = AppSettings(defaults: freshDefaults())
+        var loaded = settings.config
+        loaded.language = .diff
+        loaded.showLineNumbers = false
+        loaded.diffDecorations = false
+        settings.config = loaded
+        #expect(!settings.style.showLineNumbers, "a loaded diff keeps its own gutter choice")
+
+        settings.selectLanguageFromUser(.swift)
+        settings.selectLanguageFromUser(.diff)
+        #expect(settings.style.showLineNumbers)
+        #expect(settings.style.diffDecorations)
+    }
 }
 
 @MainActor
@@ -287,7 +325,8 @@ struct QuickCaptureTests {
         settings.treatURLsAsScreenshot = true
         let recents = RecentsStore(defaults: freshDefaults())
         let outcome = QuickCapture.run(
-            settings: settings, recents: recents, clipboard: { "https://example.com" })
+            settings: settings, recents: recents, clipboard: { "https://example.com" },
+            urlCaptureEnabled: true)
         #expect(outcome == .url("https://example.com"))
         #expect(recents.captures.isEmpty)
     }

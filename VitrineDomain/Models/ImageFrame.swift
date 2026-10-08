@@ -24,16 +24,6 @@ public enum ImageFrame: String, Codable, CaseIterable, Identifiable, Sendable {
 
     public var id: String { rawValue }
 
-    /// Whether this frame draws a hardware **device** mockup (vs. plain/window chrome).
-    /// Device frames size themselves to the device aspect and fill the screen with the
-    /// image, rather than sizing to the image.
-    public var isDevice: Bool {
-        switch self {
-        case .macBook, .iPhone: true
-        case .none, .macOSWindow, .browser: false
-        }
-    }
-
     /// Whether this frame is gated behind Vitrine PRO. The plain image and the macOS
     /// window are free (fidelity to "the free tier loses nothing"); the richer browser
     /// and device frames are the gentle upsell.

@@ -36,12 +36,6 @@ public struct SnapshotMetadata: Equatable, Codable, Sendable {
         filename == nil && title == nil && caption == nil && !showLanguageBadge
     }
 
-    /// Whether any text field carries content. Used by the canvas to decide
-    /// whether a text row is needed at all (separate from the badge-only case).
-    public var hasText: Bool {
-        filename != nil || title != nil || caption != nil
-    }
-
     /// Builds normalized metadata: each field is trimmed, and an empty or
     /// whitespace-only string is stored as `nil` so it never reserves space or
     /// pollutes equality/persistence.
