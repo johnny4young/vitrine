@@ -53,6 +53,28 @@ struct TerminalInsertionTests {
         #expect(screen.rows[0].dropFirst().allSatisfy { $0.content == .grapheme(" ") })
     }
 
+    @Test(arguments: ["你", "🚀"])
+    func aWideGlyphTruncatedAtTheMarginErasesWithThePenBackground(_ glyph: String) {
+        // The orphaned head must erase like the inserted cells, not punch an unstyled
+        // hole into a colored line.
+        var screen = TerminalScreen(columns: 4, rows: 2)
+        screen.feed("A\(glyph)B\(esc)[2G\(esc)[42m\(esc)[2@")
+        let green = TerminalCell(content: .grapheme(" "), style: ANSIStyle(background: .indexed(2)))
+        #expect(screen.rows[0].count == 4)
+        #expect(screen.rows[0][0].content == .grapheme("A"))
+        #expect(Array(screen.rows[0].dropFirst()) == [green, green, green])
+    }
+
+    @Test(arguments: ["你", "🚀"], [7, 8, 99])
+    func aCountReachingTheMarginPushesTheWholeGlyphOff(glyph: String, count: Int) {
+        var screen = TerminalScreen(columns: 8, rows: 2)
+        screen.feed("\(glyph)Z\(esc)[1G\(esc)[\(count)@")
+        #expect(text(screen) == "")
+        #expect(screen.rows[0].count == 8)
+        #expect(screen.rows[0].allSatisfy { $0 == .blank })
+        #expect(screen.cursorCol == 0)
+    }
+
     @Test func insertionPreservesGlyphStyleAndUsesTheOrdinaryBlankPolicy() {
         let setup = "\(esc)[31;44m"
         let insert = "\(esc)[0m\(esc)[42m\(esc)[1G\(esc)[@"
