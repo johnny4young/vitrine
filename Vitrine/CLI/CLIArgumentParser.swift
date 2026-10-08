@@ -47,28 +47,7 @@ struct CLIArgumentParser {
     var watermarkPosition: CLIOptions.WatermarkPosition?
     var watermarkX: Double?
     var watermarkY: Double?
-    var calloutText: String?
-    var calloutX: Double?
-    var calloutY: Double?
-    var calloutColor: RGBAColor?
-    var calloutSize: Double?
-    var counterNumber: Int?
-    var counterX: Double?
-    var counterY: Double?
-    var counterColor: RGBAColor?
-    var counterSize: Double?
-    var arrowSegments: [(start: CGPoint, end: CGPoint)] = []
-    var arrowColor: RGBAColor?
-    var arrowSize: Double?
-    var lineSegments: [(start: CGPoint, end: CGPoint)] = []
-    var lineColor: RGBAColor?
-    var lineSize: Double?
-    var rectangleRegions: [(start: CGPoint, end: CGPoint)] = []
-    var rectangleColor: RGBAColor?
-    var rectangleSize: Double?
-    var highlighterRegions: [(start: CGPoint, end: CGPoint)] = []
-    var highlighterColor: RGBAColor?
-    var blurBoxRegions: [(start: CGPoint, end: CGPoint)] = []
+    var annotations = CLIAnnotationArguments()
     var imageFrame: CLIOptions.ImageFrameOption?
     var frameAppearance: CLIOptions.ImageFrameAppearance?
     var noOverwrite = false
@@ -258,49 +237,49 @@ struct CLIArgumentParser {
         case .watermarkY:
             watermarkY = try resolveNormalizedCoordinate(value, flag: token)
         case .callout:
-            calloutText = try resolveCalloutText(value)
+            annotations.calloutText = try resolveCalloutText(value)
         case .calloutX:
-            calloutX = try resolveNormalizedCoordinate(value, flag: token)
+            annotations.callout.x = try resolveNormalizedCoordinate(value, flag: token)
         case .calloutY:
-            calloutY = try resolveNormalizedCoordinate(value, flag: token)
+            annotations.callout.y = try resolveNormalizedCoordinate(value, flag: token)
         case .calloutColor:
-            calloutColor = try resolveCalloutColor(value)
+            annotations.callout.color = try resolveCalloutColor(value)
         case .calloutSize:
-            calloutSize = try resolveCalloutSize(value)
+            annotations.callout.size = try resolveCalloutSize(value)
         case .counter:
-            counterNumber = try resolveCounterNumber(value)
+            annotations.counterNumber = try resolveCounterNumber(value)
         case .counterX:
-            counterX = try resolveNormalizedCoordinate(value, flag: token)
+            annotations.counter.x = try resolveNormalizedCoordinate(value, flag: token)
         case .counterY:
-            counterY = try resolveNormalizedCoordinate(value, flag: token)
+            annotations.counter.y = try resolveNormalizedCoordinate(value, flag: token)
         case .counterColor:
-            counterColor = try resolveHexColor(value, flag: token)
+            annotations.counter.color = try resolveHexColor(value, flag: token)
         case .counterSize:
-            counterSize = try resolveAnnotationSize(value, flag: token)
+            annotations.counter.size = try resolveAnnotationSize(value, flag: token)
         case .arrow:
-            arrowSegments.append(try resolveNormalizedSegment(value, flag: token))
+            annotations.arrows.points.append(try resolveNormalizedSegment(value, flag: token))
         case .arrowColor:
-            arrowColor = try resolveHexColor(value, flag: token)
+            annotations.arrows.color = try resolveHexColor(value, flag: token)
         case .arrowSize:
-            arrowSize = try resolveAnnotationSize(value, flag: token)
+            annotations.arrows.size = try resolveAnnotationSize(value, flag: token)
         case .line:
-            lineSegments.append(try resolveNormalizedSegment(value, flag: token))
+            annotations.lines.points.append(try resolveNormalizedSegment(value, flag: token))
         case .lineColor:
-            lineColor = try resolveHexColor(value, flag: token)
+            annotations.lines.color = try resolveHexColor(value, flag: token)
         case .lineSize:
-            lineSize = try resolveAnnotationSize(value, flag: token)
+            annotations.lines.size = try resolveAnnotationSize(value, flag: token)
         case .rectangle:
-            rectangleRegions.append(try resolveNormalizedRegion(value, flag: token))
+            annotations.rectangles.points.append(try resolveNormalizedRegion(value, flag: token))
         case .rectangleColor:
-            rectangleColor = try resolveHexColor(value, flag: token)
+            annotations.rectangles.color = try resolveHexColor(value, flag: token)
         case .rectangleSize:
-            rectangleSize = try resolveAnnotationSize(value, flag: token)
+            annotations.rectangles.size = try resolveAnnotationSize(value, flag: token)
         case .highlighter:
-            highlighterRegions.append(try resolveNormalizedRegion(value, flag: token))
+            annotations.highlighters.points.append(try resolveNormalizedRegion(value, flag: token))
         case .highlighterColor:
-            highlighterColor = try resolveHexColor(value, flag: token)
+            annotations.highlighters.color = try resolveHexColor(value, flag: token)
         case .blurBox:
-            blurBoxRegions.append(try resolveNormalizedRegion(value, flag: token))
+            annotations.blurBoxes.points.append(try resolveNormalizedRegion(value, flag: token))
         case .frame:
             imageFrame = try resolveImageFrame(value)
         case .frameAppearance:
