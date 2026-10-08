@@ -480,7 +480,7 @@ and option with copyable examples, practical workflows, and troubleshooting.
 
 To link the DMG's binary by hand, use **Copy Command** in the same Settings row: it gives
 the exact command for your Mac, such as
-`sudo ln -s /Applications/Vitrine.app/Contents/MacOS/vitrine-cli /usr/local/bin/vitrine`.
+`sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/usr/local/bin/vitrine'`.
 
 Basic `vgrab <command>` terminal capture is **free**. It uses a deliberately constrained
 CLI capability: terminal input can be copied or opened in the editor, with optional width
