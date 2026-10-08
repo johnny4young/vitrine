@@ -126,12 +126,14 @@ final class CustomThemeStore {
     /// Adds a theme carried by a workspace recipe under its own id so the persisted
     /// default and restored windows resolve it after relaunch. An id that is already
     /// stored with the same palette is reused; a built-in id is refused; a stored id
-    /// with a different palette is kept intact and the recipe's theme is re-keyed.
+    /// with a different palette is kept intact and the recipe's theme is re-keyed, reusing
+    /// an earlier re-keyed copy so repeated recipe applications never pile up duplicates.
     func adopt(_ stored: StoredCustomTheme) -> Theme? {
         let incoming = stored.theme
         guard !isBuiltIn(id: incoming.id), let palette = incoming.palette else { return nil }
         if let existing = customThemes.first(where: { $0.id == incoming.id }) {
             if existing.palette == palette { return existing }
+            if let copy = customThemes.first(where: { $0.palette == palette }) { return copy }
             return addTheme(named: incoming.displayName, palette: palette)
         }
         let adopted = Theme(
