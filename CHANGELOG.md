@@ -197,6 +197,12 @@ can never drift.
   Dedicated result validation rejects missing or skipped scenarios. Fixture startup
   avoids reverse DNS, publishes readiness atomically, and retains failure logs.
 
+### Security
+
+- Raise the website's `sharp` to 0.35.5 for GHSA-wq5f-xc86-pv6w, a librsvg issue, and override
+  `http-cache-semantics` to 4.3.0 for GHSA-ch52-4w7c-c8xp and `source-map-js` to 1.2.2 for
+  GHSA-68fv-2mgg-jv7q. These are site build tools; the app does not include them.
+
 ## [1.2.3] - 2026-09-16
 
 Vitrine 1.2.3 makes the editor responsive while you type and style. It stops the work each
