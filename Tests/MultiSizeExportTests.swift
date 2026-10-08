@@ -139,7 +139,8 @@ struct MultiSizeExportTests {
         let original = Data("existing slide".utf8)
         try original.write(to: slide)
 
-        let result = await ExportManager.exportCarousel(baseConfig(), pages: ["one"], to: dir)
+        let slides = [CarouselPaginator.Slide(text: "one", firstLine: 1, lineCount: 1)]
+        let result = await ExportManager.exportCarousel(baseConfig(), slides: slides, to: dir)
 
         #expect(result.written == 1)
         #expect(result.failed == 0)

@@ -1,5 +1,7 @@
 import CoreGraphics
+import Foundation
 import VitrineDomain
+import VitrineRendering
 
 /// Redacts secrets in a beautified image by painting over the image's own pixels.
 ///
@@ -13,15 +15,16 @@ import VitrineDomain
 ///
 /// Detection reuses `SecretScanner` verbatim, including its multi-line PEM handling.
 /// The geometry and filtering are pure and UI-free so they are unit-testable without
-/// Vision or a render.
-enum ImageSecretRedactor {
+/// Vision or a render. Nonisolated so large screenshots are painted and encoded off the
+/// main actor, where a Cancel stays responsive.
+nonisolated enum ImageSecretRedactor {
     enum RedactionError: Error, Equatable {
         case renderingFailed
     }
 
     /// One recognized text region: the string Vision read and its box in **Vision's**
     /// coordinate space — normalized `0...1`, origin **bottom-left**.
-    struct RecognizedLine: Equatable {
+    struct RecognizedLine: Equatable, Sendable {
         let text: String
         let boundingBox: CGRect
     }
@@ -106,5 +109,17 @@ enum ImageSecretRedactor {
             throw RedactionError.renderingFailed
         }
         return (image, rects.count)
+    }
+
+    /// Redacts and encodes as PNG on the concurrent pool.
+    @concurrent static func redactedPNG(
+        in cgImage: CGImage, recognizedLines: [RecognizedLine]
+    ) async throws -> (data: Data, regionCount: Int)? {
+        guard let result = try redactSecrets(in: cgImage, recognizedLines: recognizedLines)
+        else { return nil }
+        guard let data = ExportManager.pngData(from: result.image) else {
+            throw RedactionError.renderingFailed
+        }
+        return (data, result.regionCount)
     }
 }
