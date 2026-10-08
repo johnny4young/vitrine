@@ -46,15 +46,19 @@ nonisolated enum BatchOutputFiles {
         beforeCommit: (() throws -> Void)? = nil
     ) throws {
         try Task.checkCancellation()
-        var template = Array(
-            destination.deletingLastPathComponent()
-                .appendingPathComponent(".vitrine-export-XXXXXX").path.utf8CString)
+        // Stage and commit through the same file-system representation, so the private
+        // directory and the later rename name identical bytes on every volume.
+        var template: [CChar] = destination.deletingLastPathComponent()
+            .appendingPathComponent(".vitrine-export-XXXXXX")
+            .withUnsafeFileSystemRepresentation { path in
+                path.map { Array(UnsafeBufferPointer(start: $0, count: strlen($0) + 1)) } ?? []
+            }
+        guard !template.isEmpty else { throw POSIXError(.EINVAL) }
         guard mkdtemp(&template) != nil else {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
         }
-        let pathBytes = template.prefix { $0 != 0 }.map { UInt8(bitPattern: $0) }
         let stage = URL(
-            fileURLWithPath: String(decoding: pathBytes, as: UTF8.self), isDirectory: true)
+            fileURLWithFileSystemRepresentation: template, isDirectory: true, relativeTo: nil)
         defer { try? FileManager.default.removeItem(at: stage) }
         let payload = stage.appendingPathComponent("payload")
         try data.write(to: payload)
@@ -86,7 +90,8 @@ nonisolated enum BatchOutputFiles {
         let descriptor: Int32 = destination.withUnsafeFileSystemRepresentation { path in
             guard let path else { return -1 }
             let flags = O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC
-            return Darwin.open(path, flags, 0o644)
+            // 0o666 minus the umask matches `Data.write`, so both paths produce equal modes.
+            return Darwin.open(path, flags, 0o666)
         }
         guard descriptor >= 0 else {
             throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
@@ -94,13 +99,24 @@ nonisolated enum BatchOutputFiles {
         let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         do {
             try handle.write(contentsOf: data)
-            try handle.close()
         } catch {
             try? handle.close()
-            _ = destination.withUnsafeFileSystemRepresentation { path in
-                path.map { Darwin.unlink($0) }
-            }
+            removeCreatedFile(at: destination)
             throw error
+        }
+        do {
+            // A failed close has already released the descriptor; never close it twice,
+            // because a concurrent export may have reused that descriptor number.
+            try handle.close()
+        } catch {
+            removeCreatedFile(at: destination)
+            throw error
+        }
+    }
+
+    private static func removeCreatedFile(at destination: URL) {
+        _ = destination.withUnsafeFileSystemRepresentation { path in
+            path.map { Darwin.unlink($0) }
         }
     }
 
