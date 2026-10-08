@@ -47,6 +47,9 @@ extension EditorView {
                 guard let url = try await readFileURL(from: provider) else { continue }
                 do {
                     offerLoaded(try FileInputLoader.load(from: url))
+                } catch is CancellationError {
+                    // A replacement drop or closed editor is lifecycle, not an unreadable file.
+                    return
                 } catch let error as FileInputLoader.LoadError {
                     dropError = error
                 } catch {

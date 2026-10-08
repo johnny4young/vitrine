@@ -238,6 +238,21 @@ struct FileInputLoaderLoadTests {
         }
     }
 
+    /// A read interrupted by cancellation reports cancellation rather than an unreadable
+    /// file, so a superseded live-file request never surfaces a spurious read error.
+    @Test func cancelledReadReportsCancellationRatherThanUnreadable() async throws {
+        let url = try temporaryFile(named: "Cancelled.swift", data: Data("let a = 1\n".utf8))
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            _ = try FileInputLoader.load(from: url)
+        }
+
+        await #expect(throws: CancellationError.self) {
+            try await task.value
+        }
+    }
+
     /// A real binary file on disk is rejected with the binary error.
     @Test func rejectsBinaryFileFromDisk() throws {
         let url = try temporaryFile(
