@@ -154,6 +154,8 @@ public enum FileInputLoader {
             rawFile = try readBoundedFile(from: url)
         } catch LoadError.tooLarge {
             throw LoadError.tooLarge
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             // Collapse any low-level I/O error into one clear message; never echo
             // the path or the system error (privacy policy).

@@ -19,20 +19,28 @@ struct BoundedFileReaderConsistencyTests {
         let oldDate = try #require(
             FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate] as? Date)
         var didRewrite = false
+        var rewriteError: (any Error)?
 
         #expect(throws: BoundedFileReader.ReadError.unreadable) {
             _ = try BoundedFileReader.read(from: url, limit: original.count) { _ in
                 guard !didRewrite else { return }
                 didRewrite = true
-                let writer = try FileHandle(forWritingTo: url)
-                defer { try? writer.close() }
-                try writer.write(contentsOf: replacement)
-                // Pin distinct metadata without relying on scheduler delays or clock resolution.
-                try FileManager.default.setAttributes(
-                    [.modificationDate: oldDate.addingTimeInterval(10)], ofItemAtPath: url.path)
+                // The reader maps hook errors to `unreadable`; record them so a failed
+                // rewrite cannot satisfy the expectation above.
+                do {
+                    let writer = try FileHandle(forWritingTo: url)
+                    defer { try? writer.close() }
+                    try writer.write(contentsOf: replacement)
+                    // Pin distinct metadata without relying on scheduler delays or clock resolution.
+                    try FileManager.default.setAttributes(
+                        [.modificationDate: oldDate.addingTimeInterval(10)], ofItemAtPath: url.path)
+                } catch {
+                    rewriteError = error
+                }
             }
         }
         #expect(didRewrite)
+        #expect(rewriteError == nil)
         #expect(try Data(contentsOf: url) == replacement)
     }
 
