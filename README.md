@@ -606,6 +606,12 @@ vitrine batch Sources --out docs/cards --recursive \
   --skipped-report docs/cards/skipped.json
 ```
 
+Reports cannot overlap rendered outputs or input image resources. Inside the input
+tree, an existing report must match the requested manifest/skipped-report structure
+and be at most 5 MiB before it can be replaced; empty report arrays are supported.
+This recognizes a report's structure, not its origin. Use separate output paths;
+`--no-overwrite` also preserves existing reports.
+
 **Redact before adding selectable source.** `--redact-secrets` and `--redact-lines`
 sanitize both the rendered rows and text/Markdown/HTML sidecars. A visual `--blur-box`
 changes pixels only and must not be used as a text-sanitization boundary.
