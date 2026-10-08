@@ -144,7 +144,7 @@ struct CLIToolInstallerTests {
             for: target, architecture: .x8664, directoryExists: { _ in true })
         #expect(
             command
-                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' /usr/local/bin/vitrine"
+                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/usr/local/bin/vitrine'"
         )
     }
 
@@ -153,7 +153,7 @@ struct CLIToolInstallerTests {
         #expect(
             CLIToolInstaller.terminalCommand(
                 for: target, architecture: .arm64, directoryExists: { _ in true })
-                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' /opt/homebrew/bin/vitrine"
+                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/opt/homebrew/bin/vitrine'"
         )
     }
 
@@ -167,7 +167,7 @@ struct CLIToolInstallerTests {
             directoryExists: { $0.path == "/usr/local/bin" })
         #expect(
             command
-                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' /usr/local/bin/vitrine"
+                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/usr/local/bin/vitrine'"
         )
     }
 
@@ -179,7 +179,7 @@ struct CLIToolInstallerTests {
             for: target, architecture: .arm64, directoryExists: { _ in false })
         #expect(
             command
-                == "sudo mkdir -p /usr/local/bin && sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' /usr/local/bin/vitrine"
+                == "sudo mkdir -p '/usr/local/bin' && sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/usr/local/bin/vitrine'"
         )
     }
 
@@ -194,7 +194,7 @@ struct CLIToolInstallerTests {
             directoryExists: { _ in false })
         #expect(
             command
-                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' /usr/local/bin/vitrine"
+                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/usr/local/bin/vitrine'"
         )
     }
 
@@ -206,6 +206,17 @@ struct CLIToolInstallerTests {
             for: target, architecture: .x8664, directoryExists: { _ in true })
         #expect(command.hasPrefix("sudo ln -s '"))
         #expect(command.contains(#"O'"'"'Malley $(touch pwned)"#))
-        #expect(command.hasSuffix("/usr/local/bin/vitrine"))
+        #expect(command.hasSuffix("'/usr/local/bin/vitrine'"))
+    }
+
+    @Test func terminalCommandQuotesTheSelectedDestinationAsOneLiteralPath() {
+        let target = URL(fileURLWithPath: "/Applications/Vitrine.app/Contents/MacOS/vitrine-cli")
+        let directory = URL(fileURLWithPath: "/tmp/Team's tools $HOME; [draft]", isDirectory: true)
+        let command = CLIToolInstaller.terminalCommand(for: target, into: directory)
+
+        #expect(
+            command
+                == #"sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/tmp/Team'"'"'s tools $HOME; [draft]/vitrine'"#
+        )
     }
 }

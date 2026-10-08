@@ -641,7 +641,9 @@ relative symlink destinations, prefers `/opt/homebrew/bin` on Apple Silicon and
 `/usr/local/bin` on Intel, and retains the other prefix as a fallback. New links are staged
 as unique siblings and installed with `RENAME_EXCL` or `RENAME_SWAP`, so a regular file
 named `vitrine` is never removed and stale links have no unlink/recreate gap. The copyable
-Terminal fallback intentionally omits `ln -f` for the same fail-closed rule.
+Terminal fallback intentionally omits `ln -f` for the same fail-closed rule. Every
+filesystem argument, including a user-selected destination and prefix creation, uses
+the same POSIX single-quote encoder. Command-generation tests inspect strings only.
 
 **Share-link encoding.** `vitrine://open` accepts one bounded, canonical RFC 4648
 base64url representation. The decoder rejects padding, whitespace, standard base64
