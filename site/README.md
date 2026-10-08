@@ -17,9 +17,11 @@ Package versions are pinned exactly for reproducible deploys. TypeScript stays o
 newest stable release accepted by `@astrojs/check` rather than forcing an incompatible
 major version through its peer-dependency contract.
 
-The `sharp` override keeps Wrangler's transitive image tooling on the patched 0.35 line.
-Remove it once Miniflare depends on that line directly; until then it prevents the deploy
-toolchain from restoring a vulnerable libvips build.
+The `sharp` override keeps Wrangler's transitive image tooling on the same `sharp` build as
+the site's own image scripts. Miniflare pins an exact `sharp` release that can trail the
+`devDependencies` entry, so without the override npm installs a second, older copy with an
+older libvips build. Keep the override equal to the `devDependencies` version, and remove it
+once Miniflare's own pin reaches that version.
 
 ```bash
 cd site
