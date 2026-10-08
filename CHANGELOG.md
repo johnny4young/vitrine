@@ -68,6 +68,7 @@ can never drift.
 
 ### Fixed
 
+- Keep spaces and punctuation in the selected CLI installation folder literal in the copied Terminal command.
 - Reject batch report paths that collide with images, sidecars, input resources, or each other before
   writing outputs. `--no-overwrite` protects reports too, and skipped inputs remain
   protected from sidecar replacement.
