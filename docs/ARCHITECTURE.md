@@ -1227,7 +1227,15 @@ before dismissing, so an inconsistent writer result cannot silently claim succes
 Preset and carousel exports plan all image/sidecar names together before rendering,
 allocating numeric suffixes around occupied names. Complete files are staged privately
 and published with exclusive rename, preserving destinations created after planning.
-Volumes that refuse exclusive rename fall back to an exclusive, non-following create.
+`NonReplacingFilePublisher` in `VitrineRendering` owns the shared filesystem commit;
+GUI batch planning stays in the app, while CLI `--no-overwrite` applies it to images,
+sidecars, manifests, and skipped reports. Preflight remains useful for early diagnostics,
+but publication enforces non-replacement when a destination appears during rendering.
+Outputs commit independently: a late failure retains earlier completed files and returns
+failure, without claiming whole-batch rollback. Volumes that refuse exclusive rename
+fall back to an exclusive, non-following create. An I/O failure in that fallback can
+leave a partial file. It is deliberately retained rather than unlinking a public name
+that another process might have replaced.
 A requested nonempty sidecar failure leaves its completed image in place and reports
 an incomplete export. Cancellation stops further admission and publication; already
 committed files remain available. The

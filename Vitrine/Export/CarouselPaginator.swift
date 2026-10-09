@@ -15,7 +15,7 @@ enum CarouselPaginator {
     /// Splits `code` into slides of at most `maxLinesPerSlide` consecutive lines,
     /// **balanced**: the slide count is fixed by the cap, then lines are distributed
     /// evenly so pages differ by at most one line (a 25-line snippet at 12 becomes
-    /// 13 + 12, never 12 + 12 + 1). Empty input yields no slides.
+    /// 9 + 8 + 8, never 12 + 12 + 1). Empty input yields no slides.
     static func pages(for code: String, maxLinesPerSlide: Int) -> [String] {
         slides(for: code, maxLinesPerSlide: maxLinesPerSlide).map(\.text)
     }

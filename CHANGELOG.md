@@ -68,6 +68,8 @@ can never drift.
 
 ### Fixed
 
+- CLI `--no-overwrite` also refuses images, sidecars, manifests, and skipped reports that
+  another process creates while a run is rendering, instead of replacing them at write time.
 - Preserve existing files during multi-size and carousel exports by choosing available names and refusing race-created destinations.
 - Live-file Reload catches a save that lands while the file is being read, without losing a later local draft.
 - Reject observed file changes during bounded reads, including same-length saves, instead of accepting mixed text.
