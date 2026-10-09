@@ -1,5 +1,5 @@
-import Darwin
 import Foundation
+import VitrineRendering
 
 /// One non-replacing plan for every image and optional sidecar in a GUI batch.
 nonisolated enum BatchOutputFiles {
@@ -38,86 +38,16 @@ nonisolated enum BatchOutputFiles {
         }
     }
 
-    /// Complete bytes are staged in an owned private sibling directory, then committed
-    /// with one exclusive rename. A race-created output is preserved, including symlinks.
-    /// Cleanup removes only the private stage; a previously published image is never undone.
+    /// Publishes through the same exclusive commit used by CLI no-clobber output.
     static func publish(
         _ data: Data, to destination: URL,
         beforeCommit: (() throws -> Void)? = nil
     ) throws {
-        try Task.checkCancellation()
-        // Stage and commit through the same file-system representation, so the private
-        // directory and the later rename name identical bytes on every volume.
-        var template: [CChar] = destination.deletingLastPathComponent()
-            .appendingPathComponent(".vitrine-export-XXXXXX")
-            .withUnsafeFileSystemRepresentation { path in
-                path.map { Array(UnsafeBufferPointer(start: $0, count: strlen($0) + 1)) } ?? []
-            }
-        guard !template.isEmpty else { throw POSIXError(.EINVAL) }
-        guard mkdtemp(&template) != nil else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
-        let stage = URL(
-            fileURLWithFileSystemRepresentation: template, isDirectory: true, relativeTo: nil)
-        defer { try? FileManager.default.removeItem(at: stage) }
-        let payload = stage.appendingPathComponent("payload")
-        try data.write(to: payload)
-        try beforeCommit?()
-        try Task.checkCancellation()
-        let status: Int32 = payload.withUnsafeFileSystemRepresentation { source in
-            destination.withUnsafeFileSystemRepresentation { target in
-                guard let source, let target else { return EINVAL }
-                return renamex_np(source, target, UInt32(RENAME_EXCL)) == 0 ? 0 : errno
-            }
-        }
-        switch status {
-        case 0:
-            return
-        case ENOTSUP, EOPNOTSUPP:
-            // Some network and FAT-family volumes refuse `RENAME_EXCL`. Fall back to an
-            // exclusive create, which still never replaces or follows an existing name.
-            try publishByExclusiveCreate(data, to: destination)
-        default:
-            throw POSIXError(POSIXErrorCode(rawValue: status) ?? .EIO)
-        }
+        try NonReplacingFilePublisher.publish(data, to: destination, beforeCommit: beforeCommit)
     }
 
-    /// Non-replacing publication for volumes without exclusive rename: `O_EXCL` refuses an
-    /// existing name (including a symlink, via `O_NOFOLLOW`), and a failed write removes
-    /// only the file this call created. Unlike the rename path, the file is visible while
-    /// it is written, so it is used only when the volume cannot rename exclusively.
     static func publishByExclusiveCreate(_ data: Data, to destination: URL) throws {
-        let descriptor: Int32 = destination.withUnsafeFileSystemRepresentation { path in
-            guard let path else { return -1 }
-            let flags = O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW | O_CLOEXEC
-            // 0o666 minus the umask matches `Data.write`, so both paths produce equal modes.
-            return Darwin.open(path, flags, 0o666)
-        }
-        guard descriptor >= 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-        }
-        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
-        do {
-            try handle.write(contentsOf: data)
-        } catch {
-            try? handle.close()
-            removeCreatedFile(at: destination)
-            throw error
-        }
-        do {
-            // A failed close has already released the descriptor; never close it twice,
-            // because a concurrent export may have reused that descriptor number.
-            try handle.close()
-        } catch {
-            removeCreatedFile(at: destination)
-            throw error
-        }
-    }
-
-    private static func removeCreatedFile(at destination: URL) {
-        _ = destination.withUnsafeFileSystemRepresentation { path in
-            path.map { Darwin.unlink($0) }
-        }
+        try NonReplacingFilePublisher.publishByExclusiveCreate(data, to: destination)
     }
 
     private static func key(_ filename: String) -> String {
