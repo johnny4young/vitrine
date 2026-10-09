@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import Testing
 import VitrineDomain
@@ -50,10 +51,12 @@ struct CLINoClobberPublicationTests: CLITestSupport {
         var reachedPublication = false
 
         #expect(throws: CLIError.writeFailed(path: report.path)) {
-            try CLIBatchRenderer.run(options, beforeReports: {
-                reachedPublication = true
-                try original.write(to: report)
-            })
+            try CLIBatchRenderer.run(
+                options,
+                beforeReports: {
+                    reachedPublication = true
+                    try original.write(to: report)
+                })
         }
 
         #expect(reachedPublication)
@@ -71,7 +74,8 @@ struct CLINoClobberPublicationTests: CLITestSupport {
         #expect(throws: CLIError.writeFailed(path: output.path)) {
             try CLIOutputWriter.write(Data("new".utf8), to: output, noOverwrite: true)
         }
-        #expect(try FileManager.default.destinationOfSymbolicLink(atPath: output.path) == target.path)
+        #expect(
+            try FileManager.default.destinationOfSymbolicLink(atPath: output.path) == target.path)
         #expect(!FileManager.default.fileExists(atPath: target.path))
     }
 

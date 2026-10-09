@@ -211,7 +211,8 @@ enum CLIOutputWriter {
     ) throws {
         let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("txt")
         do {
-            try write(Data(config.sidecarText.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
+            try write(
+                Data(config.sidecarText.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
         } catch {
             let nsError = error as NSError
             Log.export.error(
