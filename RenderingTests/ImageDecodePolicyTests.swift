@@ -91,6 +91,39 @@ struct ImageDecodePolicyTests {
         }
     }
 
+    /// A Retina screenshot records 144 DPI; it lays out at half its pixel size and keeps every
+    /// pixel for the @2x export.
+    @Test func retinaResolutionSetsThePointSizeNotThePixels() throws {
+        let data = try Self.encodedImage(
+            width: 200, height: 100, color: .systemTeal, type: .png, dpi: 144)
+        let image = try #require(DecodedImageCache.staticImage(from: data))
+        #expect(image.size == CGSize(width: 100, height: 50))
+        #expect(image.representations.first?.pixelsWide == 200)
+        #expect(image.representations.first?.pixelsHigh == 100)
+    }
+
+    @Test func standardOrLowResolutionKeepsThePixelSize() throws {
+        for dpi in [72.0, 36.0] {
+            let data = try Self.encodedImage(
+                width: 200, height: 100, color: .systemTeal, type: .png, dpi: dpi)
+            let image = try #require(DecodedImageCache.staticImage(from: data))
+            #expect(image.size == CGSize(width: 200, height: 100))
+        }
+    }
+
+    @Test func importedRetinaImageResolvesAtItsPointSize() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            "VitrineImageDecodeTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = BackgroundImageStore(directory: directory)
+        let reference = try await store.importImageConcurrently(
+            data: Self.encodedImage(
+                width: 200, height: 100, color: .systemTeal, type: .png, dpi: 144),
+            preferredExtension: "png")
+
+        #expect(store.image(for: reference)?.size == CGSize(width: 100, height: 50))
+    }
+
     private static func animatedGIF() throws -> Data {
         let data = NSMutableData()
         let destination = try #require(
@@ -110,14 +143,17 @@ struct ImageDecodePolicyTests {
     }
 
     private static func encodedImage(
-        width: Int, height: Int, color: NSColor, type: UTType
+        width: Int, height: Int, color: NSColor, type: UTType, dpi: Double? = nil
     ) throws -> Data {
         let data = NSMutableData()
         let destination = try #require(
             CGImageDestinationCreateWithData(
                 data, type.identifier as CFString, 1, nil))
+        let properties = dpi.map {
+            [kCGImagePropertyDPIWidth: $0, kCGImagePropertyDPIHeight: $0] as CFDictionary
+        }
         CGImageDestinationAddImage(
-            destination, try cgImage(width: width, height: height, color: color), nil)
+            destination, try cgImage(width: width, height: height, color: color), properties)
         #expect(CGImageDestinationFinalize(destination))
         return data as Data
     }

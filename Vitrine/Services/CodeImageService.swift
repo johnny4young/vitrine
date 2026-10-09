@@ -88,7 +88,8 @@ final class CodeImageService: NSObject {
             !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
             Log.capture.info("Services: no selected text to render")
-            return .failed(message: "Select some code first, then run the service.")
+            return .failed(
+                message: String(localized: "Select some code first, then run the service."))
         }
 
         let request = makeRenderRequest(for: text)
@@ -102,7 +103,8 @@ final class CodeImageService: NSObject {
             return .failed(message: "\(renderError)")
         } catch {
             Log.capture.error("Services render failed (unexpected)")
-            return .failed(message: "Vitrine could not render an image from that code.")
+            return .failed(
+                message: String(localized: "Vitrine could not render an image from that code."))
         }
 
         // Hand the image back on the same pasteboard as one item: the `NSImage`
@@ -114,11 +116,13 @@ final class CodeImageService: NSObject {
         let item = ClipboardWriter.item(from: image, for: pasteboard)
         if let png = ExportManager.pngData(from: cgImage) { item.setData(png, forType: .png) }
         let wroteImage = ClipboardWriter.write(
-            [item], concealed: environment.appSettings.export.concealClipboard, to: pasteboard)
+            [item], concealed: environment.appSettings.outputBehavior.concealClipboard,
+            to: pasteboard)
 
         guard wroteImage else {
             Log.capture.error("Services could not place the rendered image on the pasteboard")
-            return .failed(message: "Vitrine rendered the image but could not return it.")
+            return .failed(
+                message: String(localized: "Vitrine rendered the image but could not return it."))
         }
         Log.capture.notice("Services rendered a code image onto the pasteboard")
         return .rendered
@@ -129,11 +133,17 @@ final class CodeImageService: NSObject {
     /// style resolution independently testable from the pasteboard write.
     func makeRenderRequest(for text: String) -> SnapshotRenderRequest {
         let interpreted = LanguageDetector.interpret(text)
+        let settings = environment.appSettings
+        // The user's Export settings (scale, profile, destination size) apply here as
+        // they do to quick capture, so both produce the same image.
         return SnapshotRenderRequest(
             code: interpreted.code,
             language: interpreted.language,
+            scale: settings.effectiveExportScale,
+            profile: settings.export.colorProfile,
+            fixedSizeOverride: settings.effectiveFixedSize,
             // `exportConfig`, not `config`, so a PRO user's enabled Brand Kit watermark
             // marks the Services output too. Free/disabled → no watermark.
-            baseStyle: environment.appSettings.exportConfig)
+            baseStyle: settings.exportConfig)
     }
 }

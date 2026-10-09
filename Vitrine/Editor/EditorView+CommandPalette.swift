@@ -13,10 +13,10 @@ extension EditorView {
         themeCommands + toggleCommands + styleCommands + exportCommands
     }
 
-    /// One "Apply <theme>" command per built-in theme, tagged with its appearance so
-    /// "dark" / "light" surface the right ones.
+    /// One "Apply <theme>" command per built-in and custom theme, tagged with its
+    /// appearance so "dark" / "light" surface the right ones.
     private var themeCommands: [EditorCommand] {
-        Theme.all.map { theme in
+        themes.allThemes.map { theme in
             EditorCommand(
                 id: "theme.\(theme.id)",
                 title: "\(String(localized: "Theme")): \(theme.displayName)",
@@ -45,21 +45,21 @@ extension EditorView {
                 set: { settings.style.showLineNumbers = $0 }),
             toggle(
                 id: "toggle.shadow",
-                offTitle: String(localized: "Show shadow"),
-                onTitle: String(localized: "Hide shadow"),
+                offTitle: String(localized: "Show drop shadow"),
+                onTitle: String(localized: "Hide drop shadow"),
                 symbol: "shadow",
                 isOn: settings.style.showShadow, set: { settings.style.showShadow = $0 }),
             toggle(
                 id: "toggle.chrome",
-                offTitle: String(localized: "Show window controls"),
-                onTitle: String(localized: "Hide window controls"),
+                offTitle: String(localized: "Show window chrome"),
+                onTitle: String(localized: "Hide window chrome"),
                 symbol: "macwindow",
                 keywords: ["chrome", "traffic lights", "dots"],
                 isOn: settings.style.showChrome, set: { settings.style.showChrome = $0 }),
             toggle(
                 id: "toggle.wrap",
-                offTitle: String(localized: "Show line wrap"),
-                onTitle: String(localized: "Hide line wrap"),
+                offTitle: String(localized: "Wrap long lines"),
+                onTitle: String(localized: "Don't wrap long lines"),
                 symbol: "text.wrap",
                 keywords: ["soft wrap", "long lines"],
                 isOn: settings.style.wrapsLongLines,
@@ -87,29 +87,41 @@ extension EditorView {
 
     /// The export/copy actions the toolbar also offers, reachable by name.
     var exportCommands: [EditorCommand] {
-        [
-            EditorCommand(
-                id: "export.copy", title: VitrineCommand.copyImage.title,
-                group: String(localized: "Export"),
-                keywords: ["png", "clipboard"], symbol: "doc.on.doc"
-            ) { copyImage() },
-            EditorCommand(
-                id: "export.save", title: VitrineCommand.saveImage.title,
-                group: String(localized: "Export"),
-                keywords: ["png", "pdf", "heic", "disk"], symbol: "square.and.arrow.down"
-            ) { saveImage() },
-            EditorCommand(
-                id: "export.documentation", title: String(localized: "Export for Documentation"),
-                group: String(localized: "Export"),
-                keywords: ["docs", "package", "markdown", "html"], symbol: "folder"
-            ) { exportSheet = .documentationExport },
-            EditorCommand(
-                id: "export.markdown", title: VitrineCommand.copyMarkdown.title,
-                group: String(localized: "Export"),
-                keywords: ["md", "fenced", "readme"],
-                symbol: "chevron.left.forwardslash.chevron.right"
-            ) { copyMarkdown() },
-        ]
+        exportCommands(
+            for: PaletteExport.available(
+                hasRenderableContent: settings.hasRenderableContent,
+                usesImageContent: settings.style.usesImageContent))
+    }
+
+    func exportCommands(for exports: [PaletteExport]) -> [EditorCommand] {
+        let group = String(localized: "Export")
+        return exports.map { export in
+            switch export {
+            case .copy:
+                EditorCommand(
+                    id: "export.copy", title: VitrineCommand.copyImage.title, group: group,
+                    keywords: ["png", "clipboard"],
+                    symbol: VitrineCommand.copyImage.systemImageName
+                ) { copyImage() }
+            case .save:
+                EditorCommand(
+                    id: "export.save", title: VitrineCommand.saveImage.title, group: group,
+                    keywords: ["png", "pdf", "heic", "disk"], symbol: "square.and.arrow.down"
+                ) { saveImage() }
+            case .documentation:
+                EditorCommand(
+                    id: "export.documentation",
+                    title: String(localized: "Export for Documentation"), group: group,
+                    keywords: ["docs", "package", "markdown", "html"], symbol: "folder"
+                ) { exportSheet = .documentationExport }
+            case .markdown:
+                EditorCommand(
+                    id: "export.markdown", title: VitrineCommand.copyMarkdown.title, group: group,
+                    keywords: ["md", "fenced", "readme"],
+                    symbol: VitrineCommand.copyMarkdown.systemImageName
+                ) { copyMarkdown() }
+            }
+        }
     }
 
     /// Builds a toggle command whose localized title names the next action.
@@ -125,5 +137,19 @@ extension EditorView {
             keywords: keywords + [String(localized: "Toggle")],
             symbol: symbol
         ) { set(!isOn) }
+    }
+}
+
+/// The palette's export rows. Like the toolbar, nothing is offered for an empty
+/// editor and Markdown only for code.
+enum PaletteExport: CaseIterable {
+    case copy
+    case save
+    case documentation
+    case markdown
+
+    static func available(hasRenderableContent: Bool, usesImageContent: Bool) -> [PaletteExport] {
+        guard hasRenderableContent else { return [] }
+        return usesImageContent ? [.copy, .save, .documentation] : allCases
     }
 }

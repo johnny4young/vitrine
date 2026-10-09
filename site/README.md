@@ -17,9 +17,19 @@ Package versions are pinned exactly for reproducible deploys. TypeScript stays o
 newest stable release accepted by `@astrojs/check` rather than forcing an incompatible
 major version through its peer-dependency contract.
 
-The `sharp` override keeps Wrangler's transitive image tooling on the patched 0.35 line.
-Remove it once Miniflare depends on that line directly; until then it prevents the deploy
-toolchain from restoring a vulnerable libvips build.
+The `sharp` override keeps Wrangler's transitive image tooling on the same `sharp` build as
+the site's own image scripts. Miniflare pins an exact `sharp` release that can trail the
+`devDependencies` entry, so without the override npm installs a second, older copy with an
+older libvips build. Keep the override equal to the `devDependencies` version, and remove it
+once Miniflare's own pin reaches that version.
+
+The `http-cache-semantics` (4.3.0, GHSA-ch52-4w7c-c8xp), `source-map-js` (1.2.2,
+GHSA-68fv-2mgg-jv7q), and `nanoid` (3.3.18) overrides hold transitive build dependencies on
+patched releases inside the ranges their dependents declare. The `undici` override equals
+Miniflare's exact 7.29.1 pin, but it also moves Astro's `unifont`, which declares `^8.0.0`,
+onto 7.x; that path is unused because the site configures no Astro fonts. Overrides are exact
+pins, so a later advisory needs an override bump, not only a lockfile refresh. Remove each one
+once every dependent's own range excludes the vulnerable releases.
 
 ```bash
 cd site
@@ -35,7 +45,7 @@ npm test
 
 The build validator checks both language routes, canonical and alternate-language
 metadata, structured data, core gallery sections, browser-script syntax, crawl files,
-internal links, and the social-card dimensions. Both home pages render all 93 marketing
+internal links, and the social-card dimensions. Both home pages render all 100 marketing
 messages from `src/i18n/content.ts` at build time; navigation, accessible labels and image
 descriptions share the typed locale catalog. Rich-text messages are trusted repository
 content only, never user input or release API data.
@@ -81,8 +91,10 @@ the dependency is patched regardless. No public vulnerability exception is requi
 ## Deployment
 
 `.github/workflows/deploy-site.yml` builds this package and deploys `dist/` to the
-`vitrine-web` Cloudflare Pages project. Deployments run when `site/` changes, when a
-GitHub release is published, or through a manual workflow dispatch.
+`vitrine-web` Cloudflare Pages project. A push to `main` that changes `site/` only
+validates the build; production changes only when the release workflow calls it with the
+promoted tag, or through a manual dispatch whose `release_ref` names a published stable
+tag.
 
 ### Visual accessibility checks
 

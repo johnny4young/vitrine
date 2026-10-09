@@ -16,9 +16,9 @@ enum WorkspaceRecipeFileExchange {
         var message: String {
             switch self {
             case .encodingFailed:
-                "The workspace recipe could not be encoded."
+                String(localized: "The workspace recipe could not be encoded.")
             case .writeFailed:
-                "The workspace recipe could not be written to the selected file."
+                String(localized: "The workspace recipe could not be written to the selected file.")
             }
         }
     }
@@ -35,26 +35,21 @@ enum WorkspaceRecipeFileExchange {
             throw ExchangeError.encodingFailed
         }
 
-        let panel = NSSavePanel()
-        panel.allowedContentTypes = [contentType]
-        panel.nameFieldStringValue = "\(filenameStem(recipe.name)).vitrine-recipe.json"
-        panel.title = String(localized: "Export Workspace Recipe")
-        panel.nameFieldLabel = String(localized: "Save as:")
-        panel.message =
-            String(
-                localized:
-                    "Save a portable style and output recipe. It contains no workspace path, source text, output path, history, or credentials."
-            )
-        panel.prompt = String(localized: "Export")
-        guard panel.runModal() == .OK, let url = panel.url else { return false }
-
-        do {
-            try data.write(to: url, options: .atomic)
-            Log.export.notice("Wrote a workspace recipe (\(data.count, privacy: .public) bytes)")
-            return true
-        } catch {
-            Log.export.error("Failed to write a workspace recipe")
-            throw ExchangeError.writeFailed
+        let outcome = FileExchangePanel.save(
+            data, contentType: contentType,
+            suggestedFilename: "\(filenameStem(recipe.name)).vitrine-recipe.json",
+            copy: FileExchangePanel.Copy(
+                title: String(localized: "Export Workspace Recipe"),
+                message: String(
+                    localized:
+                        "Save a portable style and output recipe. It contains no workspace path, source text, output path, history, or credentials."
+                ),
+                prompt: String(localized: "panel.prompt.export", defaultValue: "Export")),
+            logLabel: "workspace recipe")
+        switch outcome {
+        case .saved: return true
+        case .cancelled: return false
+        case .failed: throw ExchangeError.writeFailed
         }
     }
 

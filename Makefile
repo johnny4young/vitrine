@@ -450,6 +450,9 @@ test-web-capture: project web-capture-check
 	env DEVELOPER_DIR="$(XCODE_DEVELOPER)" python3 scripts/test-web-capture.py \
 		--output "$(WEB_CAPTURE_OUTPUT)" $(WEB_CAPTURE_HOST_FLAGS)
 
+## documentation-ui-profile-check: validate the documentation UI timing summarizer without Xcode
+## It also proves the summarizer's state and phase labels still match the markers the
+## UI test emits, so a renamed phase cannot silently make CI logs unsummarizable.
 .PHONY: documentation-ui-profile-check
 documentation-ui-profile-check:
 	python3 scripts/summarize-documentation-ui.py --self-test

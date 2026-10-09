@@ -23,7 +23,7 @@ export function messages(html) {
 export function validateLocalizedHomes(english, spanish) {
   const en = messages(english);
   const es = messages(spanish);
-  assert.equal(en.size, 99, 'Every expected marketing message must render');
+  assert.equal(en.size, 100, 'Every expected marketing message must render');
   assert.deepEqual([...en.keys()].sort(), [...es.keys()].sort(), 'EN/ES message inventory differs');
   const invariant = new Set(['term.eyebrow', 'story4.t1', 'story5.t1']);
   for (const [key, value] of en) {
@@ -37,7 +37,7 @@ export function validateLocalizedHomes(english, spanish) {
     assert.ok(html.includes('href="/download"'), 'No-JS download fallback is missing');
     assert.ok(html.includes('$19.99'), 'Current checkout price changed');
     assert.ok(html.includes('brew install --cask johnny4young/tap/vitrine'));
-    assert.equal([...html.matchAll(/\bdata-copy="/g)].length, 99, 'Duplicated marketing message');
+    assert.equal([...html.matchAll(/\bdata-copy="/g)].length, 100, 'Duplicated marketing message');
   }
 }
 
