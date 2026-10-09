@@ -142,3 +142,13 @@ Tests execute these parser/renderer/authorization contracts with temporary files
 synthetic content, and an ephemeral signed-token verifier; no real activation or
 production credential is required. Wrapper tests simulate failures and incomplete
 responses. Neither proves external-provider privacy, real demand, or human acceptance.
+
+## Output collisions and partial runs
+
+The source implementation enforces `--no-overwrite` again when each image, sidecar,
+manifest, or skipped report is published, including destinations created after preflight.
+Files commit independently; a late collision or I/O failure returns failure and keeps
+earlier complete outputs. Do not treat a failed command as a complete output bundle.
+On filesystems without exclusive rename, the exclusive-create fallback can leave a
+partial file after an I/O failure. Inspect failed output directories before retrying.
+These source changes require a new qualified release before the published binary has them.

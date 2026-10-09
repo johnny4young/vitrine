@@ -171,7 +171,7 @@ enum CLIOutputWriter {
         } catch let error {
             throw CLIError.renderFailure(error)
         }
-        try write(payload.data, to: url)
+        try write(payload.data, to: url, noOverwrite: options.noOverwrite)
         if options.textSidecar { try writeTextSidecar(for: config, options: options, beside: url) }
         if options.markdownSidecar {
             try writeMarkdownSidecar(for: config, options: options, beside: url)
@@ -211,7 +211,7 @@ enum CLIOutputWriter {
     ) throws {
         let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("txt")
         do {
-            try Data(config.sidecarText.utf8).write(to: sidecarURL, options: .atomic)
+            try write(Data(config.sidecarText.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
         } catch {
             let nsError = error as NSError
             Log.export.error(
@@ -233,7 +233,7 @@ enum CLIOutputWriter {
         let contents = markdownSidecarContents(
             for: config, imageName: imageURL.lastPathComponent)
         do {
-            try Data(contents.utf8).write(to: sidecarURL, options: .atomic)
+            try write(Data(contents.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
         } catch {
             let nsError = error as NSError
             Log.export.error(
@@ -253,7 +253,7 @@ enum CLIOutputWriter {
         let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("html")
         let contents = htmlSidecarContents(for: config, imageName: imageURL.lastPathComponent)
         do {
-            try Data(contents.utf8).write(to: sidecarURL, options: .atomic)
+            try write(Data(contents.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
         } catch {
             let nsError = error as NSError
             Log.export.error(
@@ -284,13 +284,17 @@ enum CLIOutputWriter {
 
     /// Writes `data` to `url`, mapping any I/O failure to `CLIError.writeFailed`.
     ///
-    /// Atomic, like every other write the batch renderer and the app's exchange files
-    /// perform: an interrupted run (a full disk, or Ctrl-C between two `write` calls)
-    /// must not leave a truncated image or sidecar that looks complete to whatever
-    /// script consumes it.
-    private static func write(_ data: Data, to url: URL) throws {
+    /// No-clobber is enforced at publication, including a destination created after
+    /// preflight. Each file commits independently; a later sidecar failure preserves
+    /// earlier completed outputs and reports failure. The shared fallback on volumes
+    /// without exclusive rename can leave a partial file on I/O failure.
+    static func write(_ data: Data, to url: URL, noOverwrite: Bool) throws {
         do {
-            try data.write(to: url, options: .atomic)
+            if noOverwrite {
+                try NonReplacingFilePublisher.publish(data, to: url)
+            } else {
+                try data.write(to: url, options: .atomic)
+            }
         } catch {
             // Log only the format, never the (user-chosen) path (privacy policy).
             let nsError = error as NSError

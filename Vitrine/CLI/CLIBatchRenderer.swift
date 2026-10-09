@@ -60,7 +60,8 @@ enum CLIBatchRenderer {
             try FileManager.default.contentsOfDirectory(
                 at: $0, includingPropertiesForKeys: [.isRegularFileKey],
                 options: [.skipsHiddenFiles])
-        }
+        },
+        beforeReports: (() throws -> Void)? = nil
     ) throws -> String {
         let background = try CLIRenderResources.prepareBackground(options)
         defer { background.removeTemporaryFiles() }
@@ -183,8 +184,11 @@ enum CLIBatchRenderer {
         )
         let summary =
             "\(action) \(rendered) image\(rendered == 1 ? "" : "s") to \(outputDirectory.path)"
-        try writeSkippedReport(skippedReport, path: options.skippedReportPath)
-        try writeBatchManifest(manifest, path: options.batchManifestPath)
+        try beforeReports?()
+        try writeSkippedReport(
+            skippedReport, path: options.skippedReportPath, noOverwrite: options.noOverwrite)
+        try writeBatchManifest(
+            manifest, path: options.batchManifestPath, noOverwrite: options.noOverwrite)
         if rendered == 0, options.failOnEmpty {
             throw CLIError.batchEmpty(skipped: skipped)
         }
@@ -559,7 +563,7 @@ enum CLIBatchRenderer {
     /// useful CI artifact (`[]`) because it proves the batch scanned without omissions.
     private static func writeSkippedReport(
         _ skippedReport: [SkippedReportEntry],
-        path: String?
+        path: String?, noOverwrite: Bool
     ) throws {
         guard let path, !path.isEmpty else { return }
         let url = URL(fileURLWithPath: path)
@@ -576,7 +580,7 @@ enum CLIBatchRenderer {
                 encoded.append(0x0A)
                 data = encoded
             }
-            try data.write(to: url, options: .atomic)
+            try CLIOutputWriter.write(data, to: url, noOverwrite: noOverwrite)
         } catch {
             throw CLIError.writeFailed(path: path)
         }
@@ -586,7 +590,7 @@ enum CLIBatchRenderer {
     /// for CI because it proves discovery completed even when no inputs matched.
     private static func writeBatchManifest(
         _ manifest: [BatchManifestEntry],
-        path: String?
+        path: String?, noOverwrite: Bool
     ) throws {
         guard let path, !path.isEmpty else { return }
         let url = URL(fileURLWithPath: path)
@@ -603,7 +607,7 @@ enum CLIBatchRenderer {
                 encoded.append(0x0A)
                 data = encoded
             }
-            try data.write(to: url, options: .atomic)
+            try CLIOutputWriter.write(data, to: url, noOverwrite: noOverwrite)
         } catch {
             throw CLIError.writeFailed(path: path)
         }
