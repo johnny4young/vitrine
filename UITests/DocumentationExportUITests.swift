@@ -103,12 +103,19 @@ final class DocumentationExportUITests: XCTestCase {
                     app.typeText(parent.path)
                     app.typeKey(.return, modifierFlags: [])
                     let panel = app.dialogs["open-panel"]
-                    XCTAssertTrue(panel.waitForExistence(timeout: 5), app.debugDescription)
+                    // Check current readiness before starting a polling wait; `||`
+                    // short-circuits, so delayed readiness keeps the same bounded waits.
+                    XCTAssertTrue(
+                        panel.exists || panel.waitForExistence(timeout: 5), app.debugDescription)
                     // AppKit exposes this button's localized AXTitle, not an AXLabel.
                     // Its in-dialog identifier excludes the Touch Bar duplicate.
                     let choose = panel.buttons["OKButton"]
-                    XCTAssertTrue(choose.waitForExistence(timeout: 5), app.debugDescription)
-                    XCTAssertTrue(choose.wait(for: \.isHittable, toEqual: true, timeout: 5))
+                    XCTAssertTrue(
+                        choose.exists || choose.waitForExistence(timeout: 5), app.debugDescription)
+                    XCTAssertTrue(
+                        choose.isHittable
+                            || choose.wait(for: \.isHittable, toEqual: true, timeout: 5),
+                        app.debugDescription)
                     recordSegment("panel")
                     choose.click()
                     XCTAssertTrue(
