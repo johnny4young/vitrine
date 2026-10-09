@@ -103,21 +103,19 @@ final class DocumentationExportUITests: XCTestCase {
                     app.typeText(parent.path)
                     app.typeKey(.return, modifierFlags: [])
                     let panel = app.dialogs["open-panel"]
-                    // Avoid starting a polling wait when the real panel is already ready.
-                    // Keep the same assertions and bounded waits for delayed readiness.
+                    // Check current readiness before starting a polling wait; `||`
+                    // short-circuits, so delayed readiness keeps the same bounded waits.
                     XCTAssertTrue(
-                        readyOrWait(panel.exists) { panel.waitForExistence(timeout: 5) },
-                        app.debugDescription)
+                        panel.exists || panel.waitForExistence(timeout: 5), app.debugDescription)
                     // AppKit exposes this button's localized AXTitle, not an AXLabel.
                     // Its in-dialog identifier excludes the Touch Bar duplicate.
                     let choose = panel.buttons["OKButton"]
                     XCTAssertTrue(
-                        readyOrWait(choose.exists) { choose.waitForExistence(timeout: 5) },
-                        app.debugDescription)
+                        choose.exists || choose.waitForExistence(timeout: 5), app.debugDescription)
                     XCTAssertTrue(
-                        readyOrWait(choose.isHittable) {
-                            choose.wait(for: \.isHittable, toEqual: true, timeout: 5)
-                        })
+                        choose.isHittable
+                            || choose.wait(for: \.isHittable, toEqual: true, timeout: 5),
+                        app.debugDescription)
                     recordSegment("panel")
                     choose.click()
                     XCTAssertTrue(
@@ -144,32 +142,6 @@ final class DocumentationExportUITests: XCTestCase {
                 }
             }
         }
-    }
-
-    private func readyOrWait(_ ready: @autoclosure () -> Bool, wait: () -> Bool) -> Bool {
-        ready() || wait()
-    }
-
-    func testReadinessFastPathPreservesDelayedAndMissingResults() {
-        var waits = 0
-        XCTAssertTrue(
-            readyOrWait(true) {
-                waits += 1
-                return false
-            })
-        XCTAssertEqual(waits, 0, "Already-ready controls must not start a polling wait")
-        XCTAssertTrue(
-            readyOrWait(false) {
-                waits += 1
-                return true
-            })
-        XCTAssertEqual(waits, 1, "Delayed readiness must use the bounded wait")
-        XCTAssertFalse(
-            readyOrWait(false) {
-                waits += 1
-                return false
-            })
-        XCTAssertEqual(waits, 2, "A missing control must retain the wait's failure")
     }
 
     @MainActor

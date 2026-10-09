@@ -65,13 +65,12 @@ exist, and that button must be hittable. Export still uses the native button aft
 Go to Folder keyboard navigation and path entry; no pasteboard shortcut, seeded
 panel location, or programmatic export replaces that interaction.
 
-This avoids invoking the polling wait when readiness is already established.
-It is a candidate optimization, not a guaranteed duration reduction: extra
-accessibility queries can have a cost, especially when readiness is delayed.
-A focused control test verifies that already-ready state avoids the fallback,
-delayed readiness returns its successful fallback result, and a missing control
-retains the fallback failure. These are synthetic readiness controls, not a
-simulated delayed or missing native panel.
-Use the identical eight-phase markers and matched-run protocol above to determine
-its effect. A single candidate CI run versus a historical baseline is diagnostic;
-it cannot establish a reproducible improvement or quantify workflow savings.
+Each check is a short-circuiting `exists || waitForExistence(...)` (or the
+`isHittable` equivalent), so an already-ready control skips the wait call and a
+delayed or missing control reaches the same bounded wait and failure. It is a
+candidate optimization, not a guaranteed duration reduction: XCTest's waits also
+evaluate readiness when they start, and the extra accessibility query adds cost
+when readiness is delayed. Use the identical eight-phase markers and matched-run
+protocol above to determine its effect. A single candidate CI run versus a
+historical baseline is diagnostic; it cannot establish a reproducible improvement
+or quantify workflow savings.
