@@ -79,6 +79,45 @@ struct CLINoClobberPublicationTests: CLITestSupport {
         #expect(!FileManager.default.fileExists(atPath: target.path))
     }
 
+    @Test(arguments: ["png", "txt"])
+    func preflightReportsADanglingSymlinkBeforeRendering(extensionName: String) throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let output = directory.appendingPathComponent("card.png")
+        let occupied = directory.appendingPathComponent("card.\(extensionName)")
+        try FileManager.default.createSymbolicLink(
+            at: occupied, withDestinationURL: directory.appendingPathComponent("missing"))
+        let options = try CLIArguments.parse([
+            "render", "snippet.swift", "--out", output.path, "--no-overwrite", "--sidecars",
+            "text",
+        ])
+
+        #expect(throws: CLIError.outputExists(path: occupied.path)) {
+            try CLIOutputWriter.guardNoOverwriteTargetsAvailable(beside: output, options: options)
+        }
+    }
+
+    @Test(arguments: ["--manifest", "--skipped-report"])
+    func batchPreflightReportsADanglingSymlinkReport(flag: String) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let report = root.appendingPathComponent("report.json")
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        _ = try writeInput("let value = 42", named: "Card.swift", in: input)
+        try FileManager.default.createSymbolicLink(
+            at: report, withDestinationURL: root.appendingPathComponent("missing.json"))
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--no-overwrite", flag, report.path,
+        ])
+
+        #expect(throws: CLIError.outputExists(path: report.path)) {
+            try CLIBatchRenderer.run(options)
+        }
+        #expect(!FileManager.default.fileExists(atPath: output.path))
+    }
+
     @Test func defaultOverwriteModeStillReplacesAnExistingOutput() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

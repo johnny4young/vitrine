@@ -263,7 +263,7 @@ enum CLIBatchRenderer {
                     "The batch report at \"\(report.path)\" conflicts with an input resource "
                         + "or another output. Choose distinct paths for resources and outputs.")
             }
-            if options.noOverwrite, FileManager.default.fileExists(atPath: report.path) {
+            if options.noOverwrite, CLIOutputWriter.entryExists(at: report) {
                 throw CLIError.outputExists(path: report.path)
             }
             try guardExistingInputReport(

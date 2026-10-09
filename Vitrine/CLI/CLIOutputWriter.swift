@@ -103,9 +103,14 @@ enum CLIOutputWriter {
     /// Finds the first existing output target when `--no-overwrite` is active.
     static func existingNoOverwriteTarget(beside imageURL: URL, options: CLIOptions) -> URL? {
         guard options.noOverwrite else { return nil }
-        return outputTargets(beside: imageURL, options: options).first {
-            FileManager.default.fileExists(atPath: $0.path)
-        }
+        return outputTargets(beside: imageURL, options: options).first(where: entryExists(at:))
+    }
+
+    /// Whether any directory entry occupies `url`, without following a final symlink.
+    /// Publication refuses a dangling symlink too, so preflight must report it before
+    /// rendering rather than letting the run fail late with a generic write error.
+    static func entryExists(at url: URL) -> Bool {
+        (try? FileManager.default.attributesOfItem(atPath: url.path)) != nil
     }
 
     /// Enforces `--no-overwrite` before rendering/copying so a run fails without
@@ -210,16 +215,9 @@ enum CLIOutputWriter {
         for config: SnapshotConfig, options: CLIOptions, beside imageURL: URL
     ) throws {
         let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("txt")
-        do {
-            try write(
-                Data(config.sidecarText.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
-        } catch {
-            let nsError = error as NSError
-            Log.export.error(
-                "CLI text-sidecar write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-            )
-            throw CLIError.writeFailed(path: sidecarURL.path)
-        }
+        // `write` already logs the underlying error and maps it to `writeFailed`.
+        try write(
+            Data(config.sidecarText.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
     }
 
     /// Writes the Markdown sidecar next to the rendered image at `imageURL`
@@ -233,15 +231,8 @@ enum CLIOutputWriter {
         let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("md")
         let contents = markdownSidecarContents(
             for: config, imageName: imageURL.lastPathComponent)
-        do {
-            try write(Data(contents.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
-        } catch {
-            let nsError = error as NSError
-            Log.export.error(
-                "CLI markdown-sidecar write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-            )
-            throw CLIError.writeFailed(path: sidecarURL.path)
-        }
+        // `write` already logs the underlying error and maps it to `writeFailed`.
+        try write(Data(contents.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
     }
 
     /// Writes the HTML sidecar next to the rendered image at `imageURL`
@@ -253,15 +244,8 @@ enum CLIOutputWriter {
     ) throws {
         let sidecarURL = imageURL.deletingPathExtension().appendingPathExtension("html")
         let contents = htmlSidecarContents(for: config, imageName: imageURL.lastPathComponent)
-        do {
-            try write(Data(contents.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
-        } catch {
-            let nsError = error as NSError
-            Log.export.error(
-                "CLI html-sidecar write failed (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
-            )
-            throw CLIError.writeFailed(path: sidecarURL.path)
-        }
+        // `write` already logs the underlying error and maps it to `writeFailed`.
+        try write(Data(contents.utf8), to: sidecarURL, noOverwrite: options.noOverwrite)
     }
 
     /// Builds the Markdown sidecar body: `![alt](image)` + a fenced code block.
