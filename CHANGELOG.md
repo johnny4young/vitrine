@@ -68,6 +68,8 @@ can never drift.
 
 ### Fixed
 
+- Reject malformed documentation UI timing markers and nonfinite aggregate durations
+  instead of accepting incomplete evidence or emitting invalid JSON.
 - CLI `--no-overwrite` also refuses images, sidecars, manifests, and skipped reports that
   another process creates while a run is rendering, instead of replacing them at write time.
 - Preserve existing files during multi-size and carousel exports by choosing available names and refusing race-created destinations.
@@ -187,6 +189,8 @@ can never drift.
   secret scanner recognizes PGP keys, bearer headers, URL credentials, and `:=`/`=>`.
 - Preserve complete CJK and emoji characters when terminal insertion shifts them
   from their leading cell; split or right-edge-truncated glyphs still clear safely.
+- Fill both halves of partially erased or edited wide terminal glyphs with the active
+  background, preserving neighboring glyphs and stripping other pen attributes.
 - Social cards with image backgrounds export on an opaque matte, and raster PDFs use
   point-sized pages.
 
