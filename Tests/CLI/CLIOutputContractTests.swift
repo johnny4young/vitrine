@@ -994,6 +994,25 @@ struct CLIOutputContractTests: CLITestSupport {
         #expect(!FileManager.default.fileExists(atPath: output))
     }
 
+    @Test func anInputOverwriteIsReportedBeforeASidecarCollision() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput("# notes\n", named: "notes.md", in: directory)
+        let before = try Data(contentsOf: URL(fileURLWithPath: input))
+        let options = try CLIArguments.parse([
+            "render", input, "--out", input, "--markdown-sidecar",
+        ])
+
+        do {
+            _ = try CLIRenderer.run(options)
+            Issue.record("Expected the input overwrite to be refused before writing")
+        } catch let CLIError.outputConflict(message) {
+            #expect(message.contains("would overwrite the input file"))
+        }
+        #expect(try Data(contentsOf: URL(fileURLWithPath: input)) == before)
+    }
+
     @Test func textAndHtmlSidecarsAreGuardedToo() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

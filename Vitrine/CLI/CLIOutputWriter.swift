@@ -68,27 +68,29 @@ enum CLIOutputWriter {
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
         let claimed = try Set((inputs + resources).map(claimKey))
-        var claimedOutputs: Set<String> = []
-        for imageURL in imageURLs {
-            for target in outputTargets(beside: imageURL, options: options) {
-                guard try claimedOutputs.insert(claimKey(target)).inserted else {
-                    throw CLIError.outputConflict(
-                        "The output at \"\(target.path)\" conflicts with another image or sidecar. "
-                            + "Choose distinct paths for image and sidecar outputs.")
-                }
-            }
-            if try claimed.contains(claimKey(imageURL)) {
+        let planned = try imageURLs.map { imageURL in
+            try outputTargets(beside: imageURL, options: options).map { ($0, try claimKey($0)) }
+        }
+        // Replacing an input is the more serious cause, so report it before output collisions.
+        for targets in planned {
+            guard let (imageURL, imageKey) = targets.first else { continue }
+            if claimed.contains(imageKey) {
                 throw CLIError.outputConflict(
                     "The output would overwrite the input file at \"\(imageURL.path)\". "
                         + "Choose an --out path that differs from the source.")
             }
-            for sidecar in sidecarURLs(options, beside: imageURL)
-            where try claimed.contains(claimKey(sidecar)) {
+            for (sidecar, key) in targets.dropFirst() where claimed.contains(key) {
                 throw CLIError.outputConflict(
                     "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
                         + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
                         + "source, or drop the sidecar flag.")
             }
+        }
+        var claimedOutputs: Set<String> = []
+        for (target, key) in planned.joined() where !claimedOutputs.insert(key).inserted {
+            throw CLIError.outputConflict(
+                "The output at \"\(target.path)\" conflicts with another image or sidecar. "
+                    + "Choose distinct paths for image and sidecar outputs.")
         }
     }
 
@@ -135,7 +137,7 @@ enum CLIOutputWriter {
             guard links <= 40 else {
                 throw CLIError.outputConflict(
                     "The path at \"\(url.path)\" has too many symbolic links. "
-                        + "Choose an output path without a symbolic-link cycle.")
+                        + "Choose a path without a symbolic-link cycle.")
             }
             pending.insert(contentsOf: (target as NSString).pathComponents, at: next)
         }
