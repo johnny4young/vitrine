@@ -817,6 +817,72 @@ struct CLIOutputContractTests: CLITestSupport {
 
     // MARK: - A sidecar never overwrites its own input
 
+    @Test func outputClaimKeysResolveAliasesAboveMissingFolders() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let actual = root.appendingPathComponent("actual", isDirectory: true)
+        let alias = root.appendingPathComponent("alias", isDirectory: true)
+        try FileManager.default.createDirectory(at: actual, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: actual)
+
+        #expect(
+            CLIOutputWriter.claimKey(alias.appendingPathComponent("missing/Card.png"))
+                == CLIOutputWriter.claimKey(actual.appendingPathComponent("missing/Card.png")))
+    }
+
+    @Test func imageSidecarCollisionsAreRejectedWithoutFileInputs() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let output = root.appendingPathComponent("card.txt")
+        let options = try CLIArguments.parse([
+            "render", "--stdin", "--out", output.path, "--text-sidecar",
+        ])
+
+        do {
+            try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
+                beside: output, options: options, inputs: [])
+            Issue.record("Expected the image/sidecar collision to be refused for stdin too")
+        } catch let error as CLIError {
+            guard case .outputConflict = error else {
+                Issue.record("Unexpected error: \(error)")
+                return
+            }
+            #expect(error.exitCode == 1)
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
+    }
+
+    @Test(arguments: ["txt", "md", "html", "TXT"])
+    func sidecarsCannotReplaceTheirOwnImageOutput(extensionName: String) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = try writeInput(named: "Source.swift", in: root)
+        let original = try Data(contentsOf: URL(fileURLWithPath: input))
+        for noOverwrite in [false, true] {
+            let directory = root.appendingPathComponent(noOverwrite ? "exclusive" : "overwrite")
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true)
+            let output = directory.appendingPathComponent("card.\(extensionName)")
+            let options = try CLIArguments.parse(
+                ["render", input, "--out", output.path, "--sidecars", "all"]
+                    + (noOverwrite ? ["--no-overwrite"] : []))
+
+            do {
+                _ = try CLIRenderer.run(options)
+                Issue.record("Expected the image/sidecar collision to be refused before writing")
+            } catch let error as CLIError {
+                guard case .outputConflict = error else {
+                    Issue.record("Unexpected error: \(error)")
+                    continue
+                }
+                #expect(error.exitCode == 1)
+            }
+
+            #expect(try Data(contentsOf: URL(fileURLWithPath: input)) == original)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty)
+        }
+    }
+
     /// Sidecar names come from `--out` alone, so an output sharing the source's basename
     /// used to replace the source with generated content and still exit 0 — and with
     /// `--redact-lines` the original text was unrecoverable. The run must fail before

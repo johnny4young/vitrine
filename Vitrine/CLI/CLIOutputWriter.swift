@@ -43,8 +43,8 @@ enum CLIOutputWriter {
         return targets
     }
 
-    /// Rejects a run whose image or sidecars would be written on top of one of its own
-    /// inputs, including a local background image or watermark logo.
+    /// Rejects a run whose image or sidecars would replace an input or another output,
+    /// including a local background image or watermark logo.
     ///
     /// Sidecar names derive from `--out` (`base.txt`/`.md`/`.html`), and an unknown `--out`
     /// extension falls back to PNG, so `render notes.md --out notes.md` or a folder batch
@@ -68,8 +68,15 @@ enum CLIOutputWriter {
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
         let claimed = Set((inputs + resources).map(claimKey))
-        guard !claimed.isEmpty else { return }
+        var claimedOutputs: Set<String> = []
         for imageURL in imageURLs {
+            for target in outputTargets(beside: imageURL, options: options) {
+                guard claimedOutputs.insert(claimKey(target)).inserted else {
+                    throw CLIError.outputConflict(
+                        "The output at \"\(target.path)\" conflicts with another image or sidecar. "
+                            + "Choose distinct paths for image and sidecar outputs.")
+                }
+            }
             if claimed.contains(claimKey(imageURL)) {
                 throw CLIError.outputConflict(
                     "The output would overwrite the input file at \"\(imageURL.path)\". "
@@ -95,9 +102,18 @@ enum CLIOutputWriter {
 
     /// A comparable filesystem identity: symlinks resolved and `.`/`..` removed, so two
     /// spellings of the same file compare equal. Applied to targets that do not exist yet,
-    /// it still normalizes the directories leading to them.
+    /// resolve the nearest existing ancestor first: Foundation otherwise leaves directory
+    /// symlinks unresolved when the final file or one of its parent folders is missing.
     private static func canonicalPath(_ url: URL) -> String {
-        url.standardizedFileURL.resolvingSymlinksInPath().path
+        var ancestor = url.standardizedFileURL
+        var missing: [String] = []
+        while !FileManager.default.fileExists(atPath: ancestor.path), ancestor.path != "/" {
+            missing.append(ancestor.lastPathComponent)
+            ancestor.deleteLastPathComponent()
+        }
+        return missing.reversed().reduce(ancestor.resolvingSymlinksInPath()) {
+            $0.appendingPathComponent($1)
+        }.path
     }
 
     /// Finds the first existing output target when `--no-overwrite` is active.

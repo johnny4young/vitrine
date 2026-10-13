@@ -117,6 +117,51 @@ struct CLIBatchRenderingTests: CLITestSupport {
                 atPath: output.appendingPathComponent("Sample.png").path))
     }
 
+    @Test(arguments: [false, true])
+    func recursiveBatchDisambiguatesOutputDirectoryAliases(dryRun: Bool) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let nestedInput = input.appendingPathComponent("nested", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let manifest = root.appendingPathComponent("manifest.json")
+        try FileManager.default.createDirectory(at: nestedInput, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: output.appendingPathComponent("nested", isDirectory: true),
+            withDestinationURL: output)
+        let topSource = "let top = 1\n"
+        let nestedSource = "let nested = 2\n"
+        _ = try writeInput(topSource, named: "Card.swift", in: input)
+        _ = try writeInput(nestedSource, named: "Card.swift", in: nestedInput)
+        let options = try CLIArguments.parse(
+            [
+                "batch", input.path, "--out", output.path, "--recursive", "--sidecars", "text",
+                "--manifest", manifest.path,
+            ] + (dryRun ? ["--dry-run"] : []))
+
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains(dryRun ? "would render 2 images" : "Rendered 2 images"))
+        let entries = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
+        let destinations = entries.compactMap { $0["output"] as? String }
+        #expect(destinations == ["Card.png", "nested/Card-2.png"])
+        let canonicalDestinations = destinations.map {
+            output.appendingPathComponent($0).resolvingSymlinksInPath().path
+        }
+        #expect(Set(canonicalDestinations).count == 2)
+        if !dryRun {
+            #expect(
+                try String(contentsOf: output.appendingPathComponent("Card.txt"), encoding: .utf8)
+                    == topSource)
+            #expect(
+                try String(
+                    contentsOf: output.appendingPathComponent("nested/Card-2.txt"), encoding: .utf8)
+                    == nestedSource)
+        }
+    }
+
     @Test func batchDryRunDoesNotWriteImagesOrSidecars() throws {
         let root = try makeTempDirectory()
         let input = root.appendingPathComponent("input", isDirectory: true)

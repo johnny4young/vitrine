@@ -439,23 +439,27 @@ enum CLIBatchRenderer {
             var relativePath = batchOutputRelativePath(
                 for: entry.file, inputDirectory: inputDirectory, recursive: recursive,
                 preservingInputExtension: shouldPreserveInputExtension, fileExtension: ext)
-            if claimed.contains(filesystemKey(relativePath)) {
+            if claimed.contains(filesystemKey(relativePath, in: outputDirectory)) {
                 let stem = (relativePath as NSString).deletingPathExtension
                 var discriminator = 2
-                while claimed.contains(filesystemKey("\(stem)-\(discriminator).\(ext)")) {
+                while claimed.contains(
+                    filesystemKey("\(stem)-\(discriminator).\(ext)", in: outputDirectory))
+                {
                     discriminator += 1
                 }
                 relativePath = "\(stem)-\(discriminator).\(ext)"
             }
-            claimed.insert(filesystemKey(relativePath))
+            claimed.insert(filesystemKey(relativePath, in: outputDirectory))
             outputs[batchOutputKey(for: entry.file)] = outputDirectory.appendingPathComponent(
                 relativePath)
         }
         return outputs
     }
 
-    /// The identity two output names share when the destination volume cannot tell them
-    /// apart, used to claim names during batch planning.
+    /// Claims the resolved destination, including existing directory symlinks, rather than
+    /// only its relative spelling. Recursive output folders can alias one another, so
+    /// `Card.png` and `nested/Card.png` must receive distinct names when `nested` links
+    /// back to the output root. Missing path components are retained by the shared key.
     ///
     /// Swift string equality is exact, but the default macOS volume (APFS, and HFS+
     /// before it) is **case-insensitive** and compares normalized Unicode. So
@@ -467,8 +471,8 @@ enum CLIBatchRenderer {
     /// Folding here is deliberately one-directional: it decides *whether* a name is
     /// taken, never what gets written. The path itself keeps the author's casing, so a
     /// case-sensitive volume still receives exactly the names it always did.
-    private static func filesystemKey(_ relativePath: String) -> String {
-        relativePath.precomposedStringWithCanonicalMapping.lowercased()
+    private static func filesystemKey(_ relativePath: String, in directory: URL) -> String {
+        CLIOutputWriter.claimKey(directory.appendingPathComponent(relativePath))
     }
 
     /// Builds the output image URL for one batched input using the legacy mapping.
