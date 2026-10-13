@@ -826,8 +826,97 @@ struct CLIOutputContractTests: CLITestSupport {
         try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: actual)
 
         #expect(
-            CLIOutputWriter.claimKey(alias.appendingPathComponent("missing/Card.png"))
+            try CLIOutputWriter.claimKey(alias.appendingPathComponent("missing/Card.png"))
                 == CLIOutputWriter.claimKey(actual.appendingPathComponent("missing/Card.png")))
+    }
+
+    @Test func relativeLinkTargetsUseTheirResolvedPhysicalParent() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let physicalParent = root.appendingPathComponent("physical/parent", isDirectory: true)
+        let lexicalParent = root.appendingPathComponent("parent", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: physicalParent, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: lexicalParent, withDestinationURL: physicalParent)
+        let alias = lexicalParent.appendingPathComponent("alias")
+        try FileManager.default.createSymbolicLink(
+            atPath: alias.path, withDestinationPath: "../missing")
+
+        #expect(
+            try CLIOutputWriter.claimKey(alias.appendingPathComponent("Card.png"))
+                == CLIOutputWriter.claimKey(
+                    root.appendingPathComponent("physical/missing/Card.png")))
+    }
+
+    @Test func linkTargetsResolveSymlinksBeforeParentComponents() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let links = root.appendingPathComponent("links", isDirectory: true)
+        let physical = root.appendingPathComponent("physical", isDirectory: true)
+        let deep = physical.appendingPathComponent("deep", isDirectory: true)
+        try FileManager.default.createDirectory(at: links, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: links.appendingPathComponent("hop"), withDestinationURL: deep)
+        let alias = links.appendingPathComponent("alias")
+        try FileManager.default.createSymbolicLink(
+            atPath: alias.path, withDestinationPath: "hop/../missing")
+        let destination = physical.appendingPathComponent("missing/Card.png")
+
+        #expect(
+            try CLIOutputWriter.claimKey(alias.appendingPathComponent("Card.png"))
+                == CLIOutputWriter.claimKey(destination))
+        #expect(
+            try CLIOutputWriter.claimKey(links.appendingPathComponent("hop/../missing/Card.png"))
+                == CLIOutputWriter.claimKey(destination))
+        // Confirm the physical destination against actual filesystem traversal too.
+        try FileManager.default.createDirectory(
+            at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let bytes = Data("physical destination".utf8)
+        try bytes.write(to: alias.appendingPathComponent("Card.png"))
+        #expect(try Data(contentsOf: destination) == bytes)
+    }
+
+    @Test func repeatedRelativeLinksCanBeResolvedInAFinitePath() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createSymbolicLink(
+            atPath: root.appendingPathComponent("link").path, withDestinationPath: ".")
+
+        #expect(
+            try CLIOutputWriter.claimKey(root.appendingPathComponent("link/link/Card.png"))
+                == CLIOutputWriter.claimKey(root.appendingPathComponent("Card.png")))
+    }
+
+    @Test func aSymbolicLinkCycleIsRejectedBeforeWritingArtifacts() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let first = root.appendingPathComponent("first")
+        let second = root.appendingPathComponent("second")
+        try FileManager.default.createSymbolicLink(
+            atPath: first.path, withDestinationPath: "second")
+        try FileManager.default.createSymbolicLink(
+            atPath: second.path, withDestinationPath: "first")
+        let output = first.appendingPathComponent("Card.png")
+        let options = try CLIArguments.parse([
+            "render", "--stdin", "--out", output.path, "--sidecars", "all",
+        ])
+
+        do {
+            try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
+                beside: output, options: options, inputs: [])
+            Issue.record("Expected the symbolic-link cycle to be refused before writing")
+        } catch let error as CLIError {
+            guard case .outputConflict = error else {
+                Issue.record("Unexpected error: \(error)")
+                return
+            }
+            #expect(error.exitCode == 1)
+        }
+        #expect(
+            try FileManager.default.contentsOfDirectory(atPath: root.path).sorted()
+                == ["first", "second"])
     }
 
     @Test func imageSidecarCollisionsAreRejectedWithoutFileInputs() throws {

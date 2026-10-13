@@ -162,6 +162,67 @@ struct CLIBatchRenderingTests: CLITestSupport {
         }
     }
 
+    @Test(arguments: [false, true], ["absolute", "relative", "chained"])
+    func recursiveBatchDisambiguatesDanglingOutputDirectoryAliases(
+        dryRun: Bool, linkStyle: String
+    ) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let firstInput = input.appendingPathComponent("a-real", isDirectory: true)
+        let secondInput = input.appendingPathComponent("z-alias", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let actualOutput = output.appendingPathComponent("a-real", isDirectory: true)
+        let manifest = root.appendingPathComponent("manifest.json")
+        try FileManager.default.createDirectory(at: firstInput, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: secondInput, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        // The first render creates the link's currently absent target directory.
+        let alias = output.appendingPathComponent("z-alias", isDirectory: true)
+        if linkStyle == "absolute" {
+            try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: actualOutput)
+        } else {
+            if linkStyle == "chained" {
+                try FileManager.default.createSymbolicLink(
+                    atPath: output.appendingPathComponent("bridge").path,
+                    withDestinationPath: "a-real")
+            }
+            try FileManager.default.createSymbolicLink(
+                atPath: alias.path,
+                withDestinationPath: linkStyle == "chained" ? "bridge" : "a-real")
+        }
+        let firstSource = "let first = 1\n"
+        let secondSource = "let second = 2\n"
+        _ = try writeInput(firstSource, named: "Card.swift", in: firstInput)
+        _ = try writeInput(secondSource, named: "Card.swift", in: secondInput)
+        let options = try CLIArguments.parse(
+            [
+                "batch", input.path, "--out", output.path, "--recursive", "--sidecars", "text",
+                "--manifest", manifest.path,
+            ] + (dryRun ? ["--dry-run"] : []))
+
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains(dryRun ? "would render 2 images" : "Rendered 2 images"))
+        let entries = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
+        #expect(
+            entries.compactMap { $0["output"] as? String }
+                == ["a-real/Card.png", "z-alias/Card-2.png"])
+        if dryRun {
+            #expect(!FileManager.default.fileExists(atPath: actualOutput.path))
+        } else {
+            #expect(
+                try String(
+                    contentsOf: actualOutput.appendingPathComponent("Card.txt"), encoding: .utf8)
+                    == firstSource)
+            #expect(
+                try String(
+                    contentsOf: actualOutput.appendingPathComponent("Card-2.txt"), encoding: .utf8)
+                    == secondSource)
+        }
+    }
+
     @Test func batchDryRunDoesNotWriteImagesOrSidecars() throws {
         let root = try makeTempDirectory()
         let input = root.appendingPathComponent("input", isDirectory: true)

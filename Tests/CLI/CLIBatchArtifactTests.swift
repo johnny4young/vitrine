@@ -169,6 +169,30 @@ struct CLIBatchArtifactTests: CLITestSupport {
         }
     }
 
+    @Test(arguments: ["--manifest", "--skipped-report"])
+    func reportsCannotOverwriteImagesThroughDanglingDirectoryAliases(flag: String) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let nestedInput = input.appendingPathComponent("a-real", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let actualOutput = output.appendingPathComponent("a-real", isDirectory: true)
+        let alias = output.appendingPathComponent("z-alias", isDirectory: true)
+        try FileManager.default.createDirectory(at: nestedInput, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: actualOutput)
+        _ = try writeInput("let original = 1\n", named: "Card.swift", in: nestedInput)
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--recursive",
+            flag, alias.appendingPathComponent("Card.png").path,
+        ])
+
+        expectOutputConflict { _ = try CLIRenderer.runBatch(options) }
+
+        #expect(!FileManager.default.fileExists(atPath: actualOutput.path))
+        #expect(try FileManager.default.contentsOfDirectory(atPath: output.path) == ["z-alias"])
+    }
+
     @Test func anUnrecognizedInputReportIsARuntimeConflict() throws {
         let input = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: input) }

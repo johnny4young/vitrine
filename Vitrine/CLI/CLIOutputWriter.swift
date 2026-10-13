@@ -67,23 +67,23 @@ enum CLIOutputWriter {
     ) throws {
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
-        let claimed = Set((inputs + resources).map(claimKey))
+        let claimed = try Set((inputs + resources).map(claimKey))
         var claimedOutputs: Set<String> = []
         for imageURL in imageURLs {
             for target in outputTargets(beside: imageURL, options: options) {
-                guard claimedOutputs.insert(claimKey(target)).inserted else {
+                guard try claimedOutputs.insert(claimKey(target)).inserted else {
                     throw CLIError.outputConflict(
                         "The output at \"\(target.path)\" conflicts with another image or sidecar. "
                             + "Choose distinct paths for image and sidecar outputs.")
                 }
             }
-            if claimed.contains(claimKey(imageURL)) {
+            if try claimed.contains(claimKey(imageURL)) {
                 throw CLIError.outputConflict(
                     "The output would overwrite the input file at \"\(imageURL.path)\". "
                         + "Choose an --out path that differs from the source.")
             }
             for sidecar in sidecarURLs(options, beside: imageURL)
-            where claimed.contains(claimKey(sidecar)) {
+            where try claimed.contains(claimKey(sidecar)) {
                 throw CLIError.outputConflict(
                     "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
                         + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
@@ -96,24 +96,50 @@ enum CLIOutputWriter {
     /// `notes.MD` and a `notes.md` sidecar are one claimed file. Folding only decides
     /// whether a name is taken; on a case-sensitive volume it can refuse a distinct
     /// file that differs only by case, which fails closed instead of risking a source.
-    static func claimKey(_ url: URL) -> String {
-        canonicalPath(url).precomposedStringWithCanonicalMapping.lowercased()
+    static func claimKey(_ url: URL) throws -> String {
+        try canonicalPath(url).precomposedStringWithCanonicalMapping.lowercased()
     }
 
     /// A comparable filesystem identity: symlinks resolved and `.`/`..` removed, so two
-    /// spellings of the same file compare equal. Applied to targets that do not exist yet,
-    /// resolve the nearest existing ancestor first: Foundation otherwise leaves directory
-    /// symlinks unresolved when the final file or one of its parent folders is missing.
-    private static func canonicalPath(_ url: URL) -> String {
-        var ancestor = url.standardizedFileURL
-        var missing: [String] = []
-        while !FileManager.default.fileExists(atPath: ancestor.path), ancestor.path != "/" {
-            missing.append(ancestor.lastPathComponent)
-            ancestor.deleteLastPathComponent()
+    /// spellings of the same file compare equal. Resolve links even when their targets
+    /// are missing: a batch can create that target before writing another output. Walk
+    /// each link's raw target before `..`, which refers to its resolved physical parent.
+    /// A bounded expansion budget refuses cycles instead of returning an uncertain key.
+    private static func canonicalPath(_ url: URL) throws -> String {
+        var pending = url.pathComponents
+        var resolved: [String] = []
+        var next = 0
+        var links = 0
+        while next < pending.count {
+            let component = pending[next]
+            next += 1
+            switch component {
+            case "/":
+                resolved.removeAll(keepingCapacity: true)
+                continue
+            case ".":
+                continue
+            case "..":
+                if !resolved.isEmpty { resolved.removeLast() }
+                continue
+            default:
+                break
+            }
+            let candidate = "/" + (resolved + [component]).joined(separator: "/")
+            guard let target = try? FileManager.default.destinationOfSymbolicLink(atPath: candidate)
+            else {
+                resolved.append(component)
+                continue
+            }
+            links += 1
+            guard links <= 40 else {
+                throw CLIError.outputConflict(
+                    "The path at \"\(url.path)\" has too many symbolic links. "
+                        + "Choose an output path without a symbolic-link cycle.")
+            }
+            pending.insert(contentsOf: (target as NSString).pathComponents, at: next)
         }
-        return missing.reversed().reduce(ancestor.resolvingSymlinksInPath()) {
-            $0.appendingPathComponent($1)
-        }.path
+        return "/" + resolved.joined(separator: "/")
     }
 
     /// Finds the first existing output target when `--no-overwrite` is active.

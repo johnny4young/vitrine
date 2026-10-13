@@ -82,7 +82,8 @@ can never drift.
 - A `render`/`multi-size` output or sidecar that would replace an input or image resource
   now exits 1 with only its message, like other runtime failures, instead of exit 2 with the
   usage text; the check also folds case, so `NOTES.md` cannot replace `notes.md`.
-- Keep CLI batch outputs distinct when destination folders are symlink aliases, and
+- Keep CLI batch outputs distinct when destination folders are symlink aliases, including
+  relative or chained links whose target folders do not exist yet, and
   reject image/sidecar paths that collide before writing any artifacts.
 
 - Align first-capture guidance with the optional global shortcut, explain
