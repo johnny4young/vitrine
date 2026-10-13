@@ -817,6 +817,161 @@ struct CLIOutputContractTests: CLITestSupport {
 
     // MARK: - A sidecar never overwrites its own input
 
+    @Test func outputClaimKeysResolveAliasesAboveMissingFolders() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let actual = root.appendingPathComponent("actual", isDirectory: true)
+        let alias = root.appendingPathComponent("alias", isDirectory: true)
+        try FileManager.default.createDirectory(at: actual, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: actual)
+
+        #expect(
+            try CLIOutputWriter.claimKey(alias.appendingPathComponent("missing/Card.png"))
+                == CLIOutputWriter.claimKey(actual.appendingPathComponent("missing/Card.png")))
+    }
+
+    @Test func relativeLinkTargetsUseTheirResolvedPhysicalParent() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let physicalParent = root.appendingPathComponent("physical/parent", isDirectory: true)
+        let lexicalParent = root.appendingPathComponent("parent", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: physicalParent, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: lexicalParent, withDestinationURL: physicalParent)
+        let alias = lexicalParent.appendingPathComponent("alias")
+        try FileManager.default.createSymbolicLink(
+            atPath: alias.path, withDestinationPath: "../missing")
+
+        #expect(
+            try CLIOutputWriter.claimKey(alias.appendingPathComponent("Card.png"))
+                == CLIOutputWriter.claimKey(
+                    root.appendingPathComponent("physical/missing/Card.png")))
+    }
+
+    @Test func linkTargetsResolveSymlinksBeforeParentComponents() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let links = root.appendingPathComponent("links", isDirectory: true)
+        let physical = root.appendingPathComponent("physical", isDirectory: true)
+        let deep = physical.appendingPathComponent("deep", isDirectory: true)
+        try FileManager.default.createDirectory(at: links, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            at: links.appendingPathComponent("hop"), withDestinationURL: deep)
+        let alias = links.appendingPathComponent("alias")
+        try FileManager.default.createSymbolicLink(
+            atPath: alias.path, withDestinationPath: "hop/../missing")
+        let destination = physical.appendingPathComponent("missing/Card.png")
+
+        #expect(
+            try CLIOutputWriter.claimKey(alias.appendingPathComponent("Card.png"))
+                == CLIOutputWriter.claimKey(destination))
+        #expect(
+            try CLIOutputWriter.claimKey(links.appendingPathComponent("hop/../missing/Card.png"))
+                == CLIOutputWriter.claimKey(destination))
+        // Confirm the physical destination against actual filesystem traversal too.
+        try FileManager.default.createDirectory(
+            at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let bytes = Data("physical destination".utf8)
+        try bytes.write(to: alias.appendingPathComponent("Card.png"))
+        #expect(try Data(contentsOf: destination) == bytes)
+    }
+
+    @Test func repeatedRelativeLinksCanBeResolvedInAFinitePath() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createSymbolicLink(
+            atPath: root.appendingPathComponent("link").path, withDestinationPath: ".")
+
+        #expect(
+            try CLIOutputWriter.claimKey(root.appendingPathComponent("link/link/Card.png"))
+                == CLIOutputWriter.claimKey(root.appendingPathComponent("Card.png")))
+    }
+
+    @Test func aSymbolicLinkCycleIsRejectedBeforeWritingArtifacts() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let first = root.appendingPathComponent("first")
+        let second = root.appendingPathComponent("second")
+        try FileManager.default.createSymbolicLink(
+            atPath: first.path, withDestinationPath: "second")
+        try FileManager.default.createSymbolicLink(
+            atPath: second.path, withDestinationPath: "first")
+        let output = first.appendingPathComponent("Card.png")
+        let options = try CLIArguments.parse([
+            "render", "--stdin", "--out", output.path, "--sidecars", "all",
+        ])
+
+        do {
+            try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
+                beside: output, options: options, inputs: [])
+            Issue.record("Expected the symbolic-link cycle to be refused before writing")
+        } catch let error as CLIError {
+            guard case .outputConflict = error else {
+                Issue.record("Unexpected error: \(error)")
+                return
+            }
+            #expect(error.exitCode == 1)
+        }
+        #expect(
+            try FileManager.default.contentsOfDirectory(atPath: root.path).sorted()
+                == ["first", "second"])
+    }
+
+    @Test func imageSidecarCollisionsAreRejectedWithoutFileInputs() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let output = root.appendingPathComponent("card.txt")
+        let options = try CLIArguments.parse([
+            "render", "--stdin", "--out", output.path, "--text-sidecar",
+        ])
+
+        do {
+            try CLIOutputWriter.guardOutputsDoNotOverwriteInputs(
+                beside: output, options: options, inputs: [])
+            Issue.record("Expected the image/sidecar collision to be refused for stdin too")
+        } catch let error as CLIError {
+            guard case .outputConflict = error else {
+                Issue.record("Unexpected error: \(error)")
+                return
+            }
+            #expect(error.exitCode == 1)
+        }
+        #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).isEmpty)
+    }
+
+    @Test(arguments: ["txt", "md", "html", "TXT"])
+    func sidecarsCannotReplaceTheirOwnImageOutput(extensionName: String) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = try writeInput(named: "Source.swift", in: root)
+        let original = try Data(contentsOf: URL(fileURLWithPath: input))
+        for noOverwrite in [false, true] {
+            let directory = root.appendingPathComponent(noOverwrite ? "exclusive" : "overwrite")
+            try FileManager.default.createDirectory(
+                at: directory, withIntermediateDirectories: true)
+            let output = directory.appendingPathComponent("card.\(extensionName)")
+            let options = try CLIArguments.parse(
+                ["render", input, "--out", output.path, "--sidecars", "all"]
+                    + (noOverwrite ? ["--no-overwrite"] : []))
+
+            do {
+                _ = try CLIRenderer.run(options)
+                Issue.record("Expected the image/sidecar collision to be refused before writing")
+            } catch let error as CLIError {
+                guard case .outputConflict = error else {
+                    Issue.record("Unexpected error: \(error)")
+                    continue
+                }
+                #expect(error.exitCode == 1)
+            }
+
+            #expect(try Data(contentsOf: URL(fileURLWithPath: input)) == original)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty)
+        }
+    }
+
     /// Sidecar names come from `--out` alone, so an output sharing the source's basename
     /// used to replace the source with generated content and still exit 0 — and with
     /// `--redact-lines` the original text was unrecoverable. The run must fail before
@@ -837,6 +992,25 @@ struct CLIOutputContractTests: CLITestSupport {
         // The source is byte-identical and the image was never written.
         #expect(try Data(contentsOf: URL(fileURLWithPath: input)) == before)
         #expect(!FileManager.default.fileExists(atPath: output))
+    }
+
+    @Test func anInputOverwriteIsReportedBeforeASidecarCollision() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput("# notes\n", named: "notes.md", in: directory)
+        let before = try Data(contentsOf: URL(fileURLWithPath: input))
+        let options = try CLIArguments.parse([
+            "render", input, "--out", input, "--markdown-sidecar",
+        ])
+
+        do {
+            _ = try CLIRenderer.run(options)
+            Issue.record("Expected the input overwrite to be refused before writing")
+        } catch let CLIError.outputConflict(message) {
+            #expect(message.contains("would overwrite the input file"))
+        }
+        #expect(try Data(contentsOf: URL(fileURLWithPath: input)) == before)
     }
 
     @Test func textAndHtmlSidecarsAreGuardedToo() throws {

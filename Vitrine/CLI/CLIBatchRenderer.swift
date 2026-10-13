@@ -97,7 +97,7 @@ enum CLIBatchRenderer {
         }
 
         let ext = options.format.rawValue
-        let outputURLs = batchOutputURLs(
+        let outputURLs = try batchOutputURLs(
             for: loadedInputs.map(\.file), inputDirectory: inputDirectory,
             outputDirectory: outputDirectory, recursive: options.recursiveBatch, fileExtension: ext)
 
@@ -245,15 +245,16 @@ enum CLIBatchRenderer {
         guard !reports.isEmpty else { return }
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
-        let artifactKeys = outputURLs.flatMap {
-            ([$0] + CLIOutputWriter.sidecarURLs(options, beside: $0)).map(CLIOutputWriter.claimKey)
+        let artifactKeys = try outputURLs.flatMap {
+            try ([$0] + CLIOutputWriter.sidecarURLs(options, beside: $0)).map(
+                CLIOutputWriter.claimKey)
         }
-        let outputDirectoryKey = CLIOutputWriter.claimKey(outputDirectory)
+        let outputDirectoryKey = try CLIOutputWriter.claimKey(outputDirectory)
         // Discovered inputs, skipped ones included, are claimed too: a report spelled with
         // different case than the source escapes the exact-path discovery exclusion.
-        var claimed = Set(artifactKeys + (inputs + resources).map(CLIOutputWriter.claimKey))
+        var claimed = try Set(artifactKeys + (inputs + resources).map(CLIOutputWriter.claimKey))
         for (report, isManifest) in reports {
-            let key = CLIOutputWriter.claimKey(report)
+            let key = try CLIOutputWriter.claimKey(report)
             // A report cannot sit where the run creates a folder, or below a file it writes.
             let nested =
                 key == outputDirectoryKey
@@ -284,7 +285,7 @@ enum CLIBatchRenderer {
             path == root || path.hasPrefix(root.hasSuffix("/") ? root : root + "/")
         }
         let insideInput =
-            contains(
+            try contains(
                 CLIOutputWriter.claimKey(report), under: CLIOutputWriter.claimKey(inputDirectory))
             || contains(
                 report.standardizedFileURL.path, under: inputDirectory.standardizedFileURL.path)
@@ -412,7 +413,7 @@ enum CLIBatchRenderer {
         outputDirectory: URL,
         recursive: Bool,
         fileExtension ext: String
-    ) -> [String: URL] {
+    ) throws -> [String: URL] {
         let baseRelativePaths = files.map { file in
             (
                 file: file,
@@ -439,23 +440,27 @@ enum CLIBatchRenderer {
             var relativePath = batchOutputRelativePath(
                 for: entry.file, inputDirectory: inputDirectory, recursive: recursive,
                 preservingInputExtension: shouldPreserveInputExtension, fileExtension: ext)
-            if claimed.contains(filesystemKey(relativePath)) {
+            if try claimed.contains(filesystemKey(relativePath, in: outputDirectory)) {
                 let stem = (relativePath as NSString).deletingPathExtension
                 var discriminator = 2
-                while claimed.contains(filesystemKey("\(stem)-\(discriminator).\(ext)")) {
+                while try claimed.contains(
+                    filesystemKey("\(stem)-\(discriminator).\(ext)", in: outputDirectory))
+                {
                     discriminator += 1
                 }
                 relativePath = "\(stem)-\(discriminator).\(ext)"
             }
-            claimed.insert(filesystemKey(relativePath))
+            try claimed.insert(filesystemKey(relativePath, in: outputDirectory))
             outputs[batchOutputKey(for: entry.file)] = outputDirectory.appendingPathComponent(
                 relativePath)
         }
         return outputs
     }
 
-    /// The identity two output names share when the destination volume cannot tell them
-    /// apart, used to claim names during batch planning.
+    /// Claims the resolved destination, including existing directory symlinks, rather than
+    /// only its relative spelling. Recursive output folders can alias one another, so
+    /// `Card.png` and `nested/Card.png` must receive distinct names when `nested` links
+    /// back to the output root. Missing path components are retained by the shared key.
     ///
     /// Swift string equality is exact, but the default macOS volume (APFS, and HFS+
     /// before it) is **case-insensitive** and compares normalized Unicode. So
@@ -467,8 +472,8 @@ enum CLIBatchRenderer {
     /// Folding here is deliberately one-directional: it decides *whether* a name is
     /// taken, never what gets written. The path itself keeps the author's casing, so a
     /// case-sensitive volume still receives exactly the names it always did.
-    private static func filesystemKey(_ relativePath: String) -> String {
-        relativePath.precomposedStringWithCanonicalMapping.lowercased()
+    private static func filesystemKey(_ relativePath: String, in directory: URL) throws -> String {
+        try CLIOutputWriter.claimKey(directory.appendingPathComponent(relativePath))
     }
 
     /// Builds the output image URL for one batched input using the legacy mapping.

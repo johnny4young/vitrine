@@ -43,8 +43,8 @@ enum CLIOutputWriter {
         return targets
     }
 
-    /// Rejects a run whose image or sidecars would be written on top of one of its own
-    /// inputs, including a local background image or watermark logo.
+    /// Rejects a run whose image or sidecars would replace an input or another output,
+    /// including a local background image or watermark logo.
     ///
     /// Sidecar names derive from `--out` (`base.txt`/`.md`/`.html`), and an unknown `--out`
     /// extension falls back to PNG, so `render notes.md --out notes.md` or a folder batch
@@ -67,21 +67,30 @@ enum CLIOutputWriter {
     ) throws {
         let resources = [options.backgroundImagePath, options.watermarkLogoPath]
             .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
-        let claimed = Set((inputs + resources).map(claimKey))
-        guard !claimed.isEmpty else { return }
-        for imageURL in imageURLs {
-            if claimed.contains(claimKey(imageURL)) {
+        let claimed = try Set((inputs + resources).map(claimKey))
+        let planned = try imageURLs.map { imageURL in
+            try outputTargets(beside: imageURL, options: options).map { ($0, try claimKey($0)) }
+        }
+        // Replacing an input is the more serious cause, so report it before output collisions.
+        for targets in planned {
+            guard let (imageURL, imageKey) = targets.first else { continue }
+            if claimed.contains(imageKey) {
                 throw CLIError.outputConflict(
                     "The output would overwrite the input file at \"\(imageURL.path)\". "
                         + "Choose an --out path that differs from the source.")
             }
-            for sidecar in sidecarURLs(options, beside: imageURL)
-            where claimed.contains(claimKey(sidecar)) {
+            for (sidecar, key) in targets.dropFirst() where claimed.contains(key) {
                 throw CLIError.outputConflict(
                     "The \(sidecar.pathExtension) sidecar would overwrite the input file at "
                         + "\"\(sidecar.path)\". Choose an --out path whose name differs from the "
                         + "source, or drop the sidecar flag.")
             }
+        }
+        var claimedOutputs: Set<String> = []
+        for (target, key) in planned.joined() where !claimedOutputs.insert(key).inserted {
+            throw CLIError.outputConflict(
+                "The output at \"\(target.path)\" conflicts with another image or sidecar. "
+                    + "Choose distinct paths for image and sidecar outputs.")
         }
     }
 
@@ -89,15 +98,60 @@ enum CLIOutputWriter {
     /// `notes.MD` and a `notes.md` sidecar are one claimed file. Folding only decides
     /// whether a name is taken; on a case-sensitive volume it can refuse a distinct
     /// file that differs only by case, which fails closed instead of risking a source.
-    static func claimKey(_ url: URL) -> String {
-        canonicalPath(url).precomposedStringWithCanonicalMapping.lowercased()
+    static func claimKey(_ url: URL) throws -> String {
+        try canonicalPath(url).precomposedStringWithCanonicalMapping.lowercased()
     }
 
     /// A comparable filesystem identity: symlinks resolved and `.`/`..` removed, so two
-    /// spellings of the same file compare equal. Applied to targets that do not exist yet,
-    /// it still normalizes the directories leading to them.
-    private static func canonicalPath(_ url: URL) -> String {
-        url.standardizedFileURL.resolvingSymlinksInPath().path
+    /// spellings of the same file compare equal. Resolve links even when their targets
+    /// are missing: a batch can create that target before writing another output. Walk
+    /// each link's raw target before `..`, which refers to its resolved physical parent.
+    /// A bounded expansion budget refuses cycles instead of returning an uncertain key.
+    private static func canonicalPath(_ url: URL) throws -> String {
+        var pending = url.pathComponents
+        var resolved: [String] = []
+        var next = 0
+        var links = 0
+        while next < pending.count {
+            let component = pending[next]
+            next += 1
+            switch component {
+            case "/":
+                resolved.removeAll(keepingCapacity: true)
+                continue
+            case ".":
+                continue
+            case "..":
+                if !resolved.isEmpty { resolved.removeLast() }
+                continue
+            default:
+                break
+            }
+            let candidate = "/" + (resolved + [component]).joined(separator: "/")
+            guard let target = try? FileManager.default.destinationOfSymbolicLink(atPath: candidate)
+            else {
+                resolved.append(component)
+                continue
+            }
+            links += 1
+            guard links <= 40 else {
+                throw CLIError.outputConflict(
+                    "The path at \"\(url.path)\" has too many symbolic links. "
+                        + "Choose a path without a symbolic-link cycle.")
+            }
+            pending.insert(contentsOf: (target as NSString).pathComponents, at: next)
+        }
+        // Foundation also unifies macOS volume aliases (firmlinks). Normalize an existing
+        // ancestor after walking raw links, then retain the missing suffix for planned outputs.
+        var ancestor = URL(fileURLWithPath: "/" + resolved.joined(separator: "/"))
+        var missing: [String] = []
+        while !FileManager.default.fileExists(atPath: ancestor.path), ancestor.path != "/" {
+            missing.append(ancestor.lastPathComponent)
+            ancestor.deleteLastPathComponent()
+        }
+        return missing.reversed().reduce(ancestor.standardizedFileURL.resolvingSymlinksInPath()) {
+            $0.appendingPathComponent($1)
+        }.path
     }
 
     /// Finds the first existing output target when `--no-overwrite` is active.
