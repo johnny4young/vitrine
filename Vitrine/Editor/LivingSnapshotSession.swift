@@ -60,11 +60,9 @@ final class LivingSnapshotSession {
         var volumeNumber: UInt64?
 
         static func read(from url: URL) throws -> FileStamp {
-            // The retained URL caches resource values; each poll must inspect the file
-            // again to detect saves that preserve its inode and byte count.
-            var currentURL = url
-            currentURL.removeAllCachedResourceValues()
-            let values = try currentURL.resourceValues(forKeys: [
+            // The retained URL caches resource values. A fresh URL inspects the file again
+            // without purging a cache that a concurrent read may share.
+            let values = try URL(fileURLWithPath: url.path).resourceValues(forKeys: [
                 .isRegularFileKey,
                 .fileSizeKey,
                 .contentModificationDateKey,

@@ -124,6 +124,29 @@ struct LivingSnapshotSessionTests {
         }
     }
 
+    /// A real file in its own temporary directory; callers remove that directory.
+    private func makeLiveFile(_ text: String, modifiedAt date: Date? = nil) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrineLivingSnapshot-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        let source = directory.appendingPathComponent("Live.swift")
+        try Data(text.utf8).write(to: source)
+        if let date {
+            try FileManager.default.setAttributes(
+                [.modificationDate: date], ofItemAtPath: source.path)
+        }
+        return source
+    }
+
+    /// Overwrites the file through its existing inode, then stamps a distinct modification date.
+    private func saveInPlace(_ text: String, to source: URL, modifiedAt date: Date) throws {
+        let handle = try FileHandle(forWritingTo: source)
+        try handle.write(contentsOf: Data(text.utf8))
+        try handle.close()
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: source.path)
+    }
+
     private func settings() -> AppSettings {
         AppSettings(
             defaults: testDefaults())
@@ -599,6 +622,31 @@ struct LivingSnapshotSessionTests {
         }
     }
 
+    @Test func cancelledOpeningRequestDiscardsItsCurrentFailure() async throws {
+        let source = URL(fileURLWithPath: "/tmp/Cancelled.swift")
+        let reads = ControlledReads()
+        let session = LivingSnapshotSession(
+            settings: settings(),
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in stamp(1) },
+                load: { try await reads.load($0) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+
+        let task = Task {
+            try await session.loadForOpening(from: source)
+        }
+        await reads.waitUntilRequested(source)
+        task.cancel()
+        await reads.fail(source)
+
+        await #expect(throws: CancellationError.self) {
+            try await task.value
+        }
+    }
+
     @Test func currentOpeningReadPreservesItsFailure() async throws {
         let source = URL(fileURLWithPath: "/tmp/Unavailable.swift")
         let reads = ControlledReads()
@@ -624,13 +672,8 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func sameSizeAtomicReplacementIsDetectedEndToEnd() async throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("VitrineLivingSnapshot-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(
-            at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let source = directory.appendingPathComponent("Live.swift")
-        try Data("one".utf8).write(to: source)
+        let source = try makeLiveFile("one")
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
         let settings = settings()
         let initial = try FileInputLoader.load(from: source)
@@ -651,23 +694,12 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func fileStampRefreshesMetadataAfterAnInPlaceSave() throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("VitrineLivingSnapshot-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(
-            at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let source = directory.appendingPathComponent("Live.swift")
-        try Data("one".utf8).write(to: source)
-        try FileManager.default.setAttributes(
-            [.modificationDate: Date(timeIntervalSince1970: 1_000)], ofItemAtPath: source.path)
+        let source = try makeLiveFile("one", modifiedAt: Date(timeIntervalSince1970: 1_000))
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
         let initial = try LivingSnapshotSession.FileStamp.read(from: source)
 
-        let handle = try FileHandle(forWritingTo: source)
-        try handle.write(contentsOf: Data("two".utf8))
-        try handle.close()
         let updatedDate = Date(timeIntervalSince1970: 2_000)
-        try FileManager.default.setAttributes(
-            [.modificationDate: updatedDate], ofItemAtPath: source.path)
+        try saveInPlace("two", to: source, modifiedAt: updatedDate)
         let updated = try LivingSnapshotSession.FileStamp.read(from: source)
 
         #expect(updated.fileNumber == initial.fileNumber)
@@ -677,15 +709,8 @@ struct LivingSnapshotSessionTests {
     }
 
     @Test func sameSizeInPlaceSaveIsDetectedEndToEnd() async throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("VitrineLivingSnapshot-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(
-            at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let source = directory.appendingPathComponent("Live.swift")
-        try Data("one".utf8).write(to: source)
-        try FileManager.default.setAttributes(
-            [.modificationDate: Date(timeIntervalSince1970: 1_000)], ofItemAtPath: source.path)
+        let source = try makeLiveFile("one", modifiedAt: Date(timeIntervalSince1970: 1_000))
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
         let settings = settings()
         let initial = try FileInputLoader.load(from: source)
@@ -698,11 +723,7 @@ struct LivingSnapshotSessionTests {
 
         // Keep the original inode and byte count: only fresh modification metadata
         // distinguishes this save from the version already loaded into the editor.
-        let handle = try FileHandle(forWritingTo: source)
-        try handle.write(contentsOf: Data("two".utf8))
-        try handle.close()
-        try FileManager.default.setAttributes(
-            [.modificationDate: Date(timeIntervalSince1970: 2_000)], ofItemAtPath: source.path)
+        try saveInPlace("two", to: source, modifiedAt: Date(timeIntervalSince1970: 2_000))
         #expect(await wait(session.checkForChanges()))
 
         #expect(settings.documentCode == "two")
