@@ -14,13 +14,23 @@ STATES = {f"{locale}-{appearance}-{size}" for locale, appearance, size in
           itertools.product(LOCALES, APPEARANCES, SIZES)}
 PHASES = ("launch", "navigation", "description", "package-setup", "panel", "export", "validation", "termination")
 PATTERN = re.compile(r"DOCUMENTATION_UI_SEGMENT state=(\S+) phase=(\S+) seconds=(\S+)")
+MARKER = re.compile(r"(?<!\S)DOCUMENTATION_UI_SEGMENT(?=\s|$)")
 # The test that emits the markers; its labels must stay in lockstep with the constants above.
 SOURCE = Path(__file__).resolve().parent.parent / "UITests" / "DocumentationExportUITests.swift"
 
 
 def summarize(text):
     states = {state: {} for state in STATES}
-    for state, phase, raw in PATTERN.findall(text):
+    for number, line in enumerate(text.splitlines(), 1):
+        marker = MARKER.search(line)
+        if marker is None:
+            continue
+        # Job timestamps may prefix a record. Validate its entire payload instead
+        # of silently ignoring truncated records or accepting a valid prefix.
+        match = PATTERN.fullmatch(line[marker.start():].strip())
+        if match is None:
+            raise ValueError(f"Malformed timing marker on line {number}")
+        state, phase, raw = match.groups()
         if state not in STATES or phase not in PHASES:
             raise ValueError(f"Unknown state or phase: {state}/{phase}")
         if phase in states[state]:
@@ -33,8 +43,13 @@ def summarize(text):
         if set(phases) != set(PHASES):
             raise ValueError(f"Incomplete state {state}: missing {sorted(set(PHASES) - phases.keys())}")
     totals = {phase: sum(states[state][phase] for state in STATES) for phase in PHASES}
+    if any(not math.isfinite(seconds) for seconds in totals.values()):
+        raise ValueError("Nonfinite phase total")
+    total = sum(totals.values())
+    if not math.isfinite(total):
+        raise ValueError("Nonfinite duration total")
     return {"states": dict(sorted(states.items())), "phase_seconds": totals,
-            "total_seconds": sum(totals.values()), "state_count": len(states),
+            "total_seconds": total, "state_count": len(states),
             "qualification": "diagnostic timings only; no controlled performance improvement claim"}
 
 
@@ -58,12 +73,23 @@ def self_test():
                       for s in sorted(STATES) for p in PHASES)
     if summarize(valid)["total_seconds"] != 80:
         raise AssertionError("Complete timing evidence was not summed correctly")
+    prefixed = "\n".join(f"2026-10-13T12:00:00Z {line}" for line in valid.splitlines())
+    unrelated = ('NOT_DOCUMENTATION_UI_SEGMENT state=unknown phase=unknown seconds=0\n'
+                 'source: "DOCUMENTATION_UI_SEGMENT state=\\(state) phase=\\(phase) seconds=\\(duration)"\n')
+    if summarize(unrelated + prefixed)["total_seconds"] != 80:
+        raise AssertionError("Job-log prefixes or unrelated source text changed valid timings")
     for invalid in ("", valid.split("\n", 1)[1], valid + "\n" + valid.splitlines()[0],
                     valid.replace("seconds=1.25", "seconds=nan", 1),
                     valid.replace("seconds=1.25", "seconds=-1", 1),
                     valid.replace("seconds=1.25", "seconds=soon", 1),
                     valid + "\nDOCUMENTATION_UI_SEGMENT state=unknown phase=launch seconds=1.25",
-                    valid + "\nDOCUMENTATION_UI_SEGMENT state=en-dark-1280 phase=unknown seconds=1.25"):
+                    valid + "\nDOCUMENTATION_UI_SEGMENT state=en-dark-1280 phase=unknown seconds=1.25",
+                    valid + "\nDOCUMENTATION_UI_SEGMENT state=en-dark-1280 phase=launch",
+                    valid + "\nDOCUMENTATION_UI_SEGMENT state=unknown phase=launch seconds=",
+                    valid + "\nDOCUMENTATION_UI_SEGMENT",
+                    valid.replace("seconds=1.25", "seconds=1.25 extra", 1),
+                    valid.replace("seconds=1.25", "seconds=1e308"),
+                    valid.replace("seconds=1.25", "seconds=1e307")):
         try:
             summarize(invalid)
         except ValueError:

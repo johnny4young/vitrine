@@ -30,8 +30,11 @@ python3 scripts/summarize-documentation-ui.py job.log > timing.json
 python3 scripts/summarize-documentation-ui.py --self-test
 ```
 
-The summary fails closed on missing states/phases, duplicates, unknown labels and
-nonfinite/negative durations. Do not combine two OS jobs or reruns in one input.
+The summary fails closed on missing states/phases, duplicates, malformed markers,
+unknown labels and nonfinite/negative durations or totals. A standalone marker may
+follow a job-log timestamp; its complete payload must match the emitted format.
+The emitter's quoted Swift source string and longer identifiers are not timing
+records. Do not combine two OS jobs or reruns in one input.
 Passing timing parsing is not proof that the entire UI job passed; retain the exact
 source head, run/job URL, Xcode/image identity, xcresult and terminal job conclusion.
 A failed/incomplete test must not become a successful performance observation.
