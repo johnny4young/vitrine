@@ -139,7 +139,17 @@ enum CLIOutputWriter {
             }
             pending.insert(contentsOf: (target as NSString).pathComponents, at: next)
         }
-        return "/" + resolved.joined(separator: "/")
+        // Foundation also unifies macOS volume aliases (firmlinks). Normalize an existing
+        // ancestor after walking raw links, then retain the missing suffix for planned outputs.
+        var ancestor = URL(fileURLWithPath: "/" + resolved.joined(separator: "/"))
+        var missing: [String] = []
+        while !FileManager.default.fileExists(atPath: ancestor.path), ancestor.path != "/" {
+            missing.append(ancestor.lastPathComponent)
+            ancestor.deleteLastPathComponent()
+        }
+        return missing.reversed().reduce(ancestor.standardizedFileURL.resolvingSymlinksInPath()) {
+            $0.appendingPathComponent($1)
+        }.path
     }
 
     /// Finds the first existing output target when `--no-overwrite` is active.

@@ -223,6 +223,82 @@ struct CLIBatchRenderingTests: CLITestSupport {
         }
     }
 
+    @Test(arguments: [false, true], [false, true])
+    func recursiveBatchDisambiguatesDataVolumeDirectoryAliases(
+        dryRun: Bool, targetExists: Bool
+    ) throws {
+        let root = URL(fileURLWithPath: "/tmp", isDirectory: true)
+            .appendingPathComponent("vitrine-cli-firmlink-\(UUID().uuidString)", isDirectory: true)
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let firstInput = input.appendingPathComponent("a-real", isDirectory: true)
+        let secondInput = input.appendingPathComponent("z-alias", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        let actualOutput = output.appendingPathComponent("a-real", isDirectory: true)
+        let dataVolumeOutput = URL(
+            fileURLWithPath: "/System/Volumes/Data/private" + output.path, isDirectory: true)
+        let manifest = root.appendingPathComponent("manifest.json")
+        try FileManager.default.createDirectory(at: firstInput, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: secondInput, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+        // macOS exposes the same writable directory through both volume namespaces.
+        let ordinaryAttributes = try FileManager.default.attributesOfItem(atPath: output.path)
+        let dataAttributes = try FileManager.default.attributesOfItem(atPath: dataVolumeOutput.path)
+        let inode = try #require(ordinaryAttributes[.systemFileNumber] as? NSNumber)
+        let device = try #require(ordinaryAttributes[.systemNumber] as? NSNumber)
+        try #require(inode == dataAttributes[.systemFileNumber] as? NSNumber)
+        try #require(device == dataAttributes[.systemNumber] as? NSNumber)
+        if targetExists {
+            try FileManager.default.createDirectory(
+                at: actualOutput, withIntermediateDirectories: true)
+        }
+        try FileManager.default.createSymbolicLink(
+            at: output.appendingPathComponent("z-alias", isDirectory: true),
+            withDestinationURL: dataVolumeOutput.appendingPathComponent("a-real", isDirectory: true)
+        )
+        let firstSource = "let first = 1\n"
+        let secondSource = "let second = 2\n"
+        _ = try writeInput(firstSource, named: "Card.swift", in: firstInput)
+        _ = try writeInput(secondSource, named: "Card.swift", in: secondInput)
+        let options = try CLIArguments.parse(
+            [
+                "batch", input.path, "--out", output.path, "--recursive", "--sidecars", "text",
+                "--manifest", manifest.path,
+            ] + (dryRun ? ["--dry-run"] : []))
+
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains(dryRun ? "would render 2 images" : "Rendered 2 images"))
+        let entries = try #require(
+            JSONSerialization.jsonObject(with: Data(contentsOf: manifest)) as? [[String: Any]])
+        #expect(
+            entries.compactMap { $0["output"] as? String }
+                == ["a-real/Card.png", "z-alias/Card-2.png"])
+        #expect(
+            entries.compactMap { $0["sidecars"] as? [String] }
+                == [["a-real/Card.txt"], ["z-alias/Card-2.txt"]])
+        if dryRun {
+            #expect(FileManager.default.fileExists(atPath: actualOutput.path) == targetExists)
+            if targetExists {
+                #expect(
+                    try FileManager.default.contentsOfDirectory(atPath: actualOutput.path).isEmpty)
+            }
+        } else {
+            #expect(
+                try String(
+                    contentsOf: actualOutput.appendingPathComponent("Card.txt"), encoding: .utf8)
+                    == firstSource)
+            #expect(
+                try String(
+                    contentsOf: actualOutput.appendingPathComponent("Card-2.txt"), encoding: .utf8)
+                    == secondSource)
+            #expect(
+                try decodePNG(at: actualOutput.appendingPathComponent("Card.png").path).width > 0)
+            #expect(
+                try decodePNG(at: actualOutput.appendingPathComponent("Card-2.png").path).width > 0)
+        }
+    }
+
     @Test func batchDryRunDoesNotWriteImagesOrSidecars() throws {
         let root = try makeTempDirectory()
         let input = root.appendingPathComponent("input", isDirectory: true)
