@@ -13,7 +13,7 @@ SIZES = ("minimum", "1280")
 STATES = {f"{locale}-{appearance}-{size}" for locale, appearance, size in
           itertools.product(LOCALES, APPEARANCES, SIZES)}
 PHASES = ("launch", "navigation", "description", "package-setup", "panel", "export", "validation", "termination")
-PATTERN = re.compile(r"DOCUMENTATION_UI_SEGMENT state=(\S+) phase=(\S+) seconds=(\S+)")
+PATTERN = re.compile(r"DOCUMENTATION_UI_SEGMENT state=(\S+) phase=(\S+) seconds=([0-9]+(?:\.[0-9]+)?(?:e[-+]?[0-9]+)?)")
 MARKER = re.compile(r"(?<!\S)DOCUMENTATION_UI_SEGMENT(?=\s|$)")
 # The test that emits the markers; its labels must stay in lockstep with the constants above.
 SOURCE = Path(__file__).resolve().parent.parent / "UITests" / "DocumentationExportUITests.swift"
@@ -21,7 +21,7 @@ SOURCE = Path(__file__).resolve().parent.parent / "UITests" / "DocumentationExpo
 
 def summarize(text):
     states = {state: {} for state in STATES}
-    for number, line in enumerate(text.splitlines(), 1):
+    for number, line in enumerate(text.split("\n"), 1):
         marker = MARKER.search(line)
         if marker is None:
             continue
@@ -43,8 +43,6 @@ def summarize(text):
         if set(phases) != set(PHASES):
             raise ValueError(f"Incomplete state {state}: missing {sorted(set(PHASES) - phases.keys())}")
     totals = {phase: sum(states[state][phase] for state in STATES) for phase in PHASES}
-    if any(not math.isfinite(seconds) for seconds in totals.values()):
-        raise ValueError("Nonfinite phase total")
     total = sum(totals.values())
     if not math.isfinite(total):
         raise ValueError("Nonfinite duration total")
@@ -78,6 +76,16 @@ def self_test():
                  'source: "DOCUMENTATION_UI_SEGMENT state=\\(state) phase=\\(phase) seconds=\\(duration)"\n')
     if summarize(unrelated + prefixed)["total_seconds"] != 80:
         raise AssertionError("Job-log prefixes or unrelated source text changed valid timings")
+    exponents = valid.replace("seconds=1.25", "seconds=5e-05", 1).replace("seconds=1.25", "seconds=1e+1", 1)
+    if not math.isclose(summarize(exponents)["total_seconds"], 87.50005):
+        raise AssertionError("Swift exponent durations were not accepted")
+    try:
+        summarize("progress\fdone\nDOCUMENTATION_UI_SEGMENT state=en-dark-1280")
+    except ValueError as error:
+        if "line 2" not in str(error):
+            raise AssertionError(f"Malformed marker reported at the wrong line: {error}")
+    else:
+        raise AssertionError("Malformed marker after a form feed was accepted")
     for invalid in ("", valid.split("\n", 1)[1], valid + "\n" + valid.splitlines()[0],
                     valid.replace("seconds=1.25", "seconds=nan", 1),
                     valid.replace("seconds=1.25", "seconds=-1", 1),
@@ -88,6 +96,10 @@ def self_test():
                     valid + "\nDOCUMENTATION_UI_SEGMENT state=unknown phase=launch seconds=",
                     valid + "\nDOCUMENTATION_UI_SEGMENT",
                     valid.replace("seconds=1.25", "seconds=1.25 extra", 1),
+                    valid.replace("seconds=1.25", "seconds=1_25", 1),
+                    valid.replace("seconds=1.25", "seconds=+1.25", 1),
+                    valid.replace("seconds=1.25", "seconds=infinity", 1),
+                    prefixed + "\n2026-10-13T12:00:00Z DOCUMENTATION_UI_SEGMENT state=en-dark-1280",
                     valid.replace("seconds=1.25", "seconds=1e308"),
                     valid.replace("seconds=1.25", "seconds=1e307")):
         try:
