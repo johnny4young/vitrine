@@ -66,4 +66,17 @@ struct TerminalWideEraseTests {
             ])
     }
 
+    @Test(arguments: [("2X", [1, 4]), ("2P", [1, 2]), ("K", [1])])
+    func anEditSplittingTwoGlyphsFillsEveryOutsidePartner(
+        edit: String, partnerColumns: [Int]
+    ) throws {
+        var screen = TerminalScreen(columns: 8, rows: 2)
+        screen.feed("A你好Z\(esc)[42m\(esc)[3G\(esc)[\(edit)")
+
+        let fill = TerminalCell(content: .grapheme(" "), style: ANSIStyle(background: .indexed(2)))
+        let row = try #require(screen.rows.first)
+        for column in partnerColumns { #expect(row[column] == fill) }
+        #expect(row.contains { $0.content == .continuation } == false)
+        #expect(row.contains { [.grapheme("你"), .grapheme("好")].contains($0.content) } == false)
+    }
 }

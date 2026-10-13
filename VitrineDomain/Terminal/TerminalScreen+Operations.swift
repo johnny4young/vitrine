@@ -112,6 +112,13 @@ extension TerminalScreen {
         }
     }
 
+    /// Blanks wide glyphs split by an edit of `start...end`. Interior cells are overwritten
+    /// or removed by the edit, so only the boundary columns can reach a partner outside it.
+    mutating func blankWideBoundaries(row: Int, from start: Int, through end: Int) {
+        blankWideCluster(row: row, col: start)
+        if end != start { blankWideCluster(row: row, col: end) }
+    }
+
     /// Repairs a row after an operation shifts or truncates cells so a wide head is always
     /// immediately followed by its continuation, and a continuation is never headless. An
     /// orphaned half erases with the pen background, like the cells the operation itself
@@ -267,7 +274,7 @@ extension TerminalScreen {
         padToMarginForFill(cursorRow)
         guard cursorCol < rows[cursorRow].count else { return }
         let n = min(max(1, count), rows[cursorRow].count - cursorCol)
-        for col in cursorCol..<(cursorCol + n) { blankWideCluster(row: cursorRow, col: col) }
+        blankWideBoundaries(row: cursorRow, from: cursorCol, through: cursorCol + n - 1)
         rows[cursorRow].removeSubrange(cursorCol..<(cursorCol + n))
         rows[cursorRow].append(contentsOf: Array(repeating: erasedCell, count: n))
         repairWideClusters(row: cursorRow)
@@ -282,7 +289,7 @@ extension TerminalScreen {
         let end = min(cursorCol + max(1, count), rows[cursorRow].count)
         guard cursorCol < end else { return }
         let fill = erasedCell
-        for col in cursorCol..<end { blankWideCluster(row: cursorRow, col: col) }
+        blankWideBoundaries(row: cursorRow, from: cursorCol, through: end - 1)
         for col in cursorCol..<end { rows[cursorRow][col] = fill }
         repairWideClusters(row: cursorRow)
     }
@@ -346,7 +353,7 @@ extension TerminalScreen {
         let start = max(0, start)
         guard start < rows[row].count else { return }
         let fill = erasedCell
-        for col in start..<rows[row].count { blankWideCluster(row: row, col: col) }
+        blankWideBoundaries(row: row, from: start, through: rows[row].count - 1)
         for col in start..<rows[row].count { rows[row][col] = fill }
         repairWideClusters(row: row)
     }
@@ -357,7 +364,7 @@ extension TerminalScreen {
         let end = min(end, rows[row].count - 1)
         guard end >= 0 else { return }
         let fill = erasedCell
-        for col in 0...end { blankWideCluster(row: row, col: col) }
+        blankWideBoundaries(row: row, from: 0, through: end)
         for col in 0...end { rows[row][col] = fill }
         repairWideClusters(row: row)
     }
