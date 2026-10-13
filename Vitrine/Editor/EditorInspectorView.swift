@@ -34,7 +34,8 @@ struct EditorInspectorView: View {
     /// Presents the PRO paywall when the user reaches for a gated image frame (browser).
     @State private var showingFramePaywall = false
     /// The last scan's outcome, so a scan that finds nothing still answers.
-    @State private var secretScanSummary: String?
+    /// The last scan result and the redactions it produced; it is shown only while they still apply.
+    @State private var secretScan: (summary: String, ranges: [ClosedRange<Int>])?
 
     var body: some View {
         ScrollView {
@@ -138,8 +139,10 @@ struct EditorInspectorView: View {
                                     }
                                 }
                             }
-                            if let secretScanSummary {
-                                Text(verbatim: secretScanSummary)
+                            if let secretScan,
+                                secretScan.ranges == settings.style.redactedLineRanges
+                            {
+                                Text(verbatim: secretScan.summary)
                                     .font(.system(size: VitrineTokens.FontSize.caption))
                                     .foregroundStyle(VitrineTokens.Text.tertiary)
                                     .accessibilityIdentifier("secret-scan-summary")
@@ -177,8 +180,7 @@ struct EditorInspectorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
-        .onChange(of: settings.documentGeneration) { secretScanSummary = nil }
-        .onChange(of: settings.style.redactedLineRanges.isEmpty) { secretScanSummary = nil }
+        .onChange(of: settings.documentGeneration) { secretScan = nil }
         .sheet(isPresented: $showingFramePaywall) {
             PaywallSheet(feature: .advancedFrames, entitlements: entitlements)
         }
@@ -309,11 +311,13 @@ struct EditorInspectorView: View {
     /// screen, so raw line numbers would redact the wrong rows.
     private func scanForSecrets() {
         let lines = SecretScanner.secretLines(in: settings.config.sidecarText)
-        settings.style.redactedLineRanges = LineHighlight.normalize(lines.map { $0...$0 })
-        secretScanSummary =
+        let ranges = LineHighlight.normalize(lines.map { $0...$0 })
+        settings.style.redactedLineRanges = ranges
+        let summary =
             lines.isEmpty
             ? String(localized: "No secrets found")
             : String(localized: "\(lines.count) lines redacted")
+        secretScan = (summary, ranges)
     }
 
     private var canvasSection: some View {
@@ -420,7 +424,7 @@ struct EditorInspectorView: View {
                     "inspector-format-\($0.rawValue)"
                 }
             )
-            .help(settings.export.format.summary)
+            .help(settings.export.format.localizedSummary)
             .accessibilityLabel("Format")
             .accessibilityIdentifier("inspector-format-picker")
         }
@@ -465,8 +469,9 @@ struct EditorInspectorView: View {
     }
 
     private var destinationHelp: String {
-        settings.selectedPreset?.summary
-            ?? "Custom: your own size and style, with no destination preset applied."
+        settings.selectedPreset?.localizedSummary
+            ?? String(
+                localized: "Custom: your own size and style, with no destination preset applied.")
     }
 
     /// Whether the selected font ships programming ligatures, gating the toggle

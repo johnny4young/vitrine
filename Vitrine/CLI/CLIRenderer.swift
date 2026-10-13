@@ -217,7 +217,8 @@ enum CLIRenderer {
     /// a render-ready config and the store that resolves any foreground image.
     ///
     /// With both `--copy` and `--out`, the file is written first and the clipboard receives
-    /// that same raster, so a failed write never replaces what the user had copied.
+    /// that same raster (a PDF gets its own PNG render), so a failed write never replaces
+    /// what the user had copied.
     private static func render(
         _ config: SnapshotConfig, options: CLIOptions,
         backgroundStore: BackgroundImageStore,

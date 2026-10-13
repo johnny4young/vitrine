@@ -174,6 +174,8 @@ struct CLIOptions: Equatable {
     /// Optional local logo path. The renderer validates it once per invocation, then
     /// carries the bytes inline through the shared render-core watermark model.
     var watermarkLogoPath: String?
+    /// The `--recipe` file, kept only so outputs can never replace it.
+    var recipePath: String?
     /// Optional fixed-sRGB tint for `watermarkText`; nil uses the overlay's legible white.
     var watermarkColor: RGBAColor?
     /// Optional placement for `watermarkText`; nil uses the Brand Kit's bottom-right default.
@@ -545,4 +547,12 @@ struct CLIOptions: Equatable {
     /// The exact logical canvas size to render. An explicit CLI size wins over a
     /// destination preset; `nil` lets the canvas hug its content.
     var fixedSize: CGSize? { canvasSize ?? resolvedPreset?.sizing.fixedSize }
+}
+
+extension CLIOptions {
+    /// Local files a run reads besides its inputs; no output may replace them.
+    var protectedResourceURLs: [URL] {
+        [backgroundImagePath, watermarkLogoPath, recipePath]
+            .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
+    }
 }

@@ -63,6 +63,20 @@ struct CLIInputSafetyTests: CLITestSupport {
         #expect(try String(contentsOfFile: input, encoding: .utf8) == "# Notes\n")
     }
 
+    @Test func outputThroughALinkWithATrailingSlashCannotOverwriteItsSource() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let input = try writeInput("# Notes\n", named: "notes.md", in: directory)
+        let link = directory.appendingPathComponent("link")
+        try FileManager.default.createSymbolicLink(
+            atPath: link.path, withDestinationPath: directory.path + "/")
+        let output = link.appendingPathComponent("notes.md").path
+        let options = try CLIArguments.parse(["render", input, "--out", output])
+
+        #expect(throws: CLIError.self) { try CLIRenderer.run(options) }
+        #expect(try String(contentsOfFile: input, encoding: .utf8) == "# Notes\n")
+    }
+
     @Test func outputDifferingFromTheSourceOnlyByCaseIsRefused() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

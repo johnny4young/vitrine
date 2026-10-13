@@ -402,6 +402,7 @@ extension CLIArgumentParser {
             backgroundImageDimming: backgroundImageDimming,
             watermarkText: watermarkText,
             watermarkLogoPath: watermarkLogoPath,
+            recipePath: recipePath,
             watermarkColor: watermarkColor,
             watermarkPosition: watermarkPosition,
             watermarkFreePosition: watermarkFreePosition,

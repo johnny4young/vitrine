@@ -209,14 +209,14 @@ enum CLIBatchRenderer {
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
     }
 
-    /// Paths a batch writes inside its own input tree: the output folder (unless it is the
-    /// input folder itself) and the manifest and skipped-report files.
+    /// Paths a batch writes or reads as configuration inside its own input tree: the output
+    /// folder (unless it is the input folder itself), the reports, and the recipe.
     private static func excludedArtifacts(
         _ options: CLIOptions, inputDirectory: URL
     ) -> (directory: String?, files: Set<String>) {
         let input = canonicalPath(inputDirectory)
         let output = canonicalPath(URL(fileURLWithPath: options.outputPath))
-        let files = [options.batchManifestPath, options.skippedReportPath]
+        let files = [options.batchManifestPath, options.skippedReportPath, options.recipePath]
             .compactMap { $0 }.filter { !$0.isEmpty }
             .map { canonicalPath(URL(fileURLWithPath: $0)) }
         return (output == input ? nil : output, Set(files))
@@ -243,8 +243,7 @@ enum CLIBatchRenderer {
             return (URL(fileURLWithPath: path), request.isManifest)
         }
         guard !reports.isEmpty else { return }
-        let resources = [options.backgroundImagePath, options.watermarkLogoPath]
-            .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
+        let resources = options.protectedResourceURLs
         let artifactKeys = try outputURLs.flatMap {
             try ([$0] + CLIOutputWriter.sidecarURLs(options, beside: $0)).map(
                 CLIOutputWriter.claimKey)
