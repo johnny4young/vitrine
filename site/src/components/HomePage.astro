@@ -8,7 +8,6 @@ import Hero from './Hero.astro';
 import InstallFooter from './InstallFooter.astro';
 import SiteFooter from './SiteFooter.astro';
 import StyleBench from './StyleBench.astro';
-import ReleaseAvailability from './ReleaseAvailability.astro';
 
 interface Props {
   copy: SiteCopy;
@@ -21,7 +20,6 @@ const { copy } = Astro.props;
   <Header locale={copy.locale} />
   <main>
     <Hero copy={copy} />
-    <ReleaseAvailability copy={copy} />
     <StyleBench copy={copy} />
     <FeatureSections copy={copy} />
     <Commercial copy={copy} />

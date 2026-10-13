@@ -2221,6 +2221,102 @@
         }
       }
     },
+    "Private by default, safer to automate" : {
+      "comment" : "What's New headline for version 1.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Privado por defecto, más seguro para automatizar"
+          }
+        }
+      }
+    },
+    "Capture history leaves out the lines you redacted, asks before keeping text that looks like a secret, and can be turned off without deleting what is already saved." : {
+      "comment" : "What's New highlight for version 1.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El historial de capturas omite las líneas que ocultaste, pregunta antes de conservar texto que parece un secreto y se puede desactivar sin borrar lo que ya está guardado."
+          }
+        }
+      }
+    },
+    "New installations start without a global capture shortcut, so Vitrine claims no system-wide keys until you pick one. Shortcuts you already set are kept." : {
+      "comment" : "What's New highlight for version 1.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las instalaciones nuevas empiezan sin un atajo global de captura, así que Vitrine no reserva teclas en todo el sistema hasta que elijas una. Los atajos que ya configuraste se conservan."
+          }
+        }
+      }
+    },
+    "Export for Documentation saves a PNG with matching Markdown, HTML, and plain text, and the alt text you write travels with the image and its share links." : {
+      "comment" : "What's New highlight for version 1.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar para documentación guarda un PNG con su Markdown, HTML y texto plano, y el texto alternativo que escribas acompaña a la imagen y a sus enlaces para compartir."
+          }
+        }
+      }
+    },
+    "The command line refuses an output that would replace a source file, a recipe, or another output, even through a symbolic link or a difference in letter case, before it writes anything. Sending code to the editor with render --edit is free." : {
+      "comment" : "What's New highlight for version 1.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La línea de comandos rechaza, antes de escribir nada, cualquier salida que reemplazaría un archivo fuente, una receta u otra salida, incluso a través de un enlace simbólico o por una diferencia entre mayúsculas y minúsculas. Enviar código al editor con render --edit es gratis."
+          }
+        }
+      }
+    },
+    "The Services menu command that turns selected code into an image now works; Vitrine registers it at launch." : {
+      "comment" : "What's New highlight for version 1.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El comando del menú Servicios que convierte el código seleccionado en una imagen ahora funciona; Vitrine lo registra al abrirse."
+          }
+        }
+      }
+    },
+    "Terminal captures keep CJK characters and emoji whole, erase with the right background color, and keep the final screen of apps such as lazygit." : {
+      "comment" : "What's New highlight for version 1.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las capturas de terminal mantienen completos los caracteres CJK y los emoji, borran con el color de fondo correcto y conservan la pantalla final de apps como lazygit."
+          }
+        }
+      }
+    },
+    "Settings, errors, and What's New now appear in Spanish for Spanish users, and controls respect Reduce Motion and keyboard navigation." : {
+      "comment" : "What's New highlight for version 1.3.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los ajustes, los errores y Novedades ahora aparecen en español para quienes usan Vitrine en español, y los controles respetan Reducir movimiento y la navegación con teclado."
+          }
+        }
+      }
+    },
     "An editor that keeps up" : {
       "comment" : "What's New headline for version 1.2.3.",
       "extractionState" : "manual",

@@ -63,20 +63,24 @@ the first-run quick-start owns that — and is skippable. See
 [`docs/RELEASING.md`](RELEASING.md) for how release notes are authored as part of
 the release checklist.
 
-### Version 1.2.3
+### Version 1.3.0
 
-The current source bundle's newest note is **An editor that keeps up**:
+The current source bundle's newest note is **Private by default, safer to automate**:
 
-- a keystroke no longer re-measures the whole editor window or re-evaluates the inspector;
-  only the views that show the document text update;
-- a padding or font-size step updates the editor once instead of twice, and the code editor
-  reapplies its font only when the font actually changes;
-- highlighting results cover every font-size step and built-in theme, so revisiting one
-  reuses the earlier result;
-- launch removes stale per-window settings from earlier versions in the background;
-- the signed app no longer contains the development and release-QA launch hooks; and
+- capture history omits redacted lines, asks before retaining text that looks like a secret,
+  and can be turned off without deleting saved captures;
+- new installations start without a global capture shortcut, and existing assignments are kept;
+- Export for Documentation saves a PNG with Markdown, HTML, plain text, and alt text that also
+  travels with share links and CLI sidecars;
+- the CLI refuses outputs that would replace a source, a recipe, or another output, including
+  through symbolic links or letter-case aliases, and `render --edit` is free;
+- the Services command that renders selected code is registered at launch;
+- terminal captures keep wide CJK and emoji glyphs whole, erase with the active background,
+  and keep the final screen of apps such as lazygit;
+- Settings, errors, and What's New are localized in Spanish, and controls respect Reduce Motion
+  and keyboard navigation; and
 - the supported floor remains macOS 15 Sequoia, with Tahoe qualification and universal
   direct downloads.
 
 The Releases page remains the authority for what is publicly downloadable; preparing these
-bundled notes in source does not publish or deploy version 1.2.3.
+bundled notes in source does not publish or deploy version 1.3.0.

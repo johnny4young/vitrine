@@ -1,6 +1,6 @@
 # Documentation export
 
-This capability belongs to current source, not the v1.2.3 download. One-document
+This capability first shipped in v1.3.0. One-document
 GUI packages and manual alternative text are Free in Direct and Store builds.
 General CLI rendering, sidecars, multi-size, and batch retain their existing PRO policy.
 

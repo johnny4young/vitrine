@@ -597,8 +597,10 @@ Fit, blur, and dimming map directly to `ImageBackground`; their parser ranges ar
 model's own bounds, and they are rejected without `--background-image` so inert style
 options cannot silently pass in automation.
 `--no-overwrite` / `--no-clobber` is an opt-in artifact safety guard: single renders
-fail before replacing an image or sidecar, while batch jobs skip existing targets and
-can pair that with skipped reports or `--fail-on-skipped`. A preset reframes
+fail before replacing an image or sidecar, while batch jobs skip existing image targets
+(pair that with skipped reports or `--fail-on-skipped`) but fail if a requested manifest
+or skipped report already exists. Publication re-checks every destination, including ones
+created during rendering. A preset reframes
 presentation/output (size, padding, background) and never touches the source, exactly
 as in the GUI. Unknown ids and out-of-range values are rejected up front with
 a clear message so an automation pipeline fails loud.
@@ -936,6 +938,7 @@ Vitrine/
 ├── Export/
 │   ├── ExportManager+File.swift # save-panel and file delivery
 │   ├── ExportManager+Batch.swift # multi-size and carousel delivery
+│   ├── BatchOutputFiles.swift # non-replacing batch file-name plan
 │   ├── BatchExportPresentation.swift # directory UI + completion policy
 │   ├── ShareManager.swift     # NSSharingService
 │   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
@@ -955,6 +958,7 @@ Vitrine/
 │   ├── General/Style/Output/Input/Library/AboutSettingsView.swift
 │   │                         # pane-level settings surfaces
 │   ├── BrandKitSettingsSection.swift / SettingsSharedControls.swift
+│   ├── LocalizedDomainText.swift # catalog copy for domain values (domain modules have none)
 │   ├── CustomThemeStore.swift # built-in + user theme catalog and persistence
 │   ├── CustomThemeFileExchange.swift # user-initiated theme JSON panels
 │   ├── PresetStore.swift      # reusable-style catalog and persistence
@@ -970,6 +974,7 @@ Vitrine/
 │   ├── CLIArgumentSchema.swift # commands, aliases, arity, mode rules, and help
 │   ├── CLIArgumentParser.swift # token consumption and invocation state
 │   ├── CLIArgumentValidation.swift # cross-option rules → immutable CLIOptions
+│   ├── CLIAnnotationArguments.swift # invocation-local annotation state
 │   ├── CLIArgumentValues.swift # catalog, range, color, and geometry conversion
 │   ├── CLIError.swift / CLIUsage.swift # process errors and help contract
 │   ├── CLICatalog.swift       # local theme/language/preset discovery for automation

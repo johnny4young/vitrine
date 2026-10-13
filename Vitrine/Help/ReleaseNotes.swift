@@ -42,6 +42,32 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "1.3.0",
+            headline: "Private by default, safer to automate",
+            highlights: [
+                "Capture history leaves out the lines you redacted, asks before keeping text "
+                    + "that looks like a secret, and can be turned off without deleting what is "
+                    + "already saved.",
+                "New installations start without a global capture shortcut, so Vitrine claims "
+                    + "no system-wide keys until you pick one. Shortcuts you already set are kept.",
+                "Export for Documentation saves a PNG with matching Markdown, HTML, and plain "
+                    + "text, and the alt text you write travels with the image and its share "
+                    + "links.",
+                "The command line refuses an output that would replace a source file, a recipe, "
+                    + "or another output, even through a symbolic link or a difference in letter "
+                    + "case, before it writes anything. Sending code to the editor with "
+                    + "render --edit is free.",
+                "The Services menu command that turns selected code into an image now works; "
+                    + "Vitrine registers it at launch.",
+                "Terminal captures keep CJK characters and emoji whole, erase with the right "
+                    + "background color, and keep the final screen of apps such as lazygit.",
+                "Settings, errors, and What's New now appear in Spanish for Spanish users, and "
+                    + "controls respect Reduce Motion and keyboard navigation.",
+                "Vitrine continues to require macOS 15 Sequoia or later and qualifies "
+                    + "Tahoe, and direct downloads remain universal for Apple silicon and "
+                    + "Intel.",
+            ]),
+        ReleaseNote(
             version: "1.2.3",
             headline: "An editor that keeps up",
             highlights: [

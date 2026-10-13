@@ -98,9 +98,10 @@ attached artifacts cannot be altered or replaced. If a published artifact is wro
 fix the source and publish a new patch version instead of rewriting release history.
 
 After a release is published, update the notes that describe current source against
-the previous download: run `git grep -n 'v<previous>'` and review `docs/` (for example
+the previous download: run
+`git grep -n -i -E '<previous>|current source|current-source|código actual'` and review `docs/` (for example
 the agent cookbook, capabilities, and documentation export), the README Status section,
-and the EN/ES availability messages in `site/src/i18n/content.ts`.
+and the EN/ES website copy in `site/src/i18n/` and `site/src/components/CLIDocsPage.astro`.
 
 ## Continuous integration
 
