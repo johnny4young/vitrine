@@ -187,6 +187,8 @@ can never drift.
   secret scanner recognizes PGP keys, bearer headers, URL credentials, and `:=`/`=>`.
 - Preserve complete CJK and emoji characters when terminal insertion shifts them
   from their leading cell; split or right-edge-truncated glyphs still clear safely.
+- Fill both halves of partially erased or edited wide terminal glyphs with the active
+  background, preserving neighboring glyphs and stripping other pen attributes.
 - Social cards with image backgrounds export on an opaque matte, and raster PDFs use
   point-sized pages.
 
