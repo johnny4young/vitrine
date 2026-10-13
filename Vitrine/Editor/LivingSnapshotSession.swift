@@ -107,6 +107,7 @@ final class LivingSnapshotSession {
     private var lastLoadedText = ""
     private var pollingTask: Task<Void, Never>?
     private var fileReadTask: Task<Bool, Never>?
+    /// Whether `fileReadTask` is an explicit reload; only meaningful while that task is set.
     private var fileReadIsReload = false
     private var openingTask: Task<FileInputLoader.LoadedFile, Error>?
     private var readGeneration: UInt64 = 0
@@ -232,7 +233,6 @@ final class LivingSnapshotSession {
         pollingTask = nil
         fileReadTask?.cancel()
         fileReadTask = nil
-        fileReadIsReload = false
         openingTask?.cancel()
         openingTask = nil
         if retainedSecurityScope, let sourceURL {
@@ -321,7 +321,6 @@ final class LivingSnapshotSession {
     ) -> Bool {
         guard generation == readGeneration, self.sourceURL == sourceURL else { return false }
         fileReadTask = nil
-        fileReadIsReload = false
         switch result {
         case .unchanged:
             return false
@@ -339,7 +338,6 @@ final class LivingSnapshotSession {
     private func failRead(sourceURL: URL, generation: UInt64) -> Bool {
         guard generation == readGeneration, self.sourceURL == sourceURL else { return false }
         fileReadTask = nil
-        fileReadIsReload = false
         // An atomic save can briefly replace the destination between metadata and content reads.
         // Leave the session active; the next poll retries the exact path and stamp.
         status = .unavailable

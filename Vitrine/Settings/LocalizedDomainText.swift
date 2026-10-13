@@ -52,6 +52,13 @@ extension ExportPreset {
         default: summary
         }
     }
+
+    /// Tooltip copy for a destination picker, where `nil` is the Custom choice.
+    static func localizedHelp(for preset: ExportPreset?) -> String {
+        preset?.localizedSummary
+            ?? String(
+                localized: "Custom: your own size and style, with no destination preset applied.")
+    }
 }
 
 extension StylePresetDocument.ImportError {

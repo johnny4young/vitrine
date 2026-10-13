@@ -267,6 +267,7 @@ jobs:
             # A force push can leave `before` outside the pushed history.
             if [[ "$change_base" =~ ^0*$ ]] \
               || ! git merge-base --is-ancestor "$change_base" "$GITHUB_SHA" 2>/dev/null; then
+              echo "::notice title=Diff coverage base::No push base in this history; diff coverage gates only the last commit."
               change_base="${GITHUB_SHA}^"
             fi
           fi

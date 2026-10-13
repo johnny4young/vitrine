@@ -174,7 +174,7 @@ struct CLIOptions: Equatable {
     /// Optional local logo path. The renderer validates it once per invocation, then
     /// carries the bytes inline through the shared render-core watermark model.
     var watermarkLogoPath: String?
-    /// The `--recipe` file, kept only so outputs can never replace it.
+    /// The `--recipe` file, kept so outputs never replace it and a batch never renders it.
     var recipePath: String?
     /// Optional fixed-sRGB tint for `watermarkText`; nil uses the overlay's legible white.
     var watermarkColor: RGBAColor?

@@ -31,7 +31,7 @@ struct DestinationSegmentedPicker: View {
             optionIdentifiers: ["settings-destination-custom"]
                 + DestinationChips.all.map { "settings-destination-\($0.id)" }
         )
-        .help(presetHelp)
+        .help(ExportPreset.localizedHelp(for: settings.selectedPreset))
         .accessibilityLabel("Destination preset")
         .accessibilityIdentifier("destination-preset-picker")
     }
@@ -39,12 +39,6 @@ struct DestinationSegmentedPicker: View {
     private var options: [(String, Text)] {
         [(Self.customTag, Text("Custom"))]
             + DestinationChips.all.map { ($0.id, Text(verbatim: $0.label)) }
-    }
-
-    private var presetHelp: String {
-        settings.selectedPreset?.localizedSummary
-            ?? String(
-                localized: "Custom: your own size and style, with no destination preset applied.")
     }
 
     private var selectionBinding: Binding<String> {
