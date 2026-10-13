@@ -72,6 +72,8 @@ can never drift.
   another process creates while a run is rendering, instead of replacing them at write time.
 - Preserve existing files during multi-size and carousel exports by choosing available names and refusing race-created destinations.
 - Live-file Reload catches a save that lands while the file is being read, without losing a later local draft.
+- Detect live-file saves that preserve the inode and byte count by refreshing URL
+  metadata, and discard late failures from superseded or stopped file-opening reads.
 - Reject observed file changes during bounded reads, including same-length saves, instead of accepting mixed text.
 - Keep spaces and punctuation in the selected CLI installation folder literal in the copied Terminal command.
 - Reject batch report paths that collide with images, sidecars, input resources, or each other before
