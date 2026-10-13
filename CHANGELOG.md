@@ -68,10 +68,14 @@ can never drift.
 
 ### Fixed
 
+- Reject malformed documentation UI timing markers and nonfinite aggregate durations
+  instead of accepting incomplete evidence or emitting invalid JSON.
 - CLI `--no-overwrite` also refuses images, sidecars, manifests, and skipped reports that
   another process creates while a run is rendering, instead of replacing them at write time.
 - Preserve existing files during multi-size and carousel exports by choosing available names and refusing race-created destinations.
 - Live-file Reload catches a save that lands while the file is being read, without losing a later local draft.
+- Detect live-file saves that preserve the inode and byte count by refreshing URL
+  metadata, and discard late failures from superseded or stopped file-opening reads.
 - Reject observed file changes during bounded reads, including same-length saves, instead of accepting mixed text.
 - Keep spaces and punctuation in the selected CLI installation folder literal in the copied Terminal command.
 - Reject batch report paths that collide with images, sidecars, input resources, or each other before
@@ -188,6 +192,8 @@ can never drift.
   secret scanner recognizes PGP keys, bearer headers, URL credentials, and `:=`/`=>`.
 - Preserve complete CJK and emoji characters when terminal insertion shifts them
   from their leading cell; split or right-edge-truncated glyphs still clear safely.
+- Fill both halves of partially erased or edited wide terminal glyphs with the active
+  background, preserving neighboring glyphs and stripping other pen attributes.
 - Social cards with image backgrounds export on an opaque matte, and raster PDFs use
   point-sized pages.
 

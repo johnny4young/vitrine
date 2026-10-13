@@ -78,19 +78,19 @@ struct LivingSnapshotSessionTests {
 
     /// A cancellation-insensitive filesystem double. Production cancellation cannot force a
     /// blocking POSIX read to return, so these continuations prove the generation guard rejects
-    /// late bytes even after the owning task has been cancelled.
+    /// late bytes or errors even after the owning task has been cancelled.
     private actor ControlledReads {
         private var requested: Set<URL> = []
         private var requestWaiters: [URL: [CheckedContinuation<Void, Never>]] = [:]
         private var loadContinuations:
-            [URL: CheckedContinuation<FileInputLoader.LoadedFile, Never>] = [:]
+            [URL: CheckedContinuation<FileInputLoader.LoadedFile, any Error>] = [:]
 
-        func load(_ url: URL) async -> FileInputLoader.LoadedFile {
+        func load(_ url: URL) async throws -> FileInputLoader.LoadedFile {
             requested.insert(url)
             for waiter in requestWaiters.removeValue(forKey: url) ?? [] {
                 waiter.resume()
             }
-            return await withCheckedContinuation { continuation in
+            return try await withCheckedThrowingContinuation { continuation in
                 loadContinuations[url] = continuation
             }
         }
@@ -114,6 +114,37 @@ struct LivingSnapshotSessionTests {
                     filename: url.lastPathComponent,
                     sourceURL: url))
         }
+
+        func fail(_ url: URL) {
+            guard let continuation = loadContinuations.removeValue(forKey: url) else {
+                Issue.record("No suspended read exists for \(url.lastPathComponent)")
+                return
+            }
+            continuation.resume(throwing: FileInputLoader.LoadError.unreadable)
+        }
+    }
+
+    /// A real file in its own temporary directory; callers remove that directory.
+    private func makeLiveFile(_ text: String, modifiedAt date: Date? = nil) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("VitrineLivingSnapshot-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: directory, withIntermediateDirectories: true)
+        let source = directory.appendingPathComponent("Live.swift")
+        try Data(text.utf8).write(to: source)
+        if let date {
+            try FileManager.default.setAttributes(
+                [.modificationDate: date], ofItemAtPath: source.path)
+        }
+        return source
+    }
+
+    /// Overwrites the file through its existing inode, then stamps a distinct modification date.
+    private func saveInPlace(_ text: String, to source: URL, modifiedAt date: Date) throws {
+        let handle = try FileHandle(forWritingTo: source)
+        try handle.write(contentsOf: Data(text.utf8))
+        try handle.close()
+        try FileManager.default.setAttributes([.modificationDate: date], ofItemAtPath: source.path)
     }
 
     private func settings() -> AppSettings {
@@ -472,7 +503,7 @@ struct LivingSnapshotSessionTests {
                 startAccess: { _ in false },
                 stopAccess: { _ in },
                 stamp: { _ in stamp(1) },
-                load: { await reads.load($0) }),
+                load: { try await reads.load($0) }),
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
 
@@ -504,7 +535,7 @@ struct LivingSnapshotSessionTests {
                 startAccess: { _ in true },
                 stopAccess: { stoppedURLs.append($0) },
                 stamp: { _ in stamp(1) },
-                load: { await reads.load($0) }),
+                load: { try await reads.load($0) }),
             pollingInterval: .seconds(3_600))
 
         settings.documentCode = "window content"
@@ -531,7 +562,7 @@ struct LivingSnapshotSessionTests {
                 startAccess: { _ in false },
                 stopAccess: { _ in },
                 stamp: { _ in stamp(1) },
-                load: { await reads.load($0) }),
+                load: { try await reads.load($0) }),
             pollingInterval: .seconds(3_600))
         defer { session.stop() }
 
@@ -554,14 +585,95 @@ struct LivingSnapshotSessionTests {
         }
     }
 
+    @Test(arguments: [false, true])
+    func invalidatedOpeningReadDiscardsItsLateFailure(opensAnotherFile: Bool) async throws {
+        let settings = settings()
+        let firstURL = URL(fileURLWithPath: "/tmp/OldSelection.swift")
+        let secondURL = URL(fileURLWithPath: "/tmp/NewSelection.swift")
+        let reads = ControlledReads()
+        let session = LivingSnapshotSession(
+            settings: settings,
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in stamp(1) },
+                load: { try await reads.load($0) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+
+        let firstTask = Task {
+            try await session.loadForOpening(from: firstURL)
+        }
+        await reads.waitUntilRequested(firstURL)
+        if opensAnotherFile {
+            let secondTask = Task {
+                try await session.loadForOpening(from: secondURL)
+            }
+            await reads.waitUntilRequested(secondURL)
+            await reads.resume(secondURL, text: "new selection")
+            #expect(try await secondTask.value.text == "new selection")
+        } else {
+            session.stop()
+        }
+
+        await reads.fail(firstURL)
+        await #expect(throws: CancellationError.self) {
+            try await firstTask.value
+        }
+    }
+
+    @Test func cancelledOpeningRequestDiscardsItsCurrentFailure() async throws {
+        let source = URL(fileURLWithPath: "/tmp/Cancelled.swift")
+        let reads = ControlledReads()
+        let session = LivingSnapshotSession(
+            settings: settings(),
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in stamp(1) },
+                load: { try await reads.load($0) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+
+        let task = Task {
+            try await session.loadForOpening(from: source)
+        }
+        await reads.waitUntilRequested(source)
+        task.cancel()
+        await reads.fail(source)
+
+        await #expect(throws: CancellationError.self) {
+            try await task.value
+        }
+    }
+
+    @Test func currentOpeningReadPreservesItsFailure() async throws {
+        let source = URL(fileURLWithPath: "/tmp/Unavailable.swift")
+        let reads = ControlledReads()
+        let session = LivingSnapshotSession(
+            settings: settings(),
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in stamp(1) },
+                load: { try await reads.load($0) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+
+        let task = Task {
+            try await session.loadForOpening(from: source)
+        }
+        await reads.waitUntilRequested(source)
+        await reads.fail(source)
+
+        await #expect(throws: FileInputLoader.LoadError.unreadable) {
+            try await task.value
+        }
+    }
+
     @Test func sameSizeAtomicReplacementIsDetectedEndToEnd() async throws {
-        let directory = FileManager.default.temporaryDirectory
-            .appendingPathComponent("VitrineLivingSnapshot-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(
-            at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        let source = directory.appendingPathComponent("Live.swift")
-        try Data("one".utf8).write(to: source)
+        let source = try makeLiveFile("one")
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
 
         let settings = settings()
         let initial = try FileInputLoader.load(from: source)
@@ -579,5 +691,43 @@ struct LivingSnapshotSessionTests {
 
         #expect(settings.documentCode == "two")
         #expect(session.status == .watching)
+    }
+
+    @Test func fileStampRefreshesMetadataAfterAnInPlaceSave() throws {
+        let source = try makeLiveFile("one", modifiedAt: Date(timeIntervalSince1970: 1_000))
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+        let initial = try LivingSnapshotSession.FileStamp.read(from: source)
+
+        let updatedDate = Date(timeIntervalSince1970: 2_000)
+        try saveInPlace("two", to: source, modifiedAt: updatedDate)
+        let updated = try LivingSnapshotSession.FileStamp.read(from: source)
+
+        #expect(updated.fileNumber == initial.fileNumber)
+        #expect(updated.byteCount == initial.byteCount)
+        #expect(updated.modificationDate == updatedDate)
+        #expect(updated != initial)
+    }
+
+    @Test func sameSizeInPlaceSaveIsDetectedEndToEnd() async throws {
+        let source = try makeLiveFile("one", modifiedAt: Date(timeIntervalSince1970: 1_000))
+        defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+
+        let settings = settings()
+        let initial = try FileInputLoader.load(from: source)
+        settings.documentCode = initial.text
+        let session = LivingSnapshotSession(
+            settings: settings,
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+        _ = await wait(session.start(with: initial))
+
+        // Keep the original inode and byte count: only fresh modification metadata
+        // distinguishes this save from the version already loaded into the editor.
+        try saveInPlace("two", to: source, modifiedAt: Date(timeIntervalSince1970: 2_000))
+        #expect(await wait(session.checkForChanges()))
+
+        #expect(settings.documentCode == "two")
+        #expect(session.status == .watching)
+        #expect(!(await wait(session.checkForChanges())))
     }
 }

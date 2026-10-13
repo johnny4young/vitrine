@@ -60,7 +60,9 @@ final class LivingSnapshotSession {
         var volumeNumber: UInt64?
 
         static func read(from url: URL) throws -> FileStamp {
-            let values = try url.resourceValues(forKeys: [
+            // The retained URL caches resource values. A fresh URL inspects the file again
+            // without purging a cache that a concurrent read may share.
+            let values = try URL(fileURLWithPath: url.path).resourceValues(forKeys: [
                 .isRegularFileKey,
                 .fileSizeKey,
                 .contentModificationDateKey,
@@ -140,9 +142,11 @@ final class LivingSnapshotSession {
             openingTask = nil
             return loaded
         } catch {
-            if generation == openingGeneration {
-                openingTask = nil
-            }
+            // A cancelled filesystem operation may still fail with an ordinary I/O
+            // error. Its obsolete failure must not surface in the current editor.
+            guard generation == openingGeneration else { throw CancellationError() }
+            openingTask = nil
+            try Task.checkCancellation()
             throw error
         }
     }
