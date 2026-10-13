@@ -90,22 +90,24 @@ extension TerminalScreen {
 
     /// Blanks both cells of a wide character touched by `col`. Unlike `clearWideOverlap`,
     /// this also blanks the target cell because edit/erase operations may shift it instead
-    /// of immediately overwriting it.
+    /// of immediately overwriting it. Both halves use the pen background, including a
+    /// partner outside the operation's requested range.
     mutating func blankWideCluster(row: Int, col: Int) {
         guard rows.indices.contains(row), rows[row].indices.contains(col) else { return }
+        let fill = erasedCell
         if case .continuation = rows[row][col].content {
-            rows[row][col] = .blank
+            rows[row][col] = fill
             if rows[row].indices.contains(col - 1),
                 cellDisplayWidth(rows[row][col - 1]) == 2
             {
-                rows[row][col - 1] = .blank
+                rows[row][col - 1] = fill
             }
         } else if cellDisplayWidth(rows[row][col]) == 2 {
-            rows[row][col] = .blank
+            rows[row][col] = fill
             if rows[row].indices.contains(col + 1),
                 case .continuation = rows[row][col + 1].content
             {
-                rows[row][col + 1] = .blank
+                rows[row][col + 1] = fill
             }
         }
     }
