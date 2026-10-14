@@ -44,7 +44,7 @@ enum CLIOutputWriter {
     }
 
     /// Rejects a run whose image or sidecars would replace an input or another output,
-    /// including a local background image or watermark logo.
+    /// including a local background image, watermark logo, or recipe.
     ///
     /// Sidecar names derive from `--out` (`base.txt`/`.md`/`.html`), and an unknown `--out`
     /// extension falls back to PNG, so `render notes.md --out notes.md` or a folder batch
@@ -65,8 +65,7 @@ enum CLIOutputWriter {
         options: CLIOptions,
         inputs: [URL]
     ) throws {
-        let resources = [options.backgroundImagePath, options.watermarkLogoPath]
-            .compactMap { $0 }.filter { !$0.isEmpty }.map { URL(fileURLWithPath: $0) }
+        let resources = options.protectedResourceURLs
         let claimed = try Set((inputs + resources).map(claimKey))
         let planned = try imageURLs.map { imageURL in
             try outputTargets(beside: imageURL, options: options).map { ($0, try claimKey($0)) }
@@ -139,7 +138,10 @@ enum CLIOutputWriter {
                     "The path at \"\(url.path)\" has too many symbolic links. "
                         + "Choose a path without a symbolic-link cycle.")
             }
-            pending.insert(contentsOf: (target as NSString).pathComponents, at: next)
+            // `pathComponents` reports a trailing slash as a final "/", which is not the root.
+            let parts = (target as NSString).pathComponents.enumerated()
+                .filter { $0.offset == 0 || $0.element != "/" }.map(\.element)
+            pending.insert(contentsOf: parts, at: next)
         }
         // Foundation also unifies macOS volume aliases (firmlinks). Normalize an existing
         // ancestor after walking raw links, then retain the missing suffix for planned outputs.

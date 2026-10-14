@@ -107,6 +107,8 @@ final class LivingSnapshotSession {
     private var lastLoadedText = ""
     private var pollingTask: Task<Void, Never>?
     private var fileReadTask: Task<Bool, Never>?
+    /// Whether `fileReadTask` is an explicit reload; only meaningful while that task is set.
+    private var fileReadIsReload = false
     private var openingTask: Task<FileInputLoader.LoadedFile, Error>?
     private var readGeneration: UInt64 = 0
     private var openingGeneration: UInt64 = 0
@@ -198,6 +200,8 @@ final class LivingSnapshotSession {
     @discardableResult
     func checkForChanges() -> Task<Bool, Never>? {
         guard sourceURL != nil else { return nil }
+        // A poll must not cancel the reload the user asked for; it observes that read instead.
+        if fileReadIsReload, let fileReadTask { return fileReadTask }
         return scheduleRead(
             .reconcile(
                 previousStamp: lastStamp,
@@ -246,6 +250,7 @@ final class LivingSnapshotSession {
         guard let sourceURL else { return nil }
 
         fileReadTask?.cancel()
+        if case .reload = request { fileReadIsReload = true } else { fileReadIsReload = false }
         readGeneration &+= 1
         let generation = readGeneration
         let client = client

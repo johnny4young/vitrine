@@ -171,6 +171,47 @@ struct CLIRecipeTests: CLITestSupport {
         #expect(options.makeConfig(code: "X", language: .swift).theme.id == Theme.oneDark.id)
     }
 
+    @Test func anOutputCannotReplaceTheRecipeItReads() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let recipe = try writeRecipe(
+            WorkspaceRecipe(
+                name: "Team",
+                style: StyleSnapshot(themeID: Theme.nord.id, background: .gradient(.sunset))),
+            named: "team.json", in: directory)
+        let original = try Data(contentsOf: URL(fileURLWithPath: recipe))
+        let input = try writeInput("let a = 1\n", named: "a.swift", in: directory)
+        let options = try CLIArguments.parse([
+            "render", input, "--recipe", recipe, "--out", recipe,
+        ])
+
+        #expect(throws: CLIError.self) { try CLIRenderer.run(options) }
+        #expect(try Data(contentsOf: URL(fileURLWithPath: recipe)) == original)
+    }
+
+    @Test func aBatchNeverRendersTheRecipeInsideItsInputFolder() throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("input", isDirectory: true)
+        let output = root.appendingPathComponent("output", isDirectory: true)
+        try FileManager.default.createDirectory(at: input, withIntermediateDirectories: true)
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: input)
+        let recipe = try writeRecipe(
+            WorkspaceRecipe(
+                name: "Team",
+                style: StyleSnapshot(themeID: Theme.nord.id, background: .gradient(.sunset))),
+            named: "team.json", in: input)
+        let options = try CLIArguments.parse([
+            "batch", input.path, "--out", output.path, "--recipe", recipe,
+        ])
+
+        let summary = try CLIRenderer.runBatch(options)
+
+        #expect(summary.contains("Rendered 1 image"))
+        #expect(
+            !FileManager.default.fileExists(atPath: output.appendingPathComponent("team.png").path))
+    }
+
     @Test func rejectsUnreadableInvalidAndOversizedRecipes() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

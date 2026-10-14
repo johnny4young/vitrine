@@ -878,6 +878,21 @@ struct CLIOutputContractTests: CLITestSupport {
         #expect(try Data(contentsOf: destination) == bytes)
     }
 
+    @Test(arguments: [false, true])
+    func linkTargetsWithATrailingSlashStayBelowTheirFolder(absolute: Bool) throws {
+        let root = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let out = root.appendingPathComponent("out", isDirectory: true)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        try FileManager.default.createSymbolicLink(
+            atPath: out.appendingPathComponent("nested").path,
+            withDestinationPath: absolute ? out.path + "/" : "../out/")
+
+        let key = try CLIOutputWriter.claimKey(out.appendingPathComponent("nested/Card.png"))
+        #expect(key == (try CLIOutputWriter.claimKey(out.appendingPathComponent("Card.png"))))
+        #expect(key != "/card.png")
+    }
+
     @Test func repeatedRelativeLinksCanBeResolvedInAFinitePath() throws {
         let root = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

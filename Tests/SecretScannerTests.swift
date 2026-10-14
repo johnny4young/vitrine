@@ -112,4 +112,27 @@ struct SecretScannerTests {
         config.code = "fetching...\rexport API_KEY=" + token("", "k", 20)
         #expect(SecretScanner.secretLines(in: config.sidecarText) == [1])
     }
+
+    @Test func aScanSummaryDescribesOnlyTheRedactionsItSet() {
+        let report = SecretScanReport(scanning: "let a = 1\nexport API_KEY=" + token("", "k", 20))
+        #expect(report.ranges == [2...2])
+        #expect(report.summary(describing: [2...2]) != nil)
+        #expect(report.summary(describing: []) == nil)
+        #expect(report.summary(describing: [1...2]) == nil)
+
+        let clean = SecretScanReport(scanning: "let a = 1\n")
+        #expect(clean.ranges.isEmpty)
+        #expect(clean.summary(describing: []) != nil)
+        #expect(clean.summary(describing: [1...1]) == nil)
+    }
+
+    @Test func aScanKeepsRedactionsTheUserAddedByHand() {
+        let text = "let a = 1\nexport API_KEY=" + token("", "k", 20) + "\nhost = internal\n"
+        let report = SecretScanReport(scanning: text, keeping: [3...3])
+        #expect(report.ranges == [2...3])
+        #expect(report.summary(describing: [2...3]) != nil)
+
+        let clean = SecretScanReport(scanning: "let a = 1\n", keeping: [1...1])
+        #expect(clean.ranges == [1...1])
+    }
 }

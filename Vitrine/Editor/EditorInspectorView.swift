@@ -34,7 +34,7 @@ struct EditorInspectorView: View {
     /// Presents the PRO paywall when the user reaches for a gated image frame (browser).
     @State private var showingFramePaywall = false
     /// The last scan's outcome, so a scan that finds nothing still answers.
-    @State private var secretScanSummary: String?
+    @State private var secretScan: SecretScanReport?
 
     var body: some View {
         ScrollView {
@@ -138,8 +138,10 @@ struct EditorInspectorView: View {
                                     }
                                 }
                             }
-                            if let secretScanSummary {
-                                Text(verbatim: secretScanSummary)
+                            if let summary = secretScan?.summary(
+                                describing: settings.style.redactedLineRanges)
+                            {
+                                Text(verbatim: summary)
                                     .font(.system(size: VitrineTokens.FontSize.caption))
                                     .foregroundStyle(VitrineTokens.Text.tertiary)
                                     .accessibilityIdentifier("secret-scan-summary")
@@ -177,8 +179,7 @@ struct EditorInspectorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
-        .onChange(of: settings.documentGeneration) { secretScanSummary = nil }
-        .onChange(of: settings.style.redactedLineRanges.isEmpty) { secretScanSummary = nil }
+        .onChange(of: settings.documentGeneration) { secretScan = nil }
         .sheet(isPresented: $showingFramePaywall) {
             PaywallSheet(feature: .advancedFrames, entitlements: entitlements)
         }
@@ -308,12 +309,10 @@ struct EditorInspectorView: View {
     /// Scans `sidecarText`, not `code`: a terminal capture renders the ANSI-resolved
     /// screen, so raw line numbers would redact the wrong rows.
     private func scanForSecrets() {
-        let lines = SecretScanner.secretLines(in: settings.config.sidecarText)
-        settings.style.redactedLineRanges = LineHighlight.normalize(lines.map { $0...$0 })
-        secretScanSummary =
-            lines.isEmpty
-            ? String(localized: "No secrets found")
-            : String(localized: "\(lines.count) lines redacted")
+        let report = SecretScanReport(
+            scanning: settings.config.sidecarText, keeping: settings.style.redactedLineRanges)
+        settings.style.redactedLineRanges = report.ranges
+        secretScan = report
     }
 
     private var canvasSection: some View {
@@ -397,7 +396,7 @@ struct EditorInspectorView: View {
                 )
             }
         }
-        .help(destinationHelp)
+        .help(ExportPreset.localizedHelp(for: settings.selectedPreset))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Destination preset")
         .accessibilityIdentifier("editor-destination-preset-picker")
@@ -420,7 +419,7 @@ struct EditorInspectorView: View {
                     "inspector-format-\($0.rawValue)"
                 }
             )
-            .help(settings.export.format.summary)
+            .help(settings.export.format.localizedSummary)
             .accessibilityLabel("Format")
             .accessibilityIdentifier("inspector-format-picker")
         }
@@ -464,11 +463,6 @@ struct EditorInspectorView: View {
         )
     }
 
-    private var destinationHelp: String {
-        settings.selectedPreset?.summary
-            ?? "Custom: your own size and style, with no destination preset applied."
-    }
-
     /// Whether the selected font ships programming ligatures, gating the toggle
     /// so it reads as inert for a font that has none.
     private var fontHasLigatures: Bool {
@@ -507,5 +501,27 @@ private struct WindowTitleSuggestionButton: View {
             .accessibilityLabel("Suggest a title")
             .accessibilityIdentifier("window-title-suggest-button")
         }
+    }
+}
+
+/// A code scan's summary and the redactions it set. The summary describes only those
+/// redactions, so it hides once they change and reappears if they are restored.
+struct SecretScanReport {
+    let summary: String
+    let ranges: [ClosedRange<Int>]
+
+    /// Adds the detected lines to `existing`, like `--redact-secrets`, so a scan never
+    /// reveals a line the user redacted by hand.
+    init(scanning text: String, keeping existing: [ClosedRange<Int>] = []) {
+        let lines = SecretScanner.secretLines(in: text)
+        ranges = LineHighlight.normalize(existing + lines.map { $0...$0 })
+        summary =
+            lines.isEmpty
+            ? String(localized: "No secrets found")
+            : String(localized: "\(lines.count) lines redacted")
+    }
+
+    func summary(describing current: [ClosedRange<Int>]) -> String? {
+        current == ranges ? summary : nil
     }
 }

@@ -57,7 +57,7 @@ can never drift.
 - The CLI reads standard input and files up to 5 MB and reports oversized input as such.
   Usage errors exit with status 2 and print the usage; runtime errors exit 1 with only
   the message. `--edit` refuses render-only options and carries `vgrab -w`; `--copy`
-  without `--out` accepts PNG only, and with `--out` copies the image it wrote.
+  without `--out` accepts PNG only, and with `--out` copies the raster it wrote (a PNG render for PDF output).
 - Web Snapshot's network-quiet wait now waits for in-flight requests to settle. The
   sign-in window supports popups and HTTP authentication and shows the site's host.
 - The editor inspector, Settings ▸ Style, and the social card share one background
@@ -89,6 +89,19 @@ can never drift.
 - Keep CLI batch outputs distinct when destination folders are symlink aliases, including
   relative or chained links whose target folders do not exist yet, and
   reject image/sidecar paths that collide before writing any artifacts.
+- Resolve symbolic links whose targets end in a slash inside their real folder, so
+  `--out link/notes.md` with `link -> ./` can no longer replace the `notes.md` source.
+- CLI outputs and batch reports never replace the `--recipe` file, and a batch never
+  renders a recipe stored inside its input folder.
+- A batch that renders into its own input folder can run again: its earlier images, and the
+  sidecars beside them, are replaced (or skipped with `--no-overwrite`) instead of being
+  read as new sources or refused as input conflicts.
+- A live-file poll no longer cancels an explicit Reload, so the click always adopts the
+  file and discards local edits as requested.
+- The secret scan reports its result after changing redactions, and the editor's Format
+  and Destination tooltips are localized.
+- The editor's secret scan adds to the lines you redacted by hand instead of replacing
+  them, matching `--redact-secrets`, so a scan can no longer reveal a manual redaction.
 
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network

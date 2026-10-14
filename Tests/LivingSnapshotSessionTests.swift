@@ -80,25 +80,30 @@ struct LivingSnapshotSessionTests {
     /// blocking POSIX read to return, so these continuations prove the generation guard rejects
     /// late bytes or errors even after the owning task has been cancelled.
     private actor ControlledReads {
-        private var requested: Set<URL> = []
-        private var requestWaiters: [URL: [CheckedContinuation<Void, Never>]] = [:]
+        private var requestCounts: [URL: Int] = [:]
+        private var requestWaiters:
+            [URL: [(count: Int, waiter: CheckedContinuation<Void, Never>)]] =
+                [:]
         private var loadContinuations:
             [URL: CheckedContinuation<FileInputLoader.LoadedFile, any Error>] = [:]
 
         func load(_ url: URL) async throws -> FileInputLoader.LoadedFile {
-            requested.insert(url)
-            for waiter in requestWaiters.removeValue(forKey: url) ?? [] {
-                waiter.resume()
+            let count = requestCounts[url, default: 0] + 1
+            requestCounts[url] = count
+            let waiters = requestWaiters[url] ?? []
+            requestWaiters[url] = waiters.filter { $0.count > count }
+            for entry in waiters where entry.count <= count {
+                entry.waiter.resume()
             }
             return try await withCheckedThrowingContinuation { continuation in
                 loadContinuations[url] = continuation
             }
         }
 
-        func waitUntilRequested(_ url: URL) async {
-            guard !requested.contains(url) else { return }
+        func waitUntilRequested(_ url: URL, times: Int = 1) async {
+            guard requestCounts[url, default: 0] < times else { return }
             await withCheckedContinuation { continuation in
-                requestWaiters[url, default: []].append(continuation)
+                requestWaiters[url, default: []].append((times, continuation))
             }
         }
 
@@ -521,6 +526,37 @@ struct LivingSnapshotSessionTests {
         #expect(!(await wait(firstTask)))
         #expect(settings.documentCode == "second newest")
         #expect(session.displayName == "Second.swift")
+        #expect(session.status == .watching)
+    }
+
+    @Test func aPollCannotCancelAnExplicitReload() async throws {
+        let settings = settings()
+        let source = URL(fileURLWithPath: "/tmp/Live.swift")
+        let reads = ControlledReads()
+        let session = LivingSnapshotSession(
+            settings: settings,
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in stamp(1) },
+                load: { try await reads.load($0) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+        settings.documentCode = "initial"
+        let initial = session.start(with: loaded("initial", url: source))
+        await reads.waitUntilRequested(source)
+        await reads.resume(source, text: "initial")
+        _ = await wait(initial)
+
+        settings.documentCode = "local draft"
+        let reload = session.reloadFromDisk()
+        await reads.waitUntilRequested(source, times: 2)
+        let poll = session.checkForChanges()
+        await reads.resume(source, text: "disk version")
+
+        #expect(await wait(reload))
+        #expect(await wait(poll))
+        #expect(settings.documentCode == "disk version")
         #expect(session.status == .watching)
     }
 

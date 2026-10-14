@@ -261,9 +261,15 @@ jobs:
 
       - name: Test with code coverage (Swift Testing)
         run: |
-          change_base="${{ github.event.pull_request.base.sha || github.event.before }}"
-          if [ -z "$change_base" ] || [[ "$change_base" =~ ^0+$ ]]; then
-            change_base="${GITHUB_SHA}^"
+          change_base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$change_base" ]; then
+            change_base="${{ github.event.before }}"
+            # A force push can leave `before` outside the pushed history.
+            if [[ "$change_base" =~ ^0*$ ]] \
+              || ! git merge-base --is-ancestor "$change_base" "$GITHUB_SHA" 2>/dev/null; then
+              echo "::notice title=Diff coverage base::No push base in this history; diff coverage gates only the last commit."
+              change_base="${GITHUB_SHA}^"
+            fi
           fi
           git rev-parse --verify "${change_base}^{commit}" >/dev/null
           make test-ci-coverage \

@@ -9,6 +9,57 @@ import VitrineRendering
 /// A batch never re-reads its own artifacts and keeps typed render failures readable.
 @Suite("CLI batch artifacts")
 struct CLIBatchArtifactTests: CLITestSupport {
+    @Test(arguments: [[String](), ["--sidecars", "all"]])
+    func anInPlaceBatchCanRunAgain(sidecarFlags: [String]) throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = try writeInput("let a = 1\n", named: "A.swift", in: directory)
+        let arguments = ["batch", directory.path, "--out", directory.path] + sidecarFlags
+        _ = try CLIRenderer.runBatch(try CLIArguments.parse(arguments))
+        let firstRun = try Set(FileManager.default.contentsOfDirectory(atPath: directory.path))
+
+        // Editing the source must not turn the earlier sidecars into new inputs.
+        try "let a = 2\n".write(toFile: source, atomically: true, encoding: .utf8)
+        let summary = try CLIRenderer.runBatch(try CLIArguments.parse(arguments))
+
+        #expect(summary == "Rendered 1 image to \(directory.path)")
+        #expect(
+            try Set(FileManager.default.contentsOfDirectory(atPath: directory.path)) == firstRun)
+        if !sidecarFlags.isEmpty {
+            let text = directory.appendingPathComponent("A.txt")
+            #expect(try String(contentsOf: text, encoding: .utf8) == "let a = 2\n")
+        }
+    }
+
+    @Test func anInPlaceRerunWithNoOverwriteSkipsItsEarlierOutputs() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: directory)
+        let arguments = ["batch", directory.path, "--out", directory.path, "--markdown-sidecar"]
+        _ = try CLIRenderer.runBatch(try CLIArguments.parse(arguments))
+
+        let summary = try CLIRenderer.runBatch(
+            try CLIArguments.parse(arguments + ["--no-overwrite"]))
+
+        #expect(summary == "Rendered 0 images to \(directory.path) (skipped 1)")
+    }
+
+    @Test func aMarkdownSourceBesideAnUnrelatedImageIsNeverReplaced() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        _ = try writeInput("let a = 1\n", named: "A.swift", in: directory)
+        let notes = try writeInput("# Notes\n", named: "A.md", in: directory)
+        try writeFixtureImage(
+            to: directory.appendingPathComponent("A.png"), size: CGSize(width: 8, height: 8))
+
+        _ = try? CLIRenderer.runBatch(
+            try CLIArguments.parse([
+                "batch", directory.path, "--out", directory.path, "--markdown-sidecar",
+            ]))
+
+        #expect(try String(contentsOfFile: notes, encoding: .utf8) == "# Notes\n")
+    }
+
     @Test(arguments: ["--manifest", "--skipped-report"])
     func anExistingSourceCannotBecomeAReport(flag: String) throws {
         let root = try makeTempDirectory()
