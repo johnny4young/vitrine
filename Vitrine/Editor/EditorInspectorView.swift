@@ -309,7 +309,8 @@ struct EditorInspectorView: View {
     /// Scans `sidecarText`, not `code`: a terminal capture renders the ANSI-resolved
     /// screen, so raw line numbers would redact the wrong rows.
     private func scanForSecrets() {
-        let report = SecretScanReport(scanning: settings.config.sidecarText)
+        let report = SecretScanReport(
+            scanning: settings.config.sidecarText, keeping: settings.style.redactedLineRanges)
         settings.style.redactedLineRanges = report.ranges
         secretScan = report
     }
@@ -509,9 +510,11 @@ struct SecretScanReport {
     let summary: String
     let ranges: [ClosedRange<Int>]
 
-    init(scanning text: String) {
+    /// Adds the detected lines to `existing`, like `--redact-secrets`, so a scan never
+    /// reveals a line the user redacted by hand.
+    init(scanning text: String, keeping existing: [ClosedRange<Int>] = []) {
         let lines = SecretScanner.secretLines(in: text)
-        ranges = LineHighlight.normalize(lines.map { $0...$0 })
+        ranges = LineHighlight.normalize(existing + lines.map { $0...$0 })
         summary =
             lines.isEmpty
             ? String(localized: "No secrets found")

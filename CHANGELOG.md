@@ -97,6 +97,8 @@ can never drift.
   file and discards local edits as requested.
 - The secret scan reports its result after changing redactions, and the editor's Format
   and Destination tooltips are localized.
+- The editor's secret scan adds to the lines you redacted by hand instead of replacing
+  them, matching `--redact-secrets`, so a scan can no longer reveal a manual redaction.
 
 - Align first-capture guidance with the optional global shortcut, explain
   menu-shortcut conflicts, and distinguish local rendering from Direct network
