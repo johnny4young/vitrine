@@ -67,7 +67,7 @@ jobs:
       - name: Check sanitizer execution guard
         run: make sanitizer-check
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           node-version: "22"
           cache: npm
@@ -296,7 +296,7 @@ jobs:
       # .xcresult is a directory bundle.
       - name: Upload .xcresult bundles
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: xcresults-${{ matrix.artifact }}
           path: |
@@ -333,7 +333,7 @@ jobs:
           fi
       - name: Upload gallery design-review artifacts
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: launch-gallery-${{ matrix.artifact }}
           path: ${{ runner.temp }}/vitrine-gallery-review
@@ -351,7 +351,7 @@ jobs:
           make perf RESULT_BUNDLE="${RUNNER_TEMP}/perf.xcresult" 2>&1 | tee perf.log
       - name: Upload performance test evidence
         if: ${{ !cancelled() && steps.perf.outcome != 'skipped' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: performance-tests-${{ matrix.artifact }}
           path: |
@@ -386,7 +386,7 @@ jobs:
       - name: Upload performance measurements
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: perf-measurements-${{ matrix.artifact }}
           path: perf-measurements.jsonl
@@ -434,7 +434,7 @@ jobs:
 
       - name: Upload golden evidence
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: golden-diffs-${{ matrix.artifact }}
           path: |
@@ -452,7 +452,7 @@ jobs:
 
       - name: Upload baseline candidates for review
         if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure') && matrix.golden-mode == 'strict'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: golden-candidates-${{ matrix.artifact }}
           path: ${{ runner.temp }}/golden-candidates
@@ -595,7 +595,7 @@ jobs:
 
       - name: Upload clipboard privacy UI evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: clipboard-privacy-ui-${{ matrix.artifact }}
           path: ${{ runner.temp }}/clipboard-privacy-ui
@@ -635,7 +635,7 @@ jobs:
 
       - name: Upload documentation package UI evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: documentation-ui-${{ matrix.artifact }}
           path: ${{ runner.temp }}/documentation-ui
@@ -685,7 +685,7 @@ jobs:
 
       - name: Upload .xcresult bundle
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: ui-test-xcresult-${{ matrix.artifact }}
           path: |
@@ -696,7 +696,7 @@ jobs:
 
       - name: Upload strict visual evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: screenshot-tour-${{ matrix.artifact }}
           path: ${{ runner.temp }}/screenshot-tour
