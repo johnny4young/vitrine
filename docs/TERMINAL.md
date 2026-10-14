@@ -206,8 +206,8 @@ pipe; `--edit` (`-e`) opens the source in Vitrine's editor instead of rendering 
 to tweak before exporting; `--text-sidecar` writes a `.txt` of the output next to
 `--out` (terminal escapes stripped), while `--sidecars all` adds the Markdown and HTML
 embeds too. Each detects terminal output by its ANSI escapes when `--language` is
-omitted. In current source `--edit` is free, including `vpane -e` (the v1.2.3 download
-still requires PRO for it), and is mutually exclusive with `--copy`/`--out`, sidecars,
+omitted. Since v1.3.0 `--edit` is free, including `vpane -e` (earlier downloads require
+PRO for it), and is mutually exclusive with `--copy`/`--out`, sidecars,
 and render-only styles. It only opens the editor; it does not unlock PRO image-output
 automation.
 

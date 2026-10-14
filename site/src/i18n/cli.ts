@@ -37,7 +37,7 @@ export const cliCommands: CLICommandDoc[] = [
   {
     id: 'terminal-capture',
     name: 'terminal-capture',
-    syntax: 'vitrine terminal-capture <capture-file> (--copy [--filename <text>] [--title <text>] | --edit) [--terminal-width <n>]',
+    syntax: 'vitrine terminal-capture <capture-file> (--copy [--conceal-clipboard] [--filename <text>] [--title <text>] | --edit) [--terminal-width <n>]',
     summary: both('Free path behind vgrab', 'Ruta gratuita de vgrab'),
     detail: both(
       'The constrained local command emitted by vgrab. It accepts terminal width and context, but no general styling, file output, sidecars, or batch automation.',
@@ -249,7 +249,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
     options: [
       { flags: '-o, --out', value: '<path>', description: both('Image path, or output folder for multi-size and batch.', 'Ruta de imagen o carpeta para multi-size y batch.') },
       { flags: '--copy', description: both('Copy the rendered image to the macOS clipboard. With --out, the file is written first; a raster output is copied as written, and a PDF output copies a PNG render. Without --out, only PNG is accepted.', 'Copia la imagen al portapapeles de macOS. Con --out, primero se escribe el archivo; una salida rasterizada se copia tal cual y una salida PDF copia una versión PNG. Sin --out, solo se acepta PNG.') },
-      { flags: '--conceal-clipboard', description: both('Current source: with --copy, ask compatible clipboard managers to treat the export as confidential. Other apps can still read it; this does not sanitize content or expire the clipboard.', 'Código actual: con --copy, pide a los gestores compatibles que traten la exportación como confidencial. Otras apps aún pueden leerla; no elimina contenido ni vacía el portapapeles.') },
+      { flags: '--conceal-clipboard', description: both('With --copy, ask compatible clipboard managers to treat the export as confidential. Other apps can still read it; this does not sanitize content or expire the clipboard.', 'Con --copy, pide a los gestores compatibles que traten la exportación como confidencial. Otras apps aún pueden leerla; no elimina contenido ni vacía el portapapeles.') },
       { flags: '--format', value: '<png|pdf|heic|avif>', description: both('Select output encoding. A known file extension selects it automatically when omitted; AVIF requires a system ImageIO writer (Tahoe or newer).', 'Selecciona la codificación. Una extensión conocida la elige automáticamente; AVIF requiere un codificador ImageIO del sistema (Tahoe o posterior).') },
       { flags: '--profile', value: '<srgb|p3>', description: both('Select the color profile for PNG, HEIC, AVIF, and clipboard images; sRGB is the default.', 'Selecciona el perfil de color de las imágenes PNG, HEIC, AVIF y del portapapeles; sRGB es el predeterminado.') },
       { flags: '--scale', value: '<1|2|3>', description: both('Multiply logical canvas dimensions into final pixels.', 'Multiplica las dimensiones lógicas para obtener los píxeles finales.') },
@@ -257,7 +257,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--canvas-size', value: '<WxH>', description: both('Set an exact 64–2048 point logical canvas.', 'Define un lienzo lógico exacto de 64–2048 puntos.') },
       { flags: '-q, --quiet', description: both('Hide success output while keeping errors visible.', 'Oculta la salida de éxito y conserva los errores.') },
       { flags: '--json', description: both('Emit structured success output for render, multi-size, batch, list, recipe, or version.', 'Emite resultados estructurados para render, multi-size, batch, list, recipe o version.') },
-      { flags: '--no-overwrite, --no-clobber', description: both('Refuse to replace existing image or sidecar outputs.', 'Evita reemplazar imágenes o archivos auxiliares existentes.') },
+      { flags: '--no-overwrite, --no-clobber', description: both('Refuse to replace existing images, sidecars, manifests, or skipped reports.', 'Evita reemplazar imágenes, archivos auxiliares, manifiestos o informes de omitidos existentes.') },
       { flags: '-h, --help', description: both('Print local usage for the installed build.', 'Muestra la ayuda local de la compilación instalada.') },
     ],
   },
@@ -317,7 +317,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--window-title', value: '<text>', description: both('Title in rendered window or browser chrome.', 'Título en el marco de ventana o navegador.') },
       { flags: '--filename', value: '<text>', description: both('Filename chip in the metadata header.', 'Etiqueta de archivo en la cabecera.') },
       { flags: '--title', value: '<text>', description: both('Primary metadata title.', 'Título principal de metadatos.') },
-      { flags: '--alt-text', value: '<text>', description: both('Current source: alternative text for the Markdown/HTML sidecars, at most 1024 characters. Requires --markdown-sidecar or --html-sidecar; not drawn on the image and not accepted with --edit.', 'Código actual: texto alternativo para los archivos complementarios Markdown/HTML, hasta 1024 caracteres. Requiere --markdown-sidecar o --html-sidecar; no se dibuja en la imagen y no se admite con --edit.') },
+      { flags: '--alt-text', value: '<text>', description: both('Alternative text for the Markdown/HTML sidecars, at most 1024 characters. Requires --markdown-sidecar or --html-sidecar; not drawn on the image and not accepted with --edit.', 'Texto alternativo para los archivos complementarios Markdown/HTML, hasta 1024 caracteres. Requiere --markdown-sidecar o --html-sidecar; no se dibuja en la imagen y no se admite con --edit.') },
       { flags: '--caption', value: '<text>', description: both('Supporting caption below the title.', 'Texto de apoyo bajo el título.') },
       { flags: '--language-badge, --no-language-badge', description: both('Show or hide the detected language badge.', 'Muestra u oculta la etiqueta del lenguaje.') },
     ],

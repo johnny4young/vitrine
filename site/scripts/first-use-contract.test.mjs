@@ -5,11 +5,11 @@ import test from 'node:test';
 const guide = await readFile(new URL('../../docs/FIRST-CAPTURE.md', import.meta.url), 'utf8');
 const cli = await readFile(new URL('../src/components/CLIDocsPage.astro', import.meta.url), 'utf8');
 
-test('first-capture CLI handoff distinguishes published v1.2.3 from current source', () => {
+test('first-capture CLI handoff distinguishes downloads before v1.3.0', () => {
   const optional = guide.split('## Optional next steps')[1];
-  assert.match(optional, /v1\.2\.3[\s\S]*?PRO[\s\S]*?--edit/);
+  assert.match(optional, /v1\.3\.0[\s\S]*?PRO[\s\S]*?--edit/);
   assert.match(optional, /Open Editor[\s\S]*?paste/);
-  assert.match(optional, /current source/);
+  assert.match(optional, /v1\.3\.0 and later/);
 });
 
 test('CLI first success is free, self-contained and does not assume a project file', () => {
@@ -27,7 +27,7 @@ test('both CLI locales explain clipboard success, PRO output and release handoff
   assert.match(cli, /firstRun: 'Tu primera imagen, gratis'/);
   assert.match(cli, /proFirstRun: 'Automated image output \(PRO\)'/);
   assert.match(cli, /proFirstRun: 'Imagen automatizada \(PRO\)'/);
-  assert.match(cli, /releaseHandoff: '[^']*v1\.2\.3[^']*PRO[^']*--edit/);
+  assert.match(cli, /releaseHandoff: '[^']*v1\.3\.0[^']*PRO[^']*--edit/);
   assert.match(cli, /Paste the image/);
   assert.match(cli, /Pega la imagen/);
 });
@@ -38,7 +38,7 @@ for (const [page, title] of [['cli.html', 'Your first image, free'], ['es/cli.ht
     const start = html.split('<section id="start"')[1].split('</section>')[0];
     assert.ok(start.includes(title));
     assert.match(start, /vgrab --no-context printf (?:&#39;|')Hello from Vitrine\\n(?:&#39;|')/);
-    assert.match(start, /v1\.2\.3/);
+    assert.match(start, /v1\.3\.0/);
     assert.match(start, /--stdin --stdin-name example\.swift/);
     assert.match(start, /--no-overwrite/);
     assert.doesNotMatch(start, /Sources\/App\.swift/);

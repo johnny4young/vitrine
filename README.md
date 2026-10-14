@@ -16,7 +16,7 @@ pasted HTML, entirely on your Mac.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Version](https://img.shields.io/badge/version-v1.2.3-blue.svg)](#status)
+[![Version](https://img.shields.io/badge/version-v1.3.0-blue.svg)](#status)
 
 | `vgrab htop` | `vgrab lazygit` | `vgrab nvim` |
 | --- | --- | --- |
@@ -529,6 +529,8 @@ vitrine render Sources/App.swift --out launch-card.png \
 
 Run `vitrine render --help` for the exact reference shipped by your installed build, or
 use the [web reference](https://vitrineframe.app/cli#reference) to search every option.
+Files and standard input are read up to 5 MB. Usage errors exit 2 and print the usage;
+runtime failures, including output conflicts, exit 1 with only the message.
 
 ### Everyday workflows
 
@@ -606,7 +608,8 @@ vitrine batch Sources --out docs/cards --recursive \
   --skipped-report docs/cards/skipped.json
 ```
 
-Reports cannot overlap rendered outputs or input image resources. Inside the input
+Reports cannot overlap rendered outputs, discovered inputs, input image resources, or the
+`--recipe` file, and a recipe stored inside the input folder is never rendered. Inside the input
 tree, an existing report must match the requested manifest/skipped-report structure
 and be at most 5 MiB before it can be replaced; empty report arrays are supported.
 This recognizes a report's structure, not its origin. Use separate output paths;
@@ -630,7 +633,7 @@ than the original ANSI stream. An unredacted share link retains the original str
 Manual blur annotations change appearance only: use explicit line redaction or
 `--redact-secrets` when the source must not accompany an export.
 
-**Confidential clipboard exports (current source):** enable **Settings → Export →
+**Confidential clipboard exports (v1.3.0 and later):** enable **Settings → Export →
 Clipboard → Mark clipboard exports as confidential**, or pass
 `--copy --conceal-clipboard` to the CLI.
 Vitrine's export actions then add the cooperative `org.nspasteboard.ConcealedType`
@@ -702,7 +705,7 @@ in [`docs/`](docs/):
 - [**docs/PROJECT.md**](docs/PROJECT.md) — vision, positioning, naming, distribution, risks.
 - [**docs/FIRST-CAPTURE.md**](docs/FIRST-CAPTURE.md) — a first free image using only synthetic source.
 - [**docs/AGENT-COOKBOOK.md**](docs/AGENT-COOKBOOK.md) — five checked local CLI workflows for external agents.
-- [**docs/DOCUMENTATION-EXPORT.md**](docs/DOCUMENTATION-EXPORT.md) — current-source documentation packages and content-bound alternative text.
+- [**docs/DOCUMENTATION-EXPORT.md**](docs/DOCUMENTATION-EXPORT.md) — documentation packages and content-bound alternative text.
 - [**docs/CAPABILITIES.md**](docs/CAPABILITIES.md) — channel, Free/PRO, privacy, and release boundaries.
 - [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) — menu-bar UX, user flow, modules, data model.
 - [**docs/PRO.md**](docs/PRO.md) — the PRO subsystem: the open-core gate, per-build providers, Brand Kit, multi-size export, and automation.
@@ -719,18 +722,7 @@ in [`docs/`](docs/):
 ## Status
 
 **Feature descriptions in this README cover current source, including Unreleased changes.**
-The published **v1.2.3 (build 38)** download predates the post-release review fixes:
-
-- It assigns ⇧⌘S initially; new-source installations instead opt into global shortcuts.
-- It lacks the new redaction-safe history, per-capture secret-retention consent, and history-off
-  control. Avoid retaining sensitive captures in that download; source improvements do not
-  retrofit older stored captures or installed binaries.
-- Free editor-only `render --edit` handoff is a source improvement; general CLI image
-  rendering and sidecars remain PRO.
-- `--conceal-clipboard`, `--alt-text`, and Export for Documentation are source
-  improvements.
-
-**v1.2.3 (build 38) remains the version identifier in source.** Public artifacts are published only
+**v1.3.0 (build 39) remains the version identifier in source.** Public artifacts are published only
 through the vetted release workflow; the [Releases page](https://github.com/johnny4young/vitrine/releases)
 is the source of truth for the newest downloadable version. Everything under
 [Features](#features) is driven by one design-token system
@@ -748,7 +740,7 @@ qualified candidate bytes. The website validates every change on main but deploy
 production only from a published stable tag, so its source-feature descriptions are not
 proof of availability in a downloadable binary.
 Anything added under **Unreleased** in the changelog belongs to a future build and is
-not part of the v1.2.3 release line.
+not part of the v1.3.0 release line.
 
 Two explicit product boundaries — no arbitrary screen/window capture and no dependency
 on a hosted web-render service — are documented in

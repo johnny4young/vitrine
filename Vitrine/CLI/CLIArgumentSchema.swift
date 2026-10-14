@@ -416,7 +416,8 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .noOverwrite, ["--no-overwrite", "--no-clobber"], .flag, synopsis: "--no-overwrite",
             description:
-                "Refuse to replace existing image/sidecar outputs (--no-clobber is also accepted)."),
+                "Refuse to replace existing images, sidecars, manifests, or skipped reports "
+                + "(--no-clobber is also accepted)."),
         definition(
             .windowTitle, ["--window-title"], .value("text"), synopsis: "--window-title <text>",
             description: "Title shown in the rendered window chrome."),

@@ -1,9 +1,8 @@
 # Product capabilities and boundaries
 
-> This document describes current source, including Unreleased changes, not a
-> qualification of the v1.2.3 download. In that release, the global shortcut is assigned
-> initially, free `render --edit` handoff is not yet available, and the newer safe-history,
-> secret-retention consent, and history-off controls are absent. See the README Status
+> This document describes current source, including Unreleased changes. Downloads before
+> v1.3.0 assign the global shortcut initially and lack the free `render --edit` handoff,
+> safe history, secret-retention consent, and the history-off control. See the README Status
 > section and CHANGELOG before relying on a feature in an installed binary.
 
 This is a **reference**, not a release announcement. It describes the intended

@@ -274,7 +274,9 @@ struct CLIInputSafetyTests: CLITestSupport {
     }
 
     @Test func helpTextMatchesWhatTheParserAccepts() {
-        #expect(CLIUsage.text.contains("(--copy [--filename <text>] [--title <text>] | --edit)"))
+        #expect(
+            CLIUsage.text.contains(
+                "(--copy [--conceal-clipboard] [--filename <text>] [--title <text>] | --edit)"))
         let profile = CLIArgumentSchema.helpText
         #expect(profile.contains("HEIC"))
         #expect(!profile.contains("PNG color profile"))

@@ -12,6 +12,8 @@ can never drift.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-14
+
 ### Added
 
 - Provide five checked, synthetic local CLI publishing workflows for external agents,
@@ -20,15 +22,13 @@ can never drift.
   Markdown, static HTML, and safe plain text. Imported images never fabricate source.
 - Add bounded, content-bound alternative text to documentation, shared snapshots, and
   CLI Markdown/HTML sidecars through `--alt-text`, without changing render pixels or gates.
+- Optional confidential clipboard markers in Settings and CLI `--copy --conceal-clipboard`.
+  Compatible clipboard managers can conceal exports; this is not access control or
+  automatic clipboard expiration, and the preference is off by default.
 
 ### Changed
 
-- Make the first CLI capture free and self-contained, label paid automation explicitly,
-  and qualify editor-handoff instructions for the published v1.2.3 release.
-
-- Distinguish current-source privacy, history, shortcut, and free editor-handoff
-  improvements from the published v1.2.3 download in the website and capability docs.
-
+- Make the first CLI capture free and self-contained, and label paid automation explicitly.
 - Global capture shortcuts are opt-in for new installations. Existing assignments and
   explicit disables are preserved; onboarding explains their system-wide scope.
 - Remove unused export presenters, clipboard and automation wrappers, shell-path
@@ -209,12 +209,6 @@ can never drift.
   background, preserving neighboring glyphs and stripping other pen attributes.
 - Social cards with image backgrounds export on an opaque matte, and raster PDFs use
   point-sized pages.
-
-### Added
-
-- Optional confidential clipboard markers in Settings and CLI `--copy --conceal-clipboard`.
-  Compatible clipboard managers can conceal exports; this is not access control or
-  automatic clipboard expiration, and the preference is off by default.
 
 ### Testing
 
@@ -1599,7 +1593,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.2.3...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/johnny4young/vitrine/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/johnny4young/vitrine/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/johnny4young/vitrine/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/johnny4young/vitrine/compare/v1.2.0...v1.2.1
