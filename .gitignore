@@ -65,6 +65,7 @@ docs/*FEATURE-IDEAS*.md
 docs/*HANDOFF*.md
 docs/*AUDIT*.md
 docs/*REVIEW*.md
+docs/release-announcements.md
 planning/
 backlog/
 tickets/
