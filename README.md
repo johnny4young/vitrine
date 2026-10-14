@@ -610,7 +610,9 @@ Reports cannot overlap rendered outputs or input image resources. Inside the inp
 tree, an existing report must match the requested manifest/skipped-report structure
 and be at most 5 MiB before it can be replaced; empty report arrays are supported.
 This recognizes a report's structure, not its origin. Use separate output paths;
-`--no-overwrite` also preserves existing reports.
+`--no-overwrite` also preserves existing reports. A batch can render into its own input
+folder and run again: a non-text file where the batch writes an image, and the sidecars
+beside it, count as earlier outputs rather than sources.
 
 **Redact before adding selectable source.** `--redact-secrets` and `--redact-lines`
 sanitize both the rendered rows and text/Markdown/HTML sidecars. A visual `--blur-box`

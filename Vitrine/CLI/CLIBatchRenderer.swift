@@ -71,7 +71,7 @@ enum CLIBatchRenderer {
         let outputDirectory = URL(fileURLWithPath: options.outputPath)
         // Discover before creating the output folder, so a missing input leaves nothing
         // behind, and never treat earlier artifacts as new inputs on a re-run.
-        let files = try batchInputFiles(
+        var files = try batchInputFiles(
             in: inputDirectory,
             recursive: options.recursiveBatch,
             includeExtensions: options.batchIncludeExtensions,
@@ -79,24 +79,38 @@ enum CLIBatchRenderer {
             excluding: excludedArtifacts(options, inputDirectory: inputDirectory),
             directoryLister: directoryLister)
         var loadedInputs: [BatchLoadedInput] = []
-        var skipped = 0
-        var skippedReport: [SkippedReportEntry] = []
+        var unreadableInputs: [URL] = []
         for file in files {
             do {
                 loadedInputs.append(BatchLoadedInput(file: file, loaded: try fileLoader(file)))
             } catch {
-                // A binary/unreadable file is skipped, never a fatal batch error —
-                // but the automation user gets the filename and reason on stderr, so
-                // "skipped 3" in the summary is diagnosable without re-running.
-                skipped += 1
-                let reason = "not readable text"
-                skippedReport.append(
-                    skippedReportEntry(for: file, under: inputDirectory, reason: reason))
-                reportSkipped(file, reason: reason)
+                unreadableInputs.append(file)
             }
         }
-
         let ext = options.format.rawValue
+        let earlier =
+            canonicalPath(inputDirectory) == canonicalPath(outputDirectory)
+            ? try earlierOutputs(
+                loaded: loadedInputs, unreadable: unreadableInputs, options: options,
+                inputDirectory: inputDirectory, outputDirectory: outputDirectory)
+            : []
+        let isSource = { (file: URL) in !earlier.contains(batchOutputKey(for: file)) }
+        loadedInputs = loadedInputs.filter { isSource($0.file) }
+        files = files.filter(isSource)
+
+        var skipped = 0
+        var skippedReport: [SkippedReportEntry] = []
+        for file in unreadableInputs where isSource(file) {
+            // A binary/unreadable file is skipped, never a fatal batch error —
+            // but the automation user gets the filename and reason on stderr, so
+            // "skipped 3" in the summary is diagnosable without re-running.
+            skipped += 1
+            let reason = "not readable text"
+            skippedReport.append(
+                skippedReportEntry(for: file, under: inputDirectory, reason: reason))
+            reportSkipped(file, reason: reason)
+        }
+
         let outputURLs = try batchOutputURLs(
             for: loadedInputs.map(\.file), inputDirectory: inputDirectory,
             outputDirectory: outputDirectory, recursive: options.recursiveBatch, fileExtension: ext)
@@ -207,6 +221,99 @@ enum CLIBatchRenderer {
                     skippedReport: nonEmptyPath(options.skippedReportPath)))
         }
         return skipped > 0 ? summary + " (skipped \(skipped))" : summary
+    }
+
+    /// When a batch renders into its own input folder, the files an earlier run wrote are
+    /// outputs, not new sources. An earlier image is a non-text file exactly where this run
+    /// writes an image. An earlier sidecar sits beside such an image where this run writes
+    /// that sidecar; Markdown and HTML ones must also reference that image. Anything else
+    /// stays a source, so ambiguous files keep failing closed in the output guards.
+    private static func earlierOutputs(
+        loaded: [BatchLoadedInput], unreadable: [URL], options: CLIOptions,
+        inputDirectory: URL, outputDirectory: URL
+    ) throws -> Set<String> {
+        let ext = options.format.rawValue
+        func plan(_ sources: [BatchLoadedInput]) throws -> [(BatchLoadedInput, URL)] {
+            let urls = try batchOutputURLs(
+                for: sources.map(\.file), inputDirectory: inputDirectory,
+                outputDirectory: outputDirectory, recursive: options.recursiveBatch,
+                fileExtension: ext)
+            return sources.compactMap { source in
+                urls[batchOutputKey(for: source.file)].map { (source, $0) }
+            }
+        }
+        var unreadableByKey: [String: URL] = [:]
+        for file in unreadable { unreadableByKey[try CLIOutputWriter.claimKey(file)] = file }
+        var loadedByKey: [String: BatchLoadedInput] = [:]
+        for input in loaded { loadedByKey[try CLIOutputWriter.claimKey(input.file)] = input }
+        let sidecarExtensions = Set(
+            CLIOutputWriter.sidecarURLs(options, beside: URL(fileURLWithPath: "/x.png"))
+                .map(\.pathExtension))
+        let isCandidate = { (input: BatchLoadedInput) in
+            sidecarExtensions.contains(input.file.pathExtension.lowercased())
+        }
+
+        // Earlier images and the sidecars beside them, for one planned set of sources.
+        func recognize(
+            _ planned: [(BatchLoadedInput, URL)]
+        ) throws -> (
+            images: Set<String>, sidecars: Set<String>
+        ) {
+            var images: Set<String> = []
+            var sidecars: Set<String> = []
+            for (source, image) in planned {
+                guard let earlierImage = unreadableByKey[try CLIOutputWriter.claimKey(image)]
+                else { continue }
+                images.insert(batchOutputKey(for: earlierImage))
+                for sidecar in CLIOutputWriter.sidecarURLs(options, beside: image) {
+                    guard let candidate = loadedByKey[try CLIOutputWriter.claimKey(sidecar)],
+                        isCandidate(candidate),
+                        isEarlierSidecar(candidate, of: source, image: image, options: options)
+                    else { continue }
+                    sidecars.insert(batchOutputKey(for: candidate.file))
+                }
+            }
+            return (images, sidecars)
+        }
+
+        // Plan without the sidecar-shaped candidates, then confirm that the plan without
+        // only the recognized sidecars places them exactly where it writes its own.
+        let firstPass = try recognize(plan(loaded.filter { !isCandidate($0) }))
+        let sources = loaded.filter { !firstPass.sidecars.contains(batchOutputKey(for: $0.file)) }
+        let confirmed = try recognize(plan(sources))
+        if confirmed.sidecars == firstPass.sidecars {
+            return confirmed.images.union(confirmed.sidecars)
+        }
+        return try recognize(plan(loaded)).images
+    }
+
+    private static func isEarlierSidecar(
+        _ candidate: BatchLoadedInput, of source: BatchLoadedInput, image: URL,
+        options: CLIOptions
+    ) -> Bool {
+        let config = options.makeConfig(
+            code: source.loaded.text, language: options.language ?? source.loaded.language)
+        let existing = candidate.loaded.text
+        switch candidate.file.pathExtension.lowercased() {
+        case "md":
+            let expected = MarkdownExport.document(
+                for: config, imageSource: image.lastPathComponent)
+            guard let firstLine = expected.split(separator: "\n").first,
+                let destination = firstLine.range(of: "](", options: .backwards)
+            else { return false }
+            let existingFirstLine = existing.split(separator: "\n").first ?? ""
+            return existingFirstLine.hasPrefix("![")
+                && existingFirstLine.hasSuffix(firstLine[destination.lowerBound...])
+        case "html":
+            let expected = HTMLExport.document(for: config, imageSource: image.lastPathComponent)
+            guard let start = expected.range(of: "<img src=\""),
+                let end = expected[start.upperBound...].range(of: "\"")
+            else { return false }
+            return existing.hasPrefix("<!doctype html>")
+                && existing.contains(expected[start.lowerBound..<end.upperBound])
+        default:
+            return true
+        }
     }
 
     /// Paths a batch writes or reads as configuration inside its own input tree: the output

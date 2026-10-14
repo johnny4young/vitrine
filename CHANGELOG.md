@@ -93,6 +93,9 @@ can never drift.
   `--out link/notes.md` with `link -> ./` can no longer replace the `notes.md` source.
 - CLI outputs and batch reports never replace the `--recipe` file, and a batch never
   renders a recipe stored inside its input folder.
+- A batch that renders into its own input folder can run again: its earlier images, and the
+  sidecars beside them, are replaced (or skipped with `--no-overwrite`) instead of being
+  read as new sources or refused as input conflicts.
 - A live-file poll no longer cancels an explicit Reload, so the click always adopts the
   file and discards local edits as requested.
 - The secret scan reports its result after changing redactions, and the editor's Format
