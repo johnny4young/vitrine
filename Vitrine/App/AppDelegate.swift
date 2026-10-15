@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var hotkeyTask: Task<Void, Never>?
     private var menuBarPresenceTask: Task<Void, Never>?
+    private var isInDockFallback = false
     let environment: AppEnvironment
     let feedback: CaptureFeedbackPresenter
     let launchArguments: AppLaunchArgumentHandler
@@ -437,6 +438,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func presentMenuBarUnavailable() {
+        isInDockFallback = true
         NSApp.setActivationPolicy(.regular)
         EditorWindowController.shared.show()
         let alert = NSAlert()
@@ -457,13 +459,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Only the Dock fallback has an icon to click; an agent app ignores reopen.
+    /// Only the Dock fallback has an icon to click. `--standard-activation` also runs
+    /// the app as regular, so the activation policy alone cannot tell them apart.
+    static func shouldOpenEditorOnReopen(
+        inDockFallback: Bool, hasVisibleWindows: Bool
+    )
+        -> Bool
+    {
+        inDockFallback && !hasVisibleWindows
+    }
+
     func applicationShouldHandleReopen(
         _ sender: NSApplication, hasVisibleWindows flag: Bool
     )
         -> Bool
     {
-        if NSApp.activationPolicy() == .regular, !flag {
+        if Self.shouldOpenEditorOnReopen(
+            inDockFallback: isInDockFallback, hasVisibleWindows: flag)
+        {
             EditorWindowController.shared.show()
         }
         return true

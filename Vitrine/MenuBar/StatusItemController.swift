@@ -118,21 +118,10 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     /// Whether Control Center places the attached item within the helper's check window.
-    /// Cancellation answers true so an interrupted check never triggers a fallback.
     func waitUntilPlaced() async -> Bool {
-        for delay in MenuBarHelperContract.placementCheckDelays {
-            do {
-                try await Task.sleep(for: delay)
-            } catch {
-                return true
-            }
-            if MenuBarHelperContract.isPlacedInMenuBar(
-                buttonWindowFrame: statusItem?.button?.window?.frame)
-            {
-                return true
-            }
+        await MenuBarHelperContract.waitUntilPlaced { [weak self] in
+            self?.statusItem?.button?.window?.frame
         }
-        return false
     }
 
     /// Removes the in-process fallback once the external owner is confirmed.

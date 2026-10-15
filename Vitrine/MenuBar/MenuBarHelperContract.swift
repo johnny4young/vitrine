@@ -78,6 +78,23 @@ enum MenuBarHelperContract {
         return frame.height > unhostedItemHeight + 0.5
     }
 
+    /// Polls until Control Center hosts the item. Cancellation answers true so an
+    /// interrupted check never triggers a fallback.
+    static func waitUntilPlaced(
+        delays: [Duration] = placementCheckDelays,
+        buttonWindowFrame: () -> CGRect?
+    ) async -> Bool {
+        for delay in delays {
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return true
+            }
+            if isPlacedInMenuBar(buttonWindowFrame: buttonWindowFrame()) { return true }
+        }
+        return false
+    }
+
     /// The panel anchor: the center of the icon's window, or the pointer when the
     /// button has no window frame yet.
     static func anchorLocation(buttonWindowFrame: CGRect?, mouseLocation: CGPoint) -> CGPoint {

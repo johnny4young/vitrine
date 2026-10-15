@@ -11,7 +11,8 @@ import os
 enum MenuBarHelperLauncher {
     static let executableName = MenuBarHelperContract.executableName
 
-    private static var launchedProcess: Process?
+    /// Internal so tests can stand in a finished process.
+    static var launchedProcess: Process?
     private static var sessionToken: String?
 
     /// Sandbox inheritance requires the parent and child to carry the same real
