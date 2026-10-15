@@ -344,6 +344,41 @@ struct MenuBarStatusItemTests {
             !AppDelegate.shouldOpenEditorOnReopen(inDockFallback: false, hasVisibleWindows: false))
     }
 
+    @Test func anUnplacedHelperEarnsExactlyOneRetry() {
+        var policy = MenuBarHelperRetryPolicy()
+        #expect(!policy.isSpent)
+        let first = policy.takeRetry()
+        let second = policy.takeRetry()
+        #expect(first)
+        #expect(!second)
+        #expect(policy.isSpent)
+    }
+
+    @Test func theHiddenIconAlertShowsOncePerVersion() {
+        #expect(AppDelegate.shouldShowMenuBarNotice(lastShownVersion: nil, currentVersion: "1.3.0"))
+        #expect(
+            !AppDelegate.shouldShowMenuBarNotice(lastShownVersion: "1.3.0", currentVersion: "1.3.0")
+        )
+        #expect(
+            AppDelegate.shouldShowMenuBarNotice(lastShownVersion: "1.3.0", currentVersion: "1.4.0"))
+        // Without a version to record, staying silent could hide the fallback forever.
+        #expect(AppDelegate.shouldShowMenuBarNotice(lastShownVersion: "1.3.0", currentVersion: nil))
+    }
+
+    @Test func theHiddenIconNoticeVersionPersistsAndResets() {
+        let defaults = isolatedDefaults()
+        let settings = AppSettings(defaults: defaults)
+        #expect(settings.menuBarNoticeVersion == nil)
+
+        settings.menuBarNoticeVersion = "1.3.0"
+        #expect(defaults.string(forKey: SettingsCodec.Keys.menuBarNoticeVersion) == "1.3.0")
+        #expect(AppSettings(defaults: defaults).menuBarNoticeVersion == "1.3.0")
+
+        settings.resetToDefaults()
+        #expect(settings.menuBarNoticeVersion == nil)
+        #expect(defaults.string(forKey: SettingsCodec.Keys.menuBarNoticeVersion) == nil)
+    }
+
     @Test func unplacedHelperFallsBackToTheInProcessItemThenTheDock() {
         #expect(
             AppDelegate.menuBarPresence(helperUnplaced: false, inProcessItemPlaced: false)

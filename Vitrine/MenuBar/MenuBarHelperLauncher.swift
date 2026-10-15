@@ -137,3 +137,15 @@ enum MenuBarHelperLauncher {
         }
     }
 }
+
+/// Control Center can be slow right after login or wake, so an unplaced verdict earns the
+/// helper exactly one more launch per session.
+struct MenuBarHelperRetryPolicy {
+    private(set) var isSpent = false
+
+    mutating func takeRetry() -> Bool {
+        guard !isSpent else { return false }
+        isSpent = true
+        return true
+    }
+}

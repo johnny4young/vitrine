@@ -681,12 +681,12 @@
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine no puede mostrar su icono en la barra de menús" } }
       }
     },
-    "macOS is not showing the icon. Check that Vitrine is allowed in System Settings ▸ Menu Bar, then reopen Vitrine. Until then, Vitrine stays in the Dock." : {
+    "macOS is hiding Vitrine's menu-bar icon. This can happen when macOS ties the icon to another app that is turned off in System Settings ▸ Menu Bar. Until the icon returns, Vitrine stays in the Dock." : {
       "comment" : "Body of the alert shown when macOS places no Vitrine menu-bar icon.",
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "macOS is not showing the icon. Check that Vitrine is allowed in System Settings ▸ Menu Bar, then reopen Vitrine. Until then, Vitrine stays in the Dock." } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "macOS no está mostrando el icono. Revisa que Vitrine esté permitido en Configuración del Sistema ▸ Barra de menús y vuelve a abrir Vitrine. Mientras tanto, Vitrine se queda en el Dock." } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "macOS is hiding Vitrine's menu-bar icon. This can happen when macOS ties the icon to another app that is turned off in System Settings ▸ Menu Bar. Until the icon returns, Vitrine stays in the Dock." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "macOS está ocultando el icono de Vitrine en la barra de menús. Puede pasar cuando macOS lo asocia con otra app que está desactivada en Configuración del Sistema ▸ Barra de menús. Mientras el icono no vuelva, Vitrine se queda en el Dock." } }
       }
     },
     "Open Menu Bar Settings" : {
