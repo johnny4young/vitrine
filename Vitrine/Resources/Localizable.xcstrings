@@ -673,6 +673,30 @@
         "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine está desactivado en Configuración del Sistema ▸ General ▸ Ítems de inicio." } }
       }
     },
+    "Vitrine Can't Show Its Menu-Bar Icon" : {
+      "comment" : "Title of the alert shown when macOS places no Vitrine menu-bar icon.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine Can't Show Its Menu-Bar Icon" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Vitrine no puede mostrar su icono en la barra de menús" } }
+      }
+    },
+    "macOS is hiding Vitrine's menu-bar icon. This can happen when macOS ties the icon to another app that is turned off in System Settings ▸ Menu Bar. Until the icon returns, Vitrine stays in the Dock." : {
+      "comment" : "Body of the alert shown when macOS places no Vitrine menu-bar icon.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "macOS is hiding Vitrine's menu-bar icon. This can happen when macOS ties the icon to another app that is turned off in System Settings ▸ Menu Bar. Until the icon returns, Vitrine stays in the Dock." } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "macOS está ocultando el icono de Vitrine en la barra de menús. Puede pasar cuando macOS lo asocia con otra app que está desactivada en Configuración del Sistema ▸ Barra de menús. Mientras el icono no vuelva, Vitrine se queda en el Dock." } }
+      }
+    },
+    "Open Menu Bar Settings" : {
+      "comment" : "Button that opens System Settings ▸ Menu Bar.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Open Menu Bar Settings" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Abrir ajustes de la barra de menús" } }
+      }
+    },
     "Restores Vitrine's style, export, and input preferences" : {
       "comment" : "Caption for Reset All Settings in Settings ▸ General.",
       "extractionState" : "manual",

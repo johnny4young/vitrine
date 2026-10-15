@@ -83,6 +83,8 @@ enum SettingsCodec {
         static let hasSeenWelcome = "hasSeenWelcome"
         /// Last app version whose "What's New" the user has seen.
         static let lastSeenWhatsNewVersion = "lastSeenWhatsNewVersion"
+        /// Last app version that showed the hidden menu-bar icon alert.
+        static let menuBarNoticeVersion = "menuBarNoticeVersion"
         /// Saved style presets. Owned by `PresetStore`, listed here so a
         /// "Reset all settings" clears the user's presets along with the rest of
         /// their data; the store reloads its in-memory copy afterward.
@@ -117,7 +119,8 @@ enum SettingsCodec {
             webCaptureMode, webWaitKind, webWaitSeconds, webUsesLoggedInSession,
             webAllowsLoopbackCapture, recentLanguages,
             fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
-            hasSeenWelcome, lastSeenWhatsNewVersion, userStylePresets, userCustomThemes,
+            hasSeenWelcome, lastSeenWhatsNewVersion, menuBarNoticeVersion, userStylePresets,
+            userCustomThemes,
             workspaceRecipeAssociations, brandKit, brandKitEnabled,
             // Written by the inspector's @AppStorage toggle, not by this codec — listed so
             // "Reset All Settings" actually clears it.

@@ -225,6 +225,12 @@ final class AppSettings {
         didSet { defaults.set(lastSeenWhatsNewVersion, forKey: Keys.lastSeenWhatsNewVersion) }
     }
 
+    /// Last app version that explained a hidden menu-bar icon, so the alert shows once
+    /// per version while the Dock fallback itself still runs on every affected launch.
+    var menuBarNoticeVersion: String? {
+        didSet { defaults.set(menuBarNoticeVersion, forKey: Keys.menuBarNoticeVersion) }
+    }
+
     private let defaults: UserDefaults
 
     /// The Brand Kit and entitlement that resolve the export watermark, injected so
@@ -304,6 +310,7 @@ final class AppSettings {
         // run. A non-string (hand-edited/corrupt) value also resolves to nil
         // rather than trapping, so the gate falls back safely (defensive posture).
         lastSeenWhatsNewVersion = defaults.string(forKey: Keys.lastSeenWhatsNewVersion)
+        menuBarNoticeVersion = defaults.string(forKey: Keys.menuBarNoticeVersion)
 
         // The working social card, read defensively: a missing or corrupt
         // blob yields a fresh default card, and the model re-validates every field.
@@ -682,6 +689,7 @@ final class AppSettings {
         // Clearing this restores the clean-install What's New behavior: the
         // next launch stamps the current version as seen rather than showing notes.
         lastSeenWhatsNewVersion = nil
+        menuBarNoticeVersion = nil
         socialCard = SocialCardModel()
         config = SnapshotConfig()
     }

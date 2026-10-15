@@ -16,6 +16,7 @@ private final class MenuBarHelperDelegate: NSObject, NSApplicationDelegate {
     private let configuration: MenuBarHelperConfiguration
     private var statusItem: NSStatusItem?
     private var watchdog: Timer?
+    private var placementCheck: Task<Void, Never>?
 
     init?(arguments: [String] = CommandLine.arguments) {
         guard let configuration = MenuBarHelperConfiguration(arguments: arguments) else {
@@ -56,6 +57,16 @@ private final class MenuBarHelperDelegate: NSObject, NSApplicationDelegate {
             selector: #selector(checkOwner),
             userInfo: nil,
             repeats: true)
+        placementCheck = Task { [weak self] in await self?.exitUnlessPlaced() }
+    }
+
+    /// A blocked item still reads as visible, so the app learns about it only from this
+    /// exit status and can fall back to a surface the user can reach.
+    private func exitUnlessPlaced() async {
+        let placed = await MenuBarHelperContract.waitUntilPlaced { [weak self] in
+            self?.statusItem?.button?.window?.frame
+        }
+        if !placed { exit(MenuBarHelperContract.unplacedExitStatus) }
     }
 
     private func menuBarImage() -> NSImage {

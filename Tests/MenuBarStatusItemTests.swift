@@ -249,6 +249,150 @@ struct MenuBarStatusItemTests {
                 statusItemVisible: false, ownerExists: false))
     }
 
+    /// Button-window frames measured on macOS 26.6 with a notched built-in display and
+    /// an external display.
+    @Test func placementSeparatesAHostedItemFromABlockedOne() {
+        for hosted in [
+            CGRect(x: -577, y: 1183, width: 38, height: 30),
+            CGRect(x: 935, y: 949, width: 38, height: 33),
+            CGRect(x: 600, y: 958, width: 38, height: 24),
+        ] {
+            #expect(MenuBarHelperContract.isPlacedInMenuBar(buttonWindowFrame: hosted))
+        }
+        for blocked in [
+            // Blocked before Control Center ever placed it.
+            CGRect(x: 0, y: -22, width: 38, height: 22),
+            // Placed for one frame, then blocked: the position stays plausible.
+            CGRect(x: -1512, y: 1129, width: 38, height: 22),
+            .zero,
+        ] {
+            #expect(!MenuBarHelperContract.isPlacedInMenuBar(buttonWindowFrame: blocked))
+        }
+        #expect(!MenuBarHelperContract.isPlacedInMenuBar(buttonWindowFrame: nil))
+    }
+
+    @Test func placementWaitStopsAtTheFirstHostedFrameAndTimesOutOtherwise() async {
+        let blocked = CGRect(x: 0, y: -22, width: 38, height: 22)
+        let hosted = CGRect(x: 935, y: 949, width: 38, height: 33)
+        var frames = [blocked, hosted, blocked]
+        var reads = 0
+        let placed = await MenuBarHelperContract.waitUntilPlaced(delays: [.zero, .zero, .zero]) {
+            reads += 1
+            return frames.removeFirst()
+        }
+        #expect(placed)
+        #expect(reads == 2)
+
+        let neverPlaced = await MenuBarHelperContract.waitUntilPlaced(delays: [.zero, .zero]) {
+            blocked
+        }
+        #expect(!neverPlaced)
+    }
+
+    /// The fallback assumes a hosted item is taller than the legacy 22 pt bar on every
+    /// supported macOS release; CI runs this suite on each of them.
+    @Test func anAttachedItemIsHostedTallerThanTheLegacyBar() async throws {
+        let controller = StatusItemController(
+            environment: AppEnvironment(defaults: isolatedDefaults()),
+            feedback: CaptureFeedbackPresenter(),
+            navigation: .noOp)
+        controller.attach()
+        defer { controller.detach() }
+
+        let placed = await controller.waitUntilPlaced()
+        #expect(
+            placed,
+            "button window frame: \(String(describing: controller.statusItem?.button?.window?.frame))"
+        )
+    }
+
+    /// NSWorkspace can drop the helper before Process records its exit; the launcher
+    /// must still refuse to relaunch one that reported an unplaced icon.
+    @Test func launcherRefusesToRelaunchAHelperThatReportedUnplaced() throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "exit \(MenuBarHelperContract.unplacedExitStatus)"]
+        try process.run()
+        process.waitUntilExit()
+        MenuBarHelperLauncher.launchedProcess = process
+        defer { MenuBarHelperLauncher.stop() }
+
+        #expect(MenuBarHelperLauncher.helperReportedUnplaced)
+        #expect(!MenuBarHelperLauncher.launch())
+        #expect(MenuBarHelperLauncher.launchedProcess === process)
+    }
+
+    @Test func aHelperFailureIsNotAnUnplacedReport() throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "exit 1"]
+        try process.run()
+        process.waitUntilExit()
+        MenuBarHelperLauncher.launchedProcess = process
+        defer { MenuBarHelperLauncher.stop() }
+
+        #expect(!MenuBarHelperLauncher.helperReportedUnplaced)
+    }
+
+    @Test func onlyTheDockFallbackOpensTheEditorOnReopen() {
+        #expect(
+            AppDelegate.shouldOpenEditorOnReopen(inDockFallback: true, hasVisibleWindows: false))
+        #expect(
+            !AppDelegate.shouldOpenEditorOnReopen(inDockFallback: true, hasVisibleWindows: true))
+        // `--standard-activation` runs as a regular app without being in the fallback.
+        #expect(
+            !AppDelegate.shouldOpenEditorOnReopen(inDockFallback: false, hasVisibleWindows: false))
+    }
+
+    @Test func anUnplacedHelperEarnsExactlyOneRetry() {
+        var policy = MenuBarHelperRetryPolicy()
+        #expect(!policy.isSpent)
+        let first = policy.takeRetry()
+        let second = policy.takeRetry()
+        #expect(first)
+        #expect(!second)
+        #expect(policy.isSpent)
+    }
+
+    @Test func theHiddenIconAlertShowsOncePerVersion() {
+        #expect(AppDelegate.shouldShowMenuBarNotice(lastShownVersion: nil, currentVersion: "1.3.0"))
+        #expect(
+            !AppDelegate.shouldShowMenuBarNotice(lastShownVersion: "1.3.0", currentVersion: "1.3.0")
+        )
+        #expect(
+            AppDelegate.shouldShowMenuBarNotice(lastShownVersion: "1.3.0", currentVersion: "1.4.0"))
+        // Without a version to record, staying silent could hide the fallback forever.
+        #expect(AppDelegate.shouldShowMenuBarNotice(lastShownVersion: "1.3.0", currentVersion: nil))
+    }
+
+    @Test func theHiddenIconNoticeVersionPersistsAndResets() {
+        let defaults = isolatedDefaults()
+        let settings = AppSettings(defaults: defaults)
+        #expect(settings.menuBarNoticeVersion == nil)
+
+        settings.menuBarNoticeVersion = "1.3.0"
+        #expect(defaults.string(forKey: SettingsCodec.Keys.menuBarNoticeVersion) == "1.3.0")
+        #expect(AppSettings(defaults: defaults).menuBarNoticeVersion == "1.3.0")
+
+        settings.resetToDefaults()
+        #expect(settings.menuBarNoticeVersion == nil)
+        #expect(defaults.string(forKey: SettingsCodec.Keys.menuBarNoticeVersion) == nil)
+    }
+
+    @Test func unplacedHelperFallsBackToTheInProcessItemThenTheDock() {
+        #expect(
+            AppDelegate.menuBarPresence(helperUnplaced: false, inProcessItemPlaced: false)
+                == .helperItem)
+        #expect(
+            AppDelegate.menuBarPresence(helperUnplaced: true, inProcessItemPlaced: true)
+                == .inProcessItem)
+        #expect(
+            AppDelegate.menuBarPresence(helperUnplaced: true, inProcessItemPlaced: false)
+                == .dock)
+        #expect(MenuBarHelperContract.unplacedExitStatus != EXIT_SUCCESS)
+        #expect(MenuBarHelperContract.unplacedExitStatus != EXIT_FAILURE)
+    }
+
     @Test func appAndHelperVisibilityRepairsShareTheHistoricalContract() {
         #expect(
             StatusItemController.autosaveName == MenuBarStatusItemVisibility.primaryAutosaveName)
@@ -293,6 +437,8 @@ struct MenuBarStatusItemTests {
             "MenuBarStatusItemVisibility.repair(",
             "MenuBarHelperContract.shouldRemainRunning(",
             "MenuBarHelperContract.isExpectedOwner(",
+            "MenuBarHelperContract.waitUntilPlaced",
+            "exit(MenuBarHelperContract.unplacedExitStatus)",
         ] {
             #expect(
                 helperSource.contains(required),

@@ -11,7 +11,8 @@ import os
 enum MenuBarHelperLauncher {
     static let executableName = MenuBarHelperContract.executableName
 
-    private static var launchedProcess: Process?
+    /// Internal so tests can stand in a finished process.
+    static var launchedProcess: Process?
     private static var sessionToken: String?
 
     /// Sandbox inheritance requires the parent and child to carry the same real
@@ -40,7 +41,9 @@ enum MenuBarHelperLauncher {
     @discardableResult
     static func launch() -> Bool {
         if launchedProcess?.isRunning == true { return true }
-        guard let executableURL else { return false }
+        // NSWorkspace can drop the helper before Process records its exit, so the
+        // caller's earlier check may have missed an unplaced report.
+        guard !helperReportedUnplaced, let executableURL else { return false }
 
         stop()
 
@@ -70,6 +73,13 @@ enum MenuBarHelperLauncher {
         if launchedProcess?.isRunning == true { launchedProcess?.terminate() }
         launchedProcess = nil
         sessionToken = nil
+    }
+
+    /// Whether the last helper exited because Control Center never placed its icon.
+    static var helperReportedUnplaced: Bool {
+        guard let process = launchedProcess, !process.isRunning else { return false }
+        return process.terminationReason == .exit
+            && process.terminationStatus == MenuBarHelperContract.unplacedExitStatus
     }
 
     static func isHelperRunning() -> Bool {
@@ -125,5 +135,17 @@ enum MenuBarHelperLauncher {
                 && application.bundleURL?.standardizedFileURL
                     == Bundle.main.bundleURL.standardizedFileURL
         }
+    }
+}
+
+/// Control Center can be slow right after login or wake, so an unplaced verdict earns the
+/// helper exactly one more launch per session.
+struct MenuBarHelperRetryPolicy {
+    private(set) var isSpent = false
+
+    mutating func takeRetry() -> Bool {
+        guard !isSpent else { return false }
+        isSpent = true
+        return true
     }
 }

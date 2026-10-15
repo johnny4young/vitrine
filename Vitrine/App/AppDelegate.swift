@@ -17,6 +17,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var hotkeyTask: Task<Void, Never>?
     private var menuBarPresenceTask: Task<Void, Never>?
+    private var isInDockFallback = false
+    private var helperRetry = MenuBarHelperRetryPolicy()
+    private var helperRetryTask: Task<Void, Never>?
     let environment: AppEnvironment
     let feedback: CaptureFeedbackPresenter
     let launchArguments: AppLaunchArgumentHandler
@@ -58,6 +61,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case disabled
         case inProcess
         case helper
+    }
+
+    /// Where the user reaches Vitrine once Control Center has had a chance to place icons.
+    enum MenuBarPresence: Equatable {
+        case helperItem
+        case inProcessItem
+        case dock
+    }
+
+    /// The Dock is the last resort: an agent app with no placed icon is unreachable.
+    static func menuBarPresence(
+        helperUnplaced: Bool, inProcessItemPlaced: Bool
+    )
+        -> MenuBarPresence
+    {
+        guard helperUnplaced else { return .helperItem }
+        return inProcessItemPlaced ? .inProcessItem : .dock
     }
 
     /// Enforce a single running instance. A menu-bar agent must never stack a second
@@ -361,46 +381,163 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             startMenuBarCommandChannel()
-            menuBarPresenceTask?.cancel()
-            menuBarPresenceTask = Task {
-                while !Task.isCancelled {
-                    if !MenuBarHelperLauncher.isHelperRunning() {
-                        guard MenuBarHelperLauncher.launch() else {
-                            StatusItemController.shared.attach()
-                            do {
-                                try await Task.sleep(for: .seconds(2))
-                            } catch {
-                                return
-                            }
-                            continue
-                        }
+            startHelperPresenceLoop()
+        }
+    }
 
-                        // Process.run() returns before NSWorkspace registers the child.
-                        // Give that registration a bounded window before retaining the
-                        // in-process fallback.
-                        for _ in 0..<20 where !MenuBarHelperLauncher.isHelperRunning() {
-                            do {
-                                try await Task.sleep(for: .milliseconds(100))
-                            } catch {
-                                return
-                            }
-                        }
-                    }
-
-                    if MenuBarHelperLauncher.isHelperRunning() {
-                        StatusItemController.shared.detach()
-                    } else {
+    private func startHelperPresenceLoop() {
+        menuBarPresenceTask?.cancel()
+        menuBarPresenceTask = Task {
+            while !Task.isCancelled {
+                if MenuBarHelperLauncher.helperReportedUnplaced {
+                    await fallBackFromUnplacedHelper()
+                    return
+                }
+                if !MenuBarHelperLauncher.isHelperRunning() {
+                    guard MenuBarHelperLauncher.launch() else {
                         StatusItemController.shared.attach()
+                        do {
+                            try await Task.sleep(for: .seconds(2))
+                        } catch {
+                            return
+                        }
+                        continue
                     }
 
-                    do {
-                        try await Task.sleep(for: .seconds(2))
-                    } catch {
-                        return
+                    // Process.run() returns before NSWorkspace registers the child.
+                    // Give that registration a bounded window before retaining the
+                    // in-process fallback.
+                    for _ in 0..<20 where !MenuBarHelperLauncher.isHelperRunning() {
+                        do {
+                            try await Task.sleep(for: .milliseconds(100))
+                        } catch {
+                            return
+                        }
                     }
+                }
+
+                if MenuBarHelperLauncher.isHelperRunning() {
+                    StatusItemController.shared.detach()
+                } else {
+                    StatusItemController.shared.attach()
+                }
+
+                do {
+                    try await Task.sleep(for: .seconds(2))
+                } catch {
+                    return
                 }
             }
         }
+    }
+
+    private func fallBackFromUnplacedHelper() async {
+        Log.app.error("Control Center did not place the menu-bar helper's icon")
+        MenuBarHelperLauncher.stop()
+        StatusItemController.shared.attach()
+        scheduleHelperRetry()
+        let presence = Self.menuBarPresence(
+            helperUnplaced: true,
+            inProcessItemPlaced: await StatusItemController.shared.waitUntilPlaced())
+        guard presence == .dock, !Task.isCancelled, !isInDockFallback else { return }
+        Log.app.error("Control Center placed no Vitrine icon; showing Vitrine in the Dock")
+        presentMenuBarUnavailable()
+    }
+
+    private func scheduleHelperRetry() {
+        guard helperRetry.takeRetry() else { return }
+        helperRetryTask = Task {
+            await Self.firstWakeOrDisplayChange()
+            guard !Task.isCancelled else { return }
+            Log.app.notice("Retrying the menu-bar helper after a wake or display change")
+            startHelperPresenceLoop()
+            // The helper exits within its placement window unless Control Center hosts it.
+            let placementWindow = MenuBarHelperContract.placementCheckDelays.reduce(.zero, +)
+            do {
+                try await Task.sleep(for: placementWindow + .seconds(2))
+            } catch {
+                return
+            }
+            guard MenuBarHelperLauncher.isHelperRunning(), isInDockFallback else { return }
+            isInDockFallback = false
+            NSApp.setActivationPolicy(.accessory)
+        }
+    }
+
+    private static func firstWakeOrDisplayChange() async {
+        let wake = NSWorkspace.shared.notificationCenter.notifications(
+            named: NSWorkspace.didWakeNotification)
+        let displays = NotificationCenter.default.notifications(
+            named: NSApplication.didChangeScreenParametersNotification)
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { for await _ in wake { return } }
+            group.addTask { for await _ in displays { return } }
+            await group.next()
+            group.cancelAll()
+        }
+    }
+
+    /// The alert shows once per version; the Dock fallback itself runs every time.
+    static func shouldShowMenuBarNotice(
+        lastShownVersion: String?, currentVersion: String?
+    )
+        -> Bool
+    {
+        guard let currentVersion else { return true }
+        return lastShownVersion != currentVersion
+    }
+
+    private func presentMenuBarUnavailable() {
+        isInDockFallback = true
+        NSApp.setActivationPolicy(.regular)
+        EditorWindowController.shared.show()
+        let settings = environment.appSettings
+        let version =
+            Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        guard
+            Self.shouldShowMenuBarNotice(
+                lastShownVersion: settings.menuBarNoticeVersion, currentVersion: version)
+        else { return }
+        settings.menuBarNoticeVersion = version
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Vitrine Can't Show Its Menu-Bar Icon")
+        alert.informativeText = String(
+            localized:
+                "macOS is hiding Vitrine's menu-bar icon. This can happen when macOS ties the icon to another app that is turned off in System Settings ▸ Menu Bar. Until the icon returns, Vitrine stays in the Dock."
+        )
+        alert.addButton(withTitle: String(localized: "Open Menu Bar Settings"))
+        alert.addButton(withTitle: String(localized: "OK"))
+        AppActivation.bringForward()
+        if alert.runModal() == .alertFirstButtonReturn,
+            let url = URL(
+                string: "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension")
+        {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// Only the Dock fallback has an icon to click. `--standard-activation` also runs
+    /// the app as regular, so the activation policy alone cannot tell them apart.
+    static func shouldOpenEditorOnReopen(
+        inDockFallback: Bool, hasVisibleWindows: Bool
+    )
+        -> Bool
+    {
+        inDockFallback && !hasVisibleWindows
+    }
+
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication, hasVisibleWindows flag: Bool
+    )
+        -> Bool
+    {
+        if Self.shouldOpenEditorOnReopen(
+            inDockFallback: isInDockFallback, hasVisibleWindows: flag)
+        {
+            EditorWindowController.shared.show()
+        }
+        return true
     }
 
     private func startMenuBarCommandChannel() {
