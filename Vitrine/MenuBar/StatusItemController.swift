@@ -117,6 +117,24 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         scheduleVisibilityRepair()
     }
 
+    /// Whether Control Center places the attached item within the helper's check window.
+    /// Cancellation answers true so an interrupted check never triggers a fallback.
+    func waitUntilPlaced() async -> Bool {
+        for delay in MenuBarHelperContract.placementCheckDelays {
+            do {
+                try await Task.sleep(for: delay)
+            } catch {
+                return true
+            }
+            if MenuBarHelperContract.isPlacedInMenuBar(
+                buttonWindowFrame: statusItem?.button?.window?.frame)
+            {
+                return true
+            }
+        }
+        return false
+    }
+
     /// Removes the in-process fallback once the external owner is confirmed.
     func detach() {
         visibilityRepairTask?.cancel()

@@ -58,6 +58,26 @@ enum MenuBarHelperContract {
         statusItemVisible && ownerExists
     }
 
+    /// The helper's exit status when Control Center never places its icon, so the app
+    /// stops relaunching it and falls back.
+    static let unplacedExitStatus: Int32 = 75
+
+    /// Generous because Control Center can be slow to place items right after login.
+    static let placementCheckDelays: [Duration] = [
+        .seconds(1), .seconds(2), .seconds(3), .seconds(4),
+    ]
+
+    /// AppKit's legacy status-bar thickness, which a blocked item's window keeps.
+    static let unhostedItemHeight: CGFloat = 22
+
+    /// Whether Control Center hosts the item in a real menu bar. `isVisible`, position and
+    /// occlusion read the same for a blocked item; only a hosted one is sized to the bar,
+    /// which is taller than 22 pt on every display macOS 11 and later supports.
+    static func isPlacedInMenuBar(buttonWindowFrame: CGRect?) -> Bool {
+        guard let frame = buttonWindowFrame, !frame.isNull else { return false }
+        return frame.height > unhostedItemHeight + 0.5
+    }
+
     /// The panel anchor: the center of the icon's window, or the pointer when the
     /// button has no window frame yet.
     static func anchorLocation(buttonWindowFrame: CGRect?, mouseLocation: CGPoint) -> CGPoint {

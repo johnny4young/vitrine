@@ -40,7 +40,9 @@ enum MenuBarHelperLauncher {
     @discardableResult
     static func launch() -> Bool {
         if launchedProcess?.isRunning == true { return true }
-        guard let executableURL else { return false }
+        // NSWorkspace can drop the helper before Process records its exit, so the
+        // caller's earlier check may have missed an unplaced report.
+        guard !helperReportedUnplaced, let executableURL else { return false }
 
         stop()
 
@@ -70,6 +72,13 @@ enum MenuBarHelperLauncher {
         if launchedProcess?.isRunning == true { launchedProcess?.terminate() }
         launchedProcess = nil
         sessionToken = nil
+    }
+
+    /// Whether the last helper exited because Control Center never placed its icon.
+    static var helperReportedUnplaced: Bool {
+        guard let process = launchedProcess, !process.isRunning else { return false }
+        return process.terminationReason == .exit
+            && process.terminationStatus == MenuBarHelperContract.unplacedExitStatus
     }
 
     static func isHelperRunning() -> Bool {

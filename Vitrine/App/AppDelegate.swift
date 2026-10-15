@@ -60,6 +60,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case helper
     }
 
+    /// Where the user reaches Vitrine once Control Center has had a chance to place icons.
+    enum MenuBarPresence: Equatable {
+        case helperItem
+        case inProcessItem
+        case dock
+    }
+
+    /// The Dock is the last resort: an agent app with no placed icon is unreachable.
+    static func menuBarPresence(
+        helperUnplaced: Bool, inProcessItemPlaced: Bool
+    )
+        -> MenuBarPresence
+    {
+        guard helperUnplaced else { return .helperItem }
+        return inProcessItemPlaced ? .inProcessItem : .dock
+    }
+
     /// Enforce a single running instance. A menu-bar agent must never stack a second
     /// status item, but launching the same bundle id from a different path — several
     /// Xcode DerivedData copies, or `open`-ing more than one built `.app` — starts a
@@ -364,6 +381,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menuBarPresenceTask?.cancel()
             menuBarPresenceTask = Task {
                 while !Task.isCancelled {
+                    if MenuBarHelperLauncher.helperReportedUnplaced {
+                        await fallBackFromUnplacedHelper()
+                        return
+                    }
                     if !MenuBarHelperLauncher.isHelperRunning() {
                         guard MenuBarHelperLauncher.launch() else {
                             StatusItemController.shared.attach()
@@ -401,6 +422,51 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    private func fallBackFromUnplacedHelper() async {
+        Log.app.error("Control Center did not place the menu-bar helper's icon")
+        MenuBarHelperLauncher.stop()
+        StatusItemController.shared.attach()
+        let presence = Self.menuBarPresence(
+            helperUnplaced: true,
+            inProcessItemPlaced: await StatusItemController.shared.waitUntilPlaced())
+        guard presence == .dock, !Task.isCancelled else { return }
+        Log.app.error("Control Center placed no Vitrine icon; showing Vitrine in the Dock")
+        presentMenuBarUnavailable()
+    }
+
+    private func presentMenuBarUnavailable() {
+        NSApp.setActivationPolicy(.regular)
+        EditorWindowController.shared.show()
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = String(localized: "Vitrine Can't Show Its Menu-Bar Icon")
+        alert.informativeText = String(
+            localized:
+                "macOS is not showing the icon. Check that Vitrine is allowed in System Settings ▸ Menu Bar, then reopen Vitrine. Until then, Vitrine stays in the Dock."
+        )
+        alert.addButton(withTitle: String(localized: "Open Menu Bar Settings"))
+        alert.addButton(withTitle: String(localized: "OK"))
+        AppActivation.bringForward()
+        if alert.runModal() == .alertFirstButtonReturn,
+            let url = URL(
+                string: "x-apple.systempreferences:com.apple.ControlCenter-Settings.extension")
+        {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    /// Only the Dock fallback has an icon to click; an agent app ignores reopen.
+    func applicationShouldHandleReopen(
+        _ sender: NSApplication, hasVisibleWindows flag: Bool
+    )
+        -> Bool
+    {
+        if NSApp.activationPolicy() == .regular, !flag {
+            EditorWindowController.shared.show()
+        }
+        return true
     }
 
     private func startMenuBarCommandChannel() {

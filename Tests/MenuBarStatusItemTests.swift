@@ -249,6 +249,42 @@ struct MenuBarStatusItemTests {
                 statusItemVisible: false, ownerExists: false))
     }
 
+    /// Button-window frames measured on macOS 26.6 with a notched built-in display and
+    /// an external display.
+    @Test func placementSeparatesAHostedItemFromABlockedOne() {
+        for hosted in [
+            CGRect(x: -577, y: 1183, width: 38, height: 30),
+            CGRect(x: 935, y: 949, width: 38, height: 33),
+            CGRect(x: 600, y: 958, width: 38, height: 24),
+        ] {
+            #expect(MenuBarHelperContract.isPlacedInMenuBar(buttonWindowFrame: hosted))
+        }
+        for blocked in [
+            // Blocked before Control Center ever placed it.
+            CGRect(x: 0, y: -22, width: 38, height: 22),
+            // Placed for one frame, then blocked: the position stays plausible.
+            CGRect(x: -1512, y: 1129, width: 38, height: 22),
+            .zero,
+        ] {
+            #expect(!MenuBarHelperContract.isPlacedInMenuBar(buttonWindowFrame: blocked))
+        }
+        #expect(!MenuBarHelperContract.isPlacedInMenuBar(buttonWindowFrame: nil))
+    }
+
+    @Test func unplacedHelperFallsBackToTheInProcessItemThenTheDock() {
+        #expect(
+            AppDelegate.menuBarPresence(helperUnplaced: false, inProcessItemPlaced: false)
+                == .helperItem)
+        #expect(
+            AppDelegate.menuBarPresence(helperUnplaced: true, inProcessItemPlaced: true)
+                == .inProcessItem)
+        #expect(
+            AppDelegate.menuBarPresence(helperUnplaced: true, inProcessItemPlaced: false)
+                == .dock)
+        #expect(MenuBarHelperContract.unplacedExitStatus != EXIT_SUCCESS)
+        #expect(MenuBarHelperContract.unplacedExitStatus != EXIT_FAILURE)
+    }
+
     @Test func appAndHelperVisibilityRepairsShareTheHistoricalContract() {
         #expect(
             StatusItemController.autosaveName == MenuBarStatusItemVisibility.primaryAutosaveName)
@@ -293,6 +329,8 @@ struct MenuBarStatusItemTests {
             "MenuBarStatusItemVisibility.repair(",
             "MenuBarHelperContract.shouldRemainRunning(",
             "MenuBarHelperContract.isExpectedOwner(",
+            "MenuBarHelperContract.isPlacedInMenuBar(",
+            "exit(MenuBarHelperContract.unplacedExitStatus)",
         ] {
             #expect(
                 helperSource.contains(required),
