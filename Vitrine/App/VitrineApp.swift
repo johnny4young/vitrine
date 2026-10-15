@@ -12,6 +12,10 @@ import SwiftUI
 struct VitrineApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
+    init() {
+        AppDefaults.performPurgeRequest()
+    }
+
     var body: some Scene {
         // The menu bar is owned by `StatusItemController` (installed by `AppDelegate`),
         // not by a `MenuBarExtra` scene — see that type for the macOS 26 behaviour that

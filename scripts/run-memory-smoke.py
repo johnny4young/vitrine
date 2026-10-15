@@ -20,6 +20,7 @@ from typing import Sequence
 SCHEMA_VERSION = 2
 DEFAULT_OUTPUT = Path("build/memory-smoke")
 DEFAULT_JOURNEY = "editor-snapshot"
+PURGE_SUITE_ARGUMENT = "--purge-user-defaults-suite"
 JOURNEYS = {
     "editor-snapshot": {
         "label": "editor snapshot loop",
@@ -583,6 +584,19 @@ def locate_built_app(arguments: argparse.Namespace, root: Path) -> Path:
     return candidates[0]
 
 
+def purge_defaults_suite(executable: Path, suite: str) -> int:
+    """Have the app delete its own suite: `defaults delete` leaves an empty plist behind
+    and cannot reach a sandboxed build's container."""
+    completed = subprocess.run(
+        [str(executable), PURGE_SUITE_ARGUMENT, suite],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        timeout=60,
+        check=False,
+    )
+    return completed.returncode
+
+
 def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
     root = Path(__file__).resolve().parent.parent
     app = (
@@ -626,6 +640,7 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
     ]
 
     launch_status: int | None = None
+    purge_status: int | None = None
     try:
         with launch_log.open("w", encoding="utf-8") as output:
             completed = subprocess.run(
@@ -640,11 +655,11 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
             )
             launch_status = completed.returncode
     finally:
-        subprocess.run(
-            ["defaults", "delete", suite],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
+        purge_status = purge_defaults_suite(executable, suite)
+    if purge_status != 0:
+        raise RuntimeError(
+            f"Vitrine could not delete the defaults suite {suite} "
+            f"(exit status {purge_status})"
         )
 
     if not memgraph.exists():

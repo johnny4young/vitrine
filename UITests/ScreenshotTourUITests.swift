@@ -7,7 +7,7 @@ import XCTest
 /// `TEST_RUNNER_VITRINE_SCREENSHOT_DIR`). Each test launches into an isolated defaults
 /// suite, so the tour never touches real app state. Missing states, obscured app focus,
 /// or empty capture frames fail the tour instead of producing incomplete evidence.
-final class ScreenshotTourUITests: XCTestCase {
+final class ScreenshotTourUITests: VitrineUITestCase {
     /// Opt-in only (mirrors the golden/gallery recorders): the tour runs solely when
     /// `VITRINE_SCREENSHOT_DIR` is provided. `make test-visual` supplies it and verifies
     /// the complete attachment set; ordinary `make test-ui` runs skip this class.

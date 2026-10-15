@@ -2,7 +2,7 @@ import AppKit
 import ImageIO
 import XCTest
 
-final class VitrineUITests: XCTestCase {
+final class VitrineUITests: VitrineUITestCase {
     @MainActor
     func testLocalizedVisualChromeFitsCompactAndDesktopEditors() throws {
         continueAfterFailure = false

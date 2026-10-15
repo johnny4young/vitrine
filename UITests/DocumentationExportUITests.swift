@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 import XCTest
 
-final class DocumentationExportUITests: XCTestCase {
+final class DocumentationExportUITests: VitrineUITestCase {
     @MainActor
     func testDocumentationPackageInBothLocalesAppearancesAndWindowSizes() throws {
         continueAfterFailure = false

@@ -1,6 +1,6 @@
 import XCTest
 
-final class ShortcutOptInUITests: XCTestCase {
+final class ShortcutOptInUITests: VitrineUITestCase {
     @MainActor
     func testSettingsRecorderOptsInReassignsAndStaysDisabledAfterRelaunch() {
         continueAfterFailure = false
