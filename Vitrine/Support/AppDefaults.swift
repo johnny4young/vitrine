@@ -5,7 +5,7 @@ import Foundation
 /// UI tests can set `VITRINE_USER_DEFAULTS_SUITE` to isolate preferences and
 /// recents from a developer's real app data while still exercising persistence.
 enum AppDefaults {
-    /// Followed by newline-separated suite names, asks a Debug launch to delete those
+    /// Followed by one argument per suite name, asks a Debug launch to delete those
     /// suites. Harnesses send it once a run ends: the UI-test runner is sandboxed away
     /// from the app's container, and a suite must outlive individual launches so
     /// relaunch tests can read it back.
@@ -49,10 +49,9 @@ enum AppDefaults {
 
     /// The suites a purge launch names, or `nil` unless every one is test-scoped.
     static func requestedSuites(arguments: [String]) -> [String]? {
-        guard let flag = arguments.firstIndex(of: purgeSuiteArgument),
-            arguments.indices.contains(flag + 1)
-        else { return nil }
-        let suites = arguments[flag + 1].split(separator: "\n").map(String.init)
+        guard let flag = arguments.firstIndex(of: purgeSuiteArgument) else { return nil }
+        // XCUIApplication does not deliver an argument with a newline intact.
+        let suites = Array(arguments[(flag + 1)...].prefix { !$0.hasPrefix("--") })
         guard !suites.isEmpty, suites.allSatisfy(isTestScoped) else { return nil }
         return suites
     }

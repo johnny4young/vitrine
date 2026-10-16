@@ -77,9 +77,7 @@ enum UITestDefaultsSuite {
             name: purgedNotification, object: last,
             notificationCenter: DistributedNotificationCenter.default())
         let purger = XCUIApplication()
-        purger.launchArguments = [
-            purgeArgument, launched.joined(separator: "\n"), stayRunningArgument,
-        ]
+        purger.launchArguments = [purgeArgument] + launched + [stayRunningArgument]
         purger.launchEnvironment[environmentKey] = last
         purger.launch()
         let outcome = XCTWaiter().wait(for: [purged], timeout: 40)
