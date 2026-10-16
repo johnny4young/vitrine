@@ -15,7 +15,7 @@ extension KeyboardShortcuts.Name {
             if let suite = ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"],
                 !suite.isEmpty
             {
-                return Self("quickCapture.ui-test.\(suite)")
+                return Self(GlobalShortcutMigration.uiTestName(suite: suite))
             }
         #endif
         return Self("quickCapture")
@@ -29,6 +29,13 @@ enum GlobalShortcutMigration {
     // KeyboardShortcuts' pinned persistence format. Compatibility is checked by
     // decoding the saved value through its public Shortcut type in tests.
     static let shortcutKey = "KeyboardShortcuts_quickCapture"
+
+    /// KeyboardShortcuts always stores in `UserDefaults.standard`, so a UI-test suite
+    /// scopes the name instead, and its purge removes this key from the standard store.
+    static func uiTestName(suite: String) -> String { "quickCapture.ui-test.\(suite)" }
+    static func uiTestShortcutKey(suite: String) -> String {
+        "\(shortcutKey).ui-test.\(suite)"
+    }
 
     static func prepare(in defaults: UserDefaults) {
         guard defaults.integer(forKey: policyKey) < 1 else { return }
