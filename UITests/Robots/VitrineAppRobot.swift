@@ -45,6 +45,61 @@ enum VitrineLaunchArguments {
     }
 }
 
+/// UI-runner copy of the app's `AppDefaults` purge contract; a repository contract test
+/// keeps the literals aligned. The sandboxed runner cannot write the app's container, so
+/// a purge-only launch of the app deletes the suites the UI tests launched.
+@MainActor
+enum UITestDefaultsSuite {
+    static let environmentKey = "VITRINE_USER_DEFAULTS_SUITE"
+    static let purgeArgument = "--purge-user-defaults-suite"
+    static let stayRunningArgument = "--purge-stay-running"
+    static let purgedNotification = Notification.Name(
+        "com.johnny4young.vitrine.ui-test.defaults-suite-purged")
+
+    private static var launched: [String] = []
+    private static let fallbackPurge = DefaultsSuitePurgeObserver()
+
+    static var launchedCount: Int { launched.count }
+
+    static func register(_ suite: String) {
+        if launched.isEmpty {
+            XCTestObservationCenter.shared.addTestObserver(fallbackPurge)
+        }
+        launched.append(suite)
+    }
+
+    /// Launches through XCUIApplication: LaunchServices drops the arguments and
+    /// environment of a sandboxed caller such as this runner. Returns whether every
+    /// launched suite is gone; the app's settle window outlasts cfprefsd's deferred writes.
+    static func purgeLaunchedSuites() -> Bool {
+        guard let last = launched.last else { return true }
+        let purged = XCTNSNotificationExpectation(
+            name: purgedNotification, object: last,
+            notificationCenter: DistributedNotificationCenter.default())
+        let purger = XCUIApplication()
+        purger.launchArguments = [purgeArgument] + launched + [stayRunningArgument]
+        purger.launchEnvironment[environmentKey] = last
+        purger.launch()
+        let outcome = XCTWaiter().wait(for: [purged], timeout: 40)
+        purger.terminate()
+        guard outcome == .completed else { return false }
+        launched.removeAll()
+        return true
+    }
+}
+
+/// Best-effort purge for runs that skip `ZZDefaultsSuitePurgeUITests`, such as
+/// `-only-testing`. xcodebuild ignores failures this late, so it can only log them.
+private final class DefaultsSuitePurgeObserver: NSObject, XCTestObservation {
+    func testBundleDidFinish(_ testBundle: Bundle) {
+        MainActor.assumeIsolated {
+            let count = UITestDefaultsSuite.launchedCount
+            guard count > 0, !UITestDefaultsSuite.purgeLaunchedSuites() else { return }
+            print("warning: Vitrine did not delete \(count) UI-test defaults suites")
+        }
+    }
+}
+
 /// UI-runner copy of the app's private menu-panel control contract. UI tests cannot
 /// import the application module; a source contract test keeps both literals aligned.
 enum MenuBarTestControl {
@@ -78,12 +133,13 @@ struct VitrineAppRobot {
         requireForeground: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
+        let suite = "\(suitePrefix)-\(testCase.name)-\(UUID().uuidString)"
         app.launchArguments = arguments + locale.launchArguments
-        app.launchEnvironment["VITRINE_USER_DEFAULTS_SUITE"] =
-            "\(suitePrefix)-\(testCase.name)-\(UUID().uuidString)"
+        app.launchEnvironment[UITestDefaultsSuite.environmentKey] = suite
         for (key, value) in environment {
             app.launchEnvironment[key] = value
         }
+        UITestDefaultsSuite.register(suite)
         app.launch()
         app.activate()
 
