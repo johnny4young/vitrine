@@ -47,7 +47,7 @@ enum VitrineLaunchArguments {
 
 /// UI-runner copy of the app's `AppDefaults` purge contract; a repository contract test
 /// keeps the literals aligned. The sandboxed runner cannot write the app's container, so
-/// a purge-only launch of the app deletes the suites a test class launched.
+/// a purge-only launch of the app deletes the suites the UI tests launched.
 @MainActor
 enum UITestDefaultsSuite {
     static let environmentKey = "VITRINE_USER_DEFAULTS_SUITE"
@@ -57,16 +57,22 @@ enum UITestDefaultsSuite {
         "com.johnny4young.vitrine.ui-test.defaults-suite-purged")
 
     private static var launched: [String] = []
+    private static let fallbackPurge = DefaultsSuitePurgeObserver()
+
+    static var launchedCount: Int { launched.count }
 
     static func register(_ suite: String) {
+        if launched.isEmpty {
+            XCTestObservationCenter.shared.addTestObserver(fallbackPurge)
+        }
         launched.append(suite)
     }
 
     /// Launches through XCUIApplication: LaunchServices drops the arguments and
-    /// environment of a sandboxed caller such as this runner. One launch per class keeps
-    /// the app's settle window, which outlasts cfprefsd's deferred writes, off every test.
-    static func purgeLaunchedSuites() {
-        guard let last = launched.last else { return }
+    /// environment of a sandboxed caller such as this runner. Returns whether every
+    /// launched suite is gone; the app's settle window outlasts cfprefsd's deferred writes.
+    static func purgeLaunchedSuites() -> Bool {
+        guard let last = launched.last else { return true }
         let purged = XCTNSNotificationExpectation(
             name: purgedNotification, object: last,
             notificationCenter: DistributedNotificationCenter.default())
@@ -78,17 +84,21 @@ enum UITestDefaultsSuite {
         purger.launch()
         let outcome = XCTWaiter().wait(for: [purged], timeout: 40)
         purger.terminate()
-        XCTAssertEqual(
-            outcome, .completed, "Vitrine did not delete \(launched.count) defaults suites")
+        guard outcome == .completed else { return false }
         launched.removeAll()
+        return true
     }
 }
 
-/// Every UI test class inherits this so the suites its tests launched are deleted.
-class VitrineUITestCase: XCTestCase {
-    override class func tearDown() {
-        MainActor.assumeIsolated { UITestDefaultsSuite.purgeLaunchedSuites() }
-        super.tearDown()
+/// Best-effort purge for runs that skip `ZZDefaultsSuitePurgeUITests`, such as
+/// `-only-testing`. xcodebuild ignores failures this late, so it can only log them.
+private final class DefaultsSuitePurgeObserver: NSObject, XCTestObservation {
+    func testBundleDidFinish(_ testBundle: Bundle) {
+        MainActor.assumeIsolated {
+            let count = UITestDefaultsSuite.launchedCount
+            guard count > 0, !UITestDefaultsSuite.purgeLaunchedSuites() else { return }
+            print("warning: Vitrine did not delete \(count) UI-test defaults suites")
+        }
     }
 }
 

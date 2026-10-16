@@ -35,7 +35,7 @@ struct DefaultsSuiteCleanupContractTests {
             .count == 4, "a purge launch must skip every launch-time setup hook")
     }
 
-    @Test func everyUITestClassPurgesTheSuitesItsTestsLaunched() throws {
+    @Test func theLastUITestClassPurgesEverySuiteTheUITestsLaunched() throws {
         let robot = try Self.text("UITests/Robots/VitrineAppRobot.swift")
         let defaultsSource = try Self.text("Vitrine/Support/AppDefaults.swift")
         #expect(robot.contains(Self.purgeArgument))
@@ -43,24 +43,29 @@ struct DefaultsSuiteCleanupContractTests {
         #expect(robot.contains(#""--purge-stay-running""#))
         #expect(defaultsSource.contains(#""--purge-stay-running""#))
         #expect(robot.contains("UITestDefaultsSuite.register(suite)"))
-        #expect(
-            robot.contains("MainActor.assumeIsolated { UITestDefaultsSuite.purgeLaunchedSuites() }")
-        )
+        #expect(robot.contains("XCTestObservationCenter.shared.addTestObserver(fallbackPurge)"))
 
+        let purgeTest = try Self.text("UITests/ZZDefaultsSuitePurgeUITests.swift")
+        #expect(purgeTest.contains("XCTAssertTrue("))
+        #expect(purgeTest.contains("UITestDefaultsSuite.purgeLaunchedSuites()"))
+
+        var classNames: [String] = []
         let enumerator = try #require(
             FileManager.default.enumerator(
                 at: Self.root.appendingPathComponent("UITests"), includingPropertiesForKeys: nil))
-        for case let url as URL in enumerator
-        where url.pathExtension == "swift" && url.lastPathComponent != "VitrineAppRobot.swift" {
+        for case let url as URL in enumerator where url.pathExtension == "swift" {
             let source = try String(contentsOf: url, encoding: .utf8)
-            #expect(
-                !source.contains("VITRINE_USER_DEFAULTS_SUITE"),
-                "\(url.lastPathComponent) sets a suite outside the robot, which would leak it")
-            #expect(
-                // Any spelling whose superclass is XCTestCase, whatever follows it.
-                !source.contains(/class\s+\w+\s*:\s*XCTestCase\b/),
-                "\(url.lastPathComponent) must inherit VitrineUITestCase so its suites are purged")
+            if url.lastPathComponent != "VitrineAppRobot.swift" {
+                #expect(
+                    !source.contains("VITRINE_USER_DEFAULTS_SUITE"),
+                    "\(url.lastPathComponent) sets a suite outside the robot, which would leak it")
+            }
+            classNames += source.matches(of: /class\s+(\w+)\s*:\s*XCTestCase\b/).map {
+                String($0.output.1)
+            }
         }
+        // XCTest runs classes alphabetically; a class sorting after the purge would leak.
+        #expect(classNames.max() == "ZZDefaultsSuitePurgeUITests", "\(classNames.sorted())")
     }
 
     @Test func memorySmokePurgesThroughTheAppAndFailsWhenItCannot() throws {
