@@ -90,7 +90,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// other instance is ever present here under test.
     func applicationWillFinishLaunching(_ notification: Notification) {
         // A purge launch only deletes a test suite, then idles until the harness quits it.
-        guard !AppDefaults.isPurgeLaunch() else { return }
+        guard !AppDefaults.isPurgeLaunchProcess else { return }
         // Handle `vitrine://edit` handoffs from the CLI (`--edit`). Register before the
         // single-instance guard and the SwiftUI scene so a URL that *cold-launches* the
         // app is still delivered once the AppleEvent queue drains. When an instance is
@@ -254,7 +254,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        guard !AppDefaults.isPurgeLaunch() else { return }
+        guard !AppDefaults.isPurgeLaunchProcess else { return }
         Log.app.notice("Vitrine launched")
         // Agent app — no Dock icon (also declared via LSUIElement in Info.plist).
         NSApp.setActivationPolicy(.accessory)
@@ -593,7 +593,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// AppKit menu whenever it has been taken over; the pointer checks inside keep this
     /// effectively free on this hot every-event path.
     func applicationWillUpdate(_ notification: Notification) {
-        guard !AppDefaults.isPurgeLaunch() else { return }
+        guard !AppDefaults.isPurgeLaunchProcess else { return }
         mainMenu.reinstallIfDisplaced()
         StatusItemController.shared.restoreVisibilityIfNeeded()
     }

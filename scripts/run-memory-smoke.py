@@ -11,6 +11,7 @@ import platform
 import re
 import subprocess
 import sys
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -526,6 +527,36 @@ STACK OF 1 INSTANCE OF 'ROOT LEAK: <Widget>':
     except ValueError:
         pass
     require_self_test(approximate_bytes("1.5M") == 1_572_864, "compact quantity")
+    with tempfile.TemporaryDirectory() as scratch:
+        directory = Path(scratch)
+        suite = f"self-test.{uuid.uuid4()}"
+        succeeds = directory / "succeeds"
+        succeeds.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        fails = directory / "fails"
+        fails.write_text("#!/bin/sh\nexit 3\n", encoding="utf-8")
+        hangs = directory / "hangs"
+        hangs.write_text("#!/bin/sh\nsleep 5\n", encoding="utf-8")
+        for script in (succeeds, fails, hangs):
+            script.chmod(0o755)
+        require_self_test(
+            purge_defaults_suite(succeeds, suite, preference_directories=[directory]) is None,
+            "purge success",
+        )
+        require_self_test(
+            "status 3" in (purge_defaults_suite(fails, suite, preference_directories=[directory]) or ""),
+            "purge exit status",
+        )
+        require_self_test(
+            "did not exit"
+            in (purge_defaults_suite(hangs, suite, timeout=0.5, preference_directories=[directory]) or ""),
+            "purge timeout",
+        )
+        (directory / f"{suite}.plist").write_text("{}", encoding="utf-8")
+        require_self_test(
+            "still exists"
+            in (purge_defaults_suite(succeeds, suite, preference_directories=[directory]) or ""),
+            "purge leftover plist",
+        )
     print("memory-smoke self-test passed")
     return 0
 
@@ -584,17 +615,42 @@ def locate_built_app(arguments: argparse.Namespace, root: Path) -> Path:
     return candidates[0]
 
 
-def purge_defaults_suite(executable: Path, suite: str) -> int:
+SUITE_PREFERENCE_DIRECTORIES = (
+    Path.home() / "Library" / "Preferences",
+    Path.home() / "Library" / "Containers" / "com.johnny4young.vitrine" / "Data" / "Library"
+    / "Preferences",
+)
+
+
+def purge_defaults_suite(
+    executable: Path,
+    suite: str,
+    timeout: float = 60,
+    preference_directories: Sequence[Path] = SUITE_PREFERENCE_DIRECTORIES,
+) -> str | None:
     """Have the app delete its own suite: `defaults delete` leaves an empty plist behind
-    and cannot reach a sandboxed build's container."""
-    completed = subprocess.run(
-        [str(executable), PURGE_SUITE_ARGUMENT, suite],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        timeout=60,
-        check=False,
-    )
-    return completed.returncode
+    and cannot reach a sandboxed build's container. Returns why the suite survived, or
+    None. Never raises, so a cleanup failure cannot hide the launch's own error."""
+    try:
+        completed = subprocess.run(
+            [str(executable), PURGE_SUITE_ARGUMENT, suite],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return "the purge launch did not exit; only Debug builds honor the purge flag"
+    except OSError as error:
+        return f"the purge launch did not start: {error}"
+    if completed.returncode != 0:
+        return f"the purge launch exited with status {completed.returncode}"
+    # A build without the purge flag can exit 0 without deleting anything.
+    for directory in preference_directories:
+        leftover = directory / f"{suite}.plist"
+        if leftover.exists():
+            return f"{leftover} still exists"
+    return None
 
 
 def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
@@ -640,7 +696,7 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
     ]
 
     launch_status: int | None = None
-    purge_status: int | None = None
+    purge_failure: str | None = None
     try:
         with launch_log.open("w", encoding="utf-8") as output:
             completed = subprocess.run(
@@ -655,12 +711,9 @@ def run_capture(arguments: argparse.Namespace) -> dict[str, object]:
             )
             launch_status = completed.returncode
     finally:
-        purge_status = purge_defaults_suite(executable, suite)
-    if purge_status != 0:
-        raise RuntimeError(
-            f"Vitrine could not delete the defaults suite {suite} "
-            f"(exit status {purge_status})"
-        )
+        purge_failure = purge_defaults_suite(executable, suite)
+    if purge_failure is not None:
+        raise RuntimeError(f"Vitrine could not delete the defaults suite {suite}: {purge_failure}")
 
     if not memgraph.exists():
         raise RuntimeError(

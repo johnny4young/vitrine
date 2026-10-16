@@ -29,8 +29,10 @@ struct DefaultsSuiteCleanupContractTests {
         #expect(app.contains("AppDefaults.performPurgeRequest()"))
         let delegate = try Self.text("Vitrine/App/AppDelegate.swift")
         #expect(
-            delegate.components(separatedBy: "guard !AppDefaults.isPurgeLaunch() else { return }")
-                .count == 4, "a purge launch must skip every launch-time setup hook")
+            delegate.components(
+                separatedBy: "guard !AppDefaults.isPurgeLaunchProcess else { return }"
+            )
+            .count == 4, "a purge launch must skip every launch-time setup hook")
     }
 
     @Test func everyUITestClassPurgesTheSuitesItsTestsLaunched() throws {
@@ -55,7 +57,8 @@ struct DefaultsSuiteCleanupContractTests {
                 !source.contains("VITRINE_USER_DEFAULTS_SUITE"),
                 "\(url.lastPathComponent) sets a suite outside the robot, which would leak it")
             #expect(
-                !source.contains(": XCTestCase {"),
+                // Any spelling whose superclass is XCTestCase, whatever follows it.
+                !source.contains(/class\s+\w+\s*:\s*XCTestCase\b/),
                 "\(url.lastPathComponent) must inherit VitrineUITestCase so its suites are purged")
         }
     }
@@ -64,8 +67,8 @@ struct DefaultsSuiteCleanupContractTests {
         let script = try Self.text("scripts/run-memory-smoke.py")
         #expect(script.contains(Self.purgeArgument))
         #expect(
-            script.contains("purge_status = purge_defaults_suite(executable, suite)"))
-        #expect(script.contains("if purge_status != 0:"))
+            script.contains("purge_failure = purge_defaults_suite(executable, suite)"))
+        #expect(script.contains("if purge_failure is not None:"))
         #expect(!script.contains(#"["defaults", "delete""#))
     }
 }

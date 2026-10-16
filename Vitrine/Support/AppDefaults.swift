@@ -23,11 +23,14 @@ enum AppDefaults {
 
     static var current: UserDefaults {
         // A purge launch must not write any suite back, whichever object asks first.
-        if isPurgeLaunch() { return InMemoryUserDefaults() }
+        if isPurgeLaunchProcess { return InMemoryUserDefaults() }
         let suiteName = ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"]
         guard let suiteName, !suiteName.isEmpty else { return .standard }
         return UserDefaults(suiteName: suiteName) ?? .standard
     }
+
+    /// Arguments never change at runtime, and `applicationWillUpdate` asks on every event.
+    static let isPurgeLaunchProcess = isPurgeLaunch()
 
     static func isPurgeLaunch(arguments: [String] = ProcessInfo.processInfo.arguments) -> Bool {
         #if DEBUG
@@ -37,9 +40,11 @@ enum AppDefaults {
         #endif
     }
 
-    /// Harness suites end in a UUID, so a purge can never reach a real preferences domain.
+    /// Harness suites end in a UUID, so a purge can never reach a real preferences domain,
+    /// and contain no path separator, so it never leaves the Preferences directory.
     static func isTestScoped(_ suite: String) -> Bool {
-        suite.count > 36 && UUID(uuidString: String(suite.suffix(36))) != nil
+        suite.count > 36 && !suite.contains("/")
+            && UUID(uuidString: String(suite.suffix(36))) != nil
     }
 
     /// The suites a purge launch names, or `nil` unless every one is test-scoped.

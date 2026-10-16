@@ -13,6 +13,8 @@ struct AppDefaultsPurgeTests {
         #expect(!AppDefaults.isTestScoped("com.johnny4young.vitrine.menubar-helper"))
         #expect(!AppDefaults.isTestScoped("vitrine-cli"))
         #expect(!AppDefaults.isTestScoped(""))
+        #expect(!AppDefaults.isTestScoped("../../Application Support/x-\(UUID().uuidString)"))
+        #expect(!AppDefaults.isTestScoped("sub/dir-\(UUID().uuidString)"))
     }
 
     @Test func onlyThePurgeArgumentMakesAPurgeLaunch() {
