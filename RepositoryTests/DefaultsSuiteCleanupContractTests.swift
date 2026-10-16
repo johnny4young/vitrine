@@ -41,6 +41,7 @@ struct DefaultsSuiteCleanupContractTests {
         #expect(robot.contains(Self.purgeArgument))
         #expect(robot.contains(Self.purgedNotification))
         #expect(robot.contains(#""--purge-stay-running""#))
+        #expect(robot.contains("[purgeArgument] + launched + [stayRunningArgument]"))
         #expect(defaultsSource.contains(#""--purge-stay-running""#))
         #expect(robot.contains("UITestDefaultsSuite.register(suite)"))
         #expect(robot.contains("XCTestObservationCenter.shared.addTestObserver(fallbackPurge)"))

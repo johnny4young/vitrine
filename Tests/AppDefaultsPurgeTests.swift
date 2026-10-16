@@ -28,12 +28,16 @@ struct AppDefaultsPurgeTests {
         let second = "shortcut-opt-in--[A c]-\(UUID().uuidString)"
         let flag = AppDefaults.purgeSuiteArgument
         #expect(
-            AppDefaults.requestedSuites(arguments: ["Vitrine", flag, "\(first)\n\(second)"])
+            AppDefaults.requestedSuites(
+                arguments: ["Vitrine", flag, first, second, AppDefaults.purgeStayRunningArgument])
                 == [first, second])
         #expect(
             AppDefaults.requestedSuites(
-                arguments: ["Vitrine", flag, "\(first)\ncom.johnny4young.vitrine"]) == nil)
+                arguments: ["Vitrine", flag, first, "com.johnny4young.vitrine"]) == nil)
         #expect(AppDefaults.requestedSuites(arguments: ["Vitrine", flag]) == nil)
+        #expect(
+            AppDefaults.requestedSuites(
+                arguments: ["Vitrine", flag, AppDefaults.purgeStayRunningArgument]) == nil)
         #expect(AppDefaults.requestedSuites(arguments: ["Vitrine", flag, ""]) == nil)
     }
 
