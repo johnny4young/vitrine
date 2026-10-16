@@ -95,4 +95,39 @@ struct AppDefaultsPurgeTests {
         #expect(standard.object(forKey: otherSuite) != nil)
         #expect(standard.object(forKey: GlobalShortcutMigration.shortcutKey) != nil)
     }
+
+    @Test func purgeWritesTheStandardStoreOnlyWhileTheShortcutIsPresent() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appending(path: "purge-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let suite = "shortcut-opt-in--[A d]-\(UUID().uuidString)"
+        let standard = RemovalCountingDefaults(initialValues: [
+            GlobalShortcutMigration.uiTestShortcutKey(suite: suite): "{}"
+        ])
+
+        for _ in 0..<3 {
+            _ = AppDefaults.purge(suite: suite, preferencesDirectory: directory, standard: standard)
+        }
+        #expect(standard.removals == 1)
+    }
+
+    @Test func theUITestKeyIsTheLibraryKeyForTheUITestName() {
+        let suite = "shortcut-welcome--[A e]-\(UUID().uuidString)"
+        let libraryPrefix = String(
+            GlobalShortcutMigration.shortcutKey.dropLast("quickCapture".count))
+        #expect(
+            GlobalShortcutMigration.uiTestShortcutKey(suite: suite)
+                == libraryPrefix + GlobalShortcutMigration.uiTestName(suite: suite))
+    }
+}
+
+/// Counts removals, because a purge must not rewrite the real standard store on every pass.
+nonisolated private final class RemovalCountingDefaults: TestUserDefaults {
+    var removals = 0
+
+    override func removeObject(forKey defaultName: String) {
+        removals += 1
+        super.removeObject(forKey: defaultName)
+    }
 }

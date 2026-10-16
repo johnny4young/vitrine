@@ -57,7 +57,8 @@ enum AppDefaults {
     }
 
     /// Deletes a test-scoped suite's plist and the shortcut it recorded in the standard
-    /// store; returns whether both are gone.
+    /// store; returns whether the plist is gone. The key check reads this process's cache,
+    /// so it cannot prove the removal was persisted.
     static func purge(
         suite: String,
         preferencesDirectory: URL = .libraryDirectory.appending(path: "Preferences"),
@@ -65,13 +66,15 @@ enum AppDefaults {
     ) -> Bool {
         guard isTestScoped(suite) else { return false }
         let shortcutKey = GlobalShortcutMigration.uiTestShortcutKey(suite: suite)
-        standard.removeObject(forKey: shortcutKey)
+        // The settle loop calls this every 250 ms, and `standard` is the real app's domain.
+        if standard.object(forKey: shortcutKey) != nil {
+            standard.removeObject(forKey: shortcutKey)
+        }
         // Delete the file only: `removePersistentDomain` makes cfprefsd write an empty
         // plist back about ten seconds later, even after a synchronize.
         let file = preferencesDirectory.appending(path: "\(suite).plist")
         try? FileManager.default.removeItem(at: file)
         return !FileManager.default.fileExists(atPath: file.path)
-            && standard.object(forKey: shortcutKey) == nil
     }
 
     /// Starts a purge launch's request. It reports success once the settle window has

@@ -34,7 +34,7 @@ enum GlobalShortcutMigration {
     /// scopes the name instead, and its purge removes this key from the standard store.
     static func uiTestName(suite: String) -> String { "quickCapture.ui-test.\(suite)" }
     static func uiTestShortcutKey(suite: String) -> String {
-        "KeyboardShortcuts_\(uiTestName(suite: suite))"
+        "\(shortcutKey).ui-test.\(suite)"
     }
 
     static func prepare(in defaults: UserDefaults) {
