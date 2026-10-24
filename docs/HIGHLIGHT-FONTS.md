@@ -1,7 +1,8 @@
 # Styled syntax fonts
 
-Syntax colors and bold/italic traits must preserve the selected code font's size
-and family. This includes the 22-point minimum used by carousel exports.
+Built-in syntax highlighting must use the selected code font's size and family.
+This includes the 22-point minimum used by carousel exports. Bold/italic variants
+are requested from that family when available.
 
 Highlightr 2.3.0 builds styled font attributes when it loads a theme. Assigning
 `theme.codeFont` changes the base font without refreshing those attributes, so
@@ -87,3 +88,40 @@ change, both tests pass, including all six parameter combinations and both PNG
 attachments. The complete hostless Rendering suite passes 57 tests in 13 suites.
 These results establish font propagation and representative rendered output;
 they do not establish application launch speed or full interactive UI behavior.
+
+## Qualified golden review
+
+CI run [40113045302](https://github.com/johnny4young/vitrine/actions/runs/40113045302)
+passed the functional/coverage and performance suites on macOS 15 and 26. The
+strict Tahoe golden comparison detected the corrected glyphs in all six export
+fixtures. The social card remained byte-identical. The automatically recorded
+candidate artifact `golden-candidates-tahoe-26` (artifact ID `12568056583`) was
+reviewed before refreshing the six export PNGs and their dimensional records.
+
+The candidate and previous manifest pin exactly the same arm64 macOS 26.6.2
+(25G83), Xcode 17F113, SDK 25F70 and Swift 6.2 environment. Every scenario
+fingerprint is unchanged. Default/light/transparent exports grow from 848×556 to
+848×564, and the selected-line export grows from 848×612 to 848×620, reflecting
+the selected font's line metrics. Line numbers remain 848×620 and OpenGraph
+remains 1200×630. All six before/after pairs were visually reviewed for complete
+text, chrome, gutters and highlight placement. No comparison tolerance or
+qualification check is relaxed.
+
+The bundled JetBrains Mono asset is Regular only. When a selected family lacks
+an available bold/italic face, Highlightr falls back to that family's regular
+face. In these golden samples the comment is therefore upright; preserving the
+selected family/size does not promise synthesized italics or bundle additional
+font faces. The Menlo regression separately verifies bold/italic variants that
+are available. This limit is visible in the reviewed images.
+
+[Golden provenance and per-file hashes](highlight-font-golden-review.json) retain
+the source commit, run, artifact digest, exact environment and dimensions. To
+retrieve the same public CI candidate artifact while it remains available:
+
+```sh
+gh run download 40113045302 --repo johnny4young/vitrine \
+  --name golden-candidates-tahoe-26 --dir "$output/qualified-candidates"
+```
+
+The refreshed references still need a new strict CI comparison. A recorded
+candidate alone is not a passing comparison receipt.

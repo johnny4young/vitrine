@@ -10,8 +10,7 @@ import VitrineDomain
 /// **custom** theme carries its own `VitrineDomain.ThemePalette` instead of a bundled
 /// stylesheet name, so it is rendered through `CustomThemeRenderer`, which reuses
 /// the same bundled Highlight.js engine for tokenization but paints the user's
-/// palette colors. The built-in path is left untouched, so default output is
-/// byte-for-byte unchanged.
+/// palette colors. Built-in themes use Highlightr's bundled stylesheet attributes.
 ///
 /// A single shared instance avoids re-creating the (heavy) JS context.
 public final class HighlightManager {

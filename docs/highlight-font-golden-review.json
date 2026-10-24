@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "source_head": "3de067c8f4b8df4e8bbbd3f86361b1fd050625b3",
+  "source_run": 40113045302,
+  "source_job": 120928578110,
+  "source_artifact": 12568056583,
+  "source_artifact_sha256": "368eef423eeceb8fff4e8a1d240882b0f2eefdf14b6a5ba8a9279c4f89e29f4f",
+  "qualified_image": {
+    "architecture": "arm64",
+    "osBuild": "25G83",
+    "osVersion": "26.6.2",
+    "sdkBuild": "25F70",
+    "swiftVersion": "6.2",
+    "xcodeBuild": "17F113"
+  },
+  "qualified_image_matches_previous_manifest": true,
+  "scenario_fingerprints_unchanged": true,
+  "review": "All six baseline/candidate pairs inspected at full resolution. Comments now use the selected font family; resulting line metrics account for 8-pixel height increases in content-hugging cases. Text, chrome, line numbers and highlights remain complete; fixed OpenGraph dimensions remain 1200x630. No clipping observed in these six fixtures. This is exported-image review, not global native UX qualification.",
+  "trait_limit": "The bundled JetBrains Mono file is Regular only. Highlightr requests variants from that family and falls back to its regular face when unavailable; the fix does not introduce another font family or synthetic slant. Menlo regression fixtures verify actual available bold/italic variants.",
+  "changes": [
+    {
+      "scenario": "default-theme",
+      "baseline_sha256": "a58524bae4288bb99c2a0514ef820deb43c930ae2a686eb4bb5604ab11164667",
+      "candidate_sha256": "159e0ab19243c979a4ad8234e2f2e3d008697403ddcd5d079a5be9f6cf62f0c7",
+      "before_pixels": [
+        848,
+        556
+      ],
+      "after_pixels": [
+        848,
+        564
+      ]
+    },
+    {
+      "scenario": "light-theme",
+      "baseline_sha256": "a8b9f57821c41bf1193b1768380ffad863dddf2df2c5c605ac1deb6be2d8391b",
+      "candidate_sha256": "4e2f6bd9ff843512b190e80b1aa94da4f248ad9b35efe7adb90d9c44088d62e8",
+      "before_pixels": [
+        848,
+        556
+      ],
+      "after_pixels": [
+        848,
+        564
+      ]
+    },
+    {
+      "scenario": "line-numbers",
+      "baseline_sha256": "1bc455ff40446ff4e9b846e54a9cb0cae2a513e5271b87455277ce73af48aee0",
+      "candidate_sha256": "9c4a5f9f0829f31061912c11fac9b540d19b9a6cb14e390cbafe12979288b06d",
+      "before_pixels": [
+        848,
+        620
+      ],
+      "after_pixels": [
+        848,
+        620
+      ]
+    },
+    {
+      "scenario": "opengraph",
+      "baseline_sha256": "8d5b308bf5df36d47cc52448b4f124747d32355e5a83326707620be0c59d0b58",
+      "candidate_sha256": "1fc06569d499e731d81e151123ab6fb8e4c1816738921175821b3b5f1589398c",
+      "before_pixels": [
+        1200,
+        630
+      ],
+      "after_pixels": [
+        1200,
+        630
+      ]
+    },
+    {
+      "scenario": "selected-line-highlight",
+      "baseline_sha256": "4101dc00894adceb6bb810a01959e81ff4ada018b4309413615f58866bcd1674",
+      "candidate_sha256": "70d9643bb351ae1c03ac825ad4db09d6f97a748505138e4b406f4b9d094f315a",
+      "before_pixels": [
+        848,
+        612
+      ],
+      "after_pixels": [
+        848,
+        620
+      ]
+    },
+    {
+      "scenario": "transparent-background",
+      "baseline_sha256": "978fdb14cbbeb34181bdf2817b08836be2bf88603781e991b0cbd505429f4c09",
+      "candidate_sha256": "5f5022b99779112b6dcf0adbbb93e3b847caff03665dfcf2134a34db29bb6f32",
+      "before_pixels": [
+        848,
+        556
+      ],
+      "after_pixels": [
+        848,
+        564
+      ]
+    }
+  ],
+  "unchanged_control": {
+    "scenario": "social-default-card",
+    "byte_identical": true,
+    "sha256": "26f3e0df61d0e1b974258d35aae576e1a32c2a6897696ad40d37d213a304f9d2"
+  },
+  "validation_policy": "Only reviewed qualified candidate PNGs and dimensional records change. Image pin, scenario inputs/fingerprints, comparison code, channel tolerance and pixel-fraction tolerance remain unchanged."
+}

@@ -15,7 +15,7 @@ can never drift.
 ### Fixed
 
 - Preserve the selected code font and size in styled syntax tokens, including
-  italic comments and Markdown emphasis in carousel and image exports.
+  comments and Markdown emphasis in carousel and image exports.
 
 ## [1.3.0] - 2026-10-14
 
