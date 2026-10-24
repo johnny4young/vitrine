@@ -177,7 +177,7 @@ public final class HighlightManager {
         guard let highlightr, selectBuiltInTheme(theme) else {
             return plainText(code, theme: theme, font: font)
         }
-        highlightr.theme.codeFont = font
+        highlightr.theme.setCodeFont(font)
         let languageHint = language == .plaintext ? nil : language.hljsName
         let highlighted =
             highlightr.highlight(code, as: languageHint, fastRender: true)
