@@ -5,19 +5,12 @@ import VitrineRendering
 
 /// Encodes a board through the shared export formats at the scale captured by its draft.
 enum ComparisonBoardExporter {
-    static func encodedPayload(
-        for draft: ComparisonBoardDraft,
-        format: ExportFormat,
-        profile: ColorProfile
-    ) -> (data: Data, type: UTType, ext: String)? {
-        try? encodedPayloadChecked(for: draft, format: format, profile: profile)
-    }
-
     static func encodedPayloadChecked(
         for draft: ComparisonBoardDraft,
         format: ExportFormat,
         profile: ColorProfile
     ) throws(RenderBudgetError) -> (data: Data, type: UTType, ext: String) {
+        guard format.isEncodingAvailable else { throw .encodingFailed }
         let asset: RenderedAsset
         do {
             asset = try draft.compose(scale: draft.exportScale, profile: profile)
@@ -27,20 +20,9 @@ enum ComparisonBoardExporter {
             throw .allocationFailed
         }
 
-        if case .pdf = format {
-            guard
-                let data = ExportManager.pdfData(
-                    from: asset.cgImage, scale: draft.exportScale)
-            else {
-                throw .encodingFailed
-            }
-            return (data, .pdf, "pdf")
-        }
-        guard let data = ExportManager.rasterData(from: asset.cgImage, format: format),
-            let metadata = ExportManager.rasterMetadata(for: format)
-        else {
-            throw .encodingFailed
-        }
-        return (data, metadata.type, metadata.ext)
+        return try ExportManager.encodedPayloadChecked(
+            format,
+            raster: { asset.cgImage },
+            pdf: { ExportManager.pdfData(from: asset.cgImage, scale: draft.exportScale) })
     }
 }
