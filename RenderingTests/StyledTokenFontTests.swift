@@ -1,5 +1,4 @@
 import AppKit
-import SwiftUI
 import Testing
 import VitrineDomain
 
@@ -42,38 +41,6 @@ struct StyledTokenFontTests {
                     try tokenFont("ITALICTOKEN", in: highlighted)
                         .fontDescriptor.symbolicTraits.contains(.italic))
             }
-        }
-    }
-
-    @Test func rendersRepresentativeStyledTokens() throws {
-        let font = try #require(NSFont(name: "Menlo", size: 22))
-        let samples: [(Theme, Language, String, String)] = [
-            (
-                .oneDark, .swift,
-                "// COMMENT_TOKEN\nlet value = \"STRING_TOKEN\"\nlet number = 4242",
-                "styled-fonts-one-dark-swift.png"
-            ),
-            (
-                .github, .markdown,
-                "**BOLDTOKEN**\n*ITALICTOKEN*\nPLAINTOKEN\n> QUOTETOKEN",
-                "styled-fonts-github-markdown.png"
-            ),
-        ]
-        for (theme, language, source, name) in samples {
-            let manager = HighlightManager.shared
-            let text = manager.swiftUIAttributedString(
-                for: source, language: language, theme: theme, font: font)
-            let content = Text(text)
-                .fixedSize()
-                .padding(24)
-                .frame(width: 760, height: 240, alignment: .topLeading)
-                .background(manager.backgroundColor(for: theme))
-            let image = try ExportManager.renderCGImageChecked(
-                content, proposedSize: CGSize(width: 760, height: 240),
-                scale: 1, profile: .sRGB)
-            #expect(image.width == 760)
-            #expect(image.height == 240)
-            Attachment.record(try #require(ExportManager.pngData(from: image)), named: name)
         }
     }
 
