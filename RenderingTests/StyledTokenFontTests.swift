@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 import Testing
 import VitrineDomain
 
@@ -44,9 +45,37 @@ struct StyledTokenFontTests {
         }
     }
 
+    @Test func regularOnlyFamiliesKeepLigatureSettingsAndAStyledVariant() throws {
+        let base = CodeFont.applyingLigatures(false, to: try bundledJetBrainsMono(size: 22))
+        let manager = HighlightManager.shared
+        manager.resetCachesForTesting()
+        let highlighted = manager.attributedString(
+            for: "// COMMENT_MARKER\nlet value = 1", language: .swift, theme: .oneDark,
+            font: base)
+        let comment = try tokenFont("COMMENT_MARKER", in: highlighted)
+
+        #expect(comment.familyName == base.familyName)
+        #expect(comment.pointSize == base.pointSize)
+        #expect(comment.textTransform != base.textTransform)
+        #expect(
+            comment.fontDescriptor.object(forKey: .featureSettings) as? NSArray
+                == base.fontDescriptor.object(forKey: .featureSettings) as? NSArray)
+        #expect(CodeFont.styled(base, bold: true, italic: false).familyName == base.familyName)
+    }
+
+    private func bundledJetBrainsMono(size: CGFloat) throws -> NSFont {
+        let url = URL(filePath: #filePath).deletingLastPathComponent()
+            .appending(path: "../Vitrine/Resources/Fonts/JetBrainsMono-Regular.ttf")
+            .standardizedFileURL
+        let descriptors = try #require(
+            CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor])
+        let descriptor = try #require(descriptors.first)
+        return CTFontCreateWithFontDescriptor(descriptor, size, nil) as NSFont
+    }
+
     private func tokenFont(_ marker: String, in text: NSAttributedString) throws -> NSFont {
         let range = (text.string as NSString).range(of: marker)
-        #expect(range.location != NSNotFound)
+        try #require(range.location != NSNotFound, "\(marker)")
         return try #require(
             text.attribute(.font, at: range.location, effectiveRange: nil) as? NSFont)
     }

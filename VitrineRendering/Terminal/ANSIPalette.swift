@@ -537,7 +537,7 @@ public enum ANSIRenderer {
 
     /// Memoizes styled variants per base font. A colorful terminal frame
     /// (`htop`, `eza`) is hundreds to thousands of styled runs, and each one used to
-    /// rebuild its variant through `NSFontManager.convert` plus the Nerd-Font cascade
+    /// rebuild its variant plus the Nerd-Font cascade
     /// descriptor — hundreds of font-descriptor allocations per render. There are only
     /// four variants (plain / bold / italic / bold-italic) per base font, so this
     /// collapses repeated work while a bounded FIFO prevents font changes across a long
@@ -546,8 +546,8 @@ public enum ANSIRenderer {
     private static var styledFontCache: [StyledFontKey: NSFont] = [:]
     private static var styledFontOrder: [StyledFontKey] = []
 
-    /// Derives the bold / italic variant of the monospaced base font, keeping its
-    /// size (falling back to the base font when a trait is unavailable), then appends
+    /// Derives the bold / italic variant of the monospaced base font through
+    /// `CodeFont.styled`, then appends
     /// the Nerd Font glyph cascade so Powerline / devicon / `eza` icons render when a
     /// Nerd Font is installed. The cascade is applied to every run — plain ones too,
     /// not just bold/italic — and is a no-op when no Nerd Font is present.
@@ -557,11 +557,8 @@ public enum ANSIRenderer {
     private static func styledFont(_ font: NSFont, bold: Bool, italic: Bool) -> NSFont {
         let key = StyledFontKey(font: font, bold: bold, italic: italic)
         if let cached = styledFontCache[key] { return cached }
-        var traits: NSFontTraitMask = []
-        if bold { traits.insert(.boldFontMask) }
-        if italic { traits.insert(.italicFontMask) }
-        let base = traits.isEmpty ? font : NSFontManager.shared.convert(font, toHaveTrait: traits)
-        let styled = CodeFont.applyingNerdCascade(to: base)
+        let styled = CodeFont.applyingNerdCascade(
+            to: CodeFont.styled(font, bold: bold, italic: italic))
         if styledFontCache[key] == nil {
             styledFontOrder.append(key)
             if styledFontOrder.count > styledFontCacheLimit {

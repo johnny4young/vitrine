@@ -10,7 +10,7 @@ import VitrineDomain
 /// **custom** theme carries its own `VitrineDomain.ThemePalette` instead of a bundled
 /// stylesheet name, so it is rendered through `CustomThemeRenderer`, which reuses
 /// the same bundled Highlight.js engine for tokenization but paints the user's
-/// palette colors. Built-in themes use Highlightr's bundled stylesheet attributes.
+/// palette colors.
 ///
 /// A single shared instance avoids re-creating the (heavy) JS context.
 public final class HighlightManager {
@@ -176,16 +176,39 @@ public final class HighlightManager {
         guard let highlightr, selectBuiltInTheme(theme) else {
             return plainText(code, theme: theme, font: font)
         }
-        highlightr.theme.setCodeFont(font)
+        highlightr.theme.codeFont = font
         let languageHint = language == .plaintext ? nil : language.hljsName
         let highlighted =
             highlightr.highlight(code, as: languageHint, fastRender: true)
+            .map { Self.applyingStyledFonts(to: $0, base: font) }
             ?? plainText(code, theme: theme, font: font)
         Self.cache(
             highlighted, forKey: key, code: code, representation: .attributedString,
             in: &highlightCache)
         if !shouldCache { lastHighlight.store(highlighted, forKey: key) }
         return highlighted
+    }
+
+    /// Highlightr gives bold and italic tokens the variants it built for its default
+    /// Courier when the theme loaded. Swaps each for the same traits of `base`.
+    static func applyingStyledFonts(
+        to highlighted: NSAttributedString, base: NSFont
+    ) -> NSAttributedString {
+        let result = NSMutableAttributedString(attributedString: highlighted)
+        var variants: [NSFontDescriptor.SymbolicTraits.RawValue: NSFont] = [:]
+        result.enumerateAttribute(
+            .font, in: NSRange(location: 0, length: result.length)
+        ) { value, range, _ in
+            guard let runFont = value as? NSFont, runFont != base else { return }
+            let traits = runFont.fontDescriptor.symbolicTraits.intersection([.bold, .italic])
+            let styled =
+                variants[traits.rawValue]
+                ?? CodeFont.styled(
+                    base, bold: traits.contains(.bold), italic: traits.contains(.italic))
+            variants[traits.rawValue] = styled
+            result.addAttribute(.font, value: styled, range: range)
+        }
+        return result
     }
 
     /// Highlights `code` and returns it as a SwiftUI `AttributedString`, caching the

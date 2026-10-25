@@ -96,6 +96,43 @@ public enum CodeFont {
         ]
     }
 
+    // MARK: - Styled variants
+
+    /// `font` with bold and/or italic added, keeping its family, size and descriptor
+    /// attributes such as the ligature settings. Several bundled families ship only a
+    /// regular face: a missing italic is synthesized as a slant, a missing bold keeps
+    /// the regular weight.
+    public static func styled(_ font: NSFont, bold: Bool, italic: Bool) -> NSFont {
+        var traits: CTFontSymbolicTraits = []
+        if bold { traits.insert(.traitBold) }
+        if italic { traits.insert(.traitItalic) }
+        guard !traits.isEmpty else { return font }
+        if let exact = CTFontCreateCopyWithSymbolicTraits(font, 0, nil, traits, traits) {
+            return exact as NSFont
+        }
+        var styled = font as CTFont
+        if bold,
+            let bolded = CTFontCreateCopyWithSymbolicTraits(styled, 0, nil, .traitBold, .traitBold)
+        {
+            styled = bolded
+        }
+        if italic {
+            if let face = CTFontCreateCopyWithSymbolicTraits(
+                styled, 0, nil, .traitItalic, .traitItalic)
+            {
+                styled = face
+            } else {
+                var slant = CGAffineTransform(
+                    a: 1, b: 0, c: syntheticItalicSlant, d: 1, tx: 0, ty: 0)
+                styled = CTFontCreateCopyWithAttributes(styled, 0, &slant, nil)
+            }
+        }
+        return styled as NSFont
+    }
+
+    /// tan(12°), the slant macOS uses when it synthesizes an oblique face.
+    static let syntheticItalicSlant: CGFloat = 0.2126
+
     // MARK: - Glyph metrics
 
     /// The horizontal advance of `character` in `font`, read straight from the font's
