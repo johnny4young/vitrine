@@ -27,20 +27,9 @@ enum ComparisonBoardExporter {
             throw .allocationFailed
         }
 
-        if case .pdf = format {
-            guard
-                let data = ExportManager.pdfData(
-                    from: asset.cgImage, scale: draft.exportScale)
-            else {
-                throw .encodingFailed
-            }
-            return (data, .pdf, "pdf")
-        }
-        guard let data = ExportManager.rasterData(from: asset.cgImage, format: format),
-            let metadata = ExportManager.rasterMetadata(for: format)
-        else {
-            throw .encodingFailed
-        }
-        return (data, metadata.type, metadata.ext)
+        return try ExportManager.encodedPayloadChecked(
+            format,
+            raster: { asset.cgImage },
+            pdf: { ExportManager.pdfData(from: asset.cgImage, scale: draft.exportScale) })
     }
 }
