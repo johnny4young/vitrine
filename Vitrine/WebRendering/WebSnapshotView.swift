@@ -44,6 +44,10 @@ import WebKit
 /// rasterizes. The work is bounded by `timeout` so a script that never settles
 /// cannot hang the caller — it surfaces a typed `.timedOut`, never a blank image.
 struct WebSnapshotView {
+    /// Explicit rule directories are for owned callers; normal captures retain the
+    /// application store and its existing shared cache.
+    var contentRuleListStoreSource: WebContentRuleListStoreSource = .applicationDefault
+
     /// The render request: the HTML to draw, the viewport to draw it in, and the
     /// isolation policy (network and local base URL). Carrying these as a value
     /// keeps `snapshot(of:)` a pure function of its input, which is what the tests
@@ -118,7 +122,8 @@ struct WebSnapshotView {
         // process, which the navigation delegate below never sees. Failing to obtain
         // it fails the render (closed), keeping the local-rendering promise even on
         // the network-entitled direct-download build.
-        configuration.userContentController.add(try await Self.remoteBlockList())
+        configuration.userContentController.add(
+            try await Self.remoteBlockList(storeSource: contentRuleListStoreSource))
 
         let frame = CGRect(origin: .zero, size: request.viewport)
         let webView = WKWebView(frame: frame, configuration: configuration)
@@ -268,9 +273,11 @@ extension WebSnapshotView {
     /// first use. Throws `.networkIsolationUnavailable` when WebKit cannot provide
     /// a compiled list — the caller must fail the render rather than proceed
     /// without isolation.
-    static func remoteBlockList() async throws -> WKContentRuleList {
-        if let cachedRemoteBlockList { return cachedRemoteBlockList }
-        guard let store = WKContentRuleListStore.default() else {
+    static func remoteBlockList(
+        storeSource: WebContentRuleListStoreSource = .applicationDefault
+    ) async throws -> WKContentRuleList {
+        if storeSource.usesSharedCache, let cachedRemoteBlockList { return cachedRemoteBlockList }
+        guard let store = storeSource.makeStore() else {
             throw WebSnapshotError.networkIsolationUnavailable
         }
         do {
@@ -281,7 +288,7 @@ extension WebSnapshotView {
             else {
                 throw WebSnapshotError.networkIsolationUnavailable
             }
-            cachedRemoteBlockList = list
+            if storeSource.usesSharedCache { cachedRemoteBlockList = list }
             return list
         } catch {
             Log.render.error(

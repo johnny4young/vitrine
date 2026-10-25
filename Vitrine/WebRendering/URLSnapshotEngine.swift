@@ -41,6 +41,10 @@ import WebKit
 /// `WKWebView` is main-actor bound, so the whole type runs on the main actor (the
 /// module's default isolation).
 struct URLSnapshotEngine {
+    /// A custom directory stays separate from the application store and compiled
+    /// cache. The caller owns its path, lifetime and cleanup.
+    var contentRuleListStoreSource: WebContentRuleListStoreSource = .applicationDefault
+
     #if DEBUG
         /// A caller may supply an isolated store for controlled integration tests. Normal
         /// captures select a fresh or saved-session store exclusively from their config.
@@ -88,7 +92,8 @@ struct URLSnapshotEngine {
         // requests are blocked inside WebKit. Compilation failure is fail-closed.
         configuration.userContentController.add(
             try await Self.privateNetworkBlockList(
-                allowsLoopback: config.allowsLoopbackCapture))
+                allowsLoopback: config.allowsLoopbackCapture,
+                storeSource: contentRuleListStoreSource))
         if case .networkQuiet = config.waitStrategy {
             configuration.userContentController.addUserScript(Self.networkActivityScript)
         }
@@ -375,9 +380,14 @@ struct URLSnapshotEngine {
     /// Returns the fail-closed content rule list that blocks private subresources.
     /// The encoded source is pure and tested separately; this method proves WebKit
     /// can compile it and keeps compilation off the repeated render path.
-    static func privateNetworkBlockList(allowsLoopback: Bool) async throws -> WKContentRuleList {
-        if let cached = cachedPrivateNetworkBlockLists[allowsLoopback] { return cached }
-        guard let store = WKContentRuleListStore.default() else {
+    static func privateNetworkBlockList(
+        allowsLoopback: Bool, storeSource: WebContentRuleListStoreSource = .applicationDefault
+    ) async throws -> WKContentRuleList {
+        if storeSource.usesSharedCache, let cached = cachedPrivateNetworkBlockLists[allowsLoopback]
+        {
+            return cached
+        }
+        guard let store = storeSource.makeStore() else {
             throw WebSnapshotError.networkIsolationUnavailable
         }
 
@@ -392,7 +402,7 @@ struct URLSnapshotEngine {
             else {
                 throw WebSnapshotError.networkIsolationUnavailable
             }
-            cachedPrivateNetworkBlockLists[allowsLoopback] = list
+            if storeSource.usesSharedCache { cachedPrivateNetworkBlockLists[allowsLoopback] = list }
             return list
         } catch {
             Log.render.error(
