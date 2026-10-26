@@ -11,7 +11,7 @@ offer, and installation flow remain separate visual regions rather than a redesi
 
 ## Local development
 
-Requires Node.js 22.23.4 or newer, the floor of the pinned Astro release.
+Requires the Node.js version in `package.json` `engines.node`.
 
 Package versions are pinned exactly for reproducible deploys. TypeScript stays on the
 newest stable release accepted by `@astrojs/check` rather than forcing an incompatible

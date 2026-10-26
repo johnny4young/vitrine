@@ -138,9 +138,11 @@ export PATH="$HOME/.local/bin:$PATH"
 make open
 ```
 
+`make open` generates the project and opens it in Xcode; hit **▶︎ Run** to launch.
 The installer verifies the checksum of the pinned XcodeGen release, and `make`
-refuses any other version. See [Requirements](#requirements) and
-[Getting started](#getting-started) for the toolchain and test commands.
+refuses any other version, so add the `PATH` line to your shell profile. See
+[Requirements](#requirements) and [Getting started](#getting-started) for the
+toolchain and test commands.
 
 After launch, Vitrine lives in your **menu bar** (the `<>` viewfinder icon) — there is
 no Dock icon, by design.

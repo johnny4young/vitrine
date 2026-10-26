@@ -11,7 +11,8 @@ questions are routed through [SUPPORT.md](SUPPORT.md).
 - macOS 15+ and **Xcode 26+**
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen), installed from the verified
   release asset with `./scripts/install-xcodegen.sh`
-- Node.js 22.23.4+ for changes under `site/`
+- Node.js matching `engines.node` in [`site/package.json`](site/package.json) for
+  changes under `site/`
 - Python 3.10+ for build-boundary metrics and their tooling check
 
 ## Setup
