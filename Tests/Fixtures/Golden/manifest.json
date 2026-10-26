@@ -10,12 +10,12 @@
   "scenarios" : {
     "default-theme" : {
       "configFingerprint" : "ad985e74a5a11fa4aafe488dcb5442129e495bff10b82ecf27b0b0ddb2390443",
-      "height" : 556,
+      "height" : 564,
       "width" : 848
     },
     "light-theme" : {
       "configFingerprint" : "82c711aee8e0d1f3a13108b9260f2bd5d6060ff6a359f3df591845c2e07c8e19",
-      "height" : 556,
+      "height" : 564,
       "width" : 848
     },
     "line-numbers" : {
@@ -30,12 +30,12 @@
     },
     "selected-line-highlight" : {
       "configFingerprint" : "37a31e2c8c6aab19ace969ad937710c0cae4a2841017b7d5b763b2c2a2474e45",
-      "height" : 612,
+      "height" : 620,
       "width" : 848
     },
     "transparent-background" : {
       "configFingerprint" : "2406600d8149ec85f6c4a6757c94c0e6e10260b0df6730f5aed97bd2f445f087",
-      "height" : 556,
+      "height" : 564,
       "width" : 848
     }
   },
