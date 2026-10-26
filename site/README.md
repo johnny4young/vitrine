@@ -11,7 +11,9 @@ offer, and installation flow remain separate visual regions rather than a redesi
 
 ## Local development
 
-Requires the Node.js version in `package.json` `engines.node`.
+Requires the current Node.js LTS line named in `.nvmrc`, at the patch in `package.json`
+`engines.node`. CI installs the newest patch of that line. When a new line becomes LTS,
+update both files together.
 
 Package versions are pinned exactly for reproducible deploys. TypeScript stays on the
 newest stable release accepted by `@astrojs/check` rather than forcing an incompatible

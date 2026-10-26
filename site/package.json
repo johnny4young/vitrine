@@ -28,7 +28,7 @@
     "wrangler": "4.152.0"
   },
   "engines": {
-    "node": ">=22.23.4"
+    "node": ">=24.22.1"
   },
   "overrides": {
     "http-cache-semantics": "4.3.0",
