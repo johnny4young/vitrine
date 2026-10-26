@@ -131,10 +131,17 @@ free core.
 ### Build from source
 
 ```bash
-git clone https://github.com/johnny4young/vitrine.git && cd vitrine && make
+git clone https://github.com/johnny4young/vitrine.git
+cd vitrine
+./scripts/install-xcodegen.sh
+export PATH="$HOME/.local/bin:$PATH"
+make open
 ```
 
-See [Getting started](#getting-started) for the full developer setup.
+Use [Requirements](#requirements) and [Getting started](#getting-started) for
+the toolchain and test commands. The installer verifies the repository-pinned
+XcodeGen version and checksum; `make open` checks that version before generating
+the project. An arbitrary preinstalled XcodeGen version may fail that check.
 
 After launch, Vitrine lives in your **menu bar** (the `<>` viewfinder icon) — there is
 no Dock icon, by design.
