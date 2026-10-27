@@ -546,14 +546,6 @@ struct PerformanceTests {
         // hierarchy updates, and AppKit runs a layout pass before the next frame. The
         // window hosts the editor through the same factory as the real editor window, so
         // its sizing configuration is part of what this measures.
-        //
-        // On macOS 15 this times a different path. There the test host never runs the
-        // editor's appearance work, which includes the preview's first handoff of the
-        // document, so the preview re-renders on every keystroke: 90–170 ms a key on the
-        // Sequoia runner, against 8–16 ms on Tahoe, where the handoff runs. Ordering the
-        // window in outside every display, or on screen and fully transparent, did not
-        // change that. Whether a real macOS 15 editor window takes the same path is not
-        // measured.
         let environment = AppEnvironment(defaults: testDefaults())
         let session = EditorSession(
             identity: EditorWindowIdentity(index: 97), environment: environment,
@@ -588,9 +580,8 @@ struct PerformanceTests {
             let character = String(typed[next % typed.count])
             textView.insertText(character, replacementRange: textView.selectedRange())
             next += 1
-            // A window that is never on screen gets no display cycle. On macOS 15 the edit
-            // alone did not reach the layout pass (keystrokes measured 1 ms there), so ask
-            // for the pass a visible window runs before its next frame.
+            // A window that is never on screen gets no display cycle, so ask for the
+            // layout pass a visible window runs before its next frame.
             root.needsLayout = true
             root.layoutSubtreeIfNeeded()
         }

@@ -191,7 +191,7 @@ struct AnnotationToolbar: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help(Text("Annotation tool: ") + Text(activeTool.label))
+        .help(Text("Annotation tool: \(Text(activeTool.label))"))
         .accessibilityLabel("Annotation tool")
         .accessibilityValue(activeTool.label)
         .accessibilityIdentifier("annotation-tool-picker")
@@ -224,7 +224,7 @@ struct AnnotationToolbar: View {
         return Group {
             if let key = tool.keyEquivalent {
                 button
-                    .help(Text(tool.helpText) + Text(verbatim: " (⌘\(key.character))"))
+                    .help(Text("\(Text(tool.helpText)) (⌘\(String(key.character)))"))
             } else {
                 button.help(tool.helpText)
             }

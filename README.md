@@ -14,7 +14,7 @@ pasted HTML, entirely on your Mac.
 
 [![Website](https://img.shields.io/badge/website-vitrineframe.app-6E56CF.svg)](https://vitrineframe.app)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-macOS%2015%2B-black?logo=apple)](#requirements)
+[![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
 [![Version](https://img.shields.io/badge/version-v1.3.0-blue.svg)](#status)
 
@@ -92,7 +92,10 @@ For Free/PRO and direct-download/App Store differences, see the
 
 ## Install
 
-Requires macOS **15.0+** (Sequoia or later). **Homebrew and the signed, notarized DMG are
+Requires macOS **26.0+** (Tahoe or later) on Apple silicon. Vitrine 1.3.0 is the last
+release for macOS 15 Sequoia and Intel Macs; it stays on the
+[Releases page](https://github.com/johnny4young/vitrine/releases/tag/v1.3.0), and those
+Macs are not offered newer updates. **Homebrew and the signed, notarized DMG are
 the canonical distribution channels.** Those builds update through Sparkle. An optional
 App Store build is a secondary GUI-only channel, uses StoreKit for PRO, omits the CLI,
 and is updated by the App Store. Source builds use your local signing configuration.
@@ -421,7 +424,7 @@ entitlement-by-entitlement audit table for each distribution channel is in
 
 ## Requirements
 
-- macOS **15.0+** (Sequoia or later)
+- macOS **26.0+** (Tahoe or later) on Apple silicon
 - **Xcode 26+**
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen), installed from the verified
   release asset with `./scripts/install-xcodegen.sh` — the `.xcodeproj` is generated,
@@ -445,7 +448,7 @@ Or step by step:
 make project    # xcodegen generate  → Vitrine.xcodeproj
 make open       # open Vitrine.xcodeproj in Xcode
 make build      # headless xcodebuild (Debug)
-make build-release # optimized universal xcodebuild (arm64 + x86_64)
+make build-release # optimized Apple-silicon xcodebuild (arm64)
 make cli        # build the `vitrine` command-line renderer
 make test          # run the Swift Testing suite without coverage (fast local feedback)
 make test-coverage # run the same suite with coverage (CI parity)
@@ -737,7 +740,7 @@ is the source of truth for the newest downloadable version. Everything under
 ([`Vitrine/DesignSystem/`](Vitrine/DesignSystem)) in light and dark. The product is
 covered by a Swift Testing unit suite plus XCTest UI smokes; CI
 runs lint, build, unit/performance/golden tests, the full UI suite, and the strict visual
-tour on an explicit macOS 15 Sequoia + macOS 26 Tahoe matrix (GitHub's hosted runners
+tour on an explicit macOS 26 Tahoe runner (GitHub's hosted runners
 pre-authorize XCTest UI automation — see [docs/RELEASING.md](docs/RELEASING.md)).
 The complete, versioned history lives in [CHANGELOG.md](CHANGELOG.md), and every release
 also ships an in-app **What's New**.

@@ -280,9 +280,9 @@ struct WorkflowConfigurationTests {
         #expect(try !Self.compositeActions().isEmpty)
     }
 
-    // MARK: - Contract: certify Sequoia and Tahoe explicitly
+    // MARK: - Contract: certify the Tahoe floor explicitly
 
-    @Test func ciCertifiesSequoiaAndTahoeAcrossBuildAndUIJobs() throws {
+    @Test func ciCertifiesTahoeAcrossBuildAndUIJobs() throws {
         let ci = try Self.ci()
         let buildMarker = try #require(ci.range(of: "\n  build:"))
         let uiMarker = try #require(ci.range(of: "\n  ui-test:"))
@@ -290,14 +290,15 @@ struct WorkflowConfigurationTests {
         let uiJob = String(ci[uiMarker.lowerBound...])
 
         for (name, job) in [("build", buildJob), ("UI", uiJob)] {
-            #expect(job.contains("runner: macos-15"), "\(name) matrix must exercise Sequoia")
+            #expect(
+                !job.contains("runner: macos-15"), "\(name) matrix must not run below the floor")
             #expect(job.contains("runner: macos-26"), "\(name) matrix must exercise Tahoe")
             #expect(
                 job.contains("runs-on: ${{ matrix.runner }}"),
                 "\(name) job must run on its explicit matrix label")
             #expect(
                 job.contains("fail-fast: false"),
-                "\(name) matrix must finish both OS rows even when one fails")
+                "\(name) matrix must finish every OS row even when one fails")
         }
 
         #expect(!ci.contains("runs-on: macos-latest"))
@@ -317,7 +318,6 @@ struct WorkflowConfigurationTests {
         #expect(buildJob.contains("make perf"))
         #expect(buildJob.contains("make test-goldens"))
         #expect(buildJob.contains("golden-mode: strict"))
-        #expect(buildJob.contains("golden-mode: smoke"))
         // Only the strict golden step uses the baseline's Xcode build.
         #expect(!buildJob.contains("xcode-version:"))
         #expect(buildJob.contains(#"["pinnedImage"]["xcodeBuild"]"#))
@@ -337,7 +337,7 @@ struct WorkflowConfigurationTests {
         }
 
         let doc = try Self.releasingDoc()
-        for term in ["Sequoia", "Tahoe", "macos-15", "macos-26"] {
+        for term in ["Tahoe", "macos-26"] {
             #expect(doc.contains(term), "RELEASING.md must document \(term)")
         }
     }
@@ -361,8 +361,7 @@ struct WorkflowConfigurationTests {
         #expect(coverageLane.contains("scripts/check-coverage.py"))
         #expect(coverageLane.contains("--baseline \"$(COVERAGE_BASELINE)\""))
         #expect(coverageLane.contains("$(COVERAGE_BASE_REF_FLAG)"))
-        #expect(make.contains(#"if [ "$$major" = 15 ]"#))
-        #expect(make.contains(#"elif [ "$$major" = 26 ]"#))
+        #expect(make.contains(#"if [ "$$major" -ge 26 ]; then echo tahoe"#))
         #expect(project.contains("gatherCoverageData: false"))
 
         let releasing = try Self.releasingDoc()
@@ -409,7 +408,7 @@ struct WorkflowConfigurationTests {
         #expect(
             make.contains(
                 "swift-features-check:\n\tpython3 scripts/check-swift-features.py --self-test"))
-        for platform in ["sequoia", "tahoe"] {
+        for platform in ["tahoe"] {
             let baseline = try Self.text("scripts", "coverage-baselines", "\(platform).json")
             #expect(baseline.contains(#""schemaVersion": 1"#))
             #expect(baseline.contains(#""productionLineCoverage""#))
@@ -447,7 +446,7 @@ struct WorkflowConfigurationTests {
             let job = try Self.job(name, in: ci)
             #expect(
                 job.contains(#"spm-cache: "true""#), "ci.yml \(name) must restore the SPM cache")
-            // Per runner label, so the Sequoia and Tahoe rows never share a cache.
+            // Per runner label, so OS rows never share a cache.
             #expect(job.contains("spm-cache-prefix: ${{ matrix.runner }}"))
         }
     }
@@ -569,9 +568,9 @@ struct WorkflowConfigurationTests {
             "Makefile must pass -resultBundlePath to xcodebuild when RESULT_BUNDLE is set")
     }
 
-    // MARK: - Contract: compile optimized universal builds before packaging
+    // MARK: - Contract: compile optimized Apple-silicon builds before packaging
 
-    @Test func ciAndReleaseCompileAUniversalOptimizedBuild() throws {
+    @Test func ciAndReleaseCompileAnOptimizedAppleSiliconBuild() throws {
         let make = try Self.makefile()
         let releaseMarker = try #require(make.range(of: "\nbuild-release: project"))
         let cliMarker = try #require(make.range(of: "\n## cli:"))
@@ -580,11 +579,12 @@ struct WorkflowConfigurationTests {
             "-configuration Release",
             "generic/platform=macOS",
             "ONLY_ACTIVE_ARCH=NO",
-            "ARCHS='arm64 x86_64'",
+            "ARCHS=arm64",
             "$(RESULT_BUNDLE_FLAG)",
         ] {
-            #expect(lane.contains(required), "universal Release lane must contain \(required)")
+            #expect(lane.contains(required), "Release lane must contain \(required)")
         }
+        #expect(!lane.contains("x86_64"), "Release lane must not build for Intel")
 
         // CI compiles it on every commit. The release gate does not compile again: it
         // requires this job's check runs on the tagged commit (see
@@ -592,7 +592,7 @@ struct WorkflowConfigurationTests {
         let ci = try Self.ci()
         #expect(
             ci.contains("make build-release RESULT_BUNDLE="),
-            "CI must compile the optimized universal app")
+            "CI must compile the optimized app")
         #expect(
             ci.contains("build-release.xcresult"),
             "CI must retain optimized-build diagnostics")
@@ -1049,7 +1049,7 @@ struct WorkflowConfigurationTests {
 
     // MARK: - Contract: the release gate requires the tagged commit's green CI
 
-    /// CI runs lint, the Debug and universal Release builds, the unit and UI suites, and
+    /// CI runs lint, the Debug and Release builds, the unit and UI suites, and
     /// the visual tour on every commit that lands on `main`, and uploads `.xcresult`
     /// bundles when any of it fails. The release `verify` gate reads those results for the
     /// tagged commit instead of re-running a subset of them. Assert it requires exactly
@@ -1064,7 +1064,7 @@ struct WorkflowConfigurationTests {
             verify.matches(of: requiredPattern).compactMap { $0.output[1].substring }
                 .map(String.init))
         let defined = try Self.ciCheckNames()
-        #expect(defined.count == 5, "ci.yml should define five checks, found \(defined)")
+        #expect(defined.count == 3, "ci.yml should define three checks, found \(defined)")
         #expect(
             gated == defined,
             "the release gate must require exactly ci.yml's checks: gated \(gated), defined \(defined)"
@@ -1379,7 +1379,7 @@ struct WorkflowConfigurationTests {
             return trimmed.hasPrefix("coverage: ")
                 ? String(trimmed.dropFirst("coverage: ".count)) : nil
         }
-        #expect(platforms.sorted() == ["sequoia", "tahoe"])
+        #expect(platforms == ["tahoe"])
         let suite = try Self.text("Tests", "PerformanceTests.swift")
         for platform in platforms {
             let data = try Data(

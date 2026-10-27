@@ -58,9 +58,8 @@ network-backed features, and the CLI, and resolves PRO through StoreKit. Channel
 capabilities are compiled and entitlement-gated explicitly rather than discovered at
 runtime.
 
-The public binary floor is macOS 15 Sequoia. Required runtime qualification covers both
-Sequoia and macOS 26 Tahoe, while the direct-download artifact remains universal
-(`arm64` + `x86_64`). A separate scheduled Xcode 27 preview lane compiles and unit-tests
+The public binary floor is macOS 26 Tahoe on Apple silicon: every target builds for
+`arm64` only, and required runtime qualification covers Tahoe. A separate scheduled Xcode 27 preview lane compiles and unit-tests
 the same source on GitHub's `xcode-27` preview image, and each run's job summary records the
 host macOS; it is an early toolchain warning, not a claim of macOS 27 runtime support. A future runtime becomes supported only after its runner is GA
 and the complete build, UI, visual, performance, and clean-Mac gates are promoted to the
@@ -572,7 +571,6 @@ Raster availability is capability-driven rather than version-switched:
 `CGImageDestinationCopyTypeIdentifiers()` once and interactive pickers expose only writers
 the active ImageIO stack actually provides. The probe lives in the rendering layer because
 encodability is a property of the running host, not of the portable `ExportFormat` value.
-That keeps PNG/PDF/HEIC available on Sequoia while adding AVIF on Tahoe and newer.
 Persisted or imported AVIF settings fall back to PNG on a Mac without the writer; the
 CLI grammar remains stable across OS versions and returns an encoding failure rather
 than ever writing mislabeled bytes.
@@ -663,8 +661,8 @@ locked without waiting, and read in chunks under a 1 MiB ceiling. Vitrine verifi
 same descriptor identity and size before appending only the small integration suffix with
 `O_APPEND`; it refuses invalid UTF-8, concurrent changes, devices, directories, and large
 files without rewriting their contents. The CLI installer canonicalizes both absolute and
-relative symlink destinations, prefers `/opt/homebrew/bin` on Apple Silicon and
-`/usr/local/bin` on Intel, and retains the other prefix as a fallback. New links are staged
+relative symlink destinations, prefers Homebrew's `/opt/homebrew/bin`, and falls back to
+`/usr/local/bin` on Macs without Homebrew. New links are staged
 as unique siblings and installed with `RENAME_EXCL` or `RENAME_SWAP`, so a regular file
 named `vitrine` is never removed and stale links have no unlink/recreate gap. The copyable
 Terminal fallback intentionally omits `ln -f` for the same fail-closed rule. Every

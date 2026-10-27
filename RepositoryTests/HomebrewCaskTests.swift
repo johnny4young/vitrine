@@ -225,20 +225,20 @@ struct HomebrewCaskTests {
 
     // MARK: - Contract: depends_on matches the app's minimum macOS
 
-    /// The cask's `depends_on macos:` floor must match the app's deployment target so
-    /// Homebrew refuses to install on a macOS the app cannot run on. The app targets
-    /// macOS 15 (Sequoia), and Homebrew's canonical minimum-version form is the bare
-    /// `:sequoia` symbol.
+    /// The cask's `depends_on` floor must match the app's deployment target and
+    /// architecture so Homebrew refuses to install where the app cannot run. Homebrew's
+    /// canonical minimum-version form is the bare `:tahoe` symbol.
     @Test func caskDependsOnMatchesTheDeploymentFloor() throws {
         let cask = try Self.cask()
         #expect(
-            cask.contains("depends_on macos: :sequoia"),
-            "the cask must require at least macOS Sequoia, matching the deployment target")
+            cask.contains("depends_on macos: :tahoe"),
+            "the cask must require at least macOS Tahoe, matching the deployment target")
+        #expect(cask.contains("depends_on arch: :arm64"), "the app ships for Apple silicon only")
         let project = try Self.projectYAML()
         #expect(
-            project.contains("macOS: \"15.0\""),
-            "project.yml must target macOS 15.0 (Sequoia), the cask's depends_on floor")
-        #expect(!project.contains("deploymentTarget: \"14.0\""))
+            project.contains("macOS: \"26.0\""),
+            "project.yml must target macOS 26.0 (Tahoe), the cask's depends_on floor")
+        #expect(!project.contains("deploymentTarget: \"15.0\""))
     }
 
     // MARK: - Contract: livecheck is configured (a stable release-URL pattern exists)

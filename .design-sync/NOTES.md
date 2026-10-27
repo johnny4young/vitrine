@@ -53,8 +53,7 @@ gh api repos/johnny4young/vitrine/actions/runs/<id>/artifacts \
 gh run download <id> -R johnny4young/vitrine -n screenshot-tour-tahoe-26
 ```
 
-Artifacts keep ~90 days. Two sets are produced per run: `…-tahoe-26` and
-`…-sequoia-15`. Tahoe is what we upload (newest macOS = where design should aim).
+Artifacts keep ~90 days. Each run produces the `…-tahoe-26` set, which is what we upload.
 
 Slugs change between releases. Diff the new set against the remote listing and
 **delete** the stale slugs, or the project keeps showing UI that no longer exists

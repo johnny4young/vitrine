@@ -497,7 +497,7 @@ private struct WindowTitleSuggestionButton: View {
                     .foregroundStyle(VitrineTokens.Accent.system)
             }
             .buttonStyle(.plain)
-            .help(Text("Suggest a title: ") + Text(verbatim: suggestion))
+            .help(Text("Suggest a title: \(suggestion)"))
             .accessibilityLabel("Suggest a title")
             .accessibilityIdentifier("window-title-suggest-button")
         }

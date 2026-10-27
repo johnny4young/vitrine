@@ -5,9 +5,8 @@ import VitrineDomain
 /// Which export formats the running Mac can actually encode.
 ///
 /// This lives in the rendering layer on purpose. Encodability is a runtime property of
-/// the host's ImageIO writers — macOS Sequoia recognizes `public.avif` as a type but
-/// ships no AVIF destination writer, Tahoe does — so it is neither portable nor
-/// deterministic. Keeping the probe out of `VitrineDomain` leaves the value type pure
+/// the host's ImageIO writers — a declared `UTType` does not guarantee a destination
+/// writer — so it is neither portable nor deterministic. Keeping the probe out of `VitrineDomain` leaves the value type pure
 /// and lets hostless domain tests run without depending on the host's codec set.
 extension ExportFormat {
     /// Whether the active OS ImageIO stack can faithfully produce this format.

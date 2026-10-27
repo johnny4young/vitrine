@@ -121,38 +121,17 @@ struct CLIToolInstallerTests {
         #expect(try FileManager.default.contentsOfDirectory(atPath: bin.path) == ["vitrine"])
     }
 
-    @Test func binDirectoryOrderFollowsTheHostArchitecture() {
+    @Test func binDirectoriesPreferHomebrewThenTheTraditionalPrefix() {
         #expect(
-            CLIToolInstaller.binDirectories(for: .arm64).map(\.path)
+            CLIToolInstaller.knownBinDirectories.map(\.path)
                 == ["/opt/homebrew/bin", "/usr/local/bin"])
-        #expect(
-            CLIToolInstaller.binDirectories(for: .x8664).map(\.path)
-                == ["/usr/local/bin", "/opt/homebrew/bin"])
-        #expect(
-            CLIToolInstaller.binDirectories(for: .other).map(\.path)
-                == ["/usr/local/bin", "/opt/homebrew/bin"])
-        #expect(CLIToolInstaller.HostArchitecture(machine: "aarch64") == .arm64)
-        #expect(CLIToolInstaller.HostArchitecture(machine: "amd64") == .x8664)
-        #expect(CLIToolInstaller.HostArchitecture(machine: "future") == .other)
-    }
-
-    /// The fallback command must target the conventional PATH location and ask
-    /// for the privileges that root-owned folder actually requires.
-    @Test func terminalCommandLinksIntoUsrLocalBinWithSudo() {
-        let target = URL(fileURLWithPath: "/Applications/Vitrine.app/Contents/MacOS/vitrine-cli")
-        let command = CLIToolInstaller.terminalCommand(
-            for: target, architecture: .x8664, directoryExists: { _ in true })
-        #expect(
-            command
-                == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/usr/local/bin/vitrine'"
-        )
     }
 
     @Test func terminalCommandUsesTheNativeAppleSiliconPrefix() {
         let target = URL(fileURLWithPath: "/Applications/Vitrine.app/Contents/MacOS/vitrine-cli")
         #expect(
             CLIToolInstaller.terminalCommand(
-                for: target, architecture: .arm64, directoryExists: { _ in true })
+                for: target, directoryExists: { _ in true })
                 == "sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/opt/homebrew/bin/vitrine'"
         )
     }
@@ -163,7 +142,7 @@ struct CLIToolInstallerTests {
     @Test func terminalCommandSkipsAMissingAppleSiliconPrefix() {
         let target = URL(fileURLWithPath: "/Applications/Vitrine.app/Contents/MacOS/vitrine-cli")
         let command = CLIToolInstaller.terminalCommand(
-            for: target, architecture: .arm64,
+            for: target,
             directoryExists: { $0.path == "/usr/local/bin" })
         #expect(
             command
@@ -176,7 +155,7 @@ struct CLIToolInstallerTests {
     @Test func terminalCommandCreatesTheTraditionalPrefixWhenNoneExists() {
         let target = URL(fileURLWithPath: "/Applications/Vitrine.app/Contents/MacOS/vitrine-cli")
         let command = CLIToolInstaller.terminalCommand(
-            for: target, architecture: .arm64, directoryExists: { _ in false })
+            for: target, directoryExists: { _ in false })
         #expect(
             command
                 == "sudo mkdir -p '/usr/local/bin' && sudo ln -s '/Applications/Vitrine.app/Contents/MacOS/vitrine-cli' '/usr/local/bin/vitrine'"
@@ -185,12 +164,12 @@ struct CLIToolInstallerTests {
 
     /// After a failed in-app install, the alert's copied command must be the
     /// equivalent of what was just attempted — the same folder, not the
-    /// architecture's default prefix.
+    /// default prefix.
     @Test func terminalCommandTargetsTheAttemptedDirectory() {
         let target = URL(fileURLWithPath: "/Applications/Vitrine.app/Contents/MacOS/vitrine-cli")
         let attempted = URL(fileURLWithPath: "/usr/local/bin", isDirectory: true)
         let command = CLIToolInstaller.terminalCommand(
-            for: target, into: attempted, architecture: .arm64,
+            for: target, into: attempted,
             directoryExists: { _ in false })
         #expect(
             command
@@ -203,10 +182,10 @@ struct CLIToolInstallerTests {
             fileURLWithPath:
                 "/Applications/O'Malley $(touch pwned)/Vitrine.app/Contents/MacOS/vitrine-cli")
         let command = CLIToolInstaller.terminalCommand(
-            for: target, architecture: .x8664, directoryExists: { _ in true })
+            for: target, directoryExists: { _ in true })
         #expect(command.hasPrefix("sudo ln -s '"))
         #expect(command.contains(#"O'"'"'Malley $(touch pwned)"#))
-        #expect(command.hasSuffix("'/usr/local/bin/vitrine'"))
+        #expect(command.hasSuffix("'/opt/homebrew/bin/vitrine'"))
     }
 
     @Test func terminalCommandQuotesTheSelectedDestinationAsOneLiteralPath() {

@@ -8,7 +8,7 @@ questions are routed through [SUPPORT.md](SUPPORT.md).
 
 ## Prerequisites
 
-- macOS 15+ and **Xcode 26+**
+- macOS 26+ on Apple silicon and **Xcode 26+**
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen), installed from the verified
   release asset with `./scripts/install-xcodegen.sh`
 - Node.js matching `engines.node` in [`site/package.json`](site/package.json) for
@@ -37,7 +37,7 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make project`  | `xcodegen generate` → `Vitrine.xcodeproj`                    |
 | `make open`     | open the generated project in Xcode                          |
 | `make build`    | headless `xcodebuild` compile-check (Debug)                  |
-| `make build-release` | optimized universal compile-check (arm64 + x86_64)     |
+| `make build-release` | optimized Apple-silicon compile-check (arm64)          |
 | `make test`     | run the Swift Testing unit suite (~25 s)                     |
 | `make build-ui-tests` | compile the UI tests (no automation permission needed) |
 | `make test-ui`  | run the XCUITest smokes (first run asks for UI automation)   |
@@ -95,7 +95,7 @@ the comparison suites; `make record-goldens` still selects both explicitly. Rece
 are saved beside the `.xcresult`.
 
 Timing runs explicitly disable coverage instrumentation. Golden runs retain the
-qualified strict comparison on Tahoe and explicitly labeled smoke on Sequoia. No
+qualified strict comparison on Tahoe. No
 coverage threshold, compatibility platform, Release, or security gate is removed.
 UI tests compile only in the UI job, whose `xcodebuild test` builds the target it
 executes. CoreText/AppKit suites stay serial.

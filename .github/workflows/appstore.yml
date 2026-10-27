@@ -24,7 +24,7 @@ concurrency:
 jobs:
   archive:
     name: Archive & export (dry run)
-    runs-on: macos-latest
+    runs-on: macos-26
     # Cap well under the 6-hour default so a wedged SPM resolve or hung
     # xcodebuild surfaces in minutes.
     timeout-minutes: 60

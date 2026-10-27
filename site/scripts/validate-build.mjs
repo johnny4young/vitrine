@@ -74,8 +74,9 @@ requireText(spanishCli, 'Problemas frecuentes y soluciones', 'Spanish CLI troubl
 requireText(english, 'application/ld+json', 'English structured data');
 requireText(spanish, 'application/ld+json', 'Spanish structured data');
 requireText(english, `"softwareVersion":"${version}"`, 'Project version sync');
-requireText(english, '"operatingSystem":"macOS 15 Sequoia or later"', 'Sequoia metadata floor');
-requireText(english, 'macOS 15+', 'English deployment floor');
+requireText(english, '"operatingSystem":"macOS 26 Tahoe or later"', 'Tahoe metadata floor');
+requireText(english, '"processorRequirements":"Apple silicon"', 'Apple silicon metadata');
+requireText(english, 'macOS 26+ on Apple silicon', 'English deployment floor');
 requireText(english, 'id="bench"', 'Style bench');
 requireText(english, 'class="salon"', 'Gallery hero');
 requireText(english, 'id="responsive"', 'Responsive board');
@@ -95,9 +96,9 @@ requireText(spanish, '33 lenguajes de sintaxis', 'Spanish language catalog claim
 requireText(spanish, 'puedes activar la CLI desde Ajustes', 'Spanish CLI installation claim');
 requireText(spanish, 'No hay una prueba que caduque', 'Spanish no-expiry evaluation policy');
 requireText(spanish, 'son los canales canónicos', 'Spanish canonical distribution policy');
-requireText(spanish, 'macOS 15+', 'Spanish deployment floor');
-requireAbsent(english, 'macOS 14+', 'Stale English deployment floor');
-requireAbsent(spanish, 'macOS 14+', 'Stale Spanish deployment floor');
+requireText(spanish, 'macOS 26+ en Apple silicon', 'Spanish deployment floor');
+requireAbsent(english, 'macOS 15+', 'Stale English deployment floor');
+requireAbsent(spanish, 'macOS 15+', 'Stale Spanish deployment floor');
 requireAbsent(english, '160+ languages', 'Stale language catalog claim');
 requireAbsent(spanish, '160+ lenguajes', 'Stale Spanish language catalog claim');
 requireAbsent(english, 'fully local', 'Overbroad local-rendering claim');
