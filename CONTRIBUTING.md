@@ -39,6 +39,7 @@ Always run `make project` after pulling changes that touch `project.yml`.
 | `make build`    | headless `xcodebuild` compile-check (Debug)                  |
 | `make build-release` | optimized Apple-silicon compile-check (arm64)          |
 | `make test`     | run the Swift Testing unit suite (~25 s)                     |
+| `make test-repository` | run only the repository-contract suites (docs, workflows) |
 | `make build-ui-tests` | compile the UI tests (no automation permission needed) |
 | `make test-ui`  | run the XCUITest smokes (first run asks for UI automation)   |
 | `make test-visual` | run the strict UI screenshot tour and export 53 reviewed PNGs |

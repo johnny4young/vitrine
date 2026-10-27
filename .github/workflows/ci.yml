@@ -28,6 +28,51 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Pull requests that change only documentation, the site, or design notes skip the
+  # macOS app gates; `contracts` still runs the repository suites that read those
+  # files. Every other event runs everything. Dependent jobs run unless this one
+  # answered "false", so a failure here runs the full gate instead of skipping it.
+  changes:
+    name: Classify changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      app: ${{ steps.classify.outputs.app }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Classify the changed files
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: python3 scripts/classify-ci-changes.py --event "$EVENT" ${BASE:+--base "$BASE"} >> "$GITHUB_OUTPUT"
+
+  contracts:
+    name: Repository contracts
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'false' }}
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
+        with:
+          summary-title: Toolchain — repository contracts
+          spm-cache: "true"
+          spm-cache-prefix: macos-26
+      - name: Repository contract suites
+        run: make test-repository RESULT_BUNDLE="${RUNNER_TEMP}/repository.xcresult"
+      - name: Upload .xcresult bundle
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: repository-xcresult-tahoe-26
+          path: ${{ runner.temp }}/repository.xcresult
+          if-no-files-found: ignore
+
   # Fast, cheap gate on a Linux runner: shell lint, workflow YAML syntax, the
   # CHANGELOG↔version lockstep, and the golden manifest↔fixture cross-check all
   # fail here in well under a minute, before any macOS minutes are spent. The
@@ -196,20 +241,15 @@ jobs:
           EOF
 
   build:
-    name: Build & test · ${{ matrix.platform }}
     # Runtime compatibility is an explicit product gate, not an inference from
-    # whichever OS `macos-latest` happens to select: the row pins the supported floor
+    # whichever OS `macos-latest` happens to select: the job pins the supported floor
     # on GitHub's standard arm64 label, and setup-xcode picks its newest stable Xcode.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-26
-            platform: Tahoe 26
-            artifact: tahoe-26
-            coverage: tahoe
-            golden-mode: strict
-    runs-on: ${{ matrix.runner }}
+    # Literal names, not a matrix: a skipped matrix job reports its unexpanded name,
+    # which never satisfies the required check.
+    name: Build & test · Tahoe 26
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}
+    runs-on: macos-26
     # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
     timeout-minutes: 60
@@ -223,25 +263,27 @@ jobs:
 
       # Selects Xcode, records the exact toolchain in the job summary before any build
       # step, installs the pinned XcodeGen, and restores the SPM cache, keyed per runner
-      # label so a future OS row never shares a cache.
+      # label so another OS never shares a cache.
       - name: Set up macOS toolchain
         uses: ./.github/actions/setup-macos-toolchain
         with:
           summary-title: Toolchain
-          summary-context: "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
+          summary-context: "Runtime: Tahoe 26 (macos-26)"
           spm-cache: "true"
-          spm-cache-prefix: ${{ matrix.runner }}
+          spm-cache-prefix: macos-26
 
       - name: Lint (swift-format)
         run: make lint
 
       # Capture an .xcresult bundle for each xcodebuild phase so a failure
       # can be triaged offline from the uploaded artifact. RESULT_BUNDLE is honored
-      # by the build/build-release/test/build-ui-tests make targets.
-      - name: Build (Debug)
+      # by the build/build-release/test/build-ui-tests make targets. The Debug build
+      # compiles the test bundles too, with the settings the performance and golden
+      # lanes use, so those lanes reuse it instead of rebuilding.
+      - name: Build for testing (Debug)
         run: |
           set -o pipefail
-          make build RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult" 2>&1 | tee "${RUNNER_TEMP}/build.log"
+          make build-for-testing RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult" 2>&1 | tee "${RUNNER_TEMP}/build.log"
 
       # The compiler invocations in the log are the resolved truth for every upcoming
       # feature, whatever project setting, xcconfig, or command-line override produced them.
@@ -266,9 +308,12 @@ jobs:
             fi
           fi
           git rev-parse --verify "${change_base}^{commit}" >/dev/null
+          # Instrumented products live in their own DerivedData, so the uninstrumented
+          # build above stays intact for the performance and golden lanes.
           make test-ci-coverage \
-            COVERAGE_PLATFORM="${{ matrix.coverage }}" \
+            COVERAGE_PLATFORM="tahoe" \
             COVERAGE_BASE_REF="$change_base" \
+            COVERAGE_DERIVED_DATA="${RUNNER_TEMP}/coverage-derived-data" \
             RESULT_BUNDLE="${RUNNER_TEMP}/test.xcresult"
 
       # Surface per-target code coverage in the job summary. The CI-only
@@ -292,7 +337,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: xcresults-${{ matrix.artifact }}
+          name: xcresults-tahoe-26
           path: |
             ${{ runner.temp }}/build.xcresult
             ${{ runner.temp }}/build-release.xcresult
@@ -329,7 +374,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: launch-gallery-${{ matrix.artifact }}
+          name: launch-gallery-tahoe-26
           path: ${{ runner.temp }}/vitrine-gallery-review
           if-no-files-found: ignore
 
@@ -347,7 +392,7 @@ jobs:
         if: ${{ !cancelled() && steps.perf.outcome != 'skipped' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: performance-tests-${{ matrix.artifact }}
+          name: performance-tests-tahoe-26
           path: |
             ${{ runner.temp }}/perf.xcresult
             ${{ runner.temp }}/perf.xcresult.lane.json
@@ -382,19 +427,19 @@ jobs:
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: perf-measurements-${{ matrix.artifact }}
+          name: perf-measurements-tahoe-26
           path: perf-measurements.jsonl
           if-no-files-found: warn
           retention-days: 30
 
-      # Compare this row's medians with the baseline recorded for its platform
-      # (`matrix.coverage` is the same key the coverage baselines use). Shared runners
+      # Compare this run's medians with the baseline recorded for its platform
+      # (the same key the coverage baselines use). Shared runners
       # vary by up to ~40% between runs, so the script scales the baseline by the run's
       # overall speed and flags only a scenario more than 1.5x that expectation and at
       # least 25 ms slower. Warn-only: it annotates and never fails the job.
       - name: Compare performance with the baseline
         if: always()
-        run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/${{ matrix.coverage }}.json"
+        run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/tahoe.json"
 
       # Tahoe must compare every scenario, including the social card, on the
       # qualified image.
@@ -402,7 +447,7 @@ jobs:
       # every other step keeps the latest stable toolchain selected above.
       - name: Select the baseline's Xcode
         id: golden-xcode
-        if: ${{ !cancelled() && matrix.golden-mode == 'strict' }}
+        if: ${{ !cancelled() }}
         run: |
           set -euo pipefail
           build="$(python3 -c 'import json; print(json.load(open("Tests/Fixtures/Golden/manifest.json"))["pinnedImage"]["xcodeBuild"])')"
@@ -424,13 +469,13 @@ jobs:
         if: ${{ !cancelled() && steps.golden-xcode.outcome != 'failure' }}
         env:
           GOLDEN_DEVELOPER_DIR: ${{ steps.golden-xcode.outputs.developer-dir }}
-        run: make test-goldens GOLDEN_MODE=${{ matrix.golden-mode }} RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult" DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
+        run: make test-goldens GOLDEN_MODE=strict RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult" DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
 
       - name: Upload golden evidence
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: golden-diffs-${{ matrix.artifact }}
+          name: golden-diffs-tahoe-26
           path: |
             ${{ runner.temp }}/goldens.xcresult
             ${{ runner.temp }}/goldens.xcresult.log
@@ -439,16 +484,16 @@ jobs:
       # Candidates never replace committed fixtures or make a failed comparison
       # green. They are separate artifacts for explicit baseline review on drift.
       - name: Record review-only baseline candidates
-        if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure') && matrix.golden-mode == 'strict'
+        if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure')
         env:
           GOLDEN_DEVELOPER_DIR: ${{ steps.golden-xcode.outputs.developer-dir }}
         run: GOLDEN_DEST_ROOT="${RUNNER_TEMP}/golden-candidates" make record-goldens DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
 
       - name: Upload baseline candidates for review
-        if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure') && matrix.golden-mode == 'strict'
+        if: failure() && (steps.goldens.outcome == 'failure' || steps.golden-xcode.outcome == 'failure')
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: golden-candidates-${{ matrix.artifact }}
+          name: golden-candidates-tahoe-26
           path: ${{ runner.temp }}/golden-candidates
           if-no-files-found: warn
 
@@ -491,15 +536,10 @@ jobs:
   # A separate job so it parallelizes with the build gate and a UI flake never
   # blocks the build job's artifacts.
   ui-test:
-    name: UI tests · ${{ matrix.platform }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-26
-            platform: Tahoe 26
-            artifact: tahoe-26
-    runs-on: ${{ matrix.runner }}
+    name: UI tests · Tahoe 26
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}
+    runs-on: macos-26
     # The suite hangs (rather than fails) if automation init wedges; cap the job
     # so a wedged run surfaces in minutes, not after the 6-hour default.
     timeout-minutes: 60
@@ -512,9 +552,9 @@ jobs:
         uses: ./.github/actions/setup-macos-toolchain
         with:
           summary-title: Toolchain — UI tests
-          summary-context: "Matrix: ${{ matrix.platform }} (${{ matrix.runner }})"
+          summary-context: "Runtime: Tahoe 26 (macos-26)"
           spm-cache: "true"
-          spm-cache-prefix: ${{ matrix.runner }}
+          spm-cache-prefix: macos-26
 
       # Diagnostic only — never a gate. Empirically the suite executes even while `automationmodetool` reports
       # "Automation Mode is disabled": the image runs with SIP disabled and is
@@ -583,9 +623,75 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: documentation-ui-${{ matrix.artifact }}
+          name: documentation-ui-tahoe-26
           path: ${{ runner.temp }}/documentation-ui
           if-no-files-found: warn
+
+      # Tell an automation-authorization failure apart from an ordinary test
+      # failure: the former is a runner-image regression (it has happened —
+      # actions/runner-images#7621, #8546), not a product bug, and should be
+      # read as such.
+      - name: Classify automation failure
+        if: failure()
+        run: |
+          if [ -f test-ui.log ] && grep -q "failed to initialize for UI testing" test-ui.log; then
+            echo "::error title=UI automation blocked on this image::The XCUITest session could not initialize. The runner image has likely lost its pre-authorized automation state (cf. actions/runner-images#7621) — an infrastructure regression, not a test failure. See docs/RELEASING.md (Running the UI tests)."
+          fi
+
+      # xcresult diagnostics can mention an app crash without retaining its stack.
+      # Keep only reports from this UI run and this app, never unrelated host reports.
+      - name: Collect UI crash reports
+        if: failure()
+        run: |
+          python3 - <<'PYTHON'
+          import os, pathlib, shutil
+          temporary = pathlib.Path(os.environ["RUNNER_TEMP"])
+          marker = temporary / "ui-test-started"
+          if marker.exists():
+              output = temporary / "ui-crash-reports"
+              for scope, root in [("user", pathlib.Path.home() / "Library/Logs/DiagnosticReports"),
+                                  ("system", pathlib.Path("/Library/Logs/DiagnosticReports"))]:
+                  for report in root.glob("Vitrine*.ips"):
+                      if report.is_file() and report.stat().st_mtime >= marker.stat().st_mtime:
+                          output.mkdir(parents=True, exist_ok=True)
+                          shutil.copy2(report, output / f"{scope}-{report.name}")
+          PYTHON
+
+      - name: Upload .xcresult bundle
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: ui-test-xcresult-tahoe-26
+          path: |
+            ${{ runner.temp }}/test-ui.xcresult
+            ${{ runner.temp }}/ui-crash-reports
+          if-no-files-found: ignore
+
+  # The strict visual tour runs beside the UI suite instead of after it. It builds
+  # its own UI-test products: sharing them across jobs would cost an artifact round
+  # trip about as long as the build.
+  visual-tour:
+    name: Visual tour · Tahoe 26
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Set up macOS toolchain
+        uses: ./.github/actions/setup-macos-toolchain
+        with:
+          summary-title: Toolchain — visual tour
+          summary-context: "Runtime: Tahoe 26 (macos-26)"
+          spm-cache: "true"
+          spm-cache-prefix: macos-26
+
+      - name: Qualify the UI display
+        run: |
+          set -o pipefail
+          xcrun swift scripts/qualify-ui-display.swift --qualify
+          xcrun swift scripts/qualify-ui-display.swift --check
 
       # The ordinary UI suite intentionally skips the expensive screenshot tour.
       # Run it separately with its opt-in environment, retain every image in the
@@ -594,6 +700,7 @@ jobs:
       - name: Run strict visual evidence tour
         run: |
           set -o pipefail
+          touch "${RUNNER_TEMP}/ui-test-started"
           make test-visual \
             VISUAL_OUTPUT="${RUNNER_TEMP}/screenshot-tour" \
             VISUAL_RESULT_BUNDLE="${RUNNER_TEMP}/screenshot-tour.xcresult" \
@@ -634,55 +741,29 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: clipboard-privacy-ui-${{ matrix.artifact }}
+          name: clipboard-privacy-ui-tahoe-26
           path: ${{ runner.temp }}/clipboard-privacy-ui
           if-no-files-found: warn
 
-      # Tell an automation-authorization failure apart from an ordinary test
-      # failure: the former is a runner-image regression (it has happened —
-      # actions/runner-images#7621, #8546), not a product bug, and should be
-      # read as such.
       - name: Classify automation failure
         if: failure()
         run: |
-          if [ -f test-ui.log ] && grep -q "failed to initialize for UI testing" test-ui.log; then
+          if [ -f test-visual.log ] && grep -q "failed to initialize for UI testing" test-visual.log; then
             echo "::error title=UI automation blocked on this image::The XCUITest session could not initialize. The runner image has likely lost its pre-authorized automation state (cf. actions/runner-images#7621) — an infrastructure regression, not a test failure. See docs/RELEASING.md (Running the UI tests)."
           fi
-
-      # xcresult diagnostics can mention an app crash without retaining its stack.
-      # Keep only reports from this UI run and this app, never unrelated host reports.
-      - name: Collect UI crash reports
-        if: failure()
-        run: |
-          python3 - <<'PYTHON'
-          import os, pathlib, shutil
-          temporary = pathlib.Path(os.environ["RUNNER_TEMP"])
-          marker = temporary / "ui-test-started"
-          if marker.exists():
-              output = temporary / "ui-crash-reports"
-              for scope, root in [("user", pathlib.Path.home() / "Library/Logs/DiagnosticReports"),
-                                  ("system", pathlib.Path("/Library/Logs/DiagnosticReports"))]:
-                  for report in root.glob("Vitrine*.ips"):
-                      if report.is_file() and report.stat().st_mtime >= marker.stat().st_mtime:
-                          output.mkdir(parents=True, exist_ok=True)
-                          shutil.copy2(report, output / f"{scope}-{report.name}")
-          PYTHON
 
       - name: Upload .xcresult bundle
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: ui-test-xcresult-${{ matrix.artifact }}
-          path: |
-            ${{ runner.temp }}/test-ui.xcresult
-            ${{ runner.temp }}/screenshot-tour.xcresult
-            ${{ runner.temp }}/ui-crash-reports
+          name: screenshot-tour-xcresult-tahoe-26
+          path: ${{ runner.temp }}/screenshot-tour.xcresult
           if-no-files-found: ignore
 
       - name: Upload strict visual evidence
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: screenshot-tour-${{ matrix.artifact }}
+          name: screenshot-tour-tahoe-26
           path: ${{ runner.temp }}/screenshot-tour
           if-no-files-found: ignore
