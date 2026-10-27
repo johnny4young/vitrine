@@ -759,6 +759,32 @@ final class ScreenshotTourUITests: XCTestCase {
         }
     }
 
+    /// Review-only evidence of the confidential-clipboard setting in both appearances.
+    /// It stays out of the strict manifest; ci.yml exports it by name.
+    @MainActor
+    func testClipboardPrivacyTour() throws {
+        for appearance in ["light", "dark"] {
+            let app = launch(
+                arguments: VitrineLaunchArguments.settingsTour + ["--appearance-\(appearance)"])
+            defer { app.terminate() }
+            XCTAssertTrue(element("settings-general-pane", in: app).waitForExistence(timeout: 8))
+            element("settings-nav-output", in: app).click()
+            let pane = element("settings-output-pane", in: app)
+            XCTAssertTrue(pane.waitForExistence(timeout: 4))
+            let toggle = element("conceal-clipboard-toggle", in: app)
+            XCTAssertTrue(toggle.waitForExistence(timeout: 3))
+            XCTAssertEqual(toggle.value as? Int, 0, "Clipboard privacy must be opt-in")
+            let slug = "confidential-clipboard-en-\(appearance)"
+            guard assertVitrineIsFrontmost(for: slug) else { return }
+            if !waitUntilStill(pane, timeout: 2) { log("\(slug) — captured while still moving") }
+            let attachment = XCTAttachment(screenshot: pane.screenshot())
+            attachment.name = slug
+            attachment.lifetime = .keepAlways
+            add(attachment)
+            app.terminate()
+        }
+    }
+
     // MARK: - Harness
 
     @MainActor

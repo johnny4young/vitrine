@@ -224,6 +224,23 @@ struct WindowPlacementTests {
         #expect(narrowed.midX == visible.midX)
         #expect(narrowed.height == visible.height)
     }
+
+    /// The same pass the editor runs when displays change, against a real window.
+    @Test func anOffScreenWindowIsPulledBackOntoAVisibleDisplay() throws {
+        let screens = NSScreen.screens.map(\.visibleFrame)
+        try #require(!screens.isEmpty)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 480), styleMask: [.titled],
+            backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        let size = window.frame.size
+        window.setFrameOrigin(NSPoint(x: 12_000, y: 9_000))
+
+        #expect(WindowPlacement.recoverIfOffScreen(window))
+        #expect(WindowFrameSolver.isReachable(window.frame, on: screens), "\(window.frame)")
+        #expect(window.frame.size == size)
+        #expect(!WindowPlacement.recoverIfOffScreen(window), "an on-screen window stays put")
+    }
 }
 
 private final class CloseRecordingWindow: NSWindow {

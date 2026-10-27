@@ -110,6 +110,53 @@ struct LocalizationTests {
         }
     }
 
+    /// The UI suite runs in English, so the Spanish copy of the surfaces it drives is
+    /// pinned here: paywall, export gating, image processing, library, license,
+    /// history consent and the optional-shortcut onboarding.
+    @Test func interactiveSurfacesResolveToSpanish() throws {
+        let spanish = try #require(bundle(for: "es"))
+        let exact: [String: String] = [
+            "Requires PRO": "Requiere PRO",
+            "Export sizes": "Exportar tamaños",
+            "Export carousel": "Exportar carrusel",
+            "Export sizes — Requires PRO": "Exportar tamaños — Requiere PRO",
+            "Export carousel — Requires PRO": "Exportar carrusel — Requiere PRO",
+            "Recognizing text…": "Reconociendo texto…",
+            "Redacting secrets…": "Ocultando secretos…",
+            "Defaults for new windows and captures. Open editors keep their own style.":
+                "Valores predeterminados para nuevas ventanas y capturas. Los editores abiertos conservan su propio estilo.",
+            "Save": "Guardar",
+            "Cancel": "Cancelar",
+            "Delete Preset": "Eliminar preajuste",
+            "Delete Theme": "Eliminar tema",
+            "Unlock Vitrine PRO": "Desbloquear Vitrine PRO",
+            "Not now": "Ahora no",
+            "The license was accepted, but Vitrine couldn't store it on this Mac. Try again.":
+                "La licencia fue aceptada, pero Vitrine no pudo guardarla en esta Mac. Vuelve a intentarlo.",
+            "Save this capture in history?": "¿Guardar esta captura en el historial?",
+            "Don't Save": "No guardar",
+            "Save Sanitized": "Guardar saneado",
+            "Keep Original": "Conservar original",
+            "use the menu bar": "usa la barra de menús",
+        ]
+        for (key, value) in exact {
+            let resolved = spanish.localizedString(forKey: key, value: "\u{0}MISSING", table: nil)
+            #expect(resolved == value, "\"\(key)\" resolved to \"\(resolved)\"")
+        }
+        let fragments: [String: [String]] = [
+            "welcome.privacy.badge": ["descarga directa", "licencia"],
+            "shortcut.scope.help": ["Opcional"],
+            // The reserved-shortcut alert names this menu item.
+            "New Capture from Clipboard": ["captura"],
+        ]
+        for (key, expected) in fragments {
+            let resolved = spanish.localizedString(forKey: key, value: "\u{0}MISSING", table: nil)
+            for fragment in expected {
+                #expect(resolved.contains(fragment), "\"\(key)\" resolved to \"\(resolved)\"")
+            }
+        }
+    }
+
     @Test func developmentLanguageStringsResolveForOpaqueKeys() throws {
         // Keys that are stable identifiers (not English prose) must carry an English
         // value in the catalog, or they would render as the raw key for an English

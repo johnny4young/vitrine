@@ -7,6 +7,19 @@ enum HistoryConsentPrompt {
         _ decision: CaptureRetentionPolicy.Decision
     ) -> CaptureRetentionPolicy.Consent {
         guard case .requiresConsent = decision else { return .doNotSave }
+        let alert = makeAlert()
+        // Quick capture runs from a global hotkey while another app is frontmost; an
+        // inactive agent app's modal would otherwise open behind it. Focus goes back to
+        // that app afterward so the next paste lands there.
+        let previous = AppActivation.frontmostOtherApplication()
+        AppActivation.bringForward()
+        alert.window.level = .modalPanel
+        let response = alert.runModal()
+        AppActivation.restoreFocus(to: previous)
+        return choice(for: response)
+    }
+
+    static func makeAlert() -> NSAlert {
         let alert = NSAlert()
         alert.alertStyle = .warning
         alert.messageText = String(localized: "Save this capture in history?")
@@ -29,15 +42,7 @@ enum HistoryConsentPrompt {
         alert.buttons[0].keyEquivalent = "\u{1b}"
         alert.buttons[1].keyEquivalent = ""
         alert.buttons[2].keyEquivalent = ""
-        // Quick capture runs from a global hotkey while another app is frontmost; an
-        // inactive agent app's modal would otherwise open behind it. Focus goes back to
-        // that app afterward so the next paste lands there.
-        let previous = AppActivation.frontmostOtherApplication()
-        AppActivation.bringForward()
-        alert.window.level = .modalPanel
-        let response = alert.runModal()
-        AppActivation.restoreFocus(to: previous)
-        return choice(for: response)
+        return alert
     }
 
     static func choice(for response: NSApplication.ModalResponse) -> CaptureRetentionPolicy.Consent

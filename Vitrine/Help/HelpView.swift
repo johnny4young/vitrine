@@ -22,7 +22,7 @@ struct HelpView: View {
     /// The Help topics, each rendered as a titled card. The copy lives in the String
     /// Catalog under stable keys — mirrored in `docs/HELP.md` — so the
     /// in-app text is localizable and these long passages don't bloat the source.
-    private let topics: [HelpTopic] = [
+    static let topics: [HelpTopic] = [
         HelpTopic(
             symbol: "command",
             title: "help.topic.hotkey.title",
@@ -55,7 +55,7 @@ struct HelpView: View {
             VStack(alignment: .leading, spacing: 14) {
                 header
                     .padding(.bottom, 4)
-                ForEach(topics) { topic in
+                ForEach(Self.topics) { topic in
                     topicCard(topic)
                 }
                 hotkeyControl
@@ -181,7 +181,7 @@ struct HelpView: View {
 
 /// One Help topic: an SF Symbol, a title, and a short body, plus a stable
 /// accessibility identifier for UI tests.
-private struct HelpTopic: Identifiable {
+struct HelpTopic: Identifiable {
     let symbol: String
     /// Localized through the String Catalog: `LocalizedStringResource` so
     /// the model carries a catalog reference that `Text(_:)` renders localized,

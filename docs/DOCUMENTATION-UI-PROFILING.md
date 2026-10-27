@@ -1,10 +1,12 @@
 # Documentation export UI profiling
 
-The documentation-package test deliberately covers eight states: English/Spanish,
-light/dark appearance, and minimum/1280×800 windows. Each state launches an isolated
-app, enters alternative text through accessibility, configures a package, visits the
-real folder panel, exports, and verifies image.png, README.md, index.html and source.txt.
-The separate cancellation test remains part of the ordinary UI suite.
+The documentation-package test covers two states: light appearance at the minimum
+window and dark appearance at 1280×800, both in English like the rest of the UI suite.
+The package's Spanish copy is covered by `LocalizationTests`. Each state launches an
+isolated app, enters alternative text through accessibility, cancels the package sheet
+once (nothing is written and the editor stays open), reopens and configures it, visits
+the real folder panel, exports, and verifies image.png, README.md, index.html and
+source.txt.
 
 ## Diagnostic evidence
 
@@ -13,8 +15,9 @@ The test emits `DOCUMENTATION_UI_SEGMENT` lines using monotonic system uptime:
 - launch: isolated app creation, launch and activation
 - navigation: editor geometry and output-inspector navigation
 - description: alternative-text entry and acceptance
-- package-setup: menu, sheet, folder-name entry, output selections and screenshot
-- panel: export click, Go to Folder typing, and localized panel readiness
+- package-setup: menu, sheet cancellation and reopening, folder-name entry, output
+  selections and screenshot
+- panel: export click, Go to Folder path paste, and panel readiness
 - export: panel confirmation until the export sheet disappears
 - validation: all four files and their text/alternative-text content
 - termination: explicit app termination
@@ -42,17 +45,17 @@ A failed/incomplete test must not become a successful performance observation.
 ## Controlled qualification before optimization claims
 
 First collect instrumentation-only baseline evidence. Then change only the measured
-bottleneck while keeping eight states, real panel interactions, typing acceptance,
+bottleneck while keeping both states, real panel interactions, typing acceptance,
 all file checks, cancellation and screenshot coverage intact. Compare matched base
 and candidate runs on the same OS, Xcode version and runner image. Record queue time
 separately from executed job, step and test durations. Five matched pairs per OS are
 the qualification target; fewer pairs are diagnostic and remain unqualified. Do not
 claim a 20–30% improvement from historic runs across different source commits.
 
-Keep Tahoe strict pixel-golden comparison separate from Sequoia render-only smoke.
-Do not drop OS/locale states, relax timeout or performance/coverage floors, suppress
-unexpected skips, reuse instrumented coverage products for performance, or share
-build products across SDK/configuration/signing/sandbox boundaries.
+Do not drop OS, appearance or window-size states, relax timeout or
+performance/coverage floors, suppress unexpected skips, reuse instrumented coverage
+products for performance, or share build products across
+SDK/configuration/signing/sandbox boundaries.
 
 The performance lane's compile/link overhead is a separate hypothesis. Inspect the
 actual build graph and configuration differences before proposing reuse. Existing
@@ -65,8 +68,9 @@ The folder-panel journey checks the current `exists`/`isHittable` state before
 starting XCTest's polling waits. The same three assertions and five-second
 fallback waits remain: the real open panel must exist, its scoped OK button must
 exist, and that button must be hittable. Export still uses the native button after
-Go to Folder keyboard navigation and path entry; no pasteboard shortcut, seeded
-panel location, or programmatic export replaces that interaction.
+Go to Folder keyboard navigation. The folder path is pasted into Go to Folder rather
+than typed key by key; no seeded panel location or programmatic export replaces the
+panel interaction.
 
 Each check is a short-circuiting `exists || waitForExistence(...)` (or the
 `isHittable` equivalent), so an already-ready control skips the wait call and a
