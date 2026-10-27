@@ -14,20 +14,6 @@ import Foundation
 /// UI falls back to a copyable Terminal command — the honest, sandbox-true
 /// behavior rather than a privilege prompt the sandbox forbids.
 enum CLIToolInstaller {
-    enum HostArchitecture: String, Equatable {
-        case arm64
-        case x8664 = "x86_64"
-        case other
-
-        init(machine: String) {
-            switch machine.lowercased() {
-            case "arm64", "aarch64": self = .arm64
-            case "x86_64", "amd64": self = .x8664
-            default: self = .other
-            }
-        }
-    }
-
     /// The CLI embedded in the running app bundle
     /// (`Contents/MacOS/vitrine-cli`), or `nil` when this copy of the app does
     /// not carry it (the Settings row hides itself then).
@@ -38,21 +24,12 @@ enum CLIToolInstaller {
         return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
     }
 
-    /// PATH directories probed for an existing `vitrine` link. Native Homebrew is
-    /// preferred for the running architecture, with the other prefix retained as a
-    /// compatibility fallback for mixed Intel/Apple-Silicon setups.
-    static var knownBinDirectories: [URL] {
-        binDirectories(for: currentArchitecture)
-    }
+    static let homebrewBinDirectory = URL(fileURLWithPath: "/opt/homebrew/bin", isDirectory: true)
+    /// The prefix Macs without Homebrew still use, and the one the fallback creates.
+    static let traditionalBinDirectory = URL(fileURLWithPath: "/usr/local/bin", isDirectory: true)
 
-    static func binDirectories(for architecture: HostArchitecture) -> [URL] {
-        let appleSilicon = URL(fileURLWithPath: "/opt/homebrew/bin", isDirectory: true)
-        let traditional = URL(fileURLWithPath: "/usr/local/bin", isDirectory: true)
-        switch architecture {
-        case .arm64: return [appleSilicon, traditional]
-        case .x8664, .other: return [traditional, appleSilicon]
-        }
-    }
+    /// PATH directories probed for an existing `vitrine` link, Homebrew's first.
+    static let knownBinDirectories = [homebrewBinDirectory, traditionalBinDirectory]
 
     /// Where `vitrine` is already linked to `target`, or `nil` when no probed
     /// directory carries a matching link. Parameterized so tests can point it
@@ -79,8 +56,8 @@ enum CLIToolInstaller {
     /// folder refuses the write. It intentionally omits `-f`: a fallback command must
     /// never unlink a regular file that happens to be named `vitrine`.
     ///
-    /// The command targets the first of the architecture's conventional prefixes
-    /// that actually exists — on an Apple-silicon Mac without Homebrew,
+    /// The command targets the first of the conventional prefixes that actually
+    /// exists — on an Apple-silicon Mac without Homebrew,
     /// `/opt/homebrew/bin` is missing and `ln` could not create it, so the
     /// traditional prefix is the one that works. When neither exists, the command
     /// creates the traditional prefix first. Pass `directory` to point the command
@@ -89,7 +66,6 @@ enum CLIToolInstaller {
     static func terminalCommand(
         for target: URL,
         into directory: URL? = nil,
-        architecture: HostArchitecture? = nil,
         directoryExists: (URL) -> Bool = { url in
             var isDirectory: ObjCBool = false
             return FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
@@ -101,13 +77,11 @@ enum CLIToolInstaller {
             let destination = directory.appendingPathComponent("vitrine")
             return link + ShellCommandQuoter.singleQuoted(destination.path)
         }
-        let resolvedArchitecture = architecture ?? currentArchitecture
-        let candidates = binDirectories(for: resolvedArchitecture)
-        if let existing = candidates.first(where: directoryExists) {
+        if let existing = knownBinDirectories.first(where: directoryExists) {
             let destination = existing.appendingPathComponent("vitrine")
             return link + ShellCommandQuoter.singleQuoted(destination.path)
         }
-        let traditional = candidates.first { $0.path == "/usr/local/bin" } ?? candidates[0]
+        let traditional = traditionalBinDirectory
         let destination = traditional.appendingPathComponent("vitrine")
         return "sudo mkdir -p \(ShellCommandQuoter.singleQuoted(traditional.path)) && "
             + link + ShellCommandQuoter.singleQuoted(destination.path)
@@ -209,16 +183,6 @@ enum CLIToolInstaller {
         case missing
         case symlink
         case nonSymlink
-    }
-
-    private static var currentArchitecture: HostArchitecture {
-        var value = utsname()
-        guard Darwin.uname(&value) == 0 else { return .other }
-        let machine = withUnsafeBytes(of: &value.machine) { rawBuffer -> String in
-            let bytes = rawBuffer.prefix { $0 != 0 }
-            return String(decoding: bytes, as: UTF8.self)
-        }
-        return HostArchitecture(machine: machine)
     }
 
     private static func canonicalURL(_ url: URL) -> URL {

@@ -1562,13 +1562,13 @@
         }
       }
     },
-    "Annotation tool: " : {
-      "comment" : "Help prefix followed by the active annotation tool name.",
+    "Annotation tool: %@" : {
+      "comment" : "Help for the annotation tool picker; the argument is the active tool name.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Herramienta de anotación: "
+            "value" : "Herramienta de anotación: %@"
           }
         }
       }
@@ -4358,6 +4358,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$@ · Versión %2$@"
+          }
+        }
+      }
+    },
+    "%@ (⌘%@)" : {
+      "comment" : "Tooltip for an annotation tool: its help text and its Command-digit shortcut.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (⌘%@)"
           }
         }
       }
@@ -8512,14 +8523,13 @@
         }
       }
     },
-    "Step %lld: " : {
-      "comment" : "Accessibility label prefix for a welcome step (count-aware).",
-      "extractionState" : "stale",
+    "Step %lld: %@, %@" : {
+      "comment" : "Accessibility label for a welcome step: its number, title, and caption.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paso %lld: "
+            "value" : "Paso %lld: %@, %@"
           }
         }
       }
@@ -8850,13 +8860,13 @@
         }
       }
     },
-    "Suggest a title: " : {
-      "comment" : "Help prefix for the title-suggestion wand; the suggestion follows verbatim.",
+    "Suggest a title: %@" : {
+      "comment" : "Help for the title-suggestion wand; the argument is the suggested title.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sugerir un título: "
+            "value" : "Sugerir un título: %@"
           }
         }
       }

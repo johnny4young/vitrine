@@ -40,7 +40,7 @@ already-shipping identity of the app, listed here so a submission is reproducibl
 | Marketing version | `1.3.0` | `project.yml` → `MARKETING_VERSION` (the `Info.plist` `CFBundleShortVersionString` expands from it). |
 | Build number | `39` | `project.yml` → `CURRENT_PROJECT_VERSION` (the `Info.plist` `CFBundleVersion` expands from it). |
 | Copyright | `© 2026 johnny4young. MIT-licensed.` | `Info.plist` → `NSHumanReadableCopyright`. |
-| Minimum macOS | 15.0 (Sequoia) | `project.yml` → `deploymentTarget.macOS`; `Info.plist` `LSMinimumSystemVersion` expands from `MACOSX_DEPLOYMENT_TARGET`. |
+| Minimum macOS | 26.0 (Tahoe), Apple silicon | `project.yml` → `deploymentTarget.macOS`; `Info.plist` `LSMinimumSystemVersion` expands from `MACOSX_DEPLOYMENT_TARGET`. |
 | App icon | `AppIcon` asset set | `project.yml` → `ASSETCATALOG_COMPILER_APPICON_NAME`. |
 | Localizations | English (development language), Spanish | `Info.plist` → `CFBundleLocalizations`; strings live in `Localizable.xcstrings`. |
 | Agent (no Dock icon) | `LSUIElement = true` | `Info.plist`. A menu-bar agent; documented in the App Review notes below so a reviewer expects no Dock icon. |

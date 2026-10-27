@@ -190,15 +190,15 @@ cat > "${BUNDLE_ROOT}/README.md" <<README
 # Vitrine ${VERSION} clean-Mac QA handoff
 
 This bundle contains the exact private candidate and the evidence template used to
-qualify it on clean Sequoia and Tahoe Macs. It does not certify the candidate by itself.
+qualify it on a clean Tahoe Mac. It does not certify the candidate by itself.
 
 1. Verify the bundle payload: \`shasum -a 256 -c SHA256SUMS\`.
 2. Run \`./qa-release.sh ${DMG}\` and retain its complete output.
 3. Follow \`webkit/README.md\` against the app installed from this DMG.
-4. Record both platform runs in \`webkit/qualification-log.json\`; store screenshots
+4. Record the platform run in \`webkit/qualification-log.json\`; store screenshots
    and exported captures under \`evidence/\` without credentials or private content.
-5. Require every scenario to pass on one clean macOS 15 Sequoia Mac and one clean
-   macOS 26 Tahoe Mac before entering \`CLEAN-MAC-QA-PASSED\`.
+5. Require every scenario to pass on one clean macOS 26 Tahoe Mac before entering
+   \`CLEAN-MAC-QA-PASSED\`.
 
 The public-to-private redirect policy is not manually certified by these fixtures.
 It remains a deterministic navigation-delegate test. Public-hostname DNS rebinding and

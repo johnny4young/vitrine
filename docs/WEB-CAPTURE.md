@@ -37,8 +37,8 @@ Run on a macOS host with Xcode and a functioning WebKit process environment:
 make test-web-capture WEB_CAPTURE_OUTPUT=/tmp/vitrine-web-capture-evidence
 ```
 
-The dedicated pull-request workflow runs the same diagnostic lane on macOS 15 and
-26 at the exact submitted head and retains its receipts and result bundle. It does
+The dedicated pull-request workflow runs the same diagnostic lane on macOS 26
+at the exact submitted head and retains its receipts and result bundle. It does
 not turn a diagnostic pass into sandbox or provider qualification. It also runs a
 separate native Web Snapshot UI journey with the signed Direct Download entitlement:
 without loading a URL or entering credentials, the journey verifies the default-off

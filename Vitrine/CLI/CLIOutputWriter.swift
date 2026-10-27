@@ -205,9 +205,10 @@ enum CLIOutputWriter {
     static func renderAndWriteArtifact(
         _ config: SnapshotConfig, options: CLIOptions,
         backgroundStore: BackgroundImageStore = .container,
-        foregroundStore: BackgroundImageStore = .foregroundContainer, to url: URL
+        foregroundStore: BackgroundImageStore = .foregroundContainer, to url: URL,
+        isEncodable: (ExportFormat) -> Bool = { $0.isEncodingAvailable }
     ) throws -> WrittenArtifact {
-        guard options.format.isEncodingAvailable else {
+        guard isEncodable(options.format) else {
             throw CLIError.unsupportedOutputFormat(options.format.displayName)
         }
         var rasterImage: CGImage?

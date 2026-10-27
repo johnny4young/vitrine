@@ -44,7 +44,7 @@ together as a private `release-candidate-vX.Y.Z` Actions artifact retained for 3
 The tag run does not rebuild or retest the commit. CI already ran lint, both builds, the
 unit and UI suites, and the visual tour on it when it landed on `main`, so the `verify` job
 reads that commit's check runs instead: `Static checks (Linux)` and the build and UI test
-jobs on both macOS rows must all have succeeded. A tag pushed right after its commit
+jobs on the Tahoe row must all have succeeded. A tag pushed right after its commit
 merges usually finds that CI still running; `verify` waits up to 45 minutes for it and
 fails if a check fails, is cancelled or skipped, or never appears. Only the newest run of
 each check counts, so a flaky job that passes when re-run in CI unblocks the tag: re-run
@@ -70,12 +70,12 @@ that independent check passes.
    (cd release-candidate && shasum -a 256 -c ./*.dmg.sha256)
    ```
 
-2. Copy that exact DMG and `scripts/qa-release.sh` to clean Sequoia and Tahoe Macs.
+2. Copy that exact DMG and `scripts/qa-release.sh` to a clean Tahoe Mac.
    Complete the automated and manual checklist below, including live PRO activation,
-   offline relaunch, deactivation, universal executable inspection, and the supported
+   offline relaunch, deactivation, arm64 executable inspection, and the supported
    UI journeys. Record the candidate run ID, tag, DMG SHA-256, machine architecture,
    and exact macOS versions; never record credentials.
-3. Only after both clean-Mac checks pass, dispatch the same workflow manually:
+3. Only after the clean-Mac check passes, dispatch the same workflow manually:
 
    ```bash
    SHA256="$(shasum -a 256 release-candidate/Vitrine-1.2.1.dmg | awk '{print $1}')"
@@ -108,26 +108,25 @@ and the EN/ES website copy in `site/src/i18n/` and `site/src/components/CLIDocsP
 CI is a release gate, not just a compile check.
 
 - **`.github/workflows/ci.yml`** runs on every push to `main` and every pull
-  request. Its macOS gates are an explicit two-row runtime matrix:
-  `macos-15` (Sequoia) and `macos-26` (Tahoe). Before building, each row records
+  request. Its macOS gates run on an explicit runtime matrix with one row,
+  `macos-26` (Tahoe), the supported floor. Before building, each row records
   the exact image, Xcode, and Swift versions into the job summary, so a green or
   red result is always tied to a known environment. CI validates every workflow's
   YAML, then runs `make lint`, `make build`, `make build-release`,
-  `make test-ci-coverage`, `make perf`, and `make test-goldens`. The Release lane compiles both arm64
-  and x86_64 with optimization on every supported runner, so optimizer-only failures are
-  caught before packaging. The Swift Package Manager download cache is restored between
+  `make test-ci-coverage`, `make perf`, and `make test-goldens`. The Release lane compiles the arm64
+  app with optimization, so optimizer-only failures are caught before packaging. The Swift Package Manager download cache is restored between
   runs (keyed on `project.yml`,
   the dependency source of truth) to cut build time without risking a stale build.
   A parallel **`UI tests` job** executes the full XCUITest suite (`make test-ui`)
-  plus the strict visual evidence tour (`make test-visual`) on both OS rows and the
-  same triggers — see *Running the UI tests* below.
+  plus the strict visual evidence tour (`make test-visual`) on the same OS row and
+  triggers — see *Running the UI tests* below.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
   without re-running CI.
 - **Weekly drift watch.** A scheduled run (Mondays 08:00 UTC, also available via
-  *Run workflow*) re-runs the full Sequoia + Tahoe matrix. GitHub rolls both
-  explicit images and their bundled Xcode/SDKs on its own cadence, which can break
+  *Run workflow*) re-runs the full matrix. GitHub rolls the explicit image and its
+  bundled Xcode/SDKs on its own cadence, which can break
   the build with no code change; the scheduled run surfaces that drift on a
   predictable day instead of on the next unrelated PR.
 - **Pinned release tooling and dependency inventory.** CI downloads XcodeGen's official
@@ -156,31 +155,31 @@ CI is a release gate, not just a compile check.
 ### Supported macOS matrix
 
 `project.yml` remains the source of truth and sets the public deployment target to
-macOS 15.0 Sequoia. Every app-owned target uses that same floor, and the Homebrew cask
-declares `:sequoia` so unsupported installations fail before launch. Active runtime
-certification covers:
+macOS 26.0 Tahoe with `ARCHS: arm64`. Every app-owned target uses that same floor, and the
+Homebrew cask declares `:tahoe` and `arch: :arm64` so unsupported installations fail
+before launch. Sparkle's `generate_appcast` writes the same floor and the `arm64` hardware
+requirement into the appcast, and `scripts/check-appcast-requirements.py` fails the release
+if either is missing, so Sequoia and Intel Macs stay on 1.3.0 instead of being offered an
+update they cannot open. Active runtime certification covers:
 
 | Runtime | GitHub label | Required gates |
 | --- | --- | --- |
-| macOS 15 Sequoia | `macos-15` | Build, unit/integration, performance, golden rendering, full UI suite, strict visual tour |
 | macOS 26 Tahoe | `macos-26` | Build, unit/integration, performance, golden rendering, full UI suite, strict visual tour |
 
-Both are standard arm64 GitHub-hosted labels. `setup-xcode` selects the newest stable
-Xcode installed on each image, and the workflow logs the resolved versions instead of
+It is a standard arm64 GitHub-hosted label. `setup-xcode` selects the newest stable
+Xcode installed on the image, and the workflow logs the resolved versions instead of
 assuming they match. Every job that builds gets both from one composite action,
 `.github/actions/setup-macos-toolchain`, which also installs the pinned XcodeGen and,
 where a job opts in, restores the SPM cache. Dependabot's `directory: /` covers only
 `.github/workflows` and a root `action.yml`, so `.github/dependabot.yml` also lists
 `/.github/actions/*`; without it the pins inside the action would stop being updated.
-`fail-fast: false` ensures a failure on one OS never cancels the
-evidence from the other. Artifact names include `sequoia-15` or `tahoe-26`, preventing
-parallel matrix uploads from colliding.
+`fail-fast: false` ensures a failure on one OS row never cancels the
+evidence from another. Artifact names include the row, such as `tahoe-26`, so
+parallel matrix uploads never collide.
 
-The matrix also proves capability-specific UI rather than pretending both systems ship
-identical codecs. ImageIO exposes PNG, PDF, and HEIC writers on both rows; AVIF is shown
-and restored only when `CGImageDestinationCopyTypeIdentifiers()` reports its writer
-(Tahoe and newer). Sequoia must omit AVIF from interactive pickers and return a typed CLI
-error for an explicit AVIF request instead of surfacing a late generic render failure.
+AVIF is shown and restored only when `CGImageDestinationCopyTypeIdentifiers()` reports
+its writer; a host without it must omit AVIF from interactive pickers and return a typed
+CLI error for an explicit AVIF request instead of a late generic render failure.
 
 An unreleased future macOS major is not silently claimed as supported. Add its explicit
 runner label to both matrices, obtain a green build/UI/visual run, and update this table
@@ -252,7 +251,7 @@ platform and complete scenario inventory. Local full-suite commands remain uncha
 The coverage lane always writes an `.xcresult` and passes its `xccov --json` report and raw line
 archive through `scripts/check-coverage.py`; an absent, empty, or malformed report fails
 the gate rather than becoming a best-effort warning. CI selects the committed baseline
-for its Sequoia or Tahoe row, retains failure bundles, and publishes per-target `xccov`
+for its OS row, retains failure bundles, and publishes per-target `xccov`
 output in the job summary. The weighted coverage across the six production binaries —
 `Vitrine.app`, `vitrine-cli`, `VitrineMenuBarHelper`, `libVitrineCLICore.a`,
 `libVitrineDomain.a`, and `libVitrineRendering.a` — may not fall more than one percentage
@@ -313,20 +312,15 @@ run's `perf-measurements-<row>` artifact with `gh run download`, then pass the f
 `scripts/check-perf.py --record`, with one `--source` per file naming its run and commit:
 
 ```bash
-python3 scripts/check-perf.py --record scripts/perf-baselines/sequoia.json \
-  --platform "macOS 15 Sequoia" --runner-label macos-15 \
-  --source "GitHub Actions run <id> at <sha>" … runs/*/sequoia-15/perf-measurements.jsonl
+python3 scripts/check-perf.py --record scripts/perf-baselines/tahoe.json \
+  --platform "macOS 26 Tahoe" --runner-label macos-26 \
+  --source "GitHub Actions run <id> at <sha>" … runs/*/tahoe-26/perf-measurements.jsonl
 ```
 
 A new scenario is noted as unrecorded until it has run on `main` and a baseline includes it.
 A renamed or removed scenario must leave the baseline too; `WorkflowConfigurationTests`
 rejects a recorded scenario the suite no longer emits. `make perf-check`, part of
 `make lint`, runs the comparison's self-test.
-
-Do not compare `editor-keystroke` across the two rows. On the Sequoia runner the test host
-never runs the preview's first handoff of the document, so the scenario times keystrokes that
-re-render the preview, 90–170 ms, where Tahoe records steady-state typing at 8–16 ms. A
-Sequoia baseline for it tracks drift in that path, not typing latency.
 
 ### Dynamic memory evidence
 
@@ -407,8 +401,8 @@ five-megabyte source-import ceiling.
 **The full UI suite (`make test-ui`) runs in CI on every PR and push to `main`**,
 as the dedicated `UI tests` job in `ci.yml`, which compiles and executes the tests.
 `make build-ui-tests` compiles them locally when automation permission is unavailable.
-Both `macos-15` Sequoia and `macos-26` Tahoe must finish; the matrix does not cancel
-one runtime merely because the other failed.
+The `macos-26` Tahoe row must finish; the matrix does not cancel one runtime merely
+because another failed.
 
 Driving the menu-bar app through XCUIAutomation requires the macOS
 "automation permission" — the interactive UI-automation consent that the first
@@ -417,10 +411,8 @@ no prompt: the images are provisioned for headless UI automation
 (`DevToolsSecurity --enable`, `automationmodetool
 enable-automationmode-without-authentication`, SIP disabled — see
 `images/macos/scripts/build/configure-machine.sh` in `actions/runner-images`),
-verified empirically on the `macos-15-arm64` image (20260527.0100.1): the suite
-executes end to end. The explicit `macos-26` row applies the same gate and captures
-the same diagnostics on Tahoe. One sharp edge from the Sequoia verification:
-`automationmodetool`
+verified empirically: the suite executes end to end, and the `macos-26` row captures
+the authorization diagnostics. One sharp edge: `automationmodetool`
 *reports* "Automation Mode is disabled" on that image even though automation
 works, so the CI job records the authorization state as a diagnostic instead of
 gating on it. When the job fails because the XCUITest session could not
@@ -482,10 +474,10 @@ an adaptive in-content action bar so every action remains present when AppKit re
 narrow logical display. Failure attachments include both AppKit and XCUIAutomation
 geometry for diagnosis. Targeted UI selectors also choose a hittable match when AppKit
 exposes one identifier on both a wrapper and its nested control, which keeps the same
-assertions valid across Sequoia and Tahoe accessibility trees.
+assertions valid across accessibility-tree changes between macOS releases.
 
 The release gate neither builds nor runs UI tests: `verify` requires the
-`UI tests · Sequoia 15` and `UI tests · Tahoe 26` checks to have passed on the tagged
+`UI tests · Tahoe 26` check to have passed on the tagged
 commit, which `ci.yml` ran when that commit landed on `main`. Run `make test-ui` locally
 before tagging if the release includes UI changes that never went through a PR.
 
@@ -519,13 +511,13 @@ Gatekeeper rejects the artifact.
 What the script does for a signed build:
 
 Before either the signed or unsigned path can create a DMG, the script builds for a
-generic macOS destination with `ONLY_ACTIVE_ARCH=NO` and `ARCHS="arm64 x86_64"`. It
-then enumerates **every executable Mach-O payload** in the app with `lipo -archs` and requires both
-architectures. This includes the embedded CLI, menu-bar helper, frameworks, and XPC
-services; checking only the outer executable would allow a partially thin app to reach
-Intel users. A missing architecture stops before signing or notarization.
+generic macOS destination with `ONLY_ACTIVE_ARCH=NO` and `ARCHS=arm64`. It
+then enumerates **every executable Mach-O payload** in the app with `lipo -archs` and requires
+arm64. This includes the embedded CLI, menu-bar helper, frameworks, and XPC services;
+checking only the outer executable would miss a nested payload built for another
+architecture. A missing arm64 slice stops before signing or notarization.
 
-1. **Signs** the already-verified universal app with the Developer ID Application identity.
+1. **Signs** the already-verified app with the Developer ID Application identity.
 2. **Keeps the hardened runtime on** (`ENABLE_HARDENED_RUNTIME=YES`, set in
    `project.yml` and re-asserted on the signed build) — required for notarization.
 3. **Requests secure code-signing timestamps** (`OTHER_CODE_SIGN_FLAGS=--timestamp`)
@@ -1021,7 +1013,7 @@ signature binds the stable `com.johnny4young.vitrine.menubar-helper` identifier 
 retains `com.apple.security.app-sandbox` plus
 `com.apple.security.inherit`. It enumerates every executable Mach-O in the downloaded app with
 `lipo -archs` and rejects the artifact if the app, embedded CLI, helper, framework, or
-XPC service lacks either arm64 or x86_64. For the direct-download PRO channel, it additionally
+XPC service lacks arm64. For the direct-download PRO channel, it additionally
 requires `VitrineLicenseSigningKey` to exist and decode to exactly 32 bytes. That check
 uses private mode-`0600` temporary files and reports only pass/fail — it never prints the
 embedded private key. The same artifact check requires
@@ -1108,7 +1100,7 @@ certify public-hostname DNS rebinding or resolution-time private-address detecti
 WebKit content rules match the request URL rather than its resolved address. Never mark
 either boundary as clean-Mac validated from this manual journey.
 
-Complete both platform entries in `webkit/qualification-log.json`, change
+Complete the Tahoe entry in `webkit/qualification-log.json`, change
 `overallStatus` only after every required scenario passes, and keep screenshots/exports in
 the handoff's `evidence/` directory. For PRO, record only the dedicated QA license label or a
 **redacted** order/license identifier and the outcome. **Never record** the raw license key,
@@ -1157,7 +1149,7 @@ license again.
       the candidate DMG, its environment header + manual checklist recorded in the
       release QA log (including secret-safe online activation, offline relaunch,
       PRO-only CLI multi-size, `0600` token proof, and all installed-candidate WebKit
-      fixtures), the structured Sequoia and Tahoe entries completed, and any failure
+      fixtures), the structured Tahoe entry completed, and any failure
       triaged as app bug vs. signing/notarization
 - [ ] Promotion dispatched with `candidate_run_id`, `expected_sha256`, and
       `qa_confirmation`; the `publish`, `published-qa`, `distribute`, and `deploy-site`
@@ -1177,7 +1169,7 @@ CI's Tahoe build runs strict comparisons with the Xcode build recorded in the
 golden manifest, selected for that step only; every other step uses the latest
 stable Xcode. A missing Xcode build fails the lane and records review candidates on
 the default Xcode. The runner OS image can still change: that is a qualification
-failure requiring baseline review, not permission to skip pixels. Sequoia and ordinary unit tests run render smoke;
+failure requiring baseline review, not permission to skip pixels. Ordinary unit tests run render smoke;
 `make test-goldens GOLDEN_MODE=smoke` requests that contract explicitly. Smoke is not
 visual regression certification. Result bundles and logs identify each comparison.
 

@@ -84,7 +84,7 @@ lifecycle. The CLI links that module but never opens a connection.
 The Xcode project is generated from `project.yml`, not edited in Xcode's
 generated project file. A source build, green unit suite, or marketing-site
 change is not a signed release. Both channels need their own optimized
-universal build, UI and privacy acceptance, exact-head checks, and the
+Apple-silicon build, UI and privacy acceptance, exact-head checks, and the
 channel-specific release procedure before publication.
 
 Start with the [synthetic first-capture tutorial](FIRST-CAPTURE.md); consult

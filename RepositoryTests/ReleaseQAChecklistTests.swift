@@ -175,7 +175,7 @@ struct ReleaseQAChecklistTests {
             try JSONSerialization.jsonObject(with: logData) as? [String: Any])
         #expect(log["schemaVersion"] as? Int == 1)
         let runs = try #require(log["runs"] as? [[String: Any]])
-        #expect(runs.map { $0["platform"] as? String } == ["macOS 15 Sequoia", "macOS 26 Tahoe"])
+        #expect(runs.map { $0["platform"] as? String } == ["macOS 26 Tahoe"])
         for run in runs {
             let scenarios = try #require(run["scenarios"] as? [[String: Any]])
             #expect(scenarios.count == 6)
@@ -410,14 +410,15 @@ struct ReleaseQAChecklistTests {
         )
     }
 
-    @Test func scriptRejectsAnyThinMachOPayloadInTheDownloadedApp() throws {
+    @Test func scriptRejectsAnyNonArm64MachOPayloadInTheDownloadedApp() throws {
         let script = try Self.script()
 
         #expect(script.contains(#"/usr/bin/lipo -archs "$candidate""#))
         #expect(script.contains(#"find "$APP" -type f -perm -111 -print0"#))
-        #expect(script.contains("for required_architecture in arm64 x86_64"))
-        #expect(script.contains("is not universal"))
-        #expect(script.contains("All $MACHO_COUNT Mach-O payloads contain arm64 + x86_64"))
+        #expect(script.contains(#"*" arm64 "*"#))
+        #expect(script.contains("lacks arm64"))
+        #expect(script.contains("All $MACHO_COUNT Mach-O payloads contain arm64"))
+        #expect(!script.contains("x86_64"))
     }
 
     /// A direct-download artifact that cannot mint the offline token is not saleable,

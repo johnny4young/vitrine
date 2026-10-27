@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Changed
+
+- Require macOS 26 Tahoe or later on Apple silicon. Vitrine 1.3.0 remains the last
+  release for macOS 15 Sequoia and Intel Macs, and Sparkle no longer offers those Macs
+  newer updates.
+
 ### Fixed
 
 - Preserve the selected code font and size in styled syntax tokens, including

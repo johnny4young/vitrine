@@ -7,51 +7,65 @@ struct PlatformSupportContractTests {
         .deletingLastPathComponent()
         .deletingLastPathComponent()
 
-    @Test func everyGeneratedTargetAndHomebrewUseTheSequoiaFloor() throws {
+    @Test func everyGeneratedTargetAndHomebrewUseTheTahoeFloor() throws {
         let project = try Self.text("project.yml")
-        #expect(project.contains("macOS: \"15.0\""))
-        // Assert the property the test is named for — every declared target sits on the
-        // Sequoia floor — rather than a target count. A count fails the next time a target
-        // is added, which is drift in the test rather than in the contract it guards, and
-        // it never noticed a target declared on some *other* floor.
+        #expect(project.contains("macOS: \"26.0\""))
+        // Every per-target declaration must sit on the floor; the project-wide default is
+        // the nested `macOS: "26.0"` checked above.
         let declaredFloors =
             project
             .split(separator: "\n")
             .map { $0.trimmingCharacters(in: .whitespaces) }
-            // Only per-target inline declarations; the project-wide default is written as a
-            // nested `deploymentTarget:` block and is covered by the `macOS: "15.0"` check
-            // above.
             .filter { $0.hasPrefix("deploymentTarget: \"") }
         #expect(!declaredFloors.isEmpty, "project.yml declares no deployment target at all")
-        let offenders = Set(declaredFloors.filter { $0 != "deploymentTarget: \"15.0\"" })
+        let offenders = Set(declaredFloors.filter { $0 != "deploymentTarget: \"26.0\"" })
         #expect(
             offenders.isEmpty,
             """
-            Every generated target must declare the Sequoia floor. Found: \
+            Every generated target must declare the Tahoe floor. Found: \
             \(offenders.sorted().joined(separator: ", "))
             """)
 
+        // Sparkle hosts below the floor must never be offered an update they cannot run,
+        // so the appcast check follows whatever floor project.yml declares.
+        let floor = try #require(
+            project.firstMatch(of: #/macOS: "(\d+\.\d+)"/#)?.output.1)
+        #expect(
+            try Self.text(".github/workflows/release.yml").contains(
+                "check-appcast-requirements.py --minimum-system-version \(floor) "))
+
         let cask = try Self.text("packaging/Casks/vitrine.rb")
-        #expect(cask.contains("depends_on macos: :sequoia"))
-        #expect(!cask.contains("depends_on macos: :sonoma"))
+        #expect(cask.contains("depends_on macos: :tahoe"))
+        #expect(!cask.contains("depends_on macos: :sequoia"))
     }
 
-    @Test func publicDocumentationAndWebsiteAgreeOnTheSequoiaFloor() throws {
+    @Test func everyBuildTargetsAppleSiliconOnly() throws {
+        let project = try Self.text("project.yml")
+        #expect(project.contains("ARCHS: arm64"))
+        #expect(try Self.text("packaging/Casks/vitrine.rb").contains("depends_on arch: :arm64"))
+        for path in ["Makefile", "scripts/build-dmg.sh", "scripts/qa-release.sh"] {
+            #expect(
+                !(try Self.text(path)).contains("x86_64"),
+                "\(path) must not build or require x86_64")
+        }
+    }
+
+    @Test func publicDocumentationAndWebsiteAgreeOnTheTahoeFloor() throws {
         let readme = try Self.text("README.md")
-        #expect(readme.contains("platform-macOS%2015%2B"))
-        #expect(!readme.contains("platform-macOS%2014%2B"))
+        #expect(readme.contains("platform-macOS%2026%2B"))
+        #expect(!readme.contains("platform-macOS%2015%2B"))
 
         let expected: [(String, String)] = [
-            ("README.md", "macOS **15.0+** (Sequoia or later)"),
-            ("CONTRIBUTING.md", "macOS 15+"),
-            ("docs/PROJECT.md", "deployment floor is macOS 15 Sequoia"),
-            ("docs/ARCHITECTURE.md", "public binary floor is macOS 15 Sequoia"),
-            ("docs/APP-STORE.md", "15.0 (Sequoia)"),
-            ("docs/RELEASING.md", "macOS 15.0 Sequoia"),
-            ("site/src/i18n/content.ts", "macOS 15+"),
+            ("README.md", "macOS **26.0+** (Tahoe or later) on Apple silicon"),
+            ("CONTRIBUTING.md", "macOS 26+"),
+            ("docs/PROJECT.md", "deployment floor is macOS 26 Tahoe"),
+            ("docs/ARCHITECTURE.md", "public binary floor is macOS 26 Tahoe"),
+            ("docs/APP-STORE.md", "26.0 (Tahoe)"),
+            ("docs/RELEASING.md", "macOS 26.0 Tahoe"),
+            ("site/src/i18n/content.ts", "macOS 26+"),
             (
                 "site/src/layouts/BaseLayout.astro",
-                "operatingSystem: 'macOS 15 Sequoia or later'"
+                "operatingSystem: 'macOS 26 Tahoe or later'"
             ),
         ]
 

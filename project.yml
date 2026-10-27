@@ -7,7 +7,7 @@ name: Vitrine
 options:
   bundleIdPrefix: com.johnny4young.vitrine
   deploymentTarget:
-    macOS: "15.0"
+    macOS: "26.0"
   createIntermediateGroups: true
   groupSortPosition: top
   generateEmptyDirectories: true
@@ -30,6 +30,7 @@ settings:
     # module defaults to @MainActor isolation (the recommended model for an app),
     # which removes the need for scattered @MainActor / nonisolated(unsafe).
     SWIFT_VERSION: "6.0"
+    ARCHS: arm64
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     # Keep every app-owned target warning-clean. A new Swift/toolchain diagnostic is a
@@ -89,7 +90,7 @@ targets:
   VitrineDomain:
     type: library.static
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: VitrineDomain
     settings:
@@ -107,7 +108,7 @@ targets:
   VitrineRendering:
     type: library.static
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: VitrineRendering
     dependencies:
@@ -127,7 +128,7 @@ targets:
   Vitrine:
     type: application
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: Vitrine
         excludes:
@@ -270,7 +271,7 @@ targets:
   VitrineCLICore:
     type: library.static
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: Vitrine/CLI
       - path: VitrineCLI
@@ -303,7 +304,7 @@ targets:
   VitrineCLI:
     type: tool
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: VitrineCLI/main.swift
     dependencies:
@@ -372,7 +373,7 @@ targets:
   VitrineMenuBarHelper:
     type: tool
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: VitrineMenuBarHelper
         excludes:
@@ -398,7 +399,7 @@ targets:
   VitrineTests:
     type: bundle.unit-test
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: Tests
         # The golden-image fixtures are read from the source tree via
@@ -432,7 +433,7 @@ targets:
   VitrineCLITests:
     type: bundle.unit-test
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: Tests/CLI
       - path: Tests/GitDiffInputLoaderTests.swift
@@ -457,7 +458,7 @@ targets:
   VitrineDomainTests:
     type: bundle.unit-test
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: DomainTests
       - path: Tests/BuildBoundaryProbeTests.swift
@@ -473,7 +474,7 @@ targets:
   VitrineRepositoryTests:
     type: bundle.unit-test
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     # Repository-contract suites: they read tracked files from disk and assert on their
     # contents. They import nothing but Foundation and Testing, so they need neither a
     # product target nor an app host — which is the whole point of the separate bundle.
@@ -492,7 +493,7 @@ targets:
   VitrineRenderingTests:
     type: bundle.unit-test
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: RenderingTests
     dependencies:
@@ -507,7 +508,7 @@ targets:
   VitrineUITests:
     type: bundle.ui-testing
     platform: macOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "26.0"
     sources:
       - path: UITests
     dependencies:
