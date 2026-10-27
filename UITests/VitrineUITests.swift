@@ -138,6 +138,8 @@ final class VitrineUITests: XCTestCase {
             defer { app.terminate() }
             assertExists(element("editor-window", in: app), in: app, timeout: 8)
             if compact {
+                let width = element("editor-window", in: app).frame.width
+                XCTAssertLessThanOrEqual(width, 1000, "The compact pass must run compact")
                 assertHittable(
                     "editor-actions-menu", in: app, "A compact editor must expose its toolbar menu")
             }

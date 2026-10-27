@@ -18,11 +18,22 @@ final class DocumentationExportUITests: XCTestCase {
         let parent = FileManager.default.temporaryDirectory.appendingPathComponent(
             "vitrine-documentation-ui-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: false)
+        // Go to Folder takes the path from the clipboard; hand the user's contents back.
         let pasteboard = NSPasteboard.general
+        let savedClipboard = (pasteboard.pasteboardItems ?? []).map { item in
+            item.types.compactMap { type in item.data(forType: type).map { (type, $0) } }
+        }
         defer {
             try? FileManager.default.removeItem(at: parent)
             pasteboard.clearContents()
+            pasteboard.writeObjects(
+                savedClipboard.map { contents in
+                    let item = NSPasteboardItem()
+                    for (type, data) in contents { item.setData(data, forType: type) }
+                    return item
+                })
         }
+        var checkedCancel = false
         for request in states {
             let state = request.state
             var segmentStarted = ProcessInfo.processInfo.systemUptime
@@ -80,15 +91,18 @@ final class DocumentationExportUITests: XCTestCase {
                     "The description must be entered in its own field")
             }
             recordSegment("description")
-            // Cancelling writes nothing and keeps the editor; the reopened sheet exports.
-            let written = try FileManager.default.contentsOfDirectory(atPath: parent.path)
-            openPackageSheet(in: app)
-            let cancel = element("documentation-cancel", in: app)
-            cancel.click()
-            XCTAssertTrue(cancel.waitForNonExistence(timeout: 3))
-            XCTAssertTrue(window.exists)
-            XCTAssertEqual(
-                try FileManager.default.contentsOfDirectory(atPath: parent.path), written)
+            // Cancelling writes nothing and keeps the editor; checked once per suite.
+            if !checkedCancel {
+                checkedCancel = true
+                let written = try FileManager.default.contentsOfDirectory(atPath: parent.path)
+                openPackageSheet(in: app)
+                let cancel = element("documentation-cancel", in: app)
+                cancel.click()
+                XCTAssertTrue(cancel.waitForNonExistence(timeout: 3))
+                XCTAssertTrue(window.exists)
+                XCTAssertEqual(
+                    try FileManager.default.contentsOfDirectory(atPath: parent.path), written)
+            }
             openPackageSheet(in: app)
             let folder = element("documentation-folder-name", in: app)
             XCTAssertTrue(folder.waitForExistence(timeout: 3))

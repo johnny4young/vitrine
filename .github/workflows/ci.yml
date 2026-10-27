@@ -544,11 +544,10 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      # The whole suite runs here, including the four display-geometry-sensitive
-      # tests that used to be skipped on the runner's 1024x768 virtual display:
-      # the editor now sizes new/recovered windows to fit the screen, and the
-      # tests skip themselves (with a clear message) only below the editor's
-      # minimum supported display — see docs/RELEASING.md (Running the UI tests).
+      # The whole suite runs here on the runner's 1024x768 virtual display: the editor
+      # sizes new and recovered windows to fit the screen, and display-sensitive tests
+      # skip themselves (with a clear message) only below the editor's minimum
+      # supported display — see docs/RELEASING.md (Running the UI tests).
       - name: Qualify documentation export viewport
         run: |
           set -o pipefail

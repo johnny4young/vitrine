@@ -64,8 +64,7 @@ import VitrineRendering
         /// `--show-help` / `--show-welcome` force those windows open past their gates;
         /// `--seen-old-version` seeds an older last-seen version and then presents What's
         /// New through its real version gate; `--skip-onboarding` just marks the
-        /// quick-start as seen; the multi-window hooks (`--open-second-editor`,
-        /// `--force-offscreen-editor`) drive UI smoke tests; `--demo-brand-kit-free`
+        /// quick-start as seen; `--open-second-editor` drives the multi-window UI smoke; `--demo-brand-kit-free`
         /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests;
         /// `--web-snapshot-ui-test-renderer` keeps that strict UI journey deterministic
         /// when XCTest cannot launch WebKit's out-of-process renderer;
@@ -285,14 +284,6 @@ import VitrineRendering
             if arguments.contains("--open-second-editor") {
                 EditorWindowController.shared.show()
                 EditorWindowController.shared.openNewWindow()
-                didOpenWindow = true
-            }
-
-            // Open the editor and force it off-screen so the off-screen-recovery UI smoke
-            // can verify the window is pulled back onto a visible display.
-            if arguments.contains("--force-offscreen-editor") {
-                EditorWindowController.shared.show()
-                EditorWindowController.shared.moveKeyEditorOffScreenForTesting()
                 didOpenWindow = true
             }
 

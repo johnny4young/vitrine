@@ -225,7 +225,7 @@ struct WindowPlacementTests {
         #expect(narrowed.height == visible.height)
     }
 
-    /// The same pass the editor runs when displays change, against a real window.
+    /// The placement pass itself, against a real window.
     @Test func anOffScreenWindowIsPulledBackOntoAVisibleDisplay() throws {
         let screens = NSScreen.screens.map(\.visibleFrame)
         try #require(!screens.isEmpty)
@@ -240,6 +240,27 @@ struct WindowPlacementTests {
         #expect(WindowFrameSolver.isReachable(window.frame, on: screens), "\(window.frame)")
         #expect(window.frame.size == size)
         #expect(!WindowPlacement.recoverIfOffScreen(window), "an on-screen window stays put")
+    }
+
+    /// A display change recovers an editor the controller owns, through its observer.
+    @Test func aDisplayChangeRecoversAnEditorLeftOffScreen() throws {
+        let screens = NSScreen.screens.map(\.visibleFrame)
+        try #require(!screens.isEmpty)
+        let controller = EditorWindowController(
+            environment: AppEnvironment(defaults: testDefaults()), feedback: .noOp,
+            presentation: .noOp)
+        controller.show()
+        let window = try #require(controller.movePrimaryEditorOffScreenForTesting())
+        defer {
+            window.close()
+            controller.discardAllSessions()
+        }
+        #expect(!WindowFrameSolver.isReachable(window.frame, on: screens))
+
+        NotificationCenter.default.post(
+            name: NSApplication.didChangeScreenParametersNotification, object: NSApp)
+
+        #expect(WindowFrameSolver.isReachable(window.frame, on: screens), "\(window.frame)")
     }
 }
 

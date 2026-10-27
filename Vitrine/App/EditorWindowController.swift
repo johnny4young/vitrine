@@ -401,15 +401,12 @@ final class EditorWindowController: NSObject {
     }
 
     #if DEBUG
-        /// A UI-test hook: shove the primary editor window far off the visible
-        /// screens and then run the recovery pass, so an automated test can verify the
-        /// window is pulled back on-screen without physically rearranging displays. Only
-        /// reachable through the `--force-offscreen-editor` launch argument.
-        func moveKeyEditorOffScreenForTesting() {
-            guard let window = windows[EditorWindowIdentity.primary.index] else { return }
-            // A point well beyond any plausible display, then recover from it.
+        /// Strands the primary editor window beyond every display without recovering it,
+        /// so a test can drive the display-change pass itself.
+        func movePrimaryEditorOffScreenForTesting() -> NSWindow? {
+            guard let window = windows[EditorWindowIdentity.primary.index] else { return nil }
             window.setFrameOrigin(NSPoint(x: 12000, y: 9000))
-            recoverIfOffScreen(window)
+            return window
         }
     #endif
 }
