@@ -427,8 +427,8 @@ and independently checks AppKit's usable
 frame in a fresh process. Mode switching is restricted to disposable GitHub-hosted
 runners; local and self-hosted invocations are rejected. An unsupported display
 fails the lane rather than skipping the journey. The `documentation-ui` artifact
-contains its display receipt and all eight EN/ES, light/dark, minimum/1280×800
-screenshots; missing or duplicate states fail evidence extraction. The same journey
+contains its display receipt and both screenshots (light at the minimum window, dark
+at 1280×800); missing or duplicate states fail evidence extraction. The same journey
 prints per-phase timing markers; [docs/DOCUMENTATION-UI-PROFILING.md](DOCUMENTATION-UI-PROFILING.md)
 explains how to summarize them without turning diagnostics into performance claims.
 
@@ -447,14 +447,15 @@ Finish or stop the existing suite explicitly, then rerun; the preflight never
 terminates another process automatically. `make ui-test-preflight-check` exercises
 the parser with deterministic fixtures and is part of `make lint`.
 
-**The display-geometry-sensitive tests run on CI too.** Four tests
-(`testEditorExposesMakeDefaultToolbarAction`,
-`testEditorExposesFormatCodeToolbarAction`,
-`testEditorKeyboardCanReachToolbarAndInspector`, and
-`testEditorWindowRecoversFromOffScreenFrame`) assert toolbar hittability and
-off-screen-recovery geometry, which used to fail on the runner's small 1024x768
-virtual display: the editor's 1180-point default window overhung the screen
-edges, leaving its trailing toolbar actions unhittable. The product now sizes
+The suite launches the app in English. Spanish copy is pinned by `LocalizationTests`,
+and the `en-XA` and right-to-left pseudolocale tests stress layout with longer strings
+than any shipped translation.
+
+**The display-geometry-sensitive tests run on CI too.** Editor journeys such as
+`testEditorLaunchesWithPrimaryControls` assert toolbar hittability, which used to fail
+on the runner's small 1024x768 virtual display: the editor's 1180-point default
+window overhung the screen edges, leaving its trailing toolbar actions unhittable.
+Off-screen recovery is unit-tested against a real window in `WindowPlacementTests`. The product now sizes
 brand-new and recovered editor windows to fit the screen they open on
 (`WindowFrameSolver`), so the suite passes on that display, and the tests
 `XCTSkipUnless` (with an explanatory message) only when no display can hold the
@@ -488,7 +489,9 @@ missing state, invalid or duplicate PNG, empty capture frame, source/manifest dr
 or a capture attempted while another application is frontmost fails the command.
 The validator then exports stable filenames plus a dimension/hash manifest under
 `build/screenshot-tour/`; the raw bundle remains at
-`build/screenshot-tour.xcresult` for offline diagnostics.
+`build/screenshot-tour.xcresult` for offline diagnostics. The tour also attaches the
+confidential-clipboard Settings states outside the strict manifest; CI publishes them
+as the `clipboard-privacy-ui` artifact.
 
 CI runs this gate on every pull request and push to `main` and uploads the friendly
 evidence even on success. For a local run, keep Vitrine frontmost and avoid launching

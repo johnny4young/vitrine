@@ -1,17 +1,12 @@
 #!/usr/bin/env python3
-"""Summarize complete eight-state documentation UI timings; never infer a speedup."""
+"""Summarize complete two-state documentation UI timings; never infer a speedup."""
 import argparse
-import itertools
 import json
 import math
 import re
 from pathlib import Path
 
-LOCALES = ("en", "es")
-APPEARANCES = ("light", "dark")
-SIZES = ("minimum", "1280")
-STATES = {f"{locale}-{appearance}-{size}" for locale, appearance, size in
-          itertools.product(LOCALES, APPEARANCES, SIZES)}
+STATES = ("en-light-minimum", "en-dark-1280")
 PHASES = ("launch", "navigation", "description", "package-setup", "panel", "export", "validation", "termination")
 PATTERN = re.compile(r"DOCUMENTATION_UI_SEGMENT state=(\S+) phase=(\S+) seconds=([0-9]+(?:\.[0-9]+)?(?:e[-+]?[0-9]+)?)")
 MARKER = re.compile(r"(?<!\S)DOCUMENTATION_UI_SEGMENT(?=\s|$)")
@@ -54,30 +49,26 @@ def summarize(text):
 def check_source(source):
     """Fail when the UI test's marker labels drift from the constants the summarizer expects."""
     phases = tuple(re.findall(r'recordSegment\("([^"]+)"\)', source))
-    languages = re.search(r"for language in \[([^\]]+)\]", source)
-    locales = tuple(re.findall(r'"([^"]+)"', languages.group(1) if languages else ""))
-    ternary = re.search(r'dark \? "([^"]+)" : "([^"]+)"', source)
-    appearances = (ternary.group(2), ternary.group(1)) if ternary else ()
-    sizes = tuple(re.findall(r'label: "([^"]+)"', source))
-    found = (phases, locales, appearances, sizes)
-    if found != (PHASES, LOCALES, APPEARANCES, SIZES):
+    states = tuple(re.findall(r'\(state: "([^"]+)"', source))
+    found = (phases, states)
+    if found != (PHASES, STATES):
         raise ValueError(f"Test marker labels {found} differ from summarizer labels "
-                         f"{(PHASES, LOCALES, APPEARANCES, SIZES)}")
+                         f"{(PHASES, STATES)}")
 
 
 def self_test():
     check_source(SOURCE.read_text(encoding="utf-8"))
     valid = "\n".join(f"DOCUMENTATION_UI_SEGMENT state={s} phase={p} seconds=1.25"
                       for s in sorted(STATES) for p in PHASES)
-    if summarize(valid)["total_seconds"] != 80:
+    if summarize(valid)["total_seconds"] != 20:
         raise AssertionError("Complete timing evidence was not summed correctly")
     prefixed = "\n".join(f"2026-10-13T12:00:00Z {line}" for line in valid.splitlines())
     unrelated = ('NOT_DOCUMENTATION_UI_SEGMENT state=unknown phase=unknown seconds=0\n'
                  'source: "DOCUMENTATION_UI_SEGMENT state=\\(state) phase=\\(phase) seconds=\\(duration)"\n')
-    if summarize(unrelated + prefixed)["total_seconds"] != 80:
+    if summarize(unrelated + prefixed)["total_seconds"] != 20:
         raise AssertionError("Job-log prefixes or unrelated source text changed valid timings")
     exponents = valid.replace("seconds=1.25", "seconds=5e-05", 1).replace("seconds=1.25", "seconds=1e+1", 1)
-    if not math.isclose(summarize(exponents)["total_seconds"], 87.50005):
+    if not math.isclose(summarize(exponents)["total_seconds"], 27.50005):
         raise AssertionError("Swift exponent durations were not accepted")
     try:
         summarize("progress\fdone\nDOCUMENTATION_UI_SEGMENT state=en-dark-1280")
@@ -101,7 +92,7 @@ def self_test():
                     valid.replace("seconds=1.25", "seconds=infinity", 1),
                     prefixed + "\n2026-10-13T12:00:00Z DOCUMENTATION_UI_SEGMENT state=en-dark-1280",
                     valid.replace("seconds=1.25", "seconds=1e308"),
-                    valid.replace("seconds=1.25", "seconds=1e307")):
+                    valid.replace("seconds=1.25", "seconds=2e307")):
         try:
             summarize(invalid)
         except ValueError:
@@ -109,7 +100,7 @@ def self_test():
         else:
             raise AssertionError("Malformed/incomplete timing evidence was accepted")
     for drifted in (SOURCE.read_text(encoding="utf-8").replace('recordSegment("panel")', 'recordSegment("dialog")'),
-                    SOURCE.read_text(encoding="utf-8").replace('label: "1280"', 'label: "large"')):
+                    SOURCE.read_text(encoding="utf-8").replace('state: "en-dark-1280"', 'state: "en-dark-large"')):
         try:
             check_source(drifted)
         except ValueError:

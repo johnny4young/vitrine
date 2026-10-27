@@ -360,4 +360,20 @@ struct HelpCommandTests {
         #expect(identifiers.contains(VitrineCommand.help.accessibilityIdentifier))
         #expect(identifiers.contains(VitrineCommand.whatsNew.accessibilityIdentifier))
     }
+
+    @Test func helpTeachesFiveTopicsInEveryShippedLanguage() throws {
+        #expect(
+            HelpView.topics.map(\.identifier) == [
+                "help-topic-hotkey", "help-topic-quick-capture", "help-topic-editor",
+                "help-topic-presets", "help-topic-privacy",
+            ])
+        for language in ["en", "es"] {
+            let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+            let bundle = try #require(Bundle(path: path))
+            for key in HelpView.topics.flatMap({ [$0.title.key, $0.body.key] }) {
+                let value = bundle.localizedString(forKey: key, value: "\u{0}", table: nil)
+                #expect(value != "\u{0}" && value != key, "\(language) has no copy for \(key)")
+            }
+        }
+    }
 }

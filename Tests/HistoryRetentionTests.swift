@@ -165,6 +165,34 @@ struct HistoryRetentionTests {
         #expect(HistoryConsentPrompt.choice(for: .alertSecondButtonReturn) == .saveSanitized)
         #expect(HistoryConsentPrompt.choice(for: .alertThirdButtonReturn) == .keepOriginal)
     }
+
+    @Test func consentAlertButtonsMapToTheirChoicesAndEscapeDeclines() {
+        let alert = HistoryConsentPrompt.makeAlert()
+        #expect(alert.messageText == String(localized: "Save this capture in history?"))
+        let expected: [(String, String, String, NSApplication.ModalResponse)] = [
+            (
+                String(localized: "Don't Save"), "history-consent-no-save", "\u{1b}",
+                .alertFirstButtonReturn
+            ),
+            (
+                String(localized: "Save Sanitized"), "history-consent-sanitized", "",
+                .alertSecondButtonReturn
+            ),
+            (
+                String(localized: "Keep Original"), "history-consent-original", "",
+                .alertThirdButtonReturn
+            ),
+        ]
+        let choices: [CaptureRetentionPolicy.Consent] = [.doNotSave, .saveSanitized, .keepOriginal]
+        #expect(alert.buttons.count == expected.count)
+        for (index, button) in alert.buttons.enumerated() where index < expected.count {
+            let (title, identifier, key, response) = expected[index]
+            #expect(button.title == title)
+            #expect(button.accessibilityIdentifier() == identifier)
+            #expect(button.keyEquivalent == key)
+            #expect(HistoryConsentPrompt.choice(for: response) == choices[index])
+        }
+    }
 }
 
 @MainActor

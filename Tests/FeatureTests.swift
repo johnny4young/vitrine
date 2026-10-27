@@ -144,7 +144,7 @@ struct CaptureTests {
     /// Captures added in the same instant carry equal dates; ties must fall back to
     /// the input's position following the sort's direction, never a UUID comparison —
     /// a random-UUID tie-break ordered equal-date captures differently from run to
-    /// run, the flake that hit CI (testRecentsCanSortOldestFirstWithoutDisplacingPins).
+    /// run, the flake that hit the Recents sort UI journey on CI.
     @Test func equalDatesPreserveInsertionOrderNotUUIDOrder() {
         let sharedDate = Date(timeIntervalSinceReferenceDate: 100)
         // Deliberately give the LATER-inserted capture the LEXICALLY SMALLER UUID, so
@@ -197,8 +197,8 @@ struct CaptureTests {
     /// land on one coarse clock tick on a hosted runner, then pins the first. With
     /// equal dates the store must still list the LATER-added capture first within the
     /// unpinned group (`add` appends, so insertion recency — not a random UUID — breaks
-    /// the tie). This is the unit-level reproduction of the flaky
-    /// testRecentsCanSortOldestFirstWithoutDisplacingPins CI failure.
+    /// the tie). This is the unit-level reproduction of the flaky Recents sort UI
+    /// journey (now `testRecentsPinFilterSortAndClearUnpinned`).
     @Test func equalDateAddsKeepLaterAdditionsFirstInTheStore() {
         let defaults = testDefaults()
         let store = RecentsStore(defaults: defaults)

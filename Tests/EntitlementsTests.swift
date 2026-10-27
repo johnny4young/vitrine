@@ -183,6 +183,15 @@ struct EntitlementsTests {
             #expect(partial.dismissesOnUnlock(isPro: true))
         }
 
+        @Test func aPartialActivationTellsTheUserTheLicenseWasNotStored() {
+            #expect(
+                LicenseActivationResult.persistenceFailed.message
+                    == String(
+                        localized:
+                            "The license was accepted, but Vitrine couldn't store it on this Mac. Try again."
+                    ))
+        }
+
         @Test func managedLicenseUIFixtureRejectsAnUnknownKey() async throws {
             let entitlements = try #require(
                 ManagedLicenseUITestFixture.makeEntitlements(environment: [

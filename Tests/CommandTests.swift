@@ -264,6 +264,8 @@ struct AppMenuTests {
         #expect(identifiers.contains(VitrineCommand.copyImage.accessibilityIdentifier))
         #expect(identifiers.contains(VitrineCommand.saveImage.accessibilityIdentifier))
         #expect(identifiers.contains(VitrineCommand.shareImage.accessibilityIdentifier))
+        #expect(identifiers.contains(VitrineCommand.newEditorWindow.accessibilityIdentifier))
+        #expect(identifiers.contains(VitrineCommand.makeDefault.accessibilityIdentifier))
     }
 
     @Test func appMenuExposesSettingsAndAbout() {

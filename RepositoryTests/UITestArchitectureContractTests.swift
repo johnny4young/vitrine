@@ -15,7 +15,7 @@ struct UITestArchitectureContractTests {
         let smoke = try Self.text("UITests/VitrineUITests.swift")
         let tour = try Self.text("UITests/ScreenshotTourUITests.swift")
 
-        #expect(Self.testMethodCount(in: smoke) >= 50)
+        #expect(Self.testMethodCount(in: smoke) >= 35)
         #expect(Self.testMethodCount(in: tour) >= 20)
     }
 

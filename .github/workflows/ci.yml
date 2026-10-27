@@ -532,11 +532,10 @@ jobs:
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
-      # The whole suite runs here, including the four display-geometry-sensitive
-      # tests that used to be skipped on the runner's 1024x768 virtual display:
-      # the editor now sizes new/recovered windows to fit the screen, and the
-      # tests skip themselves (with a clear message) only below the editor's
-      # minimum supported display — see docs/RELEASING.md (Running the UI tests).
+      # The whole suite runs here on the runner's 1024x768 virtual display: the editor
+      # sizes new and recovered windows to fit the screen, and display-sensitive tests
+      # skip themselves (with a clear message) only below the editor's minimum
+      # supported display — see docs/RELEASING.md (Running the UI tests).
       - name: Qualify documentation export viewport
         run: |
           set -o pipefail
@@ -550,50 +549,10 @@ jobs:
           touch "${RUNNER_TEMP}/ui-test-started"
           make test-ui RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" 2>&1 | tee test-ui.log
 
-      # Keep the four privacy-settings states available for visual review on green
-      # runs too, without retaining the entire successful UI result bundle/video.
-      - name: Export clipboard privacy UI evidence
-        run: |
-          xcrun xcresulttool export attachments \
-            --test-id 'VitrineUITests/testClipboardPrivacyIsOptInAndPersists()' \
-            --path "${RUNNER_TEMP}/test-ui.xcresult" \
-            --output-path "${RUNNER_TEMP}/clipboard-privacy-raw"
-          python3 - <<'PYTHON'
-          import json, os, pathlib, re, shutil
-          root = pathlib.Path(os.environ["RUNNER_TEMP"])
-          raw = root / "clipboard-privacy-raw"
-          output = root / "clipboard-privacy-ui"
-          expected = {f"confidential-clipboard-{language}-{appearance}"
-                      for language in ("en", "es") for appearance in ("light", "dark")}
-          found = {}
-          for group in json.loads((raw / "manifest.json").read_text()):
-              for attachment in group["attachments"]:
-                  name = attachment.get("suggestedHumanReadableName", "")
-                  match = re.fullmatch(r"(confidential-clipboard-(?:en|es)-(?:light|dark))(?:_\d+_[0-9A-F-]+)?\.png", name)
-                  if match:
-                      key = match.group(1)
-                      if key in found:
-                          raise SystemExit(f"Duplicate clipboard UI state: {key}")
-                      found[key] = raw / attachment["exportedFileName"]
-          if set(found) != expected:
-              raise SystemExit(f"Missing clipboard UI states: {sorted(expected - set(found))}")
-          output.mkdir(parents=True, exist_ok=True)
-          for key, source in found.items():
-              shutil.copyfile(source, output / f"{key}.png")
-          PYTHON
-
-      - name: Upload clipboard privacy UI evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
-        with:
-          name: clipboard-privacy-ui-${{ matrix.artifact }}
-          path: ${{ runner.temp }}/clipboard-privacy-ui
-          if-no-files-found: warn
-
       - name: Export documentation package UI evidence
         run: |
           xcrun xcresulttool export attachments \
-            --test-id 'DocumentationExportUITests/testDocumentationPackageInBothLocalesAppearancesAndWindowSizes()' \
+            --test-id 'DocumentationExportUITests/testDocumentationPackageInBothAppearancesAndWindowSizes()' \
             --path "${RUNNER_TEMP}/test-ui.xcresult" \
             --output-path "${RUNNER_TEMP}/documentation-ui-raw"
           python3 - <<'PYTHON'
@@ -601,14 +560,12 @@ jobs:
           root = pathlib.Path(os.environ["RUNNER_TEMP"])
           raw = root / "documentation-ui-raw"
           output = root / "documentation-ui"
-          expected = {f"package-{language}-{dark}-{width}"
-                      for language in ("en", "es") for dark in ("false", "true")
-                      for width in ("minimum", "1280")}
+          expected = {"package-en-light-minimum", "package-en-dark-1280"}
           found = {}
           for group in json.loads((raw / "manifest.json").read_text()):
               for attachment in group["attachments"]:
                   name = attachment.get("suggestedHumanReadableName", "")
-                  match = re.fullmatch(r"(package-(?:en|es)-(?:false|true)-(?:minimum|1280))(?:_\d+_[0-9A-F-]+)?\.png", name)
+                  match = re.fullmatch(r"(package-en-(?:light-minimum|dark-1280))(?:_\d+_[0-9A-F-]+)?\.png", name)
                   if match:
                       key = match.group(1)
                       if key in found:
@@ -641,6 +598,45 @@ jobs:
             VISUAL_OUTPUT="${RUNNER_TEMP}/screenshot-tour" \
             VISUAL_RESULT_BUNDLE="${RUNNER_TEMP}/screenshot-tour.xcresult" \
             2>&1 | tee test-visual.log
+
+      # Keep the clipboard privacy states available for visual review on green runs
+      # too, without retaining the entire successful tour result bundle.
+      - name: Export clipboard privacy UI evidence
+        run: |
+          xcrun xcresulttool export attachments \
+            --test-id 'ScreenshotTourUITests/testClipboardPrivacyTour()' \
+            --path "${RUNNER_TEMP}/screenshot-tour.xcresult" \
+            --output-path "${RUNNER_TEMP}/clipboard-privacy-raw"
+          python3 - <<'PYTHON'
+          import json, os, pathlib, re, shutil
+          root = pathlib.Path(os.environ["RUNNER_TEMP"])
+          raw = root / "clipboard-privacy-raw"
+          output = root / "clipboard-privacy-ui"
+          expected = {f"confidential-clipboard-en-{appearance}" for appearance in ("light", "dark")}
+          found = {}
+          for group in json.loads((raw / "manifest.json").read_text()):
+              for attachment in group["attachments"]:
+                  name = attachment.get("suggestedHumanReadableName", "")
+                  match = re.fullmatch(r"(confidential-clipboard-en-(?:light|dark))(?:_\d+_[0-9A-F-]+)?\.png", name)
+                  if match:
+                      key = match.group(1)
+                      if key in found:
+                          raise SystemExit(f"Duplicate clipboard UI state: {key}")
+                      found[key] = raw / attachment["exportedFileName"]
+          if set(found) != expected:
+              raise SystemExit(f"Missing clipboard UI states: {sorted(expected - set(found))}")
+          output.mkdir(parents=True, exist_ok=True)
+          for key, source in found.items():
+              shutil.copyfile(source, output / f"{key}.png")
+          PYTHON
+
+      - name: Upload clipboard privacy UI evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+        with:
+          name: clipboard-privacy-ui-${{ matrix.artifact }}
+          path: ${{ runner.temp }}/clipboard-privacy-ui
+          if-no-files-found: warn
 
       # Tell an automation-authorization failure apart from an ordinary test
       # failure: the former is a runner-image regression (it has happened —

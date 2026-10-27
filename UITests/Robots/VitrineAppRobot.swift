@@ -2,15 +2,16 @@ import XCTest
 
 /// Locale overrides shared by every UI-test journey. They use the standard
 /// `NSArgumentDomain` keys so product code stays unaware of test-only locales.
+/// Journeys run in English; Spanish copy is pinned by the unit suite.
 enum VitrineLocaleOverride {
-    case system
+    case english
     case accentedPseudo
     case rightToLeftPseudo
 
     var launchArguments: [String] {
         switch self {
-        case .system:
-            []
+        case .english:
+            ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         case .accentedPseudo:
             ["-AppleLanguages", "(en-XA)", "-AppleLocale", "en_XA"]
         case .rightToLeftPseudo:
@@ -128,7 +129,7 @@ struct VitrineAppRobot {
     @discardableResult
     func launch(
         arguments: [String],
-        locale: VitrineLocaleOverride = .system,
+        locale: VitrineLocaleOverride = .english,
         environment: [String: String] = [:],
         requireForeground: Bool = false
     ) -> XCUIApplication {
