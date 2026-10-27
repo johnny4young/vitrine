@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Weekly drift watch: GitHub rolls both supported macOS runner images and their
-  # bundled Xcode/SDKs on its own schedule, which can break the build with no code
-  # change. A scheduled run on the default branch re-exercises the full Sequoia +
-  # Tahoe matrix, so drift surfaces here instead of on the next unrelated PR.
+  # Weekly drift watch: GitHub rolls the macOS runner image and its bundled
+  # Xcode/SDKs on its own schedule, which can break the build with no code change.
+  # A scheduled run on the default branch re-exercises the full gate, so drift
+  # surfaces here instead of on the next unrelated PR.
   # Mondays 08:00 UTC.
   schedule:
     - cron: "0 8 * * 1"
@@ -198,18 +198,12 @@ jobs:
   build:
     name: Build & test · ${{ matrix.platform }}
     # Runtime compatibility is an explicit product gate, not an inference from
-    # whichever OS `macos-latest` happens to select. Both rows use GitHub's
-    # standard arm64 labels; setup-xcode chooses the newest stable Xcode available
-    # on each image, so the matrix also catches older-host/newer-toolchain drift.
+    # whichever OS `macos-latest` happens to select: the row pins the supported floor
+    # on GitHub's standard arm64 label, and setup-xcode picks its newest stable Xcode.
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
-            platform: Sequoia 15
-            artifact: sequoia-15
-            coverage: sequoia
-            golden-mode: smoke
           - runner: macos-26
             platform: Tahoe 26
             artifact: tahoe-26
@@ -229,7 +223,7 @@ jobs:
 
       # Selects Xcode, records the exact toolchain in the job summary before any build
       # step, installs the pinned XcodeGen, and restores the SPM cache, keyed per runner
-      # label so the two OS rows never share a cache.
+      # label so a future OS row never shares a cache.
       - name: Set up macOS toolchain
         uses: ./.github/actions/setup-macos-toolchain
         with:
@@ -254,10 +248,9 @@ jobs:
       - name: Check upcoming Swift features
         run: python3 scripts/check-swift-features.py "${RUNNER_TEMP}/build.log"
 
-      # Debug does not exercise Swift's optimizing pipeline. Compile a universal
-      # Release product on both compatibility rows so optimizer and cross-architecture
-      # failures surface on the PR instead of during packaging.
-      - name: Build (universal Release)
+      # Debug does not exercise Swift's optimizing pipeline. Compile the Release product
+      # so optimizer-only failures surface on the PR instead of during packaging.
+      - name: Build (Release)
         run: make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult"
 
       - name: Test with code coverage (Swift Testing)
@@ -404,7 +397,7 @@ jobs:
         run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/${{ matrix.coverage }}.json"
 
       # Tahoe must compare every scenario, including the social card, on the
-      # qualified image. Sequoia runs explicit smoke without claiming pixel coverage.
+      # qualified image.
       # Strict comparisons need the exact Xcode build that recorded the baselines;
       # every other step keeps the latest stable toolchain selected above.
       - name: Select the baseline's Xcode
@@ -493,9 +486,8 @@ jobs:
   # macOS automation authorization, which is interactive on a dev machine — but
   # GitHub's hosted macOS images are provisioned for headless UI automation
   # (DevToolsSecurity, automation mode without authentication, SIP disabled), so
-  # the suite executes here across the explicit Sequoia and Tahoe runtime matrix;
-  # the Sequoia runner was verified empirically on image 20260527, and the same
-  # authorization diagnostics are retained per row — see docs/RELEASING.md.
+  # the suite executes here on the supported runtime, with the authorization
+  # diagnostics retained per row — see docs/RELEASING.md.
   # A separate job so it parallelizes with the build gate and a UI flake never
   # blocks the build job's artifacts.
   ui-test:
@@ -504,9 +496,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15
-            platform: Sequoia 15
-            artifact: sequoia-15
           - runner: macos-26
             platform: Tahoe 26
             artifact: tahoe-26
@@ -527,8 +516,7 @@ jobs:
           spm-cache: "true"
           spm-cache-prefix: ${{ matrix.runner }}
 
-      # Diagnostic only — never a gate. Empirically (macos-15-arm64 image
-      # 20260527) the suite executes even while `automationmodetool` reports
+      # Diagnostic only — never a gate. Empirically the suite executes even while `automationmodetool` reports
       # "Automation Mode is disabled": the image runs with SIP disabled and is
       # provisioned for headless automation, so that output does not predict
       # whether XCUITest can drive the UI. Record the posture next to the result

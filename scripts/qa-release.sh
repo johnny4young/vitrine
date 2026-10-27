@@ -30,8 +30,8 @@
 #   * Runs the signing / notarization assessment a user's Gatekeeper runs on first
 #     launch: codesign --verify --deep --strict, spctl -a, stapler validate, and an
 #     Info.plist sanity check (plutil), on both the DMG and the app inside it. The
-#     every executable Mach-O payload must contain both arm64 and x86_64; checking
-#     only the outer executable would miss a thin CLI, helper, or framework.
+#     every executable Mach-O payload must contain arm64; checking only the outer
+#     executable would miss a CLI, helper, or framework built for another architecture.
 #     direct-download PRO signing key must be present and decode to exactly 32 bytes;
 #     the script never prints or logs that private value.
 #   * Classifies every result so a FAILURE distinguishes an *app bug* from a
@@ -361,11 +361,11 @@ else
 	fail_app "menu-bar helper missing or not executable (Contents/MacOS/VitrineMenuBarHelper)"
 fi
 
-# A universal outer executable is insufficient when an embedded CLI, helper, framework,
-# or XPC service is thin. Enumerate every executable Mach-O in the bundle so clean-Mac
+# Checking only the outer executable would miss an embedded CLI, helper, framework,
+# or XPC service built without arm64. Enumerate every executable Mach-O so clean-Mac
 # QA independently verifies the exact artifact rather than trusting the build log.
 MACHO_COUNT=0
-THIN_MACHO_COUNT=0
+NON_ARM64_MACHO_COUNT=0
 while IFS= read -r -d '' candidate; do
 	if ! architectures="$(/usr/bin/lipo -archs "$candidate" 2>/dev/null)"; then
 		continue
@@ -373,26 +373,18 @@ while IFS= read -r -d '' candidate; do
 
 	MACHO_COUNT=$((MACHO_COUNT + 1))
 	relative_path="${candidate#"$APP"/}"
-	missing_architecture=""
-	for required_architecture in arm64 x86_64; do
-		if [[ " $architectures " != *" $required_architecture "* ]]; then
-			missing_architecture="$required_architecture"
-			break
-		fi
-	done
-
-	if [ -n "$missing_architecture" ]; then
-		THIN_MACHO_COUNT=$((THIN_MACHO_COUNT + 1))
-		fail_app "$relative_path is not universal (architectures: $architectures; missing: $missing_architecture)"
+	if [[ " $architectures " != *" arm64 "* ]]; then
+		NON_ARM64_MACHO_COUNT=$((NON_ARM64_MACHO_COUNT + 1))
+		fail_app "$relative_path lacks arm64 (architectures: $architectures)"
 	fi
 done < <(find "$APP" -type f -perm -111 -print0)
 
 if [ "$MACHO_COUNT" -eq 0 ]; then
 	fail_app "no Mach-O payloads found in the app bundle"
-elif [ "$THIN_MACHO_COUNT" -eq 0 ]; then
-	pass "All $MACHO_COUNT Mach-O payloads contain arm64 + x86_64"
+elif [ "$NON_ARM64_MACHO_COUNT" -eq 0 ]; then
+	pass "All $MACHO_COUNT Mach-O payloads contain arm64"
 else
-	note "$THIN_MACHO_COUNT of $MACHO_COUNT Mach-O payloads are not universal"
+	note "$NON_ARM64_MACHO_COUNT of $MACHO_COUNT Mach-O payloads lack arm64"
 fi
 
 # --- Automated signing / notarization checks (signing failures) -------------

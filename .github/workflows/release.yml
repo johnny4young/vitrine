@@ -34,7 +34,7 @@ concurrency:
 
 jobs:
   # Release gate: the tag, version, and changelog guards, then the tagged commit's own CI.
-  # CI already ran lint, the Debug and universal Release builds, the unit and UI suites,
+  # CI already ran lint, the Debug and Release builds, the unit and UI suites,
   # and the visual tour on this exact commit when it landed on main — a strict superset of
   # what this job used to re-run — so the gate reads those results instead of paying for
   # them again. `candidate` needs this job, so a tag cannot even produce a promotable DMG
@@ -114,9 +114,7 @@ jobs:
               --commit "${TAG_COMMIT}" \
               --check-runs "${CHECK_RUNS}" \
               --required "Static checks (Linux)" \
-              --required "Build & test · Sequoia 15" \
               --required "Build & test · Tahoe 26" \
-              --required "UI tests · Sequoia 15" \
               --required "UI tests · Tahoe 26" || STATUS=$?
             if [ "${STATUS}" -eq 0 ]; then
               echo "CI passed on ${TAG_COMMIT} for every required check." >> "$GITHUB_STEP_SUMMARY"
@@ -406,6 +404,9 @@ jobs:
           # covers the DMG bytes and is preserved verbatim.
           python3 scripts/mark-informational-update.py dist/appcast.xml
 
+          # Sequoia and Intel hosts must stay on their last compatible build.
+          python3 scripts/check-appcast-requirements.py --minimum-system-version 26.0 dist/appcast.xml
+
           echo "generated=true" >> "$GITHUB_OUTPUT"
 
           {
@@ -494,7 +495,7 @@ jobs:
             echo "- DMG SHA-256: \`${SHA256}\`"
             echo "- Artifact: \`release-candidate-${GITHUB_REF_NAME}\` (retained for 30 days)"
             echo ""
-            echo "Extract the QA handoff ZIP on clean Sequoia and Tahoe Macs, run its"
+            echo "Extract the QA handoff ZIP on a clean Tahoe Mac, run its"
             echo "checksummed activation and real-WebKit qualification checklist, and only then dispatch this workflow"
             echo "with the tag, run ID, SHA-256, and \`CLEAN-MAC-QA-PASSED\` confirmation."
           } >> "$GITHUB_STEP_SUMMARY"

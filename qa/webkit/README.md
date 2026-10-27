@@ -1,7 +1,7 @@
 # Installed-candidate WebKit qualification
 
-Run every scenario against **Vitrine installed from the candidate DMG**, once on a clean
-macOS 15 Sequoia Mac and once on a clean macOS 26 Tahoe Mac. Keep the deterministic fake
+Run every scenario against **Vitrine installed from the candidate DMG** on a clean
+macOS 26 Tahoe Mac. Keep the deterministic fake
 UI-test renderer out of this journey: the purpose is to exercise the real `WKWebView`
 process, sandbox, and packaged entitlements.
 

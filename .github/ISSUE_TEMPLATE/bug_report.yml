@@ -42,7 +42,7 @@ body:
     id: macos-version
     attributes:
       label: macOS version
-      placeholder: "macOS 15.5 (Sequoia)"
+      placeholder: "macOS 26.6 (Tahoe)"
     validations:
       required: true
   - type: dropdown

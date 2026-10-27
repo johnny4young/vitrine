@@ -12,7 +12,7 @@ from the website or a source version number.
 
 ## Prerequisites and permissions
 
-- macOS 15 or later, Python 3, and an already installed Direct/Homebrew CLI supporting
+- macOS 26 or later, Python 3, and an already installed Direct/Homebrew CLI supporting
   these options. The cookbook does not install tools or alter `PATH`.
 - Use an explicit existing binary, input, recipe, and output parent. The examples
   use only [synthetic material](examples/agents/), never discovered repository content.

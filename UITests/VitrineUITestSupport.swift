@@ -189,7 +189,7 @@ extension XCTestCase {
     /// Opens the real menu-bar panel only after XCUIAutomation has attached.
     ///
     /// Opening an `NSPopover` from a launch argument is too early for a UI test:
-    /// Sequoia can inject XCTAutomationSupport after `applicationDidFinishLaunching`
+    /// XCTest can inject XCTAutomationSupport after `applicationDidFinishLaunching`
     /// and abort the app with a private libdispatch main-queue assertion. Clicking the
     /// in-process status item exercises the production interaction after the automation
     /// handshake. On multi-display hosts, XCTest can expose the item at a valid negative

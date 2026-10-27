@@ -151,34 +151,35 @@ struct ReleaseSigningTests {
             "build-dmg.sh should explain why the timestamp flag is required")
     }
 
-    // MARK: - Contract: the packaged app is universal, including nested payloads
+    // MARK: - Contract: the packaged app is Apple silicon, including nested payloads
 
-    @Test func packagingBuildsAndVerifiesEveryUniversalMachOPayload() throws {
+    @Test func packagingBuildsAndVerifiesEveryArm64MachOPayload() throws {
         let script = try Self.script()
 
         for required in [
             "generic/platform=macOS",
             "ONLY_ACTIVE_ARCH=NO",
-            #"ARCHS="arm64 x86_64""#,
-            "verify_universal_macho_bundle",
+            "ARCHS=arm64",
+            "verify_arm64_macho_bundle",
             #"/usr/bin/lipo -archs "$candidate""#,
             #"find "$APP" -type f -perm -111 -print0"#,
         ] {
             #expect(
                 script.contains(required),
-                "build-dmg.sh must keep the universal packaging contract: \(required)")
+                "build-dmg.sh must keep the Apple-silicon packaging contract: \(required)")
         }
 
+        #expect(!script.contains("x86_64"), "the package must not build or require Intel")
         #expect(
-            script.contains("local required_architectures=(arm64 x86_64)"),
-            "the package verifier must require both supported Mac architectures")
+            script.contains(#"lacks arm64"#),
+            "the package verifier must require arm64 in every payload")
         #expect(
             script.contains("no Mach-O payloads found"),
             "the verifier must fail closed when it cannot inspect any payload")
 
         let verification = try #require(
-            script.range(of: "\nverify_universal_macho_bundle\n"),
-            "the packaging path must invoke the universal-payload verifier")
+            script.range(of: "\nverify_arm64_macho_bundle\n"),
+            "the packaging path must invoke the arm64-payload verifier")
         let distributionSigning = try #require(
             script.range(of: "sign_embedded_cli_for_distribution\n"),
             "the signed packaging path must invoke embedded-CLI signing")

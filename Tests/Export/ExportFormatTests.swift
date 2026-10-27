@@ -65,4 +65,14 @@ struct ExportFormatTests {
             ExportFormat.resolveAvailable("avif")
                 == (ExportFormat.avif.isEncodingAvailable ? .avif : .png))
     }
+
+    @Test("A host without a writer falls back to PNG; PNG and PDF never need one")
+    func writerlessHostFallsBackToPNG() {
+        #expect(ExportFormat.avif.availableOrFallback(withWriters: []) == .png)
+        #expect(ExportFormat.heic.availableOrFallback(withWriters: []) == .png)
+        #expect(ExportFormat.pdf.availableOrFallback(withWriters: []) == .pdf)
+        #expect(ExportFormat.avif.availableOrFallback(withWriters: ["public.avif"]) == .avif)
+        #expect(ExportFormat.heic.isEncodable(withWriters: ["public.heic"]))
+        #expect(!ExportFormat.heic.isEncodable(withWriters: ["public.avif"]))
+    }
 }

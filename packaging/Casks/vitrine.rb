@@ -29,7 +29,8 @@ cask "vitrine" do
   # Sparkle keeps the installed app current in place, so Homebrew
   # should not flag user-updated copies as outdated.
   auto_updates true
-  depends_on macos: :sequoia
+  depends_on arch: :arm64
+  depends_on macos: :tahoe
 
   app "Vitrine.app"
   # The `vitrine` command-line renderer ships embedded in the app bundle;

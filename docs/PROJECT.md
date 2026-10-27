@@ -51,8 +51,8 @@ distribution-channel contract in one place. A new user can follow the
 - ImageRenderer and ImageIO for color-managed raster export
 - Swift Testing and XCTest UI automation
 
-The deployment floor is macOS 15 Sequoia. Runtime qualification covers Sequoia and
-macOS 26 Tahoe explicitly; newer APIs may be adopted behind availability checks when
+The deployment floor is macOS 26 Tahoe on Apple silicon, and runtime qualification
+covers Tahoe explicitly; newer APIs may be adopted behind availability checks when
 they add meaningful value without fragmenting the codebase.
 
 ## Distribution and business model

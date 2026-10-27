@@ -228,10 +228,8 @@ struct WelcomeView: View {
                 .accessibilityHidden(true)
         }
         .accessibilityElement(children: .combine)
-        // Built from localized `Text` pieces so the spoken label is localized too
-        // (a `LocalizedStringKey` can't be interpolated into another).
-        .accessibilityLabel(
-            Text("Step \(index): ") + Text(title) + Text(verbatim: ", ") + Text(caption))
+        // Embedded `Text` pieces keep the spoken title and caption localized too.
+        .accessibilityLabel(Text("Step \(index): \(Text(title)), \(Text(caption))"))
     }
 
     /// The live sample: a swatch row that restyles the rendered card on the

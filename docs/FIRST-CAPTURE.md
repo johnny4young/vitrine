@@ -9,7 +9,7 @@ image on your clipboard that you can paste into another app.
 
 Install Vitrine from the [latest published release](https://github.com/johnny4young/vitrine/releases/latest)
 or the Homebrew cask. The version in source control may be newer than the latest
-published download. The app runs on macOS 15 or later.
+published download. The app runs on macOS 26 or later on Apple silicon.
 
 This is the entire sample; it is also checked in as
 [`docs/examples/first-capture.swift`](examples/first-capture.swift):
