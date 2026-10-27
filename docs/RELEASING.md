@@ -44,7 +44,7 @@ together as a private `release-candidate-vX.Y.Z` Actions artifact retained for 3
 The tag run does not rebuild or retest the commit. CI already ran lint, both builds, the
 unit and UI suites, and the visual tour on it when it landed on `main`, so the `verify` job
 reads that commit's check runs instead: `Static checks (Linux)` and the build and UI test
-jobs on both macOS rows must all have succeeded. A tag pushed right after its commit
+jobs on the Tahoe row must all have succeeded. A tag pushed right after its commit
 merges usually finds that CI still running; `verify` waits up to 45 minutes for it and
 fails if a check fails, is cancelled or skipped, or never appears. Only the newest run of
 each check counts, so a flaky job that passes when re-run in CI unblocks the tag: re-run
@@ -1097,7 +1097,7 @@ certify public-hostname DNS rebinding or resolution-time private-address detecti
 WebKit content rules match the request URL rather than its resolved address. Never mark
 either boundary as clean-Mac validated from this manual journey.
 
-Complete both platform entries in `webkit/qualification-log.json`, change
+Complete the Tahoe entry in `webkit/qualification-log.json`, change
 `overallStatus` only after every required scenario passes, and keep screenshots/exports in
 the handoff's `evidence/` directory. For PRO, record only the dedicated QA license label or a
 **redacted** order/license identifier and the outcome. **Never record** the raw license key,

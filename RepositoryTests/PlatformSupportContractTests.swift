@@ -26,10 +26,13 @@ struct PlatformSupportContractTests {
             \(offenders.sorted().joined(separator: ", "))
             """)
 
-        // Sparkle hosts below the floor must never be offered an update they cannot run.
+        // Sparkle hosts below the floor must never be offered an update they cannot run,
+        // so the appcast check follows whatever floor project.yml declares.
+        let floor = try #require(
+            project.firstMatch(of: #/macOS: "(\d+\.\d+)"/#)?.output.1)
         #expect(
             try Self.text(".github/workflows/release.yml").contains(
-                "check-appcast-requirements.py --minimum-system-version 26.0"))
+                "check-appcast-requirements.py --minimum-system-version \(floor) "))
 
         let cask = try Self.text("packaging/Casks/vitrine.rb")
         #expect(cask.contains("depends_on macos: :tahoe"))

@@ -6,8 +6,9 @@ import VitrineDomain
 ///
 /// This lives in the rendering layer on purpose. Encodability is a runtime property of
 /// the host's ImageIO writers — a declared `UTType` does not guarantee a destination
-/// writer — so it is neither portable nor deterministic. Keeping the probe out of `VitrineDomain` leaves the value type pure
-/// and lets hostless domain tests run without depending on the host's codec set.
+/// writer — so it is neither portable nor deterministic. Keeping the probe out of
+/// `VitrineDomain` leaves the value type pure and lets hostless domain tests run without
+/// depending on the host's codec set.
 extension ExportFormat {
     /// Whether the active OS ImageIO stack can faithfully produce this format.
     ///
@@ -15,13 +16,16 @@ extension ExportFormat {
     /// keeps the UI and persisted settings aligned with the codec available on the
     /// running Mac without brittle OS-version checks.
     public nonisolated var isEncodingAvailable: Bool {
+        isEncodable(withWriters: Self.imageIODestinationIdentifiers)
+    }
+
+    /// Whether a host whose ImageIO destination type identifiers are `writers` can
+    /// produce this format. Tests pass a writer set to cover hosts other than their own.
+    public nonisolated func isEncodable(withWriters writers: Set<String>) -> Bool {
         switch self {
-        case .png, .pdf:
-            true
-        case .heic:
-            Self.imageIODestinationIdentifiers.contains("public.heic")
-        case .avif:
-            Self.imageIODestinationIdentifiers.contains("public.avif")
+        case .png, .pdf: true
+        case .heic: writers.contains("public.heic")
+        case .avif: writers.contains("public.avif")
         }
     }
 
@@ -32,7 +36,11 @@ extension ExportFormat {
 
     /// Keeps a persisted or imported choice usable on the active OS.
     public nonisolated var availableOrFallback: ExportFormat {
-        isEncodingAvailable ? self : .png
+        availableOrFallback(withWriters: Self.imageIODestinationIdentifiers)
+    }
+
+    public nonisolated func availableOrFallback(withWriters writers: Set<String>) -> ExportFormat {
+        isEncodable(withWriters: writers) ? self : .png
     }
 
     /// Decodes a persisted value and falls back when this Mac cannot encode it.

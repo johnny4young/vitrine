@@ -30,7 +30,6 @@ settings:
     # module defaults to @MainActor isolation (the recommended model for an app),
     # which removes the need for scattered @MainActor / nonisolated(unsafe).
     SWIFT_VERSION: "6.0"
-    # Apple silicon only.
     ARCHS: arm64
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor

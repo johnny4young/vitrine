@@ -24,12 +24,12 @@ enum CLIToolInstaller {
         return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
     }
 
-    /// PATH directories probed for an existing `vitrine` link: Homebrew's Apple-silicon
-    /// prefix first, then the traditional one that Macs without Homebrew still use.
-    static let knownBinDirectories: [URL] = [
-        URL(fileURLWithPath: "/opt/homebrew/bin", isDirectory: true),
-        URL(fileURLWithPath: "/usr/local/bin", isDirectory: true),
-    ]
+    static let homebrewBinDirectory = URL(fileURLWithPath: "/opt/homebrew/bin", isDirectory: true)
+    /// The prefix Macs without Homebrew still use, and the one the fallback creates.
+    static let traditionalBinDirectory = URL(fileURLWithPath: "/usr/local/bin", isDirectory: true)
+
+    /// PATH directories probed for an existing `vitrine` link, Homebrew's first.
+    static let knownBinDirectories = [homebrewBinDirectory, traditionalBinDirectory]
 
     /// Where `vitrine` is already linked to `target`, or `nil` when no probed
     /// directory carries a matching link. Parameterized so tests can point it
@@ -81,7 +81,7 @@ enum CLIToolInstaller {
             let destination = existing.appendingPathComponent("vitrine")
             return link + ShellCommandQuoter.singleQuoted(destination.path)
         }
-        let traditional = knownBinDirectories[1]
+        let traditional = traditionalBinDirectory
         let destination = traditional.appendingPathComponent("vitrine")
         return "sudo mkdir -p \(ShellCommandQuoter.singleQuoted(traditional.path)) && "
             + link + ShellCommandQuoter.singleQuoted(destination.path)

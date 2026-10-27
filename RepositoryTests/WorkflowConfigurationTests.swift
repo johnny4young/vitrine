@@ -408,12 +408,10 @@ struct WorkflowConfigurationTests {
         #expect(
             make.contains(
                 "swift-features-check:\n\tpython3 scripts/check-swift-features.py --self-test"))
-        for platform in ["tahoe"] {
-            let baseline = try Self.text("scripts", "coverage-baselines", "\(platform).json")
-            #expect(baseline.contains(#""schemaVersion": 1"#))
-            #expect(baseline.contains(#""productionLineCoverage""#))
-            #expect(baseline.contains(#""sourceRevision""#))
-        }
+        let baseline = try Self.text("scripts", "coverage-baselines", "tahoe.json")
+        #expect(baseline.contains(#""schemaVersion": 1"#))
+        #expect(baseline.contains(#""productionLineCoverage""#))
+        #expect(baseline.contains(#""sourceRevision""#))
     }
 
     @Test func swiftWarningsFailEveryAppOwnedTargetBuild() throws {

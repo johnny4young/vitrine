@@ -36,8 +36,9 @@ VISUAL_RESULT_BUNDLE ?= build/screenshot-tour.xcresult
 # xccov report and raw line archive. CI passes the explicit supported-platform key;
 # local runs use the Tahoe baseline on macOS 26 and later.
 COVERAGE_RESULT_BUNDLE ?= $(or $(RESULT_BUNDLE),build/test-coverage.xcresult)
-COVERAGE_PLATFORM ?= $(shell major=$$(sw_vers -productVersion | cut -d. -f1); \
-	if [ "$$major" -ge 26 ]; then echo tahoe; else echo unsupported; fi)
+COVERAGE_PLATFORM ?= $(shell major=$$(sw_vers -productVersion 2>/dev/null | cut -d. -f1); \
+	case "$$major" in (''|*[!0-9]*) echo unsupported ;; \
+	(*) if [ "$$major" -ge 26 ]; then echo tahoe; else echo unsupported; fi ;; esac)
 COVERAGE_BASELINE ?= scripts/coverage-baselines/$(COVERAGE_PLATFORM).json
 COVERAGE_BASE_REF_FLAG := $(if $(COVERAGE_BASE_REF),--base-ref "$(COVERAGE_BASE_REF)",)
 
