@@ -363,20 +363,18 @@ struct WorkflowConfigurationTests {
         #expect(lint.split(separator: " ").contains("ci-changes-check"))
     }
 
-    /// The performance and golden lanes reuse the uninstrumented Debug build, so the
-    /// instrumented coverage build must not overwrite it.
-    @Test func performanceAndGoldenLanesReuseTheDebugBuild() throws {
+    /// The Release log is the one the upcoming-feature check reads, and the instrumented
+    /// coverage build keeps its own DerivedData away from the performance lane's.
+    @Test func releaseLogFeedsTheFeatureCheckAndCoverageBuildsApart() throws {
         let build = try Self.job("build", in: Self.ci())
-        let compile = try #require(build.range(of: "make build-for-testing"))
-        let perf = try #require(build.range(of: "make perf"))
-        #expect(compile.lowerBound < perf.lowerBound)
+        #expect(!build.contains("make build "), "no separate Debug build")
+        let release = try #require(build.range(of: "make build-release"))
+        let features = try #require(build.range(of: "scripts/check-swift-features.py"))
+        #expect(release.lowerBound < features.lowerBound)
+        #expect(build.contains(#"2>&1 | tee "${RUNNER_TEMP}/build.log""#))
         #expect(build.contains(#"COVERAGE_DERIVED_DATA="${RUNNER_TEMP}/coverage-derived-data""#))
-
-        let make = try Self.makefile()
         #expect(
-            make.contains(
-                "-enableCodeCoverage NO $(RESULT_BUNDLE_FLAG) build-for-testing"))
-        #expect(make.contains("ENABLE_APP_SANDBOX=NO $(COVERAGE_DERIVED_DATA_FLAG)"))
+            try Self.makefile().contains("ENABLE_APP_SANDBOX=NO $(COVERAGE_DERIVED_DATA_FLAG)"))
     }
 
     // MARK: - Contract: fast local tests and explicit CI coverage

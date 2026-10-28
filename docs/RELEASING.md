@@ -113,10 +113,10 @@ CI is a release gate, not just a compile check.
   satisfies a required check. Before building, each job records the exact image,
   Xcode, and Swift versions into the job summary, so a green or red result is always
   tied to a known environment. CI validates every workflow's YAML, then runs
-  `make lint`, `make build-for-testing`, `make build-release`, `make test-ci-coverage`,
-  `make perf`, and `make test-goldens`. The performance lane reuses the uninstrumented
-  Debug build (the golden lane does too while its baseline Xcode is the selected one),
-  and coverage builds in its own DerivedData so it never overwrites it. The Release lane compiles the arm64 app with optimization, so
+  `make lint`, `make build-release`, `make test-ci-coverage`, `make perf`, and
+  `make test-goldens`. There is no separate Debug build: the coverage and performance
+  lanes compile Debug themselves, the upcoming-feature check reads the Release log, and
+  coverage builds in its own DerivedData so it never invalidates the performance lane. The Release lane compiles the arm64 app with optimization, so
   optimizer-only failures are caught before packaging. The Swift Package Manager
   download cache is restored between runs (keyed on `project.yml`, the dependency
   source of truth) to cut build time without risking a stale build. Parallel

@@ -277,23 +277,20 @@ jobs:
 
       # Capture an .xcresult bundle for each xcodebuild phase so a failure
       # can be triaged offline from the uploaded artifact. RESULT_BUNDLE is honored
-      # by the build/build-release/test/build-ui-tests make targets. The Debug build
-      # compiles the test bundles too, with the performance lane's settings, so that
-      # lane (and the golden lane, when its baseline Xcode is the selected one) reuses it.
-      - name: Build for testing (Debug)
+      # by the build/build-release/test/build-ui-tests make targets. There is no
+      # separate Debug build: the coverage and performance lanes compile Debug, and
+      # Release compiles every shipped module, so its log is the one checked below.
+      # Release also exercises Swift's optimizing pipeline, so optimizer-only
+      # failures surface on the PR instead of during packaging.
+      - name: Build (Release)
         run: |
           set -o pipefail
-          make build-for-testing RESULT_BUNDLE="${RUNNER_TEMP}/build.xcresult" 2>&1 | tee "${RUNNER_TEMP}/build.log"
+          make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult" 2>&1 | tee "${RUNNER_TEMP}/build.log"
 
       # The compiler invocations in the log are the resolved truth for every upcoming
       # feature, whatever project setting, xcconfig, or command-line override produced them.
       - name: Check upcoming Swift features
         run: python3 scripts/check-swift-features.py "${RUNNER_TEMP}/build.log"
-
-      # Debug does not exercise Swift's optimizing pipeline. Compile the Release product
-      # so optimizer-only failures surface on the PR instead of during packaging.
-      - name: Build (Release)
-        run: make build-release RESULT_BUNDLE="${RUNNER_TEMP}/build-release.xcresult"
 
       - name: Test with code coverage (Swift Testing)
         run: |
@@ -308,8 +305,8 @@ jobs:
             fi
           fi
           git rev-parse --verify "${change_base}^{commit}" >/dev/null
-          # Instrumented products live in their own DerivedData, so the uninstrumented
-          # build above stays intact for the performance and golden lanes.
+          # Instrumented products live in their own DerivedData, so the performance and
+          # golden lanes never inherit or invalidate them.
           make test-ci-coverage \
             COVERAGE_PLATFORM="tahoe" \
             COVERAGE_BASE_REF="$change_base" \
@@ -339,7 +336,6 @@ jobs:
         with:
           name: xcresults-tahoe-26
           path: |
-            ${{ runner.temp }}/build.xcresult
             ${{ runner.temp }}/build-release.xcresult
             ${{ runner.temp }}/test.xcresult
             ${{ runner.temp }}/test.xcresult.lane.json
