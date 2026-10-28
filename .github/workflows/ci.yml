@@ -29,48 +29,48 @@ concurrency:
 
 jobs:
   # Pull requests that change only documentation, the site, or design notes skip the
-  # macOS app gates; `contracts` still runs the repository suites that read those
-  # files. Every other event runs everything. Dependent jobs run unless this one
-  # answered "false", so a failure here runs the full gate instead of skipping it.
+  # macOS app gates; `docs-checks` still runs every unit suite, because app, CLI and
+  # repository tests read those files. Other events skip this job and run everything.
+  # Dependent jobs run unless it answered "false", so a failure or a skip runs the
+  # full gate instead of skipping it.
   changes:
     name: Classify changes
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       app: ${{ steps.classify.outputs.app }}
     steps:
+      # The pull-request merge commit's first parent is the base it merges into.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 2
       - name: Classify the changed files
         id: classify
-        env:
-          EVENT: ${{ github.event_name }}
-          BASE: ${{ github.event.pull_request.base.sha }}
-        run: python3 scripts/classify-ci-changes.py --event "$EVENT" ${BASE:+--base "$BASE"} >> "$GITHUB_OUTPUT"
+        run: python3 scripts/classify-ci-changes.py --event pull_request --base HEAD^1 >> "$GITHUB_OUTPUT"
 
-  contracts:
-    name: Repository contracts
+  docs-checks:
+    name: Documentation checks · Tahoe 26
     needs: changes
     if: ${{ needs.changes.outputs.app == 'false' }}
     runs-on: macos-26
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Set up macOS toolchain
         uses: ./.github/actions/setup-macos-toolchain
         with:
-          summary-title: Toolchain — repository contracts
+          summary-title: Toolchain — documentation checks
           spm-cache: "true"
           spm-cache-prefix: macos-26
-      - name: Repository contract suites
-        run: make test-repository RESULT_BUNDLE="${RUNNER_TEMP}/repository.xcresult"
+      - name: Unit and repository suites
+        run: make test RESULT_BUNDLE="${RUNNER_TEMP}/docs-checks.xcresult"
       - name: Upload .xcresult bundle
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
-          name: repository-xcresult-tahoe-26
-          path: ${{ runner.temp }}/repository.xcresult
+          name: docs-checks-xcresult-tahoe-26
+          path: ${{ runner.temp }}/docs-checks.xcresult
           if-no-files-found: ignore
 
   # Fast, cheap gate on a Linux runner: shell lint, workflow YAML syntax, the
@@ -278,8 +278,8 @@ jobs:
       # Capture an .xcresult bundle for each xcodebuild phase so a failure
       # can be triaged offline from the uploaded artifact. RESULT_BUNDLE is honored
       # by the build/build-release/test/build-ui-tests make targets. The Debug build
-      # compiles the test bundles too, with the settings the performance and golden
-      # lanes use, so those lanes reuse it instead of rebuilding.
+      # compiles the test bundles too, with the performance lane's settings, so that
+      # lane (and the golden lane, when its baseline Xcode is the selected one) reuses it.
       - name: Build for testing (Debug)
         run: |
           set -o pipefail
@@ -687,6 +687,17 @@ jobs:
           spm-cache: "true"
           spm-cache-prefix: macos-26
 
+      - name: Log automation authorization state
+        run: |
+          {
+            echo "### Automation authorization (diagnostic)"
+            echo '```'
+            echo "automationmodetool: $(automationmodetool || true)"
+            echo "DevToolsSecurity: $(DevToolsSecurity -status || true)"
+            echo "csrutil: $(csrutil status || true)"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: Qualify the UI display
         run: |
           set -o pipefail
@@ -752,12 +763,31 @@ jobs:
             echo "::error title=UI automation blocked on this image::The XCUITest session could not initialize. The runner image has likely lost its pre-authorized automation state (cf. actions/runner-images#7621) — an infrastructure regression, not a test failure. See docs/RELEASING.md (Running the UI tests)."
           fi
 
+      - name: Collect UI crash reports
+        if: failure()
+        run: |
+          python3 - <<'PYTHON'
+          import os, pathlib, shutil
+          temporary = pathlib.Path(os.environ["RUNNER_TEMP"])
+          marker = temporary / "ui-test-started"
+          if marker.exists():
+              output = temporary / "ui-crash-reports"
+              for scope, root in [("user", pathlib.Path.home() / "Library/Logs/DiagnosticReports"),
+                                  ("system", pathlib.Path("/Library/Logs/DiagnosticReports"))]:
+                  for report in root.glob("Vitrine*.ips"):
+                      if report.is_file() and report.stat().st_mtime >= marker.stat().st_mtime:
+                          output.mkdir(parents=True, exist_ok=True)
+                          shutil.copy2(report, output / f"{scope}-{report.name}")
+          PYTHON
+
       - name: Upload .xcresult bundle
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
         with:
           name: screenshot-tour-xcresult-tahoe-26
-          path: ${{ runner.temp }}/screenshot-tour.xcresult
+          path: |
+            ${{ runner.temp }}/screenshot-tour.xcresult
+            ${{ runner.temp }}/ui-crash-reports
           if-no-files-found: ignore
 
       - name: Upload strict visual evidence

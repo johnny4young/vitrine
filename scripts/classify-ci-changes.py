@@ -2,8 +2,9 @@
 """Decide whether a pull request needs the macOS app gates.
 
 A pull request whose changed files all sit under a documentation-only surface skips
-the build, UI and visual-tour jobs; the repository contracts that read those files
-still run. Anything else, an empty diff, or any other event runs every gate.
+the build, UI and visual-tour jobs; every unit suite still runs, because app, CLI and
+repository tests read those files. Anything else, an empty diff, or any other event
+runs every gate.
 
     python3 scripts/classify-ci-changes.py --event pull_request --base <sha>
     python3 scripts/classify-ci-changes.py --self-test
@@ -17,8 +18,8 @@ import argparse
 import subprocess
 import sys
 
-# The macOS gates neither build nor test these paths. Repository contracts still
-# read them, which is why a documentation-only pull request runs that job instead.
+# The UI, visual and performance gates neither build nor read these paths; unit
+# suites do, which is why a documentation-only pull request still runs them.
 DOCUMENTATION_PREFIXES = ("docs/", "site/", ".design-sync/", ".github/ISSUE_TEMPLATE/")
 DOCUMENTATION_FILES = ("LICENSE",)
 
@@ -37,7 +38,9 @@ def needs_app_gates(event: str, changed: list[str]) -> bool:
 
 def changed_files(base: str) -> list[str]:
     output = subprocess.run(
-        ["git", "diff", "--name-only", f"{base}...HEAD"],
+        # Without rename detection a move lists both paths, so moving app code into
+        # docs/ still counts as an app change.
+        ["git", "diff", "--name-only", "--no-renames", f"{base}...HEAD"],
         check=True, capture_output=True, text=True,
     ).stdout
     return [line for line in output.splitlines() if line]

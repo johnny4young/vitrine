@@ -114,9 +114,9 @@ CI is a release gate, not just a compile check.
   Xcode, and Swift versions into the job summary, so a green or red result is always
   tied to a known environment. CI validates every workflow's YAML, then runs
   `make lint`, `make build-for-testing`, `make build-release`, `make test-ci-coverage`,
-  `make perf`, and `make test-goldens`. The performance and golden lanes reuse the
-  uninstrumented Debug build, and coverage builds in its own DerivedData so it never
-  overwrites it. The Release lane compiles the arm64 app with optimization, so
+  `make perf`, and `make test-goldens`. The performance lane reuses the uninstrumented
+  Debug build (the golden lane does too while its baseline Xcode is the selected one),
+  and coverage builds in its own DerivedData so it never overwrites it. The Release lane compiles the arm64 app with optimization, so
   optimizer-only failures are caught before packaging. The Swift Package Manager
   download cache is restored between runs (keyed on `project.yml`, the dependency
   source of truth) to cut build time without risking a stale build. Parallel
@@ -126,10 +126,11 @@ CI is a release gate, not just a compile check.
 - **Documentation-only pull requests.** `scripts/classify-ci-changes.py` reads the
   pull request's changed files. When every one sits under `docs/`, `site/`,
   `.design-sync/` or the issue templates, or is a root Markdown file or `LICENSE`, the
-  build, UI and visual-tour jobs are skipped and the `Repository contracts` job runs
-  `make test-repository` instead, because those suites read the same files. Pushes,
-  schedules and manual runs always run every gate, and a failed classification runs
-  them too.
+  build, UI and visual-tour jobs are skipped and `Documentation checks` runs
+  `make test` instead, because app, CLI and repository suites read those files. The
+  classifier lists both sides of a rename, so a move into `docs/` still counts as an
+  app change. Pushes, schedules and manual runs skip the classification and run every
+  gate, and a failed classification runs them too.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
@@ -490,6 +491,8 @@ The release gate neither builds nor runs UI tests: `verify` requires the
 `UI tests · Tahoe 26` and `Visual tour · Tahoe 26` checks to have passed on the tagged
 commit, which `ci.yml` ran when that commit landed on `main`. Run `make test-ui` locally
 before tagging if the release includes UI changes that never went through a PR.
+Commits merged before the visual tour became its own job have no
+`Visual tour · Tahoe 26` check, so tag only commits that ran the current CI.
 
 ### Running the strict visual tour
 

@@ -342,8 +342,9 @@ struct WorkflowConfigurationTests {
     @Test func documentationOnlyPullRequestsKeepTheContractsAndSkipTheAppGates() throws {
         let ci = try Self.ci()
         let changes = try Self.job("changes", in: ci)
-        #expect(changes.contains("python3 scripts/classify-ci-changes.py --event"))
-        #expect(changes.contains("fetch-depth: 0"))
+        #expect(changes.contains("if: github.event_name == 'pull_request'"))
+        #expect(changes.contains("--event pull_request --base HEAD^1"))
+        #expect(changes.contains("fetch-depth: 2"))
         // A failed or missing classification runs the gates instead of skipping them.
         for name in ["build", "ui-test", "visual-tour"] {
             let job = try Self.job(name, in: ci)
@@ -352,12 +353,12 @@ struct WorkflowConfigurationTests {
                 job.contains("if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}"),
                 "\(name) must fail open")
         }
-        let contracts = try Self.job("contracts", in: ci)
-        #expect(contracts.contains("if: ${{ needs.changes.outputs.app == 'false' }}"))
-        #expect(contracts.contains("make test-repository"))
+        // App, CLI and repository suites all read documentation, so every unit suite runs.
+        let docs = try Self.job("docs-checks", in: ci)
+        #expect(docs.contains("if: ${{ needs.changes.outputs.app == 'false' }}"))
+        #expect(docs.contains("make test RESULT_BUNDLE="))
 
         let make = try Self.makefile()
-        #expect(make.contains("-only-testing:VitrineRepositoryTests test"))
         let lint = try #require(make.split(separator: "\n").first { $0.hasPrefix("lint:") })
         #expect(lint.split(separator: " ").contains("ci-changes-check"))
     }
@@ -412,7 +413,8 @@ struct WorkflowConfigurationTests {
         #expect(ci.contains("github.event.before"))
         #expect(ci.contains("COVERAGE_BASE_REF=\"$change_base\""))
         #expect(ci.contains("git rev-parse --verify"))
-        #expect(!ci.contains("run: make test RESULT_BUNDLE="))
+        // The build gate runs the coverage lane, never the uninstrumented fast lane.
+        #expect(!(try Self.job("build", in: ci)).contains("make test RESULT_BUNDLE="))
         #expect(ci.contains("xcrun xccov view --report --only-targets"))
         #expect(!ci.contains("xccov could not read the result bundle"))
 
@@ -476,7 +478,7 @@ struct WorkflowConfigurationTests {
             "a job that omits spm-cache must not restore a cache")
 
         let ci = try Self.ci()
-        for name in ["build", "ui-test", "visual-tour", "contracts"] {
+        for name in ["build", "ui-test", "visual-tour", "docs-checks"] {
             let job = try Self.job(name, in: ci)
             #expect(
                 job.contains(#"spm-cache: "true""#), "ci.yml \(name) must restore the SPM cache")
@@ -1130,7 +1132,7 @@ struct WorkflowConfigurationTests {
     private static func ciCheckNames() throws -> Set<String> {
         let ci = try Self.ci()
         var names: Set<String> = []
-        // `contracts` replaces the macOS gates on documentation-only pull requests and is
+        // `docs-checks` replaces the macOS gates on documentation-only pull requests and is
         // skipped on every push, so the release gate cannot require it.
         for jobKey in ["checks", "build", "ui-test", "visual-tour"] {
             let job = try Self.job(jobKey, in: ci)
@@ -1410,7 +1412,11 @@ struct WorkflowConfigurationTests {
             lint.split(separator: " ").contains("perf-check"), "make lint must run the self-test")
         #expect(make.contains("perf-check:\n\tpython3 scripts/check-perf.py --self-test"))
 
-        let platforms = ["tahoe"]
+        let platforms = step.matches(of: #/scripts/perf-baselines/(\w+)\.json/#).map {
+            String($0.output.1)
+        }
+        #expect(platforms == ["tahoe"])
+        #expect(build.contains(#"COVERAGE_PLATFORM="\#(platforms.first ?? "")""#))
         let suite = try Self.text("Tests", "PerformanceTests.swift")
         for platform in platforms {
             let data = try Data(
