@@ -43,8 +43,8 @@ together as a private `release-candidate-vX.Y.Z` Actions artifact retained for 3
 
 The tag run does not rebuild or retest the commit. CI already ran lint, both builds, the
 unit and UI suites, and the visual tour on it when it landed on `main`, so the `verify` job
-reads that commit's check runs instead: `Static checks (Linux)` and the build and UI test
-jobs on the Tahoe row must all have succeeded. A tag pushed right after its commit
+reads that commit's check runs instead: `Static checks (Linux)` and the Tahoe build, UI
+test and visual tour jobs must all have succeeded. A tag pushed right after its commit
 merges usually finds that CI still running; `verify` waits up to 45 minutes for it and
 fails if a check fails, is cancelled or skipped, or never appears. Only the newest run of
 each check counts, so a flaky job that passes when re-run in CI unblocks the tag: re-run
@@ -108,18 +108,29 @@ and the EN/ES website copy in `site/src/i18n/` and `site/src/components/CLIDocsP
 CI is a release gate, not just a compile check.
 
 - **`.github/workflows/ci.yml`** runs on every push to `main` and every pull
-  request. Its macOS gates run on an explicit runtime matrix with one row,
-  `macos-26` (Tahoe), the supported floor. Before building, each row records
-  the exact image, Xcode, and Swift versions into the job summary, so a green or
-  red result is always tied to a known environment. CI validates every workflow's
-  YAML, then runs `make lint`, `make build`, `make build-release`,
-  `make test-ci-coverage`, `make perf`, and `make test-goldens`. The Release lane compiles the arm64
-  app with optimization, so optimizer-only failures are caught before packaging. The Swift Package Manager download cache is restored between
-  runs (keyed on `project.yml`,
-  the dependency source of truth) to cut build time without risking a stale build.
-  A parallel **`UI tests` job** executes the full XCUITest suite (`make test-ui`)
-  plus the strict visual evidence tour (`make test-visual`) on the same OS row and
-  triggers — see *Running the UI tests* below.
+  request. Its macOS gates run on `macos-26` (Tahoe), the supported floor, under
+  literal job names: a skipped matrix job reports its unexpanded name, which never
+  satisfies a required check. Before building, each job records the exact image,
+  Xcode, and Swift versions into the job summary, so a green or red result is always
+  tied to a known environment. CI validates every workflow's YAML, then runs
+  `make lint`, `make build-release`, `make test-ci-coverage`, `make perf`, and
+  `make test-goldens`. There is no separate Debug build: the coverage and performance
+  lanes compile Debug themselves, the upcoming-feature check reads the Release log, and
+  coverage builds in its own DerivedData so it never invalidates the performance lane. The Release lane compiles the arm64 app with optimization, so
+  optimizer-only failures are caught before packaging. The Swift Package Manager
+  download cache is restored between runs (keyed on `project.yml`, the dependency
+  source of truth) to cut build time without risking a stale build. Parallel
+  **`UI tests`** and **`Visual tour`** jobs execute the full XCUITest suite
+  (`make test-ui`) and the strict visual evidence tour (`make test-visual`) on the
+  same runtime and triggers — see *Running the UI tests* below.
+- **Documentation-only pull requests.** `scripts/classify-ci-changes.py` reads the
+  pull request's changed files. When every one sits under `docs/`, `site/`,
+  `.design-sync/` or the issue templates, or is a root Markdown file or `LICENSE`, the
+  build, UI and visual-tour jobs are skipped and `Documentation checks` runs
+  `make test` instead, because app, CLI and repository suites read those files. The
+  classifier lists both sides of a rename, so a move into `docs/` still counts as an
+  app change. Pushes, schedules and manual runs skip the classification and run every
+  gate, and a failed classification runs them too.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
@@ -477,9 +488,11 @@ exposes one identifier on both a wrapper and its nested control, which keeps the
 assertions valid across accessibility-tree changes between macOS releases.
 
 The release gate neither builds nor runs UI tests: `verify` requires the
-`UI tests · Tahoe 26` check to have passed on the tagged
+`UI tests · Tahoe 26` and `Visual tour · Tahoe 26` checks to have passed on the tagged
 commit, which `ci.yml` ran when that commit landed on `main`. Run `make test-ui` locally
 before tagging if the release includes UI changes that never went through a PR.
+Commits merged before the visual tour became its own job have no
+`Visual tour · Tahoe 26` check, so tag only commits that ran the current CI.
 
 ### Running the strict visual tour
 

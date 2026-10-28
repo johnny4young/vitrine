@@ -284,21 +284,17 @@ struct WorkflowConfigurationTests {
 
     @Test func ciCertifiesTahoeAcrossBuildAndUIJobs() throws {
         let ci = try Self.ci()
-        let buildMarker = try #require(ci.range(of: "\n  build:"))
-        let uiMarker = try #require(ci.range(of: "\n  ui-test:"))
-        let buildJob = String(ci[buildMarker.lowerBound..<uiMarker.lowerBound])
-        let uiJob = String(ci[uiMarker.lowerBound...])
+        let buildJob = try Self.job("build", in: ci)
+        let uiJob = try Self.job("ui-test", in: ci)
+        let tourJob = try Self.job("visual-tour", in: ci)
 
-        for (name, job) in [("build", buildJob), ("UI", uiJob)] {
-            #expect(
-                !job.contains("runner: macos-15"), "\(name) matrix must not run below the floor")
-            #expect(job.contains("runner: macos-26"), "\(name) matrix must exercise Tahoe")
-            #expect(
-                job.contains("runs-on: ${{ matrix.runner }}"),
-                "\(name) job must run on its explicit matrix label")
-            #expect(
-                job.contains("fail-fast: false"),
-                "\(name) matrix must finish every OS row even when one fails")
+        for (name, job) in [("build", buildJob), ("UI", uiJob), ("visual tour", tourJob)] {
+            #expect(job.contains("runs-on: macos-26"), "\(name) job must exercise Tahoe")
+            #expect(!job.contains("macos-15"), "\(name) job must not run below the floor")
+            // A skipped matrix job reports its unexpanded name and never satisfies the
+            // required check, so the gated jobs carry literal names.
+            #expect(!job.contains("strategy:"), "\(name) job must not use a matrix")
+            #expect(!job.contains("${{ matrix"), "\(name) check name must be literal")
         }
 
         #expect(!ci.contains("runs-on: macos-latest"))
@@ -313,33 +309,72 @@ struct WorkflowConfigurationTests {
             release.contains("runs-on: macos-26"),
             "the release workflow must run on an image the CI matrix certifies")
         #expect(buildJob.contains("make test-ci-coverage"))
-        #expect(buildJob.contains("COVERAGE_PLATFORM=\"${{ matrix.coverage }}\""))
+        #expect(buildJob.contains(#"COVERAGE_PLATFORM="tahoe""#))
         #expect(buildJob.contains("fetch-depth: 0"))
         #expect(buildJob.contains("make perf"))
         #expect(buildJob.contains("make test-goldens"))
-        #expect(buildJob.contains("golden-mode: strict"))
+        #expect(buildJob.contains("make test-goldens GOLDEN_MODE=strict"))
         // Only the strict golden step uses the baseline's Xcode build.
         #expect(!buildJob.contains("xcode-version:"))
         #expect(buildJob.contains(#"["pinnedImage"]["xcodeBuild"]"#))
         #expect(buildJob.contains(#"DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}""#))
         #expect(uiJob.contains("make test-ui RESULT_BUNDLE="))
-        #expect(uiJob.contains("make test-visual"))
+        #expect(!uiJob.contains("make test-visual"), "the tour runs in its own job")
+        #expect(tourJob.contains("make test-visual"))
 
-        // Matrix jobs can upload concurrently. Every artifact name needs an OS suffix,
-        // otherwise upload-artifact rejects the second writer for the same name.
+        // Artifact names carry the runtime so another OS can upload beside them.
         for artifact in [
             "xcresults", "launch-gallery", "golden-diffs", "ui-test-xcresult",
-            "screenshot-tour",
+            "screenshot-tour", "screenshot-tour-xcresult",
         ] {
             #expect(
-                ci.contains("name: \(artifact)-${{ matrix.artifact }}"),
-                "\(artifact) must be unique per compatibility row")
+                ci.contains("name: \(artifact)-tahoe-26"), "\(artifact) must name its runtime")
         }
 
         let doc = try Self.releasingDoc()
         for term in ["Tahoe", "macos-26"] {
             #expect(doc.contains(term), "RELEASING.md must document \(term)")
         }
+    }
+
+    // MARK: - Contract: documentation-only pull requests skip the macOS app gates
+
+    @Test func documentationOnlyPullRequestsKeepTheContractsAndSkipTheAppGates() throws {
+        let ci = try Self.ci()
+        let changes = try Self.job("changes", in: ci)
+        #expect(changes.contains("if: github.event_name == 'pull_request'"))
+        #expect(changes.contains("--event pull_request --base HEAD^1"))
+        #expect(changes.contains("fetch-depth: 2"))
+        // A failed or missing classification runs the gates instead of skipping them.
+        for name in ["build", "ui-test", "visual-tour"] {
+            let job = try Self.job(name, in: ci)
+            #expect(job.contains("needs: changes"), "\(name) must wait for the classification")
+            #expect(
+                job.contains("if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}"),
+                "\(name) must fail open")
+        }
+        // App, CLI and repository suites all read documentation, so every unit suite runs.
+        let docs = try Self.job("docs-checks", in: ci)
+        #expect(docs.contains("if: ${{ needs.changes.outputs.app == 'false' }}"))
+        #expect(docs.contains("make test RESULT_BUNDLE="))
+
+        let make = try Self.makefile()
+        let lint = try #require(make.split(separator: "\n").first { $0.hasPrefix("lint:") })
+        #expect(lint.split(separator: " ").contains("ci-changes-check"))
+    }
+
+    /// The Release log is the one the upcoming-feature check reads, and the instrumented
+    /// coverage build keeps its own DerivedData away from the performance lane's.
+    @Test func releaseLogFeedsTheFeatureCheckAndCoverageBuildsApart() throws {
+        let build = try Self.job("build", in: Self.ci())
+        #expect(!build.contains("make build "), "no separate Debug build")
+        let release = try #require(build.range(of: "make build-release"))
+        let features = try #require(build.range(of: "scripts/check-swift-features.py"))
+        #expect(release.lowerBound < features.lowerBound)
+        #expect(build.contains(#"2>&1 | tee "${RUNNER_TEMP}/build.log""#))
+        #expect(build.contains(#"COVERAGE_DERIVED_DATA="${RUNNER_TEMP}/coverage-derived-data""#))
+        #expect(
+            try Self.makefile().contains("ENABLE_APP_SANDBOX=NO $(COVERAGE_DERIVED_DATA_FLAG)"))
     }
 
     // MARK: - Contract: fast local tests and explicit CI coverage
@@ -376,7 +411,8 @@ struct WorkflowConfigurationTests {
         #expect(ci.contains("github.event.before"))
         #expect(ci.contains("COVERAGE_BASE_REF=\"$change_base\""))
         #expect(ci.contains("git rev-parse --verify"))
-        #expect(!ci.contains("run: make test RESULT_BUNDLE="))
+        // The build gate runs the coverage lane, never the uninstrumented fast lane.
+        #expect(!(try Self.job("build", in: ci)).contains("make test RESULT_BUNDLE="))
         #expect(ci.contains("xcrun xccov view --report --only-targets"))
         #expect(!ci.contains("xccov could not read the result bundle"))
 
@@ -440,12 +476,12 @@ struct WorkflowConfigurationTests {
             "a job that omits spm-cache must not restore a cache")
 
         let ci = try Self.ci()
-        for name in ["build", "ui-test"] {
+        for name in ["build", "ui-test", "visual-tour", "docs-checks"] {
             let job = try Self.job(name, in: ci)
             #expect(
                 job.contains(#"spm-cache: "true""#), "ci.yml \(name) must restore the SPM cache")
             // Per runner label, so OS rows never share a cache.
-            #expect(job.contains("spm-cache-prefix: ${{ matrix.runner }}"))
+            #expect(job.contains("spm-cache-prefix: macos-26"))
         }
     }
 
@@ -1062,7 +1098,7 @@ struct WorkflowConfigurationTests {
             verify.matches(of: requiredPattern).compactMap { $0.output[1].substring }
                 .map(String.init))
         let defined = try Self.ciCheckNames()
-        #expect(defined.count == 3, "ci.yml should define three checks, found \(defined)")
+        #expect(defined.count == 4, "ci.yml should define four checks, found \(defined)")
         #expect(
             gated == defined,
             "the release gate must require exactly ci.yml's checks: gated \(gated), defined \(defined)"
@@ -1094,7 +1130,9 @@ struct WorkflowConfigurationTests {
     private static func ciCheckNames() throws -> Set<String> {
         let ci = try Self.ci()
         var names: Set<String> = []
-        for jobKey in ["checks", "build", "ui-test"] {
+        // `docs-checks` replaces the macOS gates on documentation-only pull requests and is
+        // skipped on every push, so the release gate cannot require it.
+        for jobKey in ["checks", "build", "ui-test", "visual-tour"] {
             let job = try Self.job(jobKey, in: ci)
             let nameLine = try #require(
                 job.split(separator: "\n").first { $0.hasPrefix("    name: ") },
@@ -1336,7 +1374,7 @@ struct WorkflowConfigurationTests {
             "CI must collect the machine-readable measurements the suite emits")
         #expect(ci.contains("perf-measurements.jsonl"))
         #expect(
-            ci.contains("name: perf-measurements-${{ matrix.artifact }}"),
+            ci.contains("name: perf-measurements-tahoe-26"),
             "measurement artifacts must be unique per compatibility row")
 
         let perf = try Self.text("Tests", "PerformanceTests.swift")
@@ -1363,7 +1401,7 @@ struct WorkflowConfigurationTests {
         #expect(step.contains("if: always()"), "a failed perf step must still be compared")
         #expect(
             step.contains(
-                #"run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/${{ matrix.coverage }}.json""#
+                #"run: python3 scripts/check-perf.py --measurements perf-measurements.jsonl --baseline "scripts/perf-baselines/tahoe.json""#
             ))
 
         let make = try Self.makefile()
@@ -1372,12 +1410,11 @@ struct WorkflowConfigurationTests {
             lint.split(separator: " ").contains("perf-check"), "make lint must run the self-test")
         #expect(make.contains("perf-check:\n\tpython3 scripts/check-perf.py --self-test"))
 
-        let platforms = build.split(separator: "\n").compactMap { line -> String? in
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            return trimmed.hasPrefix("coverage: ")
-                ? String(trimmed.dropFirst("coverage: ".count)) : nil
+        let platforms = step.matches(of: #/scripts/perf-baselines/(\w+)\.json/#).map {
+            String($0.output.1)
         }
         #expect(platforms == ["tahoe"])
+        #expect(build.contains(#"COVERAGE_PLATFORM="\#(platforms.first ?? "")""#))
         let suite = try Self.text("Tests", "PerformanceTests.swift")
         for platform in platforms {
             let data = try Data(

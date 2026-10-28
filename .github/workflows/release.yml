@@ -115,7 +115,8 @@ jobs:
               --check-runs "${CHECK_RUNS}" \
               --required "Static checks (Linux)" \
               --required "Build & test · Tahoe 26" \
-              --required "UI tests · Tahoe 26" || STATUS=$?
+              --required "UI tests · Tahoe 26" \
+              --required "Visual tour · Tahoe 26" || STATUS=$?
             if [ "${STATUS}" -eq 0 ]; then
               echo "CI passed on ${TAG_COMMIT} for every required check." >> "$GITHUB_STEP_SUMMARY"
               break

@@ -41,6 +41,8 @@ COVERAGE_PLATFORM ?= $(shell major=$$(sw_vers -productVersion 2>/dev/null | cut 
 	(*) if [ "$$major" -ge 26 ]; then echo tahoe; else echo unsupported; fi ;; esac)
 COVERAGE_BASELINE ?= scripts/coverage-baselines/$(COVERAGE_PLATFORM).json
 COVERAGE_BASE_REF_FLAG := $(if $(COVERAGE_BASE_REF),--base-ref "$(COVERAGE_BASE_REF)",)
+# CI keeps instrumented products apart so its uninstrumented build stays reusable.
+COVERAGE_DERIVED_DATA_FLAG := $(if $(COVERAGE_DERIVED_DATA),-derivedDataPath "$(COVERAGE_DERIVED_DATA)",)
 
 # Dynamic-memory evidence is intentionally local and review-driven. It reuses the normal
 # Debug build and resolved exact package checkouts, then launches under `leaks`; optional
@@ -67,7 +69,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: sanitizer-check test-ci-coverage test-lanes-check test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check appcast-requirements-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: test-repository sanitizer-check test-ci-coverage test-lanes-check test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check appcast-requirements-check ci-changes-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -91,6 +93,13 @@ build: project
 	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO $(RESULT_BUNDLE_FLAG) build
+
+## test-repository: run only the hostless repository-contract suites
+test-repository: project
+	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
+	$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
+		-destination 'platform=macOS' -enableCodeCoverage NO $(RESULT_BUNDLE_FLAG) \
+		-only-testing:VitrineRepositoryTests test
 
 ## build-release: compile the optimized Apple-silicon app without signing
 ## This gate catches optimizer-only failures that Debug cannot expose before
@@ -151,7 +160,7 @@ test-coverage: project
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
 		-destination 'platform=macOS' -enableCodeCoverage YES \
-		CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO \
+		CODE_SIGN_ENTITLEMENTS= ENABLE_APP_SANDBOX=NO $(COVERAGE_DERIVED_DATA_FLAG) \
 		-resultBundlePath "$(COVERAGE_RESULT_BUNDLE)" $(COVERAGE_TEST_SELECTION) test
 	python3 scripts/check-coverage.py \
 		--result-bundle "$(COVERAGE_RESULT_BUNDLE)" \
@@ -348,6 +357,10 @@ informational-update-check:
 appcast-requirements-check:
 	python3 scripts/check-appcast-requirements.py --self-test
 
+## ci-changes-check: validate the pull-request classifier that skips the macOS gates
+ci-changes-check:
+	python3 scripts/classify-ci-changes.py --self-test
+
 ## bump: rewrite the mechanical release version sites (VERSION=x.y.z BUILD=n)
 bump:
 	@[ -n "$(VERSION)" ] && [ -n "$(BUILD)" ] || { echo "usage: make bump VERSION=x.y.z BUILD=n"; exit 2; }
@@ -411,7 +424,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: documentation-ui-profile-check sanitizer-check test-lanes-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check appcast-requirements-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: documentation-ui-profile-check sanitizer-check test-lanes-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check appcast-requirements-check ci-changes-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts
