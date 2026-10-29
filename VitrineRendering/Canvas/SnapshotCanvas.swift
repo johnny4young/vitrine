@@ -302,9 +302,15 @@ public struct SnapshotCanvas: View, Equatable {
             )
             .textSelection(.enabled)
         } else {
-            Text(highlightedCode)
+            let code = highlightedCode
+            Text(code)
                 .lineSpacing(Self.codeLineSpacing)
                 .textSelection(.enabled)
+                // Keep selection's internal bridge out of the accessibility tree,
+                // while retaining the current visible characters as real text.
+                .accessibilityRepresentation {
+                    Text(verbatim: String(code.characters))
+                }
         }
     }
 

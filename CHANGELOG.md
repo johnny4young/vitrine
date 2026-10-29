@@ -20,6 +20,7 @@ can never drift.
 
 ### Fixed
 
+- Keep the editor preview's accessible text in sync when the source changes.
 - Preserve the selected code font and size in styled syntax tokens, including
   comments and Markdown emphasis in carousel and image exports.
 
