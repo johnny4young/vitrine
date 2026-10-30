@@ -408,9 +408,6 @@ extension EditorView {
                         }
                         .compositingGroup()
                         .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
-                        // Keep the live text descendants instead of an aggregate value
-                        // that can retain the initial sample after the source changes.
-                        .accessibilityElement(children: .contain)
                     AnnotationEditingOverlay(
                         settings: settings, selection: $selectedAnnotationID,
                         editingAnnotationID: $editingAnnotationID,
