@@ -215,16 +215,17 @@ final class VitrineUITests: XCTestCase {
         editor.codeTextView.typeKey("a", modifierFlags: .command)
         editor.codeTextView.typeText(replacement)
         let preview = element("editor-preview-stage", in: app)
-        let currentText = preview.descendants(matching: .staticText).matching(
-            NSPredicate(format: "value == %@ OR label == %@", replacement, replacement)
-        ).firstMatch
+        func previewText(_ text: String) -> XCUIElement {
+            preview.descendants(matching: .any).matching(
+                NSPredicate(format: "value == %@ OR label == %@", text, text)
+            ).firstMatch
+        }
         XCTAssertTrue(
-            currentText.waitForExistence(timeout: 5),
+            previewText(replacement).waitForExistence(timeout: 5),
             "The preview must expose the current source to accessibility")
-        XCTAssertFalse(
-            preview.descendants(matching: .any).allElementsBoundByIndex.contains {
-                ($0.value as? String) == original || $0.label == original
-            }, "The preview must not retain an obsolete aggregate accessibility value")
+        XCTAssertTrue(
+            previewText(original).waitForNonExistence(timeout: 5),
+            "The preview must not retain an obsolete aggregate accessibility value")
     }
 
     @MainActor
