@@ -208,6 +208,24 @@ final class VitrineUITests: XCTestCase {
         assertToolbarActionsReachable(
             ["save-button", "share-button", "make-default-button"],
             from: "editor-actions-menu", in: app)
+
+        let original = try XCTUnwrap(editor.codeTextView.value as? String)
+        let replacement = "struct CurrentPreview {\n    let answer = 42\n}"
+        editor.codeTextView.click()
+        editor.codeTextView.typeKey("a", modifierFlags: .command)
+        editor.codeTextView.typeText(replacement)
+        let preview = element("editor-preview-stage", in: app)
+        func previewText(_ text: String) -> XCUIElement {
+            preview.descendants(matching: .any).matching(
+                NSPredicate(format: "value == %@ OR label == %@", text, text)
+            ).firstMatch
+        }
+        XCTAssertTrue(
+            previewText(replacement).waitForExistence(timeout: 5),
+            "The preview must expose the current source to accessibility")
+        XCTAssertTrue(
+            previewText(original).waitForNonExistence(timeout: 5),
+            "The preview must not retain an obsolete aggregate accessibility value")
     }
 
     @MainActor

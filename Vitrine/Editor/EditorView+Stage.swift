@@ -408,6 +408,9 @@ extension EditorView {
                         }
                         .compositingGroup()
                         .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
+                        // Expose the canvas text as children: as one aggregate element,
+                        // automated drags on annotation endpoint handles stop landing.
+                        .accessibilityElement(children: .contain)
                     AnnotationEditingOverlay(
                         settings: settings, selection: $selectedAnnotationID,
                         editingAnnotationID: $editingAnnotationID,
