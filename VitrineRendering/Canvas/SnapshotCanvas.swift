@@ -227,7 +227,8 @@ public struct SnapshotCanvas: View, Equatable {
     private static let codeLineSpacing: CGFloat = 4
 
     private var codeCard: some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
+        let diff = config.diffDocument
+        return VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
             if config.showChrome {
                 WindowChrome(
                     title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -248,7 +249,15 @@ public struct SnapshotCanvas: View, Equatable {
                         HighlightManager.shared.gutterForegroundColor(for: config.theme)
                             .opacity(0.12))
             }
-            codeBody
+            if config.showDiffStats, let diff {
+                DiffStatsHeader(
+                    document: diff,
+                    path: diff.singleFilePath(redacting: config.redactedLineRanges),
+                    font: CodeFont.resolved(
+                        family: config.fontName, size: DiffStatsHeader.fontSize, ligatures: false),
+                    textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
+            }
+            codeBody(diff: diff)
         }
         .padding(.horizontal, 26)
         .padding(.vertical, 22)
@@ -270,13 +279,13 @@ public struct SnapshotCanvas: View, Equatable {
     /// on, the card sizes to the wrap width and long lines wrap; in the gutter path the
     /// continuation hangs under the code column (the line number stays on the first row).
     @ViewBuilder
-    private var codeBody: some View {
+    private func codeBody(diff: DiffDocument?) -> some View {
         if config.usesLineRows {
-            codeRows
+            codeRows(diff: diff)
         } else if let wrapWidth {
-            codeRows.frame(width: wrapWidth, alignment: .leading)
+            codeRows(diff: diff).frame(width: wrapWidth, alignment: .leading)
         } else {
-            codeRows
+            codeRows(diff: diff)
         }
     }
 
@@ -285,10 +294,13 @@ public struct SnapshotCanvas: View, Equatable {
     /// Keeping the plain path untouched means the signature render is unchanged
     /// unless the user opts into the new chrome.
     @ViewBuilder
-    private var codeRows: some View {
+    private func codeRows(diff: DiffDocument?) -> some View {
         if config.usesLineRows {
             CodeLinesView(
                 rows: highlightedCodeLines,
+                displayRows: config.diffContextLines.flatMap {
+                    diff?.displayRows(contextLines: $0)
+                },
                 showLineNumbers: config.showLineNumbers,
                 highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
                 redactedRanges: LineHighlight.normalize(config.redactedLineRanges),

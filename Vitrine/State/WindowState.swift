@@ -129,6 +129,8 @@ struct EditorWindowState: Codable, Equatable {
     var wrapColumns: Int?
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
+    var showDiffStats: Bool
+    var diffContextLines: Int?
     var annotations: [Annotation]
     /// The window's destination and per-capture output, absent in older archives.
     var destinationID: String?
@@ -164,6 +166,8 @@ struct EditorWindowState: Codable, Equatable {
         wrapColumns = config.wrapColumns
         focusHighlightedLines = config.focusHighlightedLines
         diffDecorations = config.diffDecorations
+        showDiffStats = config.showDiffStats
+        diffContextLines = config.diffContextLines
         annotations = config.annotations
     }
 
@@ -226,6 +230,8 @@ struct EditorWindowState: Codable, Equatable {
         config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
         config.focusHighlightedLines = focusHighlightedLines
         config.diffDecorations = diffDecorations
+        config.showDiffStats = showDiffStats
+        config.diffContextLines = diffContextLines.map(SettingsDefaults.clampDiffContextLines)
         config.annotations = annotations
         return config
     }
@@ -236,6 +242,7 @@ struct EditorWindowState: Codable, Equatable {
         case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
+        case showDiffStats, diffContextLines
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
 
@@ -291,6 +298,9 @@ struct EditorWindowState: Codable, Equatable {
             ?? fallback.focusHighlightedLines
         diffDecorations =
             (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? fallback.diffDecorations
+        showDiffStats =
+            (try? container.decode(Bool.self, forKey: .showDiffStats)) ?? fallback.showDiffStats
+        diffContextLines = try? container.decodeIfPresent(Int.self, forKey: .diffContextLines)
         annotations =
             (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
             .compactMap(\.value) ?? fallback.annotations

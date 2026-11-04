@@ -349,6 +349,8 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--redact-secrets', description: both('Scan for likely secrets and redact matching rows.', 'Busca secretos probables y oculta las filas correspondientes.') },
       { flags: '--focus-lines, --no-focus-lines', description: both('Dim or restore rows outside the highlight.', 'Atenúa o restaura las filas fuera del resaltado.') },
       { flags: '--diff-bands, --no-diff-bands', description: both('Show or hide GitHub-style added and removed bands.', 'Muestra u oculta bandas de cambios al estilo GitHub.') },
+      { flags: '--diff-stats, --no-diff-stats', description: both('Show or hide the file path and +/- counts above a diff.', 'Muestra u oculta la ruta del archivo y los conteos +/- sobre un diff.') },
+      { flags: '--diff-context', value: '<0...5>', description: both('Fold a diff to this many unchanged lines around each change.', 'Pliega un diff a esta cantidad de líneas sin cambios alrededor de cada cambio.') },
     ],
   },
   {

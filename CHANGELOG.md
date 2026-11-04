@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- Add an optional stats header to diffs, with the file path, added and removed line counts
+  and a diffstat bar, and a context slider that folds unchanged lines around each change.
+  The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
+  links keep the full patch.
+
 ### Changed
 
 - Require macOS 26 Tahoe or later on Apple silicon. Vitrine 1.3.0 remains the last

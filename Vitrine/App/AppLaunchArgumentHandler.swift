@@ -188,6 +188,7 @@ import VitrineRendering
                 demo.language = .diff
                 demo.windowTitle = "Greeter.swift"
                 demo.diffDecorations = true
+                demo.showDiffStats = true
                 demo.showLineNumbers = true
                 demo.cornerRadius = 16
                 settings.config = demo

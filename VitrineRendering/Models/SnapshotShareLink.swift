@@ -31,6 +31,8 @@ public struct SharedSnapshot: Codable, Equatable {
     var highlightedLineRanges: [ClosedRange<Int>]
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
+    var showDiffStats: Bool
+    var diffContextLines: Int?
     var terminalColumns: Int?
 
     private static let maxAnnotations = 256
@@ -57,6 +59,8 @@ public struct SharedSnapshot: Codable, Equatable {
             config.highlightedLineRanges, lineCount: Self.lineCount(in: code))
         self.focusHighlightedLines = config.focusHighlightedLines
         self.diffDecorations = config.diffDecorations
+        self.showDiffStats = config.showDiffStats
+        self.diffContextLines = config.diffContextLines.map(SettingsDefaults.clampDiffContextLines)
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -76,13 +80,15 @@ public struct SharedSnapshot: Codable, Equatable {
         config.highlightedLineRanges = highlightedLineRanges
         config.focusHighlightedLines = focusHighlightedLines
         config.diffDecorations = diffDecorations
+        config.showDiffStats = showDiffStats
+        config.diffContextLines = diffContextLines
         config.terminalColumns = terminalColumns
     }
 
     private enum CodingKeys: String, CodingKey {
         case version, code, languageID, style, annotations, windowTitle, metadata
         case shadowRadius, highlightedLineRanges, focusHighlightedLines, diffDecorations
-        case terminalColumns, altText
+        case terminalColumns, altText, showDiffStats, diffContextLines
     }
 
     public init(from decoder: Decoder) throws {
@@ -110,6 +116,10 @@ public struct SharedSnapshot: Codable, Equatable {
             (try? container.decode(Bool.self, forKey: .focusHighlightedLines)) ?? false
         diffDecorations =
             (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? false
+        showDiffStats = (try? container.decode(Bool.self, forKey: .showDiffStats)) ?? false
+        diffContextLines =
+            (try? container.decode(Int.self, forKey: .diffContextLines))
+            .map(SettingsDefaults.clampDiffContextLines)
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)

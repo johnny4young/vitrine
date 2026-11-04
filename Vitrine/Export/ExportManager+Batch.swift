@@ -168,6 +168,22 @@ extension ExportManager {
     /// slides bump up to this floor; a user style already at or above it is respected.
     static let carouselMinimumFontSize: Double = 22
 
+    /// One slide's render input. A slide holds a slice of the source, so a diff's stats
+    /// and context fold, which describe the whole patch, do not apply to it.
+    static func carouselSlideConfig(
+        _ baseConfig: SnapshotConfig, slide: CarouselPaginator.Slide
+    ) -> SnapshotConfig {
+        var config = baseConfig
+        config.clearContentMarks()
+        config.code = slide.text
+        config.highlightedLineRanges = slide.localRanges(baseConfig.highlightedLineRanges)
+        config.redactedLineRanges = slide.localRanges(baseConfig.redactedLineRanges)
+        config.fontSize = max(config.fontSize, carouselMinimumFontSize)
+        config.showDiffStats = false
+        config.diffContextLines = nil
+        return config
+    }
+
     /// Renders one slide per page into `directory` as `carousel-01.png` … — the
     /// carousel export. Each slide is `baseConfig` with only its `code`
     /// replaced by that page's lines, rendered at the fixed 4:5 slide frame through
@@ -206,12 +222,7 @@ extension ExportManager {
                     group.addTask { .failed }
                     continue
                 }
-                var config = baseConfig
-                config.clearContentMarks()
-                config.code = slide.text
-                config.highlightedLineRanges = slide.localRanges(baseConfig.highlightedLineRanges)
-                config.redactedLineRanges = slide.localRanges(baseConfig.redactedLineRanges)
-                config.fontSize = max(config.fontSize, carouselMinimumFontSize)
+                let config = carouselSlideConfig(baseConfig, slide: slide)
                 let raster: CGImage?
                 do throws(RenderBudgetError) {
                     raster = try renderCGImageChecked(

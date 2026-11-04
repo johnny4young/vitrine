@@ -173,7 +173,7 @@ struct CLIEntitlementTests: CLITestSupport {
         }
     }
 
-    @Test(arguments: ["--diff-bands", "--no-diff-bands"])
+    @Test(arguments: ["--diff-bands", "--no-diff-bands", "--diff-stats", "--no-diff-stats"])
     func explicitGitRenderStylesStillRejectHandoff(_ flag: String) {
         #expect(
             throws: CLIError.incompatibleOptions(
