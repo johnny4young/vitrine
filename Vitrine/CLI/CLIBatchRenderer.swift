@@ -171,6 +171,7 @@ enum CLIBatchRenderer {
                 backgroundImageReference: background.reference,
                 watermarkLogoData: watermarkLogo?.data)
             config.watermark?.logoImage = watermarkLogo?.image
+            CLIPreflightNotice.report(config, source: file.lastPathComponent)
             do {
                 try FileManager.default.createDirectory(
                     at: outputURL.deletingLastPathComponent(), withIntermediateDirectories: true)

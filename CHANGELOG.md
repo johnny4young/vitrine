@@ -12,6 +12,14 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- Check for likely secrets on this Mac before copying, saving, sharing, or exporting. A
+  clean capture is not interrupted; otherwise choose to redact the flagged lines, continue
+  anyway, or cancel. `vitrine render` and `batch` warn on stderr and leave the output
+  unchanged.
+- Draft alternative text from the document's language, line count, filename, and title.
+
 ### Changed
 
 - Open Web Snapshot on HTML in builds without URL capture, with the reason one click

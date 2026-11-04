@@ -113,7 +113,7 @@ extension EditorView {
                     id: "export.documentation",
                     title: String(localized: "Export for Documentation"), group: group,
                     keywords: ["docs", "package", "markdown", "html"], symbol: "folder"
-                ) { exportSheet = .documentationExport }
+                ) { presentDocumentationExport() }
             case .markdown:
                 EditorCommand(
                     id: "export.markdown", title: VitrineCommand.copyMarkdown.title, group: group,
@@ -151,5 +151,19 @@ enum PaletteExport: CaseIterable {
     static func available(hasRenderableContent: Bool, usesImageContent: Bool) -> [PaletteExport] {
         guard hasRenderableContent else { return [] }
         return usesImageContent ? [.copy, .save, .documentation] : allCases
+    }
+}
+
+extension EditorView {
+    func clearsPreflight(
+        _ action: ExportPreflight.Action, carriesTranscript: Bool = false
+    ) -> Bool {
+        session.presentation.clearsPreflight(
+            of: settings, for: action, carriesTranscript: carriesTranscript)
+    }
+
+    func presentDocumentationExport() {
+        guard clearsPreflight(.export) else { return }
+        exportSheet = .documentationExport
     }
 }

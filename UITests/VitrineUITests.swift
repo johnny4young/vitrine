@@ -1630,6 +1630,56 @@ final class VitrineUITests: XCTestCase {
         XCTAssertEqual(recents.cards.count, 0)
     }
 
+    @MainActor
+    func testExportPreflightAsksBeforeCopyingAndCanCancelOrRedact() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo-secret", "--open-editor"])
+        defer { app.terminate() }
+        assertExists(element("code-editor-text-view", in: app), in: app, timeout: 8)
+        assertHittable("copy-button", in: app, "Copy image is not reachable")
+
+        element("copy-button", in: app).click()
+        let redact = element("export-preflight-redact", in: app)
+        assertExists(redact, in: app, timeout: 5)
+        assertExists(element("export-preflight-anyway", in: app), in: app)
+        assertExists(element("export-preflight-cancel", in: app), in: app)
+
+        app.typeKey(.escape, modifierFlags: [])
+        assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
+        XCTAssertFalse(redact.exists, "Cancel must dismiss the check")
+
+        element("copy-button", in: app).click()
+        assertExists(redact, in: app, timeout: 5)
+        redact.click()
+        let dismissed = NSPredicate(format: "exists == false")
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [XCTNSPredicateExpectation(predicate: dismissed, object: redact)], timeout: 5),
+            .completed)
+    }
+
+    @MainActor
+    func testAlternativeTextDraftFillsAnEmptyFieldOnly() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("inspector-disclosure-output", in: app), in: app, timeout: 8)
+        element("inspector-disclosure-output", in: app).click()
+
+        let draft = element("alternative-text-draft-button", in: app)
+        assertExists(draft, in: app, timeout: 3)
+        draft.click()
+        let field = element("alternative-text-field", in: app)
+        let filled = NSPredicate { _, _ in !((field.value as? String) ?? "").isEmpty }
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [XCTNSPredicateExpectation(predicate: filled, object: nil)], timeout: 3),
+            .completed)
+        XCTAssertFalse(draft.exists, "A filled field must not offer to replace its text")
+    }
+
     // MARK: - Localization smoke
 
     @MainActor

@@ -152,6 +152,8 @@ enum CLIRenderer {
                 backgroundImageReference: background.reference,
                 watermarkLogoData: watermarkLogo?.data)
             config.watermark?.logoImage = watermarkLogo?.image
+            // Every preset carries the same source, so one warning covers them.
+            if outputs.isEmpty { CLIPreflightNotice.report(config) }
             let dimensions = try CLIOutputWriter.renderAndWrite(
                 config, options: presetOptions, backgroundStore: background.store,
                 to: outputURL)
@@ -225,6 +227,7 @@ enum CLIRenderer {
         foregroundStore: BackgroundImageStore,
         pasteboard: NSPasteboard
     ) throws -> String {
+        CLIPreflightNotice.report(config)
         let optionalOutputURL =
             options.outputPath.isEmpty ? nil : URL(fileURLWithPath: options.outputPath)
         if let optionalOutputURL {

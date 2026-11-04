@@ -644,6 +644,12 @@ than the original ANSI stream. An unredacted share link retains the original str
 Manual blur annotations change appearance only: use explicit line redaction or
 `--redact-secrets` when the source must not accompany an export.
 
+**Pre-flight check.** Before a copy, save, share, or export, the app scans the document on
+this Mac. A clean capture is not interrupted; otherwise it names the flagged rows and offers
+redact, continue anyway, or cancel. Quick capture asks before it touches the clipboard. The
+CLI cannot ask, so `render` and `batch` leave the output unchanged and warn on stderr with
+row numbers and kinds, never the matched text. The check reads text, not image pixels.
+
 **Confidential clipboard exports (v1.3.0 and later):** enable **Settings → Export →
 Clipboard → Mark clipboard exports as confidential**, or pass
 `--copy --conceal-clipboard` to the CLI.

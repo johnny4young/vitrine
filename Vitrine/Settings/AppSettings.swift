@@ -231,6 +231,10 @@ final class AppSettings {
         didSet { defaults.set(menuBarNoticeVersion, forKey: Keys.menuBarNoticeVersion) }
     }
 
+    /// Exports this window was told to run anyway, so an unchanged document is asked once
+    /// per destination. Session memory only: never persisted.
+    @ObservationIgnored var acknowledgedPreflights: Set<Int> = []
+
     private let defaults: UserDefaults
 
     /// The Brand Kit and entitlement that resolve the export watermark, injected so
