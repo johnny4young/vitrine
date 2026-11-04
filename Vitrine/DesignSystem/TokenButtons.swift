@@ -149,3 +149,59 @@ struct GlassIconButton: View {
         .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
+
+// MARK: - Menus
+
+extension View {
+    /// For a `Menu` whose label draws its own chrome: a borderless menu flattens that
+    /// label to a tinted glyph, dropping its border and background. Plain chrome has no
+    /// focus ring of its own, so this draws one for Full Keyboard Access.
+    func customLabelMenu(cornerRadius: CGFloat = 9) -> some View {
+        modifier(CustomLabelMenu(cornerRadius: cornerRadius))
+    }
+}
+
+private struct CustomLabelMenu: ViewModifier {
+    let cornerRadius: CGFloat
+
+    @FocusState private var isFocused: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .focused($isFocused)
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .inset(by: -1.5)
+                    .stroke(isFocused ? VitrineTokens.Line.focusRing : .clear, lineWidth: 2)
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
+/// The label of a bordered 30×30 toolbar menu, matching ``GlassIconButton``.
+struct GlassIconMenuLabel: View {
+    let systemImage: String
+
+    @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovered = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(isHovered ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary)
+            .frame(width: 30, height: 30)
+            .overlay(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .strokeBorder(
+                        isHovered ? VitrineTokens.Text.tertiary : VitrineTokens.Line.border,
+                        lineWidth: Brand.Stroke.hairline)
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .opacity(isEnabled ? 1 : 0.4)
+            .onHover { isHovered = $0 }
+            .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
+    }
+}

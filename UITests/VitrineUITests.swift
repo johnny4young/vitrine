@@ -121,6 +121,25 @@ final class VitrineUITests: XCTestCase {
         }
     #endif
 
+    /// One more toolbar control past the condensed width silently collapses the tool row
+    /// into a menu at the size new windows open at.
+    @MainActor
+    func testDefaultWindowKeepsTheWholeToolRow() throws {
+        continueAfterFailure = false
+        try XCTSkipUnless(
+            NSScreen.screens.contains {
+                $0.visibleFrame.width >= 1180 && $0.visibleFrame.height >= 680
+            },
+            "No display fits the default editor window")
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor,
+            environment: ["VITRINE_UI_TEST_EDITOR_VIEWPORT": "1180x680"])
+        defer { app.terminate() }
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        assertHittable("annotation-tool-arrow", in: app, "The tool row must fit the default window")
+        XCTAssertFalse(element("annotation-tool-picker", in: app).exists)
+    }
+
     /// The unlocked value and paywall routing are unit-tested (`EntitlementsTests`,
     /// `EditorExportSheetTests`); this proves the locked toolbar at both widths.
     @MainActor
@@ -189,6 +208,26 @@ final class VitrineUITests: XCTestCase {
             "editor-style-preset-picker", in: app, "Style preset picker is not reachable")
         assertHittable("editor-inspector", in: app, "Inspector is not reachable")
         assertHittable("copy-button", in: app, "Export toolbar copy action is not reachable")
+        assertHittable(
+            "editor-status-capsule", in: app, "The destination menu must be reachable")
+        hittableElement("editor-status-capsule", in: app).click()
+        chooseMenuItem("Docs / Blog", in: app)
+        XCTAssertTrue(
+            app.menuButtons.matching(
+                NSPredicate(
+                    format: "identifier == %@ AND value BEGINSWITH %@", "editor-status-capsule",
+                    "Docs / Blog")
+            ).firstMatch.waitForExistence(timeout: 3),
+            "Choosing a destination must apply it")
+        hittableElement("editor-status-capsule", in: app).click()
+        chooseMenuItem("Custom", in: app)
+        assertHittable(
+            "command-palette-button", in: app, "The command palette button must be reachable")
+        element("command-palette-button", in: app).click()
+        assertExists(element("command-palette-field", in: app), in: app, timeout: 3)
+        // The field takes focus when opened by mouse, so Escape reaches the palette.
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("command-palette", in: app).waitForNonExistence(timeout: 3))
 
         // Advanced controls start behind the collapsed Output disclosure.
         element("inspector-disclosure-output", in: app).click()
@@ -208,6 +247,8 @@ final class VitrineUITests: XCTestCase {
         assertToolbarActionsReachable(
             ["save-button", "share-button", "make-default-button"],
             from: "editor-actions-menu", in: app)
+        // The default window folds these into More, and an open menu swallows the next click.
+        app.typeKey(.escape, modifierFlags: [])
 
         let original = try XCTUnwrap(editor.codeTextView.value as? String)
         let replacement = "struct CurrentPreview {\n    let answer = 42\n}"

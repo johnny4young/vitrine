@@ -17,12 +17,17 @@ can never drift.
 - Bring the main editor's code into a social card with Use editor code.
 - Show a social card's empty code and footer slots in the preview, and its output size
   under it. Empty slots are never exported.
+- Open the command palette from a toolbar button, and change the destination directly
+  from the editor's status capsule.
+- Show the ⌘1…⌘0 shortcuts on the annotation tools in the title bar, in shortcut order.
 - Edit a comparison board's captions by clicking them on the board.
 - Choose a comparison board's size (Auto, 16:10, OG 1200 × 630, Square), gap, background
   (including transparent), and a generated footer line.
 
 ### Changed
 
+- Move Pin snapshot and Make This Window the Default into the toolbar's More menu until
+  the window is wide enough for every action.
 - Open Web Snapshot on HTML in builds without URL capture, with the reason one click
   away.
 - Summarize Web Snapshot's capture options in their header, move their long

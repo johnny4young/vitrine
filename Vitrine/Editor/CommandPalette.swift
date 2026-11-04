@@ -171,8 +171,10 @@ struct CommandPaletteView: View {
         .accessibilityIdentifier("command-palette")
         .accessibilityAddTraits(.isModal)
         .accessibilityAction(.escape) { dismiss() }
-        .onAppear {
-            selection = 0
+        .onAppear { selection = 0 }
+        // A focus request made as the field appears is dropped, so yield to let it install.
+        .task {
+            await Task.yield()
             fieldFocused = true
         }
         // Clamp the selection whenever the result set shrinks under the cursor.
