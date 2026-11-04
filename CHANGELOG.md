@@ -14,18 +14,22 @@ can never drift.
 
 ### Added
 
+- Open the command palette from a toolbar button, and change the destination directly
+  from the editor's status capsule.
+- Show the ⌘1…⌘0 shortcuts on the annotation tools in the title bar, in shortcut order.
 - Edit a comparison board's captions by clicking them on the board.
 - Choose a comparison board's size (Auto, 16:10, OG 1200 × 630, Square), gap, background
   (including transparent), and a generated footer line.
 
 ### Changed
 
+- Move Pin snapshot and Make This Window the Default into the toolbar's More menu until
+  the window is wide enough for every action.
 - Open Web Snapshot on HTML in builds without URL capture, with the reason one click
   away.
 - Summarize Web Snapshot's capture options in their header, move their long
   explanations behind info buttons, and link to the defaults in Settings ▸ Input.
 - Show each Web Snapshot viewport chip's size.
-
 - Require macOS 26 Tahoe or later on Apple silicon. Vitrine 1.3.0 remains the last
   release for macOS 15 Sequoia and Intel Macs, and Sparkle no longer offers those Macs
   newer updates.

@@ -346,6 +346,9 @@ struct AppMenuTests {
         #expect(arrow?.keyEquivalentModifierMask == [.command])
         #expect(arrow?.target === menuController.editorCommands)
         #expect(arrow?.representedObject as? String == AnnotationTool.arrow.rawValue)
+        // The submenu reads in the toolbar's shortcut order.
+        let digits = tools?.items.map(\.keyEquivalent).filter { !$0.isEmpty }
+        #expect(digits == "1234567890".map(String.init))
     }
 
     @Test func selectedMarkActionsUseTheAppKitMenuShortcutPath() {

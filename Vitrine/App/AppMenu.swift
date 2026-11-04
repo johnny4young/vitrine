@@ -284,7 +284,7 @@ final class AppMenu {
             title: String(localized: "Annotation Tool"), action: nil, keyEquivalent: "")
         annotationToolsItem.setAccessibilityIdentifier("menu-annotation-tools")
         let annotationToolsMenu = NSMenu(title: String(localized: "Annotation Tool"))
-        for tool in AnnotationTool.allCases {
+        for tool in AnnotationTool.toolbarOrder {
             let item = NSMenuItem(
                 title: tool.localizedTitle,
                 action: #selector(EditorCommandResponder.selectAnnotationTool(_:)),

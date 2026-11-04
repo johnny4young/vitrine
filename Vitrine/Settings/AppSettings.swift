@@ -478,6 +478,21 @@ final class AppSettings {
     /// current style is left exactly as-is.
     func clearPreset() { selectedPresetID = nil }
 
+    /// The destination as an optional preset id, shared by every surface that picks one.
+    /// `nil` is "Custom".
+    var destinationSelection: Binding<String?> {
+        Binding(
+            get: { self.selectedPresetID },
+            set: { id in
+                if let preset = ExportPreset.preset(withID: id) {
+                    self.selectPreset(preset)
+                } else {
+                    self.clearPreset()
+                }
+            }
+        )
+    }
+
     // MARK: - Style presets
 
     /// Applies a saved style preset to the live config, writing only presentation

@@ -188,6 +188,50 @@
         }
       }
     },
+    "This build has no network access, so it can't load a page. HTML rendering works here." : {
+      "comment" : "Web Snapshot: URL-mode unavailable note.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versión no tiene acceso a la red, así que no puede cargar una página. El renderizado de HTML sí funciona aquí."
+          }
+        }
+      }
+    },
+    "Choose a destination preset" : {
+      "comment" : "Editor status capsule tooltip: opens the destination menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un destino predefinido"
+          }
+        }
+      }
+    },
+    "Command palette" : {
+      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos"
+          }
+        }
+      }
+    },
+    "Command palette (⌘K)" : {
+      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos (⌘K)"
+          }
+        }
+      }
+    },
     "panel.prompt.export" : {
       "comment" : "Save and folder panel button that exports (a verb, unlike the Export pane title).",
       "extractionState" : "manual",
@@ -10280,17 +10324,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fuente"
-          }
-        }
-      }
-    },
-    "This build has no network access, so it can't load a page. HTML rendering works here." : {
-      "comment" : "Web Snapshot: URL-mode unavailable note.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta versión no tiene acceso a la red, así que no puede cargar una página. El renderizado de HTML sí funciona aquí."
           }
         }
       }
