@@ -42,7 +42,7 @@ struct SocialCardEditorView: View {
         .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 860, minHeight: 560)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
     }
 
     private var card: SocialCardModel { settings.socialCard }
@@ -249,7 +249,7 @@ private struct SocialCardInspector: View {
                 .fill(VitrineTokens.Line.border)
                 .frame(width: Brand.Stroke.hairline)
         }
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("social-card-inspector")

@@ -192,7 +192,7 @@ struct EditorView: View {
     // Split so each part type-checks quickly on older compilers.
     var body: some View {
         withDialogs(withEvents(editorLayout))
-            .tint(VitrineTokens.Accent.system)
+            .tint(VitrineTokens.Accent.systemText)
     }
 
     /// The editor's columns and window-level chrome.

@@ -149,3 +149,14 @@ struct GlassIconButton: View {
         .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }
+
+// MARK: - Prominent actions
+
+extension View {
+    /// The filled system button on a fill its white label stays readable on. It cannot
+    /// share `Accent.systemText`, which lightens in dark appearance.
+    func accentProminentButtonStyle() -> some View {
+        buttonStyle(.borderedProminent)
+            .tint(VitrineTokens.Accent.systemProminentFill)
+    }
+}

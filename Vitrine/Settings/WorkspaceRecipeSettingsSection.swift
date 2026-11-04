@@ -44,7 +44,7 @@ struct WorkspaceRecipeSettingsSection: View {
             ) {
                 HStack(spacing: VitrineTokens.Spacing.xs) {
                     Button("Add…", action: addAssociation)
-                        .buttonStyle(.borderedProminent)
+                        .accentProminentButtonStyle()
                         .help("Choose one folder and one existing Vitrine recipe file.")
                         .accessibilityIdentifier("add-workspace-recipe-button")
                     Button("Apply to Default", action: applySelected)

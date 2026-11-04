@@ -166,7 +166,7 @@ struct BrandKitSettingsSection: View {
                 } label: {
                     Text("Unlock Vitrine PRO")
                 }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .accessibilityIdentifier("brand-kit-unlock-button")
             }
             .padding(.vertical, 6)

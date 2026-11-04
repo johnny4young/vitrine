@@ -69,7 +69,7 @@ struct HelpView: View {
         .frame(width: 520)
         .frame(minHeight: 560)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityIdentifier("help-view")
     }
 
@@ -171,7 +171,7 @@ struct HelpView: View {
             }
             Spacer()
             Button("Done") { onDismiss() }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .keyboardShortcut(.defaultAction)
                 .help("Close Help")
                 .accessibilityIdentifier("help-done-button")

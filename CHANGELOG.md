@@ -20,6 +20,9 @@ can never drift.
 
 ### Fixed
 
+- Keep accent-tinted buttons readable with bright macOS accent colors, in light and
+  dark appearance.
+- Draw Reset All Settings in red, so it no longer looks like a routine action.
 - Keep the editor preview's accessible text in sync when the source changes.
 - Preserve the selected code font and size in styled syntax tokens, including
   comments and Markdown emphasis in carousel and image exports.

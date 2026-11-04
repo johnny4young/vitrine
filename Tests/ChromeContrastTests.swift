@@ -10,6 +10,42 @@ struct ChromeContrastTests {
     @Test(arguments: [
         NSAppearance.Name.aqua, .darkAqua,
     ])
+    func brightSystemAccentsReadAsTextOnASettingsGroup(_ name: NSAppearance.Name) throws {
+        let appearance = try #require(NSAppearance(named: name))
+        appearance.performAsCurrentDrawingAppearance {
+            let group = VitrineTokens.Accent.composite(
+                NSColor(VitrineTokens.Chrome.tile), over: NSColor(VitrineTokens.Surface.window))
+            for accent: NSColor in [
+                .systemGreen, .systemYellow, .systemOrange, .systemPink, .systemTeal, .systemGray,
+            ] {
+                let text = VitrineTokens.Accent.legibleText(accent: accent, on: group)
+                let ratio = Brand.Contrast.ratio(Color(nsColor: text), on: Color(nsColor: group))
+                #expect(
+                    ratio >= Brand.Contrast.aaNormal, "\(accent): \(ratio):1 in \(name.rawValue)")
+            }
+        }
+    }
+
+    @Test(arguments: [
+        NSAppearance.Name.aqua, .darkAqua,
+    ])
+    func whiteProminentLabelReadsOnTheFill(_ name: NSAppearance.Name) throws {
+        let appearance = try #require(NSAppearance(named: name))
+        appearance.performAsCurrentDrawingAppearance {
+            let ratio = Brand.Contrast.ratio(.white, on: VitrineTokens.Accent.systemProminentFill)
+            #expect(ratio >= Brand.Contrast.aaNormal, "\(ratio):1 in \(name.rawValue)")
+        }
+    }
+
+    @Test func anAccentThatAlreadyReadsStaysUnchanged() {
+        let accent = NSColor(srgbRed: 0.1, green: 0.1, blue: 0.5, alpha: 1)
+        let text = VitrineTokens.Accent.legibleText(accent: accent, on: .white)
+        #expect(text == accent)
+    }
+
+    @Test(arguments: [
+        NSAppearance.Name.aqua, .darkAqua,
+    ])
     func normalSizeChromeLabelsMeetAA(_ name: NSAppearance.Name) throws {
         let appearance = try #require(NSAppearance(named: name))
         appearance.performAsCurrentDrawingAppearance {
@@ -97,13 +133,18 @@ struct ChromeContrastTests {
     }
 
     /// SwiftUI's display-link renderer resolves dynamic colors off the main thread.
-    @Test func selectedAccentLabelResolvesOffTheMainThread() async {
-        let label = NSColor(VitrineTokens.Accent.systemContrast)
-        let resolved = await Task.detached {
-            (offMain: pthread_main_np() == 0, color: label.usingColorSpace(.sRGB))
-        }.value
-        #expect(resolved.offMain)
-        #expect(resolved.color != nil)
+    @Test func accentColorsResolveOffTheMainThread() async {
+        for color in [
+            VitrineTokens.Accent.systemContrast, VitrineTokens.Accent.systemText,
+            VitrineTokens.Accent.systemProminentFill,
+        ] {
+            let label = NSColor(color)
+            let resolved = await Task.detached {
+                (offMain: pthread_main_np() == 0, color: label.usingColorSpace(.sRGB))
+            }.value
+            #expect(resolved.offMain)
+            #expect(resolved.color != nil)
+        }
     }
 
     @Test

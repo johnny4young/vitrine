@@ -89,7 +89,7 @@ struct StylePresetsSection: View {
                         saveName = settings.config.theme.displayName
                         showSavePrompt = true
                     }
-                    .buttonStyle(.borderedProminent)
+                    .accentProminentButtonStyle()
                     .help("Save the default style as a new named preset you can reuse.")
                     .accessibilityIdentifier("save-style-preset-button")
 
@@ -372,7 +372,7 @@ struct CustomThemesSection: View {
     private var themeActionButtons: some View {
         HStack(spacing: VitrineTokens.Spacing.xs) {
             Button("New Theme…") { editorDraft = CustomThemeDraft() }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .help("Create a custom syntax theme with a live preview.")
                 .accessibilityIdentifier("new-custom-theme-button")
 

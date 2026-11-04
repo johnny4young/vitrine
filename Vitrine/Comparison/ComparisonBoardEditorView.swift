@@ -32,7 +32,7 @@ struct ComparisonBoardEditorView: View {
         .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 860, minHeight: 560)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .task(id: draft.previewKey(profile: settings.export.colorProfile)) {
             await preview.refresh(isValid: draft.isValid) {
                 try draft.compose(

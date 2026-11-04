@@ -74,6 +74,76 @@ enum VitrineTokens {
             }
         }
 
+        /// The tint for control labels and fills: the system accent, stepped toward
+        /// the appearance's text color only as far as 4.5:1 on a settings group needs.
+        /// A bright macOS accent such as green otherwise measures about 2.3:1 as text.
+        static let systemText = Color(
+            nsColor: NSColor(
+                name: nil,
+                dynamicProvider: systemTextProvider(
+                    brand: base, window: Surface.window, group: Chrome.tile)))
+
+        /// The fill for `.borderedProminent`, whose label AppKit always draws white: the
+        /// system accent, darkened only as far as that label needs.
+        static let systemProminentFill = Color(
+            nsColor: NSColor(name: nil, dynamicProvider: systemProminentFillProvider(brand: base)))
+
+        private nonisolated static func systemProminentFillProvider(
+            brand: Color
+        ) -> @Sendable (NSAppearance) -> NSColor {
+            { appearance in
+                var fill = NSColor.black
+                appearance.performAsCurrentDrawingAppearance {
+                    fill = legibleText(accent: NSColor(system(brand: brand)), on: .white)
+                }
+                return fill
+            }
+        }
+
+        private nonisolated static func systemTextProvider(
+            brand: Color, window: Color, group: Color
+        ) -> @Sendable (NSAppearance) -> NSColor {
+            { appearance in
+                var label = NSColor.black
+                appearance.performAsCurrentDrawingAppearance {
+                    label = legibleText(
+                        accent: NSColor(system(brand: brand)),
+                        on: composite(NSColor(group), over: NSColor(window)))
+                }
+                return label
+            }
+        }
+
+        /// `accent` unchanged when it already reads on `background`, otherwise the
+        /// smallest step toward black or white that does.
+        nonisolated static func legibleText(accent: NSColor, on background: NSColor) -> NSColor {
+            let accent = accent.usingColorSpace(.sRGB) ?? accent
+            let backdrop = Color(nsColor: background)
+            let target: NSColor = Text.readable(on: backdrop) == .black ? .black : .white
+            func reads(_ color: NSColor) -> Bool {
+                Brand.Contrast.ratio(Color(nsColor: color), on: backdrop) >= Brand.Contrast.aaNormal
+            }
+            if reads(accent) { return accent }
+            for step in 1...20 {
+                let candidate =
+                    accent.blended(withFraction: Double(step) / 20, of: target) ?? accent
+                if reads(candidate) { return candidate }
+            }
+            return target
+        }
+
+        /// The opaque sRGB result of drawing translucent `top` over `bottom`.
+        nonisolated static func composite(_ top: NSColor, over bottom: NSColor) -> NSColor {
+            guard let top = top.usingColorSpace(.sRGB), let bottom = bottom.usingColorSpace(.sRGB)
+            else { return bottom }
+            let alpha = top.alphaComponent
+            return NSColor(
+                srgbRed: top.redComponent * alpha + bottom.redComponent * (1 - alpha),
+                green: top.greenComponent * alpha + bottom.greenComponent * (1 - alpha),
+                blue: top.blueComponent * alpha + bottom.blueComponent * (1 - alpha),
+                alpha: 1)
+        }
+
         /// `--accent-secondary` — the gradient's far stop (re-exported).
         static let secondary = Brand.Palette.accentSecondary.color
         /// `--accent-contrast` — text and glyphs over accent fills.

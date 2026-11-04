@@ -46,7 +46,7 @@ struct MenuBarContent: View {
         .frame(width: 340)
         // Controls follow the user's macOS accent; `Color.accentColor` is the app's
         // brand asset in this repo, so force the AppKit system token.
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityContainerIdentifier("menubar-panel")
         .onExitCommand {
             dismiss()
