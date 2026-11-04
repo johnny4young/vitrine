@@ -101,6 +101,7 @@ struct ExportSheetScaffold<Body: View>: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(confirmDisabled)
                 .accessibilityIdentifier(confirmIdentifier)
+                .keyboardShortcut(.return, modifiers: .command)
         }
     }
 }

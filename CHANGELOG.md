@@ -12,6 +12,13 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- Carousel export can move slide breaks to nearby blank lines, keep line numbers
+  continuous across slides, and draw a page badge and a "continues →" cue on each slide.
+  The sheet shows the folder, the file names and an estimated size before anything is
+  written, and ⌘⏎ confirms it and the multi-size sheet.
+
 ### Changed
 
 - Require macOS 26 Tahoe or later on Apple silicon. Vitrine 1.3.0 remains the last

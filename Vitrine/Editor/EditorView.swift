@@ -288,6 +288,10 @@ struct EditorView: View {
                 if ProcessInfo.processInfo.arguments.contains("--open-command-palette") {
                     showCommandPalette = true
                 }
+                // Same gate as the toolbar button: without PRO this opens the paywall.
+                if ProcessInfo.processInfo.arguments.contains("--open-carousel-export") {
+                    presentCarouselExport()
+                }
             }
     }
 
