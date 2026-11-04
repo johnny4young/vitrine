@@ -28,13 +28,23 @@ public struct SocialCardCanvas: View {
     /// card; a caller can override it for a different fixed destination.
     public var size: CGSize = SocialCardModel.defaultSize
 
-    public init(model: SocialCardModel, size: CGSize = SocialCardModel.defaultSize) {
+    /// Labels for dashed placeholders over the slots the template offers but the model
+    /// leaves empty. Preview-only: the export paths leave this `nil`, so an empty slot
+    /// never reaches an image.
+    public var emptySlotLabels: (code: String, footer: String)?
+
+    public init(
+        model: SocialCardModel, size: CGSize = SocialCardModel.defaultSize,
+        emptySlotLabels: (code: String, footer: String)? = nil
+    ) {
         self.model = model
         self.size = size
+        self.emptySlotLabels = emptySlotLabels
     }
 
     public var body: some View {
         content
+            .background(alignment: .bottom) { emptyFooterSlot }
             .padding(Self.framePadding)
             .frame(width: size.width, height: size.height, alignment: .topLeading)
             .background(BackgroundView(style: model.background))
@@ -66,6 +76,8 @@ public struct SocialCardCanvas: View {
             if model.template.showsCode, !model.codeExcerpt.isEmpty {
                 codePanel
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            } else if let label = emptySlotLabels?.code, model.template.showsCode {
+                emptySlot(label).padding(.bottom, emptyCodeSlotInset)
             } else {
                 Spacer(minLength: 0)
             }
@@ -82,6 +94,8 @@ public struct SocialCardCanvas: View {
             if model.template.showsCode, !model.codeExcerpt.isEmpty {
                 codePanel
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            } else if let label = emptySlotLabels?.code, model.template.showsCode {
+                emptySlot(label).padding(.bottom, emptyCodeSlotInset)
             } else {
                 Spacer(minLength: 0)
             }
@@ -150,6 +164,40 @@ public struct SocialCardCanvas: View {
                         Brand.Palette.exportedCardBorder, lineWidth: Brand.Stroke.hairline)
             )
             .brandShadow(Brand.Shadow.elevated)
+    }
+
+    /// A dashed outline naming a slot the card can fill. The dimming keeps it legible on
+    /// bright gradient stops and images, whose luminance the canvas cannot classify.
+    private func emptySlot(_ label: String) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Brand.Radius.lg, style: .continuous)
+        return Text(verbatim: label)
+            .font(.system(size: 32, weight: .medium))
+            .foregroundStyle(onBackgroundPrimary)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(backgroundIsLight ? .clear : .black.opacity(0.55), in: shape)
+            .overlay(
+                shape.strokeBorder(
+                    onBackgroundPrimary, style: StrokeStyle(lineWidth: 2, dash: [8, 6]))
+            )
+            .accessibilityHidden(true)
+    }
+
+    /// Drawn behind the composition, not in its stack, so real content keeps the position
+    /// it has in the export and stays on top.
+    @ViewBuilder
+    private var emptyFooterSlot: some View {
+        if !model.hasFooter, let label = emptySlotLabels?.footer {
+            emptySlot(label).frame(height: Self.emptyFooterSlotHeight)
+        }
+    }
+
+    private static let emptyFooterSlotHeight: CGFloat = 64
+
+    /// Keeps an empty code slot clear of the empty footer slot behind it.
+    private var emptyCodeSlotInset: CGFloat {
+        model.hasFooter ? 0 : Self.emptyFooterSlotHeight + Brand.Spacing.md
     }
 
     /// The footer: an author/handle and/or a project name, shown only when at least
