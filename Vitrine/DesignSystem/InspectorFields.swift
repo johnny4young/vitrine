@@ -52,7 +52,7 @@ struct InspectorTextField: View {
 /// faded placeholder shown over an empty field.
 struct InspectorCodeField: View {
     @Binding var text: String
-    /// The faded placeholder, shown verbatim (it is example code, never localized).
+    /// The faded placeholder, shown verbatim.
     var placeholder: String
     var height: CGFloat = 120
 
