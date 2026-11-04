@@ -1,4 +1,5 @@
 import AppKit
+import VitrineDomain
 import VitrineRendering
 
 /// Routes editor actions to app-owned presentation surfaces without exposing their
@@ -34,22 +35,37 @@ struct EditorPresentation {
     /// dialog, and only an explicit choice can add redactions to the export.
     func clearsPreflight(
         of settings: AppSettings, for action: ExportPreflight.Action,
-        carriesTranscript: Bool = false
+        delivering payload: ExportPreflight.Payload
     ) -> Bool {
-        let report = ExportPreflight(settings.config, carriesTranscript: carriesTranscript)
-        guard !report.isClean else { return true }
-        let acknowledgement = report.acknowledgement(for: action)
-        guard !settings.acknowledgedPreflights.contains(acknowledgement) else { return true }
-        switch resolvePreflight(report, action) {
-        case .cancel:
-            return false
-        case .redact:
-            settings.style.redactedLineRanges = report.redactions(
-                adding: settings.style.redactedLineRanges)
-        case .proceed:
-            settings.acknowledgedPreflights.insert(acknowledgement)
+        while true {
+            let report = ExportPreflight(settings.config, payload: payload)
+            guard !report.isClean else { return true }
+            let acknowledgement = report.acknowledgement(for: action)
+            guard !settings.acknowledgedPreflights.contains(acknowledgement) else { return true }
+            let choice = resolvePreflight(report, action)
+            if choice == .cancel { return false }
+            // A format finishing behind the dialog can move rows, and the answer only covers
+            // what was shown, so a changed document is asked about again.
+            let current = ExportPreflight(settings.config, payload: payload)
+            guard current.acknowledgement(for: action) == acknowledgement else { continue }
+            if choice == .redact {
+                settings.style.redactedLineRanges = report.redactions(
+                    adding: settings.style.redactedLineRanges)
+            } else {
+                settings.acknowledgedPreflights.insert(acknowledgement)
+            }
+            return true
         }
-        return true
+    }
+
+    /// A file or pasteboard item with text riders exposes more than its pixels.
+    static func copyPayload(of settings: AppSettings) -> ExportPreflight.Payload {
+        settings.export.richClipboard || settings.export.textSidecar ? .text : .image
+    }
+
+    /// A PDF keeps its text selectable; bitmap formats hold pixels only.
+    static func savePayload(of settings: AppSettings) -> ExportPreflight.Payload {
+        settings.export.format == .pdf ? .text : .image
     }
 
     static let live = EditorPresentation(

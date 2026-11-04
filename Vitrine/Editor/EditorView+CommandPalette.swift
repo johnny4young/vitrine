@@ -156,14 +156,13 @@ enum PaletteExport: CaseIterable {
 
 extension EditorView {
     func clearsPreflight(
-        _ action: ExportPreflight.Action, carriesTranscript: Bool = false
+        _ action: ExportPreflight.Action, _ payload: ExportPreflight.Payload
     ) -> Bool {
-        session.presentation.clearsPreflight(
-            of: settings, for: action, carriesTranscript: carriesTranscript)
+        session.presentation.clearsPreflight(of: settings, for: action, delivering: payload)
     }
 
     func presentDocumentationExport() {
-        guard clearsPreflight(.export) else { return }
+        guard clearsPreflight(.export, .text) else { return }
         exportSheet = .documentationExport
     }
 }

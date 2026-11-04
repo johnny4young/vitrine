@@ -16,13 +16,11 @@ enum ExportPreflightPrompt {
         _ report: ExportPreflight, action: ExportPreflight.Action
     ) -> Choice {
         let alert = makeAlert(report, action: action)
-        // A global hotkey runs this with another app frontmost: open above it, then hand
-        // focus back so the next paste lands there.
-        let previous = AppActivation.frontmostOtherApplication()
+        // A global hotkey runs this with another app frontmost, so open above it. The caller
+        // returns focus once every prompt and save panel of the capture is done.
         AppActivation.bringForward()
         alert.window.level = .modalPanel
         let response = alert.runModal()
-        AppActivation.restoreFocus(to: previous)
         return choice(for: response, canRedact: !report.redactableLines.isEmpty)
     }
 
@@ -32,7 +30,7 @@ enum ExportPreflightPrompt {
         alert.messageText = String(localized: "This capture may contain secrets")
         alert.informativeText =
             rows(for: report).joined(separator: "\n") + "\n\n"
-            + String(localized: "Checked on this Mac. Detection is not exhaustive.")
+            + String(localized: "Detection is not exhaustive.")
         let cancel = String(localized: "Cancel")
         let anyway = anywayTitle(for: action)
         if report.redactableLines.isEmpty {
@@ -80,8 +78,8 @@ enum ExportPreflightPrompt {
             return String(localized: "Line \(range.lowerBound): \(name)")
         case .lines(let range):
             return String(localized: "Lines \(range.lowerBound)–\(range.upperBound): \(name)")
-        case .terminalHistory:
-            return String(localized: "Earlier terminal output, can't be redacted: \(name)")
+        case .terminalTranscript:
+            return String(localized: "Full terminal transcript: \(name)")
         case .label:
             return String(localized: "Header or annotation text, can't be redacted: \(name)")
         }
@@ -107,6 +105,7 @@ enum ExportPreflightPrompt {
         switch action {
         case .copy: String(localized: "Redact \(count) and copy")
         case .save: String(localized: "Redact \(count) and save")
+        case .copyAndSave: String(localized: "Redact \(count), copy and save")
         case .share: String(localized: "Redact \(count) and share")
         case .export: String(localized: "Redact \(count) and export")
         }
@@ -116,6 +115,7 @@ enum ExportPreflightPrompt {
         switch action {
         case .copy: String(localized: "Copy anyway")
         case .save: String(localized: "Save anyway")
+        case .copyAndSave: String(localized: "Copy and save anyway")
         case .share: String(localized: "Share anyway")
         case .export: String(localized: "Export anyway")
         }

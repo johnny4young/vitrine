@@ -1647,16 +1647,12 @@ final class VitrineUITests: XCTestCase {
 
         app.typeKey(.escape, modifierFlags: [])
         assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
-        XCTAssertFalse(redact.exists, "Cancel must dismiss the check")
+        XCTAssertTrue(redact.waitForNonExistence(timeout: 3), "Cancel must dismiss the check")
 
         element("copy-button", in: app).click()
         assertExists(redact, in: app, timeout: 5)
         redact.click()
-        let dismissed = NSPredicate(format: "exists == false")
-        XCTAssertEqual(
-            XCTWaiter.wait(
-                for: [XCTNSPredicateExpectation(predicate: dismissed, object: redact)], timeout: 5),
-            .completed)
+        XCTAssertTrue(redact.waitForNonExistence(timeout: 5), "Redact must dismiss the check")
     }
 
     @MainActor
@@ -1677,7 +1673,9 @@ final class VitrineUITests: XCTestCase {
             XCTWaiter.wait(
                 for: [XCTNSPredicateExpectation(predicate: filled, object: nil)], timeout: 3),
             .completed)
-        XCTAssertFalse(draft.exists, "A filled field must not offer to replace its text")
+        XCTAssertTrue(
+            draft.waitForNonExistence(timeout: 3),
+            "A filled field must not offer to replace its text")
     }
 
     // MARK: - Localization smoke

@@ -102,7 +102,10 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     func copyImage(
         from settings: AppSettings, editorWindow: NSWindow?, pasteboard: NSPasteboard = .general
     ) -> Task<Void, Never>? {
-        guard presentation.clearsPreflight(of: settings, for: .copy) else { return nil }
+        guard
+            presentation.clearsPreflight(
+                of: settings, for: .copy, delivering: EditorPresentation.copyPayload(of: settings))
+        else { return nil }
         let outcome = RenderedImageCopy.copy(
             settings.exportConfig, settings: settings, pasteboard: pasteboard)
         feedback(ExportFeedback.copyOutcome(outcome))
@@ -118,7 +121,10 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     @objc func saveRenderedImage(_ sender: Any?) {
         guard canPerform(.saveImage) else { return }
         let settings = activeSettings
-        guard presentation.clearsPreflight(of: settings, for: .save) else { return }
+        guard
+            presentation.clearsPreflight(
+                of: settings, for: .save, delivering: EditorPresentation.savePayload(of: settings))
+        else { return }
         let outcome = ExportManager.saveToFile(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             format: settings.export.format, fixedSize: settings.effectiveFixedSize,
@@ -133,7 +139,9 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         guard canPerform(.shareImage),
             let view = (NSApp.keyWindow ?? NSApp.mainWindow)?.contentView
         else { return }
-        guard presentation.clearsPreflight(of: settings, for: .share) else { return }
+        guard presentation.clearsPreflight(of: settings, for: .share, delivering: .image) else {
+            return
+        }
         do {
             let image = try ExportManager.renderNSImageChecked(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),

@@ -5,14 +5,14 @@ import VitrineRendering
 /// names rows and rule kinds, never the matched text, and does not change the exit status.
 enum CLIPreflightNotice {
     static func message(for config: SnapshotConfig, source: String? = nil) -> String? {
-        let report = ExportPreflight(config)
+        let report = ExportPreflight(config, payload: .text)
         guard !report.isClean else { return nil }
         let places = report.findings.map { finding in
             let place: String
             switch finding.location {
             case .lines(let range) where range.count == 1: place = "line \(range.lowerBound)"
             case .lines(let range): place = "lines \(range.lowerBound)-\(range.upperBound)"
-            case .terminalHistory: place = "terminal history"
+            case .terminalTranscript: place = "terminal transcript"
             case .label: place = "header or annotation text"
             }
             return "\(place) (\(finding.kind))"

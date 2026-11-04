@@ -1,6 +1,50 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Detection is not exhaustive." : {
+      "comment" : "Export pre-flight dialog: the limit of the scan.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La detección no es exhaustiva."
+          }
+        }
+      }
+    },
+    "Full terminal transcript: %@" : {
+      "comment" : "Export pre-flight finding in the raw terminal transcript a share link keeps.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcripción completa de la terminal: %@"
+          }
+        }
+      }
+    },
+    "Redact %lld, copy and save" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then copy and save.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld, copiar y guardar"
+          }
+        }
+      }
+    },
+    "Copy and save anyway" : {
+      "comment" : "Export pre-flight button: copy and save without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar y guardar de todos modos"
+          }
+        }
+      }
+    },
     "This capture may contain secrets" : {
       "comment" : "Export pre-flight dialog title.",
       "localizations" : {
@@ -8,17 +52,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Esta captura podría contener secretos"
-          }
-        }
-      }
-    },
-    "Checked on this Mac. Detection is not exhaustive." : {
-      "comment" : "Export pre-flight dialog: where the scan ran and its limit.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Revisado en esta Mac. La detección no es exhaustiva."
           }
         }
       }
@@ -52,17 +85,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Líneas %lld–%lld: %@"
-          }
-        }
-      }
-    },
-    "Earlier terminal output, can't be redacted: %@" : {
-      "comment" : "Export pre-flight finding in terminal output that is no longer on screen.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Salida anterior de la terminal, no se puede ocultar: %@"
           }
         }
       }

@@ -123,9 +123,11 @@ enum QuickCapture {
         // leaves the app, and history keeps its own consent below.
         let behavior = settings.outputBehavior
         if let preflight, behavior.autoCopy || behavior.alsoSaveToFile {
-            let report = ExportPreflight(config)
+            let report = ExportPreflight(config, payload: .text)
             if !report.isClean {
-                switch preflight(report, behavior.autoCopy ? .copy : .save) {
+                let action: ExportPreflight.Action =
+                    behavior.autoCopy ? (behavior.alsoSaveToFile ? .copyAndSave : .copy) : .save
+                switch preflight(report, action) {
                 case .cancel:
                     return .nonProducing(.cancelled)
                 case .redact:
@@ -393,12 +395,18 @@ enum QuickCapture {
             return
         }
 
+        let focus = PromptFocus(returningTo: AppActivation.frontmostOtherApplication())
         let result = capture(
             settings: settings,
             recents: recents,
             destinationPreset: destinationPreset,
-            historyConsent: HistoryConsentPrompt.resolve,
-            preflight: ExportPreflightPrompt.resolve)
+            historyConsent: { decision in
+                focus.asking { HistoryConsentPrompt.resolve(decision) }
+            },
+            preflight: { report, action in
+                focus.asking { ExportPreflightPrompt.resolve(report, action: action) }
+            })
+        focus.finish()
         switch result.outcome {
         case .deferredToEditor:
             if let document = result.editorDocument {

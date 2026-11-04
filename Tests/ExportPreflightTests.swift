@@ -20,15 +20,18 @@ private func codeConfig(_ code: String) -> SnapshotConfig {
 @Suite("Export pre-flight report")
 struct ExportPreflightReportTests {
     @Test func cleanDocumentsHaveNothingToFlag() {
-        #expect(ExportPreflight(codeConfig("let answer = 42")).isClean)
+        #expect(ExportPreflight(codeConfig("let answer = 42"), payload: .image).isClean)
         var image = codeConfig("let hidden = \"\(token)\"")
         image.foregroundImage = ImageReference(fileName: "a.png")
-        #expect(ExportPreflight(image).isClean, "Hidden source is not part of an image export")
+        #expect(
+            ExportPreflight(image, payload: .image).isClean,
+            "Hidden source is not part of an image export")
     }
 
     @Test func namesRowsAndKindsAndNeverTheMatchedText() {
         let report = ExportPreflight(
-            codeConfig("let a = 1\nlet b = \"\(token)\"\nlet c = \"\(awsKey)\""))
+            codeConfig("let a = 1\nlet b = \"\(token)\"\nlet c = \"\(awsKey)\""),
+            payload: .image)
         #expect(report.redactableLines == [2, 3])
         #expect(
             report.findings.contains { $0.location == .lines(2...2) && $0.kind == "github-token" })
@@ -44,7 +47,8 @@ struct ExportPreflightReportTests {
             "-----BEGIN RSA PRIVATE " + "KEY-----", "bWF0ZXJpYWw=", "bW9yZQ==",
             "-----END RSA PRIVATE " + "KEY-----",
         ]
-        let report = ExportPreflight(codeConfig((["let a = 1"] + pem).joined(separator: "\n")))
+        let report = ExportPreflight(
+            codeConfig((["let a = 1"] + pem).joined(separator: "\n")), payload: .image)
         #expect(report.findings == [.init(location: .lines(2...5), kind: "private-key")])
         #expect(report.redactableLines == [2, 3, 4, 5])
         #expect(report.redactions(adding: []) == [2...5])
@@ -54,19 +58,19 @@ struct ExportPreflightReportTests {
         var config = codeConfig(
             ["-----BEGIN RSA PRIVATE " + "KEY-----", "bWF0ZXJpYWw="].joined(separator: "\n"))
         config.redactedLineRanges = [1...1]
-        #expect(ExportPreflight(config).redactableLines == [2])
+        #expect(ExportPreflight(config, payload: .image).redactableLines == [2])
         config.redactedLineRanges = [1...2]
-        #expect(ExportPreflight(config).isClean)
+        #expect(ExportPreflight(config, payload: .image).isClean)
     }
 
     @Test func redactionKeepsExistingRanges() {
-        let report = ExportPreflight(codeConfig("a\n\(token)"))
+        let report = ExportPreflight(codeConfig("a\n\(token)"), payload: .image)
         #expect(report.redactions(adding: [5...6]) == [2...2, 5...6])
     }
 
     @Test func redactedExportCarriesTheSecretInNoTextOutput() {
         var config = codeConfig("let a = 1\nlet b = \"\(token)\"")
-        config.redactedLineRanges = ExportPreflight(config).redactions(adding: [])
+        config.redactedLineRanges = ExportPreflight(config, payload: .image).redactions(adding: [])
         for text in [
             config.sidecarText, config.richClipboardText,
             MarkdownExport.document(for: config, imageSource: "image.png"),
@@ -80,7 +84,7 @@ struct ExportPreflightReportTests {
         var config = SnapshotConfig()
         config.language = .terminal
         config.code = "first\n\u{1B}[31m\(token)\u{1B}[0m\n"
-        #expect(ExportPreflight(config).redactableLines == [2])
+        #expect(ExportPreflight(config, payload: .image).redactableLines == [2])
     }
 
     @Test func overwrittenTerminalSecretOnlyMattersWhereTheTranscriptTravels() throws {
@@ -89,14 +93,16 @@ struct ExportPreflightReportTests {
         config.code = "\(token)\r\u{1B}[2Kclean\n"
         try #require(!config.sidecarText.contains(token))
 
-        #expect(ExportPreflight(config).isClean, "The image and sidecars show the resolved screen")
-        let link = ExportPreflight(config, carriesTranscript: true)
-        #expect(link.findings == [.init(location: .terminalHistory, kind: "github-token")])
+        #expect(
+            ExportPreflight(config, payload: .image).isClean,
+            "The image and sidecars show the resolved screen")
+        let link = ExportPreflight(config, payload: .transcript)
+        #expect(link.findings == [.init(location: .terminalTranscript, kind: "github-token")])
         #expect(link.redactableLines.isEmpty)
 
         config.redactedLineRanges = [1...1]
         #expect(
-            ExportPreflight(config, carriesTranscript: true).isClean,
+            ExportPreflight(config, payload: .transcript).isClean,
             "Any redaction already drops the transcript from a share link")
     }
 
@@ -104,22 +110,69 @@ struct ExportPreflightReportTests {
         var config = codeConfig("let a = 1")
         config.metadata = SnapshotMetadata(title: "key \(token)")
         config.altText = try SnapshotAltText.normalized(awsKey)
-        let report = ExportPreflight(config)
+        let report = ExportPreflight(config, payload: .text)
         #expect(report.redactableLines.isEmpty)
         #expect(Set(report.findings.map(\.location)) == [.label])
         #expect(Set(report.findings.map(\.kind)) == ["github-token", "aws-access-key"])
     }
 
+    @Test func descriptionOnlyMattersWhereItIsDelivered() throws {
+        var config = codeConfig("let a = 1")
+        config.altText = try SnapshotAltText.normalized(token)
+        #expect(ExportPreflight(config, payload: .image).isClean, "Pixels never carry alt text")
+        #expect(!ExportPreflight(config, payload: .text).isClean)
+        #expect(!ExportPreflight(config, payload: .transcript).isClean)
+    }
+
+    @Test func aShareLinkReportsAnOverwrittenSecretBesideAVisibleOne() throws {
+        let hidden = "gh" + "p_" + String(repeating: "y", count: 36)
+        var config = SnapshotConfig()
+        config.language = .terminal
+        config.code = "\(hidden)\r\u{1B}[2K\n\(awsKey)\n"
+        try #require(!config.sidecarText.contains(hidden))
+
+        let link = ExportPreflight(config, payload: .transcript)
+        #expect(link.redactableLines == [2])
+        #expect(link.findings.contains(.init(location: .terminalTranscript, kind: "github-token")))
+        #expect(
+            !ExportPreflight(config, payload: .image).findings.contains {
+                $0.kind == "github-token"
+            })
+    }
+
+    @Test func aShareLinkAcknowledgementCoversTheTranscriptItDelivers() {
+        func config(hidden: String) -> SnapshotConfig {
+            var config = SnapshotConfig()
+            config.language = .terminal
+            config.code = "\(hidden)\r\u{1B}[2K\n\(awsKey)\n"
+            return config
+        }
+        let first = config(hidden: token)
+        let second = config(hidden: "gh" + "p_" + String(repeating: "y", count: 36))
+        #expect(first.sidecarText == second.sidecarText, "Both documents show the same screen")
+        #expect(
+            ExportPreflight(first, payload: .transcript).acknowledgement(for: .copy)
+                != ExportPreflight(second, payload: .transcript).acknowledgement(for: .copy))
+    }
+
+    @Test func acknowledgementSeparatesWhatIsDelivered() {
+        let config = codeConfig(token)
+        let image = ExportPreflight(config, payload: .image).acknowledgement(for: .copy)
+        #expect(image != ExportPreflight(config, payload: .text).acknowledgement(for: .copy))
+        #expect(image != ExportPreflight(config, payload: .transcript).acknowledgement(for: .copy))
+    }
+
     @Test func acknowledgementFollowsContentAndDestination() {
         let config = codeConfig(token)
-        let report = ExportPreflight(config)
+        let report = ExportPreflight(config, payload: .image)
         #expect(
             report.acknowledgement(for: .copy)
-                == ExportPreflight(config).acknowledgement(for: .copy))
+                == ExportPreflight(config, payload: .image).acknowledgement(for: .copy))
         #expect(report.acknowledgement(for: .copy) != report.acknowledgement(for: .share))
         let other = codeConfig("gh" + "p_" + String(repeating: "y", count: 36))
         #expect(
-            report.acknowledgement(for: .copy) != ExportPreflight(other).acknowledgement(for: .copy)
+            report.acknowledgement(for: .copy)
+                != ExportPreflight(other, payload: .image).acknowledgement(for: .copy)
         )
     }
 }
@@ -149,14 +202,16 @@ struct ExportPreflightGateTests {
 
     @Test func aCleanDocumentNeverAsks() {
         let spy = ResolverSpy()
-        #expect(spy.presentation.clearsPreflight(of: settings("let a = 1"), for: .copy))
+        #expect(
+            spy.presentation.clearsPreflight(
+                of: settings("let a = 1"), for: .copy, delivering: .image))
         #expect(spy.calls.isEmpty)
     }
 
     @Test func cancelStopsTheExportAndLeavesTheDocumentAlone() {
         let spy = ResolverSpy()
         let document = settings("let a = \"\(token)\"")
-        #expect(!spy.presentation.clearsPreflight(of: document, for: .save))
+        #expect(!spy.presentation.clearsPreflight(of: document, for: .save, delivering: .image))
         #expect(spy.calls == [.save])
         #expect(document.config.redactedLineRanges.isEmpty)
     }
@@ -166,12 +221,12 @@ struct ExportPreflightGateTests {
         spy.answer = .redact
         let document = settings("let a = 1\nlet b = \"\(token)\"\nlet c = 3\nlet d = 4")
         document.config.redactedLineRanges = [4...4]
-        #expect(spy.presentation.clearsPreflight(of: document, for: .copy))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .image))
         #expect(document.exportConfig.redactedLineRanges == [2...2, 4...4])
         #expect(!document.exportConfig.sidecarText.contains(token))
 
         spy.calls = []
-        #expect(spy.presentation.clearsPreflight(of: document, for: .copy))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .image))
         #expect(spy.calls.isEmpty, "A redacted document has nothing left to flag")
     }
 
@@ -179,17 +234,17 @@ struct ExportPreflightGateTests {
         let spy = ResolverSpy()
         spy.answer = .proceed
         let document = settings("let a = \"\(token)\"")
-        #expect(spy.presentation.clearsPreflight(of: document, for: .copy))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .image))
         #expect(document.exportConfig.redactedLineRanges.isEmpty)
         #expect(document.exportConfig.sidecarText.contains(token), "The export stays as requested")
 
-        #expect(spy.presentation.clearsPreflight(of: document, for: .copy))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .image))
         #expect(spy.calls == [.copy])
-        #expect(spy.presentation.clearsPreflight(of: document, for: .share))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .share, delivering: .image))
         #expect(spy.calls == [.copy, .share])
 
         document.config.code += "\nlet more = 1"
-        #expect(spy.presentation.clearsPreflight(of: document, for: .copy))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .image))
         #expect(spy.calls == [.copy, .share, .copy], "Edited content is a new decision")
     }
 
@@ -197,10 +252,69 @@ struct ExportPreflightGateTests {
         let spy = ResolverSpy()
         let document = settings("\(token)\r\u{1B}[2Kclean\n")
         document.config.language = .terminal
-        #expect(spy.presentation.clearsPreflight(of: document, for: .copy))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .image))
         #expect(spy.calls.isEmpty)
         #expect(
-            !spy.presentation.clearsPreflight(of: document, for: .copy, carriesTranscript: true))
+            !spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .transcript))
+    }
+
+    @Test func anywayOnTheImageDoesNotCoverItsTextForms() {
+        let spy = ResolverSpy()
+        spy.answer = .proceed
+        let document = settings("let a = \"\(token)\"")
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .image))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .text))
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .transcript))
+        #expect(spy.calls == [.copy, .copy, .copy], "Each exposure is its own decision")
+        #expect(spy.presentation.clearsPreflight(of: document, for: .copy, delivering: .text))
+        #expect(spy.calls.count == 3)
+    }
+
+    @Test func textRidersMakeAnImageCopyATextPayload() {
+        let document = settings("let a = 1")
+        document.export.richClipboard = false
+        document.export.textSidecar = false
+        #expect(EditorPresentation.copyPayload(of: document) == .image)
+        document.export.textSidecar = true
+        #expect(EditorPresentation.copyPayload(of: document) == .text)
+        document.export.textSidecar = false
+        document.export.richClipboard = true
+        #expect(EditorPresentation.copyPayload(of: document) == .text)
+        document.export.format = .png
+        #expect(EditorPresentation.savePayload(of: document) == .image)
+        document.export.format = .pdf
+        #expect(EditorPresentation.savePayload(of: document) == .text)
+    }
+
+    @Test func aDocumentThatChangesDuringTheDialogIsCheckedAgain() {
+        let document = settings("let a = \"\(token)\"")
+        var calls = 0
+        let presentation = EditorPresentation(
+            presentPin: { _ in }, presentShare: { _, _ in }, batchExport: .noOp,
+            resolvePreflight: { _, _ in
+                calls += 1
+                // An asynchronous format landing while the dialog is open moves the secret.
+                if calls == 1 { document.config.code = "// header\nlet a = \"\(token)\"" }
+                return .redact
+            })
+        #expect(presentation.clearsPreflight(of: document, for: .copy, delivering: .text))
+        #expect(calls == 2)
+        #expect(document.exportConfig.redactedLineRanges == [2...2])
+        #expect(!document.exportConfig.sidecarText.contains(token))
+    }
+
+    @Test func anywayDoesNotCoverContentThatChangedDuringTheDialog() {
+        let document = settings("let a = \"\(token)\"")
+        var calls = 0
+        let presentation = EditorPresentation(
+            presentPin: { _ in }, presentShare: { _, _ in }, batchExport: .noOp,
+            resolvePreflight: { _, _ in
+                calls += 1
+                if calls == 1 { document.config.code = "let b = \"\(awsKey)\"" }
+                return calls == 1 ? .proceed : .cancel
+            })
+        #expect(!presentation.clearsPreflight(of: document, for: .copy, delivering: .text))
+        #expect(calls == 2)
     }
 
     @Test func theMenuCopyAsksBeforeTouchingThePasteboard() throws {
@@ -287,6 +401,22 @@ struct QuickCapturePreflightTests {
         #expect(noOutput.outcome == .rendered)
     }
 
+    @Test func theDialogNamesEveryOutputTheCaptureWillWrite() {
+        var actions: [ExportPreflight.Action] = []
+        for (autoCopy, save) in [(true, true), (true, false), (false, true)] {
+            let settings = settings(autoCopy: autoCopy)
+            settings.outputBehavior.alsoSaveToFile = save
+            _ = QuickCapture.capture(
+                settings: settings, recents: RecentsStore(defaults: testDefaults()),
+                clipboard: { "let a = \"\(token)\"" },
+                preflight: { _, action in
+                    actions.append(action)
+                    return .cancel
+                })
+        }
+        #expect(actions == [.copyAndSave, .copy, .save])
+    }
+
     @Test func cancelledFeedbackSaysNothingLeft() {
         let feedback = Notifier.feedback(for: .cancelled)
         #expect(feedback.message == String(localized: "Nothing was exported"))
@@ -296,10 +426,12 @@ struct QuickCapturePreflightTests {
 
 @Suite("Export pre-flight prompt")
 struct ExportPreflightPromptTests {
-    private func report(_ code: String) -> ExportPreflight { ExportPreflight(codeConfig(code)) }
+    private func report(_ code: String) -> ExportPreflight {
+        ExportPreflight(codeConfig(code), payload: .image)
+    }
 
     @Test(arguments: [
-        ExportPreflight.Action.copy, .save, .share, .export,
+        ExportPreflight.Action.copy, .save, .copyAndSave, .share, .export,
     ])
     func redactIsTheDefaultAndEscapeCancels(action: ExportPreflight.Action) {
         let alert = ExportPreflightPrompt.makeAlert(report(token), action: action)
@@ -313,10 +445,17 @@ struct ExportPreflightPromptTests {
         #expect(!alert.informativeText.contains(token))
     }
 
+    @Test func bothOutputsAreNamedOnTheButtons() {
+        let alert = ExportPreflightPrompt.makeAlert(report(token), action: .copyAndSave)
+        #expect(alert.buttons[0].title == String(localized: "Redact \(1), copy and save"))
+        #expect(alert.buttons[1].title == String(localized: "Copy and save anyway"))
+    }
+
     @Test func withNothingToRedactNoPositiveChoiceIsDefault() throws {
         var config = codeConfig("let a = 1")
         config.metadata = SnapshotMetadata(title: token)
-        let alert = ExportPreflightPrompt.makeAlert(ExportPreflight(config), action: .copy)
+        let alert = ExportPreflightPrompt.makeAlert(
+            ExportPreflight(config, payload: .image), action: .copy)
         #expect(
             alert.buttons.map { $0.accessibilityIdentifier() } == [
                 "export-preflight-cancel", "export-preflight-anyway",
@@ -344,7 +483,7 @@ struct ExportPreflightPromptTests {
     @Test func everyLocationHasARow() throws {
         var config = codeConfig("-----BEGIN RSA PRIVATE " + "KEY-----\nbWF0ZXJpYWw=\n\(token)")
         config.metadata = SnapshotMetadata(caption: awsKey)
-        let rows = ExportPreflightPrompt.rows(for: ExportPreflight(config))
+        let rows = ExportPreflightPrompt.rows(for: ExportPreflight(config, payload: .image))
         #expect(rows.count == 3, "An unclosed key block runs to the end of the document")
         #expect(rows.allSatisfy { !$0.contains(token) && !$0.contains(awsKey) })
 
@@ -352,9 +491,41 @@ struct ExportPreflightPromptTests {
         terminal.language = .terminal
         terminal.code = "\(token)\r\u{1B}[2Kclean\n"
         #expect(
-            ExportPreflightPrompt.rows(for: ExportPreflight(terminal, carriesTranscript: true))
+            ExportPreflightPrompt.rows(for: ExportPreflight(terminal, payload: .transcript))
                 .count
                 == 1)
+    }
+}
+
+@Suite("Prompt focus")
+struct PromptFocusTests {
+    @Test func focusReturnsOnceAfterEveryPromptIsAnswered() {
+        var events: [String] = []
+        let focus = PromptFocus { events.append("return") }
+        focus.asking { events.append("preflight") }
+        focus.asking { events.append("history") }
+        events.append("delivered")
+        focus.finish()
+        #expect(events == ["preflight", "history", "delivered", "return"])
+    }
+
+    @Test func noPromptMeansFocusIsLeftAlone() {
+        var returned = false
+        PromptFocus { returned = true }.finish()
+        #expect(!returned)
+    }
+
+    @Test func aVisibleVitrineWindowDoesNotKeepFocusAfterAPrompt() {
+        #expect(
+            AppActivation.shouldReturnFocusAfterPrompt(
+                previousProcessID: 42, appIsActive: true, appProcessID: 7))
+    }
+
+    @Test(arguments: [(pid_t?.none, true), (pid_t?.some(7), true), (pid_t?.some(42), false)])
+    func focusStaysWithNoTargetOrIfTheUserAlreadyLeft(previous: pid_t?, active: Bool) {
+        #expect(
+            !AppActivation.shouldReturnFocusAfterPrompt(
+                previousProcessID: previous, appIsActive: active, appProcessID: 7))
     }
 }
 
