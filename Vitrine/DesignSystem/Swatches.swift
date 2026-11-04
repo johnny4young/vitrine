@@ -13,20 +13,38 @@ import VitrineRendering
 /// One gradient swatch (`.swatch`): rounded, hover-scaled, with the selected
 /// border + focus ring. 26 pt in Settings, 28 pt in the editor inspector.
 struct GradientSwatch: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let preset: GradientPreset
     let isSelected: Bool
     var size: CGFloat = 26
     let action: () -> Void
 
+    var body: some View {
+        FillSwatch(
+            title: Text(verbatim: preset.rawValue), isSelected: isSelected, size: size,
+            action: action
+        ) {
+            preset.gradient
+        }
+    }
+}
+
+/// The swatch chrome around any fill.
+struct FillSwatch<Fill: View>: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let title: Text
+    let isSelected: Bool
+    var size: CGFloat = 26
+    let action: () -> Void
+    @ViewBuilder var fill: Fill
+
     @State private var isHovered = false
 
     var body: some View {
         Button(action: action) {
-            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                .fill(preset.gradient)
+            fill
                 .frame(width: size, height: size)
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .strokeBorder(
@@ -45,8 +63,8 @@ struct GradientSwatch: View {
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
-        .help(Text(verbatim: preset.rawValue))
-        .accessibilityLabel(Text(verbatim: preset.rawValue))
+        .help(title)
+        .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }

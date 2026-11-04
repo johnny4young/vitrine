@@ -174,9 +174,6 @@ public enum GradientPreset: String, CaseIterable, Identifiable, Codable, Sendabl
         }
     }
 
-    /// Every preset's linear angle, in degrees.
-    public var angle: Double { 135 }
-
     /// The equivalent editable custom gradient, used to seed the custom-gradient
     /// editor from a preset so "tweak this preset" is a one-tap starting point.
     /// Stops are spread evenly; the angle matches the preset's
@@ -193,7 +190,7 @@ public enum GradientPreset: String, CaseIterable, Identifiable, Codable, Sendabl
                 GradientStop(color: color, location: Double(index) / last)
             }
         }
-        return CustomGradient(stops: stops, angle: angle)
+        return CustomGradient(stops: stops, angle: 135)
     }
 }
 

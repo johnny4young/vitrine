@@ -23,8 +23,9 @@ extension EditorView {
                 if !settings.style.usesImageContent {
                     CodeLineCountLabel(settings: settings)
                         .lineLimit(1)
-                        .layoutPriority(1)
-                    livingSnapshotMenu
+                    if !session.livingSnapshot.isActive {
+                        livingSnapshotMenu
+                    }
                     formatButton
                 }
             }
@@ -35,6 +36,12 @@ extension EditorView {
                 imagePanel
             } else {
                 VStack(spacing: 0) {
+                    if session.livingSnapshot.isActive {
+                        livingSnapshotMenu
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, VitrineTokens.Spacing.xs)
+                    }
                     livingSnapshotNotice
                     LargeDocumentHighlightNotice(settings: settings)
                     CodeDocumentEditor(
@@ -72,9 +79,9 @@ extension EditorView {
         .accessibilityContainerIdentifier("editor-drop-target")
     }
 
-    /// Compact access to the explicit, session-only file connection. The menu stays in
-    /// the code header so a live source is visible without crowding the primary export
-    /// toolbar, and it remains available from an empty editor as the entry point.
+    /// Compact access to the explicit, session-only file connection: an icon in the code
+    /// header as the entry point, then a chip on its own row, because the header has no
+    /// room for a file name beside the line count and the format action.
     var livingSnapshotMenu: some View {
         Menu {
             if session.livingSnapshot.isActive {
@@ -129,6 +136,8 @@ extension EditorView {
             Text(verbatim: session.livingSnapshot.displayName)
                 .lineLimit(1)
                 .truncationMode(.middle)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .bold))
         }
         .font(.system(size: VitrineTokens.FontSize.caption, weight: .medium))
         .foregroundStyle(VitrineTokens.Text.secondary)

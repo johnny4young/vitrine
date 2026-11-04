@@ -28,12 +28,21 @@ struct EditorPreferencesTests {
     }
 
     @Test func inspectorHeadersPrintTheCurrentValue() {
-        #expect(InspectorReadout.background(.gradient(.aurora)) == "Aurora · 135°")
+        #expect(InspectorReadout.background(.gradient(.aurora)) == "Aurora")
         #expect(InspectorReadout.typography(fontName: "Hack", fontSize: 14) == "Hack 14")
+        #expect(InspectorReadout.typography(fontName: "Hack", fontSize: 13.6) == "Hack 14")
         #expect(
-            InspectorReadout.background(
-                .customGradient(CustomGradient(stops: [], angle: 90))
-            ).hasSuffix(" · 90°"))
+            InspectorReadout.background(.customGradient(CustomGradient(stops: [], angle: 90)))
+                == nil)
+        #expect(InspectorReadout.background(.transparent) == nil)
+    }
+
+    @Test func paletteOffersTheLiveFileActionsTheChipOffers() {
+        #expect(PaletteLiveFileAction.available(isActive: false, usesImageContent: false) == [.open])
+        #expect(
+            PaletteLiveFileAction.available(isActive: true, usesImageContent: false)
+                == [.reload, .openDifferent, .stop])
+        #expect(PaletteLiveFileAction.available(isActive: true, usesImageContent: true).isEmpty)
     }
 
     @Test func additionalWindowsKeepTheResolvedCustomDefaultTheme() {

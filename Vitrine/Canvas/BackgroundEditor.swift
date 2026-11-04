@@ -130,16 +130,6 @@ struct BackgroundControls: View {
 enum BackgroundKind: String, CaseIterable, Identifiable {
     case gradient, customGradient, solid, image, transparent
 
-    var localizedTitle: String {
-        switch self {
-        case .gradient: String(localized: "Gradient")
-        case .customGradient: String(localized: "Custom")
-        case .solid: String(localized: "Solid")
-        case .image: String(localized: "Image")
-        case .transparent: String(localized: "Transparent")
-        }
-    }
-
     var id: String { rawValue }
 
     /// The kind backing an existing style.

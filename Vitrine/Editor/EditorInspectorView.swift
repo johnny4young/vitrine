@@ -189,7 +189,7 @@ struct EditorInspectorView: View {
     // MARK: - Sections
 
     private var privacyFooter: some View {
-        Label("Rendered locally · nothing leaves this Mac", systemImage: "checkmark")
+        Text("Rendered locally · your code never leaves this Mac")
             .font(.system(size: VitrineTokens.FontSize.caption))
             .foregroundStyle(VitrineTokens.Text.tertiary)
             .fixedSize(horizontal: false, vertical: true)
@@ -224,10 +224,9 @@ struct EditorInspectorView: View {
     private var backgroundSection: some View {
         InspectorSection(
             title: Text("Background"),
-            value: (
-                InspectorReadout.background(settings.style.background),
-                "inspector-value-background"
-            )
+            value: InspectorReadout.background(settings.style.background).map {
+                ($0, "inspector-value-background")
+            }
         ) {
             BackgroundControls(
                 background: $settings.style.background, layout: .inspector,
@@ -484,13 +483,11 @@ struct EditorInspectorView: View {
 
 /// The current values the inspector's section headers print.
 enum InspectorReadout {
-    static func background(_ background: VitrineDomain.BackgroundStyle) -> String {
-        let kind = BackgroundKind(background).localizedTitle
-        return switch background {
-        case .gradient(let preset): "\(preset.rawValue) · \(Int(preset.angle))°"
-        case .customGradient(let gradient): "\(kind) · \(Int(gradient.angle))°"
-        case .solid, .image, .transparent: kind
-        }
+    /// Only a preset needs naming: its swatch has no label, and every other kind shows
+    /// its value in the controls right below the header.
+    static func background(_ background: VitrineDomain.BackgroundStyle) -> String? {
+        guard case .gradient(let preset) = background else { return nil }
+        return preset.rawValue
     }
 
     static func typography(fontName: String, fontSize: Double) -> String {
