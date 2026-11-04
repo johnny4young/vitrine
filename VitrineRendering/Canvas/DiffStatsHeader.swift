@@ -8,8 +8,6 @@ struct DiffStatsHeader: View {
     static let fontSize: CGFloat = 12
     private static let cellCount = 5
     static let maximumPathLength = 64
-    private static let addedColor = Color(hex: "#2EA043")
-    private static let removedColor = Color(hex: "#F85149")
 
     let document: DiffDocument
     /// The path to show; `nil` when there are several files or its row is redacted.
@@ -21,8 +19,8 @@ struct DiffStatsHeader: View {
         HStack(spacing: Brand.Spacing.xs) {
             subject
             Spacer(minLength: Brand.Spacing.md)
-            Text(verbatim: "+\(document.additions)").foregroundStyle(Self.addedColor)
-            Text(verbatim: "−\(document.deletions)").foregroundStyle(Self.removedColor)
+            Text(verbatim: "+\(document.additions)").foregroundStyle(DiffColor.added)
+            Text(verbatim: "−\(document.deletions)").foregroundStyle(DiffColor.removed)
             cells
         }
         .font(Font(font))
@@ -53,7 +51,7 @@ struct DiffStatsHeader: View {
                     .fill(
                         !hasChanges
                             ? textColor.opacity(0.2)
-                            : cell < added ? Self.addedColor : Self.removedColor
+                            : cell < added ? DiffColor.added : DiffColor.removed
                     )
                     .frame(width: 7, height: 7)
             }

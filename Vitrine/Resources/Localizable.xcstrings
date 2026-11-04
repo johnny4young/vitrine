@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Locked while a blur box is on the canvas." : {
+      "comment" : "Editor lines: why the diff stats and context controls are disabled.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloqueado mientras haya un cuadro de desenfoque en el lienzo."
+          }
+        }
+      }
+    },
     "Stats header" : {
       "comment" : "Editor lines: toggle for the file path and +/- counts above a diff.",
       "localizations" : {

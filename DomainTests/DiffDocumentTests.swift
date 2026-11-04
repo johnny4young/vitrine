@@ -70,16 +70,18 @@ struct DiffDocumentTests {
         #expect(document.deletions == 1)
     }
 
-    @Test func binaryOrRenameEntryReadsItsPathFromTheGitHeader() {
+    @Test func binaryEntryReadsItsPathFromTheGitHeader() {
         let document = DiffDocument(
-            source: "diff --git a/old name.png b/new name.png\nBinary files differ\n")
+            source: "diff --git a/new name.png b/new name.png\nBinary files differ\n")
         #expect(document.files.map(\.path) == ["new name.png"])
         #expect(document.additions == 0)
     }
 
     @Test func quotedGitHeaderPathLosesItsQuotes() {
-        let document = DiffDocument(source: "diff --git \"a/tab\\tname\" \"b/tab\\tname\"\n")
-        #expect(document.files.map(\.path) == ["tab\\tname"])
+        let plain = DiffDocument(source: "diff --git \"a/x y\" \"b/x y\"\n")
+        #expect(plain.files.map(\.path) == ["x y"])
+        let escaped = DiffDocument(source: "diff --git \"a/tab\\tname\" \"b/tab\\tname\"\n")
+        #expect(escaped.files.map(\.path) == [nil])
     }
 
     @Test func mailSignatureAndPreambleAreNotChanges() {
@@ -172,6 +174,79 @@ struct DiffDocumentTests {
         #expect(document.displayRows(contextLines: 0) == [.line(1)])
     }
 
+    // MARK: - Review reproductions
+
+    private static let combined = """
+        diff --cc file.txt
+        index 1234567,89abcde..fedcba9
+        --- a/file.txt
+        +++ b/file.txt
+        @@@ -1,3 -1,3 +1,4 @@@
+          shared
+        - ours
+         -theirs
+        ++merged
+          tail
+        """
+
+    @Test func combinedDiffCountsAndKeepsItsChanges() {
+        let document = DiffDocument(source: Self.combined)
+        #expect(document.additions == 1)
+        #expect(document.deletions == 2)
+        #expect(document.files.map(\.path) == ["file.txt"])
+        let shown = document.displayRows(contextLines: 0)
+        #expect(shown == [1, 2, 3, 4, 5, 7, 8, 9].map { .line($0) })
+    }
+
+    @Test func combinedDiffAfterAPlainDiffStillCounts() {
+        let document = DiffDocument(
+            source: "diff --git a/p b/p\n--- a/p\n+++ b/p\n@@ -1 +1 @@\n-a\n+b\n" + Self.combined)
+        #expect(document.additions == 2)
+        #expect(document.deletions == 3)
+        #expect(document.files.count == 2)
+    }
+
+    @Test func hunklessSnippetIsNeverFolded() {
+        let document = DiffDocument(source: "one\ntwo\n+new\nthree\nfour\n-old\nfive\nsix")
+        #expect(
+            document.displayRows(contextLines: 0) == document.rowKinds.indices.map { .line($0 + 1) }
+        )
+    }
+
+    @Test func quotedFileHeaderLosesItsQuoteAndPrefix() {
+        let document = DiffDocument(source: "--- \"a/x y\"\n+++ \"b/x y\"\n@@ -1 +1 @@\n-a\n+b")
+        #expect(document.files.map(\.path) == ["x y"])
+    }
+
+    @Test func quotedHeaderDoesNotOverrideTheGitPathWithItsPrefix() {
+        let document = DiffDocument(
+            source: "diff --git a/x y b/x y\n--- \"a/x y\"\n+++ \"b/x y\"\n@@ -1 +1 @@\n-a\n+b")
+        #expect(document.files.map(\.path) == ["x y"])
+    }
+
+    @Test func pathContainingTheSeparatorIsReadWhole() {
+        let document = DiffDocument(source: "diff --git a/x b/y b/x b/y\nBinary files differ")
+        #expect(document.files.map(\.path) == ["x b/y"])
+    }
+
+    @Test func ambiguousRenameHeaderShowsNoGuessedPath() {
+        let document = DiffDocument(source: "diff --git a/x b/y z b/q\nBinary files differ")
+        #expect(document.files.map(\.path) == [nil])
+    }
+
+    @Test func renameRowNamesTheTarget() {
+        let document = DiffDocument(
+            source:
+                "diff --git a/x b/y z b/q\nsimilarity index 100%\nrename from x\nrename to y z b/q")
+        #expect(document.files.map(\.path) == ["y z b/q"])
+    }
+
+    @Test func escapedQuotedPathShowsNoPath() {
+        let document = DiffDocument(
+            source: "--- \"a/caf\\303\\251\"\n+++ \"b/caf\\303\\251\"\n@@ -1 +1 @@\n-a\n+b")
+        #expect(document.files.map(\.path) == [nil])
+    }
+
     // MARK: - Context fold
 
     @Test func keepsTheRequestedContextAroundAChange() {
@@ -209,6 +284,32 @@ struct DiffDocumentTests {
         #expect(
             DiffDocument(source: source).displayRows(contextLines: 3)
                 == [.line(1), .line(2), .line(3), .line(4), .line(5)])
+    }
+
+    @Test func keptRowsSurviveTheFoldWithAMarkerForEachGap() {
+        let source = "@@ -1,7 +1,7 @@\n-a\n+b\n one\n two\n three\n four\n five\n-c\n+d"
+        let rows = DiffDocument(source: source).displayRows(contextLines: 0, keeping: [6...6])
+        #expect(
+            rows == [
+                .line(1), .line(2), .line(3), .fold, .line(6), .fold, .line(9), .line(10),
+            ])
+    }
+
+    @Test func keptRowAtAHunkEdgeNeedsNoLeadingMarker() {
+        let source = "@@ -1,3 +1,3 @@\n one\n two\n-a\n+b"
+        let rows = DiffDocument(source: source).displayRows(contextLines: 0, keeping: [2...2])
+        #expect(rows == [.line(1), .line(2), .fold, .line(4), .line(5)])
+    }
+
+    @Test(arguments: [
+        ("+secret", "+[r]"), ("-secret", "-[r]"), (" secret", " [r]"), ("", " [r]"),
+        ("--- a/secret", "--- [r]"), ("+++ b/secret", "+++ [r]"), ("@@ -1 +1 @@ secret", "@@ [r]"),
+        ("@@@ -1 -1 +1 @@@ x", "@@@ [r]"), ("diff --git a/s b/s", "diff --git [r]"),
+        ("index secret", " [r]"), ("\\ note", "\\ [r]"), (" +secret", " +[r]"),
+        ("+----BEGIN KEY", "+---[r]"),
+    ])
+    func maskedRowKeepsOnlyDiffMarkers(row: String, masked: String) {
+        #expect(DiffDocument.maskedRow(row, placeholder: "[r]") == masked)
     }
 
     @Test func noChangesLeavesEveryRowVisible() {

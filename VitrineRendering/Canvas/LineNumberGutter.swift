@@ -196,11 +196,17 @@ struct CodeLinesView: View {
     /// otherwise — the GitHub-style diff coloring (the first glyph is the diff marker).
     private func diffBand(of line: AttributedString) -> Color? {
         switch line.characters.first {
-        case "+": Color(hex: "#2EA043").opacity(0.18)
-        case "-": Color(hex: "#F85149").opacity(0.18)
+        case "+": DiffColor.added.opacity(0.18)
+        case "-": DiffColor.removed.opacity(0.18)
         default: nil
         }
     }
+}
+
+/// The added and removed hues shared by diff bands and the stats header.
+enum DiffColor {
+    static let added = Color(hex: "#2EA043")
+    static let removed = Color(hex: "#F85149")
 }
 
 /// Splits text and attributed text into lines on `\n`, preserving empty interior

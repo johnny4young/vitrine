@@ -103,17 +103,15 @@ struct DiffViewOptionsTests {
         var config = SnapshotConfig(code: "+a", language: .swift)
         config.showDiffStats = true
         config.diffContextLines = 0
+        config.diffDecorations = true
         #expect(!config.diffOptionsApply)
         #expect(config.diffDocument == nil)
-        #expect(!config.usesLineRows)
-
-        config.diffDecorations = true
-        #expect(config.diffOptionsApply)
-        #expect(config.diffDocument != nil)
 
         config.language = .terminal
         #expect(!config.diffOptionsApply)
         config.language = .diff
+        #expect(config.diffOptionsApply)
+        #expect(config.diffDocument != nil)
         config.foregroundImage = ImageReference(fileName: "x.png")
         #expect(!config.diffOptionsApply)
     }
@@ -123,6 +121,106 @@ struct DiffViewOptionsTests {
         #expect(!config.usesLineRows)
         config.diffContextLines = 1
         #expect(config.usesLineRows)
+    }
+
+    // MARK: - Review reproductions
+
+    @Test func yamlAfterADiffSessionKeepsEveryRow() throws {
+        let yaml = "first: 1\nsecond: 2\n- item\nthird: 3\nfourth: 4\nfifth: 5\n- other\nlast: 6"
+        var plain = SnapshotConfig(code: yaml, language: .yaml)
+        plain.diffDecorations = true
+        var leftover = plain
+        leftover.diffContextLines = 0
+        leftover.showDiffStats = true
+        let comparison = try FontLigatureTests.compareRenderedPixels(
+            try render(plain), try render(leftover))
+        #expect(comparison.differingPixels == 0)
+    }
+
+    @Test func foldKeepsHighlightedRows() throws {
+        var config = diffConfig()
+        config.diffContextLines = 0
+        let folded = try render(config).height
+        config.highlightedLineRanges = [5...5]
+        config.focusHighlightedLines = true
+        #expect(try render(config).height > folded)
+    }
+
+    @Test func redactedShareLinkKeepsTheReceiversDiffStable() throws {
+        var config = diffConfig()
+        config.showDiffStats = true
+        config.diffContextLines = 0
+        config.redactedLineRanges = [8...9]
+        var target = SnapshotConfig()
+        SharedSnapshot(capturing: config).apply(to: &target)
+        let sent = try #require(config.diffDocument)
+        let received = try #require(target.diffDocument)
+        #expect(target.code.contains("four") == false)
+        #expect(received.additions == sent.additions)
+        #expect(received.deletions == sent.deletions)
+        #expect(received.rowKinds == sent.rowKinds)
+    }
+
+    @Test func redactingAHunkHeaderKeepsTheReceiversDiffStable() throws {
+        var config = diffConfig()
+        config.diffContextLines = 0
+        config.redactedLineRanges = [4...4]
+        var target = SnapshotConfig()
+        SharedSnapshot(capturing: config).apply(to: &target)
+        #expect(target.diffDocument?.rowKinds == config.diffDocument?.rowKinds)
+    }
+
+    @Test func nonDiffRedactionKeepsTheBarePlaceholder() {
+        var config = SnapshotConfig(code: "+a\nb", language: .swift)
+        config.redactedLineRanges = [1...1]
+        #expect(config.sidecarText == "\(SnapshotConfig.redactedLinePlaceholder)\nb")
+    }
+
+    @Test func redactionHoldsUnderAFold() throws {
+        func folded(_ secret: String, redacted: Bool) throws -> CGImage {
+            var config = diffConfig()
+            config.code = Self.patch.replacingOccurrences(of: "-four", with: "-\(secret)")
+            config.diffContextLines = 0
+            config.redactedLineRanges = redacted ? [8...8] : []
+            return try render(config)
+        }
+        let hidden = try FontLigatureTests.compareRenderedPixels(
+            try folded("alpha", redacted: true), try folded("omega", redacted: true))
+        #expect(hidden.differingPixels == 0)
+        let visible = try FontLigatureTests.compareRenderedPixels(
+            try folded("alpha", redacted: false), try folded("omega", redacted: false))
+        #expect(visible.differingPixels > 0)
+    }
+
+    @Test func blurBoxKeepsTheCanvasWhenTheControlsMove() throws {
+        let settings = AppSettings(defaults: testDefaults())
+        settings.config = diffConfig()
+        settings.style.diffContextLines = 1
+        settings.style.annotations = [
+            Annotation(kind: .blur, start: CGPoint(x: 0.1, y: 0.4), end: CGPoint(x: 0.5, y: 0.5))
+        ]
+        let before = try render(settings.config)
+        settings.diffContextSliderValue.wrappedValue = 0
+        settings.diffStatsEnabled.wrappedValue = true
+        let comparison = try FontLigatureTests.compareRenderedPixels(
+            before, try render(settings.config))
+        #expect(comparison.differingPixels == 0)
+        #expect(!settings.style.showDiffStats)
+
+        settings.style.annotations = []
+        settings.diffStatsEnabled.wrappedValue = true
+        #expect(settings.style.showDiffStats)
+    }
+
+    @Test func blurBoxLocksTheContextSlider() {
+        let settings = AppSettings(defaults: testDefaults())
+        settings.style.language = .diff
+        settings.style.diffContextLines = 2
+        settings.style.annotations = [
+            Annotation(kind: .blur, start: CGPoint(x: 0.1, y: 0.1), end: CGPoint(x: 0.5, y: 0.2))
+        ]
+        settings.diffContextSliderValue.wrappedValue = 0
+        #expect(settings.style.diffContextLines == 2)
     }
 
     // MARK: - Text riders

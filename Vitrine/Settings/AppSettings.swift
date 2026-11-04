@@ -726,6 +726,16 @@ extension AppSettings {
         )
     }
 
+    var diffStatsEnabled: Binding<Bool> {
+        Binding(
+            get: { self.style.showDiffStats },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
+                self.style.showDiffStats = value
+            }
+        )
+    }
+
     /// The context-lines slider's stops: each count, then one past the range for "All".
     static var diffContextSliderRange: ClosedRange<Double> {
         let range = SettingsDefaults.diffContextLinesRange
@@ -739,6 +749,7 @@ extension AppSettings {
                     ?? Self.diffContextSliderRange.upperBound
             },
             set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
                 let lines = Int(value.rounded())
                 self.style.diffContextLines =
                     SettingsDefaults.diffContextLinesRange.contains(lines) ? lines : nil

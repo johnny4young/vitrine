@@ -299,7 +299,7 @@ public struct SnapshotCanvas: View, Equatable {
             CodeLinesView(
                 rows: highlightedCodeLines,
                 displayRows: config.diffContextLines.flatMap {
-                    diff?.displayRows(contextLines: $0)
+                    diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
                 },
                 showLineNumbers: config.showLineNumbers,
                 highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),

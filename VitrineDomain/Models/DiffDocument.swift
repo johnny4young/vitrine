@@ -6,12 +6,9 @@ public enum DiffDisplayRow: Equatable, Sendable {
     case fold
 }
 
-/// The structure of a unified diff, read row by row. Pure and deterministic, so a stats
-/// header and a context fold render the same patch identically everywhere.
-///
-/// Hunk headers decide what a row means: inside a hunk `--- x` is a removed line, outside
-/// it is a file header. Text with no hunk header at all (a hand-written `+`/`-` snippet)
-/// reads as one hunk, matching how the diff bands treat it.
+/// A unified or combined diff, read row by row. Hunk headers decide what a row means: inside
+/// a hunk `--- x` is a removed line, outside it is a file header. Text with no hunk header
+/// reads as one hunk for its counts, as the diff bands do, but is never folded.
 public struct DiffDocument: Equatable, Sendable {
     public enum RowKind: Equatable, Sendable {
         case outside, hunkHeader, context, addition, deletion, note
@@ -28,31 +25,35 @@ public struct DiffDocument: Equatable, Sendable {
     public private(set) var files: [ChangedFile] = []
     public private(set) var additions = 0
     public private(set) var deletions = 0
+    public private(set) var hasHunks = false
 
     public init(source: String) {
         let lines = source.split(
             omittingEmptySubsequences: false, whereSeparator: { $0 == "\n" || $0 == "\r\n" })
         let hasHunks = lines.contains(where: Self.isHunkHeader)
+        self.hasHunks = hasHunks
         rowKinds = Array(repeating: .outside, count: lines.count)
 
         var inHunk = !hasHunks
         var fileHasBody = false
         // Line budgets from the hunk header; nil when absent, malformed or used up.
         var remaining: (old: Int, new: Int)?
+        // A combined diff marks each row with one column per parent.
+        var combinedColumns: Int?
         var index = 0
         while index < lines.count {
             defer { index += 1 }
             let line = lines[index]
-            if line.hasPrefix("diff --git ") {
+            if line.hasPrefix("diff --git ") || line.hasPrefix("diff --c") {
                 files.append(
                     ChangedFile(
                         path: Self.gitHeaderPath(line), headerRows: (index + 1)...(index + 1)))
-                (fileHasBody, inHunk, remaining) = (false, !hasHunks, nil)
+                (fileHasBody, inHunk, remaining, combinedColumns) = (false, !hasHunks, nil, nil)
                 continue
             }
-            if remaining == nil, Self.isFileHeaderPair(lines, at: index) {
-                let target = Self.filePath(lines[index + 1], prefix: "+++ b/", marker: "+++ ")
-                let origin = Self.filePath(line, prefix: "--- a/", marker: "--- ")
+            if remaining == nil, combinedColumns == nil, Self.isFileHeaderPair(lines, at: index) {
+                let target = Self.filePath(lines[index + 1], stripping: "b/")
+                let origin = Self.filePath(line, stripping: "a/")
                 if fileHasBody || files.isEmpty {
                     files.append(
                         ChangedFile(
@@ -68,16 +69,24 @@ public struct DiffDocument: Equatable, Sendable {
             }
             if Self.isHunkHeader(line) {
                 rowKinds[index] = .hunkHeader
-                remaining = Self.hunkLineCounts(line, limit: lines.count)
+                let columns = line.prefix { $0 == "@" }.count - 1
+                combinedColumns = columns > 1 ? columns : nil
+                remaining = columns > 1 ? nil : Self.hunkLineCounts(line, limit: lines.count)
                 (inHunk, fileHasBody) = (true, true)
                 continue
             }
             if !fileHasBody, line.first != "+", line.first != "-", let last = files.indices.last {
                 files[last].headerRows = files[last].headerRows.lowerBound...(index + 1)
+                for marker in ["rename to ", "copy to "] where line.hasPrefix(marker) {
+                    files[last].path = Self.pathName(line.dropFirst(marker.count))
+                }
             }
             guard inHunk else { continue }
 
-            switch line.first {
+            let marker = combinedColumns.map { columns in
+                line.prefix(columns).first { $0 != " " } ?? " "
+            }
+            switch marker ?? line.first {
             case "\\":
                 rowKinds[index] = .note
                 continue
@@ -112,14 +121,17 @@ public struct DiffDocument: Equatable, Sendable {
         }
     }
 
-    /// Rows to draw when keeping `contextLines` unchanged lines on each side of a change.
-    /// Source rows keep their numbers, so highlights and redactions stay on their lines. A
-    /// marker stands in for a gap between two changes; at a hunk's edge the header says it.
-    public func displayRows(contextLines: Int) -> [DiffDisplayRow] {
-        guard additions + deletions > 0 else {
+    /// Rows to draw when keeping `contextLines` unchanged lines around each change, plus the
+    /// `kept` rows. Source rows keep their numbers. A marker stands in for a gap inside a
+    /// hunk; a gap at its edge is accounted for by the hunk's own header.
+    public func displayRows(
+        contextLines: Int, keeping kept: [ClosedRange<Int>] = []
+    ) -> [DiffDisplayRow] {
+        guard hasHunks, additions + deletions > 0 else {
             return rowKinds.indices.map { .line($0 + 1) }
         }
         let keep = max(contextLines, 0)
+        let keptRanges = LineHighlight.normalize(kept)
         var rows: [DiffDisplayRow] = []
         var index = 0
         while index < rowKinds.count {
@@ -136,9 +148,21 @@ public struct DiffDocument: Equatable, Sendable {
             let head = followsChange ? min(keep, length) : 0
             let tail = precedesChange ? min(keep, length - head) : 0
 
-            rows += (index..<(index + head)).map { .line($0 + 1) }
-            if head + tail < length, followsChange, precedesChange { rows.append(.fold) }
-            rows += ((end - tail)..<end).map { .line($0 + 1) }
+            var hasRowBefore = followsChange
+            var inGap = false
+            for row in index..<end {
+                guard
+                    row < index + head || row >= end - tail
+                        || LineHighlight.contains(keptRanges, line: row + 1)
+                else {
+                    inGap = true
+                    continue
+                }
+                if inGap, hasRowBefore { rows.append(.fold) }
+                rows.append(.line(row + 1))
+                (hasRowBefore, inGap) = (true, false)
+            }
+            if inGap, hasRowBefore, precedesChange { rows.append(.fold) }
             index = end
         }
         return rows
@@ -150,6 +174,17 @@ public struct DiffDocument: Equatable, Sendable {
             !redactions.contains(where: { $0.overlaps(file.headerRows) })
         else { return nil }
         return file.path
+    }
+
+    /// A redacted row that keeps its diff markers, which carry no content, so whoever parses
+    /// the masked text reads the same hunks and counts.
+    public static func maskedRow(_ row: String, placeholder: String) -> String {
+        for header in ["@@@ ", "@@ ", "diff --git ", "diff --cc ", "diff --combined "]
+        where row.hasPrefix(header) {
+            return header + placeholder
+        }
+        let markers = row.prefix(4).prefix { " +-\\".contains($0) }
+        return (markers.isEmpty ? " " : String(markers)) + placeholder
     }
 
     /// How many of `cellCount` diffstat cells are additions. Each side that changed
@@ -167,7 +202,7 @@ public struct DiffDocument: Equatable, Sendable {
     }
 
     private static func isHunkHeader(_ line: Substring) -> Bool {
-        line.hasPrefix("@@ ") || line == "@@"
+        line.hasPrefix("@@ ") || line == "@@" || line.hasPrefix("@@@")
     }
 
     private static func isFileHeaderPair(_ lines: [Substring], at index: Int) -> Bool {
@@ -196,28 +231,33 @@ public struct DiffDocument: Equatable, Sendable {
         return count
     }
 
-    /// The path after the last ` b/` in `diff --git a/x b/x`. Paths may contain spaces and
-    /// Git quotes unusual ones, so the separator is searched from the end.
+    /// The path in a `diff --cc` header, or in `diff --git a/P b/P`. Unquoted names may hold
+    /// spaces, so only that symmetric form splits without guessing; a rename row names its own.
     private static func gitHeaderPath(_ line: Substring) -> String? {
-        for separator in [" \"b/", " b/"] {
-            if let range = line.range(of: separator, options: .backwards) {
-                return unquoted(line[range.upperBound...])
-            }
+        if !line.hasPrefix("diff --git ") {
+            return line.split(separator: " ", maxSplits: 2).last.flatMap { pathName($0) }
         }
-        return nil
+        let names = line.dropFirst("diff --git ".count)
+        guard names.count % 2 == 1 else { return nil }
+        let origin = pathName(names.prefix(names.count / 2), stripping: "a/")
+        let target = pathName(names.suffix(names.count / 2), stripping: "b/")
+        return origin == target ? target : nil
     }
 
-    /// A `---`/`+++` line's path without its timestamp, or nil for `/dev/null`.
-    private static func filePath(
-        _ line: Substring, prefix: String, marker: String
-    ) -> String? {
-        let raw =
-            line.hasPrefix(prefix) ? line.dropFirst(prefix.count) : line.dropFirst(marker.count)
-        let path = unquoted(raw.prefix { $0 != "\t" })
-        return path == "/dev/null" || path.isEmpty ? nil : path
+    /// A `---`/`+++` line's path, without its timestamp.
+    private static func filePath(_ line: Substring, stripping prefix: String) -> String? {
+        pathName(line.dropFirst(4).prefix { $0 != "\t" }, stripping: prefix)
     }
 
-    private static func unquoted(_ path: Substring) -> String {
-        path.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+    /// A path as Git wrote it, or nil for `/dev/null` and for quoted names with escapes,
+    /// which would otherwise show mangled.
+    private static func pathName(_ raw: Substring, stripping prefix: String = "") -> String? {
+        var name = raw
+        if name.count >= 2, name.first == "\"", name.last == "\"" {
+            name = name.dropFirst().dropLast()
+            guard !name.contains("\\") else { return nil }
+        }
+        if !prefix.isEmpty, name.hasPrefix(prefix) { name = name.dropFirst(prefix.count) }
+        return name.isEmpty || name == "/dev/null" ? nil : String(name)
     }
 }
