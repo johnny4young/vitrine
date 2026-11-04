@@ -1035,6 +1035,8 @@ final class VitrineUITests: XCTestCase {
         assertExists(window, in: app, timeout: 8)
         assertExists(element("social-card-inspector", in: app), in: app, timeout: 3)
         assertExists(element("social-card-preview-stage", in: app), in: app, timeout: 3)
+        assertExists(element("social-card-size-capsule", in: app), in: app, timeout: 3)
+        assertExists(app.buttons["social-card-use-editor-code"], in: app, timeout: 3)
 
         let copyButton = app.buttons["social-card-copy-button"]
         let saveButton = app.buttons["social-card-save-button"]

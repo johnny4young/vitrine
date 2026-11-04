@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import Testing
+import VitrineDomain
 import VitrineRendering
 
 @testable import Vitrine
@@ -85,6 +86,129 @@ struct SocialCardCompositionTests {
 
         #expect(display.feedback == [ExportFeedback.renderFailure(.encodingFailed)])
         #expect(presentation.sharedImages.isEmpty)
+    }
+
+    @Test func useEditorCodeCopiesTheInjectedDocument() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let editor = environment.makeEditorSessionSettings()
+        defer { editor.discardEphemeralStore() }
+        editor.documentCode = "print(1)"
+        editor.style.language = .python
+        environment.appSettings.documentCode = "stale app-wide document"
+        let root = SocialCardEditorView(
+            environment: environment, feedback: .noOp, presentation: .noOp,
+            editorDocument: { editor })
+
+        root.useEditorCode()
+
+        #expect(environment.appSettings.socialCard.codeExcerpt == "print(1)")
+        #expect(environment.appSettings.socialCard.language == .python)
+    }
+
+    @Test(arguments: ["", "  \n\t\n"])
+    func useEditorCodeKeepsTheExcerptWhenTheEditorIsBlank(code: String) throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        environment.appSettings.socialCard.codeExcerpt = "keep me"
+        let editor = environment.makeEditorSessionSettings()
+        defer { editor.discardEphemeralStore() }
+        editor.documentCode = code
+        let display = DisplaySpy()
+        let root = SocialCardEditorView(
+            environment: environment, feedback: display.display, presentation: .noOp,
+            editorDocument: { editor })
+
+        root.useEditorCode()
+
+        #expect(environment.appSettings.socialCard.codeExcerpt == "keep me")
+        #expect(display.feedback.count == 1)
+    }
+
+    @Test func useEditorCodeNeverCopiesARedactedLine() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let editor = environment.makeEditorSessionSettings()
+        defer { editor.discardEphemeralStore() }
+        var config = editor.config
+        config.code = "let visible = 1\nlet secret = 2"
+        config.redactedLineRanges = [2...2]
+        editor.config = config
+        let root = SocialCardEditorView(
+            environment: environment, feedback: .noOp, presentation: .noOp,
+            editorDocument: { editor })
+
+        root.useEditorCode()
+
+        let excerpt = environment.appSettings.socialCard.codeExcerpt
+        #expect(excerpt.contains("visible"))
+        #expect(!excerpt.contains("secret"))
+    }
+
+    @Test func useEditorCodeNormalizesLikeTheCardModel() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let editor = environment.makeEditorSessionSettings()
+        defer { editor.discardEphemeralStore() }
+        let long = (1...40).map { "    line \($0)" }.joined(separator: "\n")
+        editor.documentCode = long
+        let root = SocialCardEditorView(
+            environment: environment, feedback: .noOp, presentation: .noOp,
+            editorDocument: { editor })
+
+        root.useEditorCode()
+
+        #expect(
+            environment.appSettings.socialCard.codeExcerpt
+                == SocialCardModel.truncatedExcerpt(long))
+    }
+
+    @Test func useEditorCodeStripsTerminalEscapesAndPlainsTheLanguage() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let editor = environment.makeEditorSessionSettings()
+        defer { editor.discardEphemeralStore() }
+        editor.documentCode = "\u{1B}[32mready\u{1B}[0m"
+        editor.style.language = .terminal
+        let root = SocialCardEditorView(
+            environment: environment, feedback: .noOp, presentation: .noOp,
+            editorDocument: { editor })
+
+        root.useEditorCode()
+
+        #expect(environment.appSettings.socialCard.codeExcerpt == "ready")
+        #expect(environment.appSettings.socialCard.language == .plaintext)
+    }
+
+    @Test func useEditorCodeCanBeUndone() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        environment.appSettings.socialCard.codeExcerpt = "original"
+        environment.appSettings.socialCard.language = .ruby
+        let editor = environment.makeEditorSessionSettings()
+        defer { editor.discardEphemeralStore() }
+        editor.documentCode = "print(1)"
+        editor.style.language = .python
+        let root = SocialCardEditorView(
+            environment: environment, feedback: .noOp, presentation: .noOp,
+            editorDocument: { editor })
+        let undo = UndoManager()
+        undo.groupsByEvent = false
+        undo.beginUndoGrouping()
+
+        root.useEditorCode(undoManager: undo)
+        undo.endUndoGrouping()
+        #expect(environment.appSettings.socialCard.codeExcerpt == "print(1)")
+
+        undo.undo()
+        #expect(environment.appSettings.socialCard.codeExcerpt == "original")
+        #expect(environment.appSettings.socialCard.language == .ruby)
+    }
+
+    @Test func frontmostDocumentPrefersThePrimaryDraftOverTheAppWideDocument() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let controller = EditorWindowController(
+            environment: environment, feedback: .noOp, presentation: .noOp)
+
+        #expect(controller.frontmostDocument === environment.appSettings)
+
+        let primary = controller.session(for: .primary)
+        defer { primary.discard() }
+        #expect(controller.frontmostDocument === primary.settings)
     }
 
     @Test func editorAndRendererContainNoAppOwnedPresentationGlobals() throws {
