@@ -225,7 +225,9 @@ final class VitrineUITests: XCTestCase {
             "command-palette-button", in: app, "The command palette button must be reachable")
         element("command-palette-button", in: app).click()
         assertExists(element("command-palette-field", in: app), in: app, timeout: 3)
+        // The field takes focus when opened by mouse, so Escape reaches the palette.
         app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("command-palette", in: app).waitForNonExistence(timeout: 3))
 
         // Advanced controls start behind the collapsed Output disclosure.
         element("inspector-disclosure-output", in: app).click()
