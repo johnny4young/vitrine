@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Added
+
+- Edit a comparison board's captions by clicking them on the board.
+- Choose a comparison board's size (Auto, 16:10, OG 1200 × 630, Square), gap, background
+  (including transparent), and a generated footer line.
+
 ### Changed
 
 - Open Web Snapshot on HTML in builds without URL capture, with the reason one click

@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Testing
 import VitrineDomain
 import VitrineRendering
@@ -41,6 +42,48 @@ struct ComparisonBoardPreviewTests {
 
         #expect(preview.phase == .failed)
         #expect(preview.asset == nil)
+    }
+
+    @Test func captionFramesArriveWithTheirAsset() async {
+        let preview = ComparisonBoardPreview()
+        let id = UUID()
+        let frame = CGRect(x: 1, y: 2, width: 3, height: 4)
+
+        await preview.refresh(
+            isValid: true, debounce: .zero, captionFrames: { [id: frame] },
+            render: { asset() })
+
+        #expect(preview.captionFrames == [id: frame])
+    }
+
+    @Test func invalidInputKeepsTheLastFrameOnlyWhileACaptionIsBeingEdited() async {
+        let preview = ComparisonBoardPreview()
+        let id = UUID()
+        let frames = [id: CGRect(x: 1, y: 2, width: 3, height: 4)]
+        await preview.refresh(
+            isValid: true, debounce: .zero, captionFrames: { frames },
+            render: { asset() })
+
+        await preview.refresh(isValid: false, keepsLastFrame: true, debounce: .zero) { asset() }
+        #expect(preview.phase == .invalid)
+        #expect(preview.asset != nil)
+        #expect(preview.captionFrames == frames)
+
+        await preview.refresh(isValid: false, debounce: .zero) { asset() }
+        #expect(preview.asset == nil)
+        #expect(preview.captionFrames.isEmpty)
+    }
+
+    @Test func renderFailureDropsTheCaptionFrames() async {
+        enum Failure: Error { case expected }
+        let preview = ComparisonBoardPreview()
+        await preview.refresh(
+            isValid: true, debounce: .zero, captionFrames: { [UUID(): .zero] },
+            render: { asset() })
+
+        await preview.refresh(isValid: true, debounce: .zero) { throw Failure.expected }
+
+        #expect(preview.captionFrames.isEmpty)
     }
 
     private func asset() -> RenderedAsset {

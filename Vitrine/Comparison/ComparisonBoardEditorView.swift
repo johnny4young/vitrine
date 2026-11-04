@@ -16,6 +16,7 @@ struct ComparisonBoardEditorView: View {
     let presentation: ComparisonBoardPresentation
 
     @State private var preview = ComparisonBoardPreview()
+    @State private var editingCaption: UUID?
     @FocusState private var focusedField: Field?
 
     var settings: AppSettings { environment.appSettings }
@@ -34,10 +35,11 @@ struct ComparisonBoardEditorView: View {
         .background(VitrineTokens.Surface.window)
         .tint(VitrineTokens.Accent.system)
         .task(id: draft.previewKey(profile: settings.export.colorProfile)) {
-            await preview.refresh(isValid: draft.isValid) {
-                try draft.compose(
-                    scale: 1, profile: settings.export.colorProfile, budget: .preview)
-            }
+            await preview.refresh(
+                isValid: draft.isValid,
+                keepsLastFrame: editingCaption != nil,
+                captionFrames: { draft.captionFrames },
+                render: { try draft.composePreview(profile: settings.export.colorProfile) })
         }
     }
 
@@ -50,6 +52,12 @@ struct ComparisonBoardEditorView: View {
                     .font(.system(size: VitrineTokens.FontSize.headline, weight: .bold))
             }
             .foregroundStyle(VitrineTokens.Text.primary)
+
+            Text(verbatim: boardSummary)
+                .font(.system(size: VitrineTokens.FontSize.caption).monospacedDigit())
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .lineLimit(1)
+                .accessibilityIdentifier("comparison-board-summary")
 
             Spacer(minLength: 0)
 
@@ -95,6 +103,7 @@ struct ComparisonBoardEditorView: View {
             ZStack {
                 if let asset = preview.asset,
                     preview.phase == .ready || preview.phase == .rendering
+                        || editingCaption != nil
                 {
                     let size = asset.pixelSize
                     let scale = min(
@@ -105,7 +114,16 @@ struct ComparisonBoardEditorView: View {
                         .resizable()
                         .interpolation(.high)
                         .frame(width: size.width * scale, height: size.height * scale)
+                        .background {
+                            if draft.background == .transparent { TransparencyGrid() }
+                        }
                         .shadow(color: .black.opacity(0.28), radius: 24, y: 18)
+                        .overlay {
+                            captionLayer(
+                                scale: scale,
+                                canvas: CGSize(
+                                    width: size.width * scale, height: size.height * scale))
+                        }
                 } else if preview.phase == .rendering {
                     ProgressView()
                         .controlSize(.large)
@@ -129,7 +147,68 @@ struct ComparisonBoardEditorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Board preview")
         .accessibilityIdentifier("comparison-board-preview-stage")
-        .onTapGesture { focusedField = nil }
+        .onTapGesture { endEditing() }
+    }
+
+    private func captionLayer(scale: CGFloat, canvas: CGSize) -> some View {
+        ZStack {
+            ForEach(Array(draft.items.enumerated()), id: \.element.id) { index, item in
+                if let frame = preview.captionFrames[item.id] {
+                    CaptionHotspot(index: index, label: item.label) {
+                        editingCaption = item.id
+                    }
+                    .frame(width: frame.width * scale, height: max(frame.height * scale, 18))
+                    .position(x: frame.midX * scale, y: frame.midY * scale)
+                }
+            }
+            if let id = editingCaption,
+                let index = draft.items.firstIndex(where: { $0.id == id }),
+                let frame = preview.captionFrames[id]
+            {
+                inlineCaptionEditor(
+                    id: id, index: index, frame: frame, scale: scale, canvas: canvas)
+            }
+        }
+        .frame(width: canvas.width, height: canvas.height)
+    }
+
+    private func inlineCaptionEditor(
+        id: UUID, index: Int, frame: CGRect, scale: CGFloat, canvas: CGSize
+    ) -> some View {
+        let width = max(frame.width * scale, 240)
+        return ComparisonBoardCaptionEditor(
+            captureID: id,
+            index: index,
+            label: labelBinding(for: id),
+            detail: detailBinding(for: id),
+            // A field being replaced by another caption's ends after the switch.
+            onEnd: { ended in if editingCaption == ended { editingCaption = nil } }
+        )
+        .frame(width: width)
+        // The rendered caption can be far smaller than a usable field on a large board.
+        .position(
+            x: Self.clamped(frame.midX * scale, span: width, within: canvas.width),
+            y: Self.clamped(
+                frame.midY * scale, span: ComparisonBoardCaptionEditor.height,
+                within: canvas.height))
+    }
+
+    private static func clamped(_ center: CGFloat, span: CGFloat, within limit: CGFloat) -> CGFloat
+    {
+        guard span < limit else { return limit / 2 }
+        return min(max(center, span / 2), limit - span / 2)
+    }
+
+    private func endEditing() {
+        focusedField = nil
+        editingCaption = nil
+    }
+
+    private var boardSummary: String {
+        let size = draft.metrics.pointSize
+        let captures = String(localized: "\(draft.items.count) captures")
+        return "\(captures) · \(Int(size.width)) × \(Int(size.height))"
+            + " · \(Int(draft.resolvedExportScale))×"
     }
 
     private var inspector: some View {
@@ -144,6 +223,50 @@ struct ComparisonBoardEditorView: View {
                     .labelsHidden()
                     .pickerStyle(.segmented)
                     .accessibilityIdentifier("comparison-board-layout-picker")
+                }
+
+                inspectorSection("Board size") {
+                    Picker("Board size", selection: $draft.size) {
+                        ForEach(ComparisonBoard.Size.allCases, id: \.self) { size in
+                            size.title.tag(size)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("comparison-board-size-picker")
+                }
+
+                InspectorRow(label: Text("Gap")) {
+                    ValueSlider(
+                        label: "Gap",
+                        value: Binding(
+                            get: { Double(draft.gap) },
+                            set: { draft.gap = CGFloat($0) }),
+                        range: Double(
+                            ComparisonBoard.gapRange.lowerBound)...Double(
+                                ComparisonBoard.gapRange.upperBound),
+                        step: 2,
+                        identifier: "comparison-board-gap-slider")
+                }
+
+                InspectorRow(label: Text("Board background")) {
+                    HStack(spacing: VitrineTokens.Spacing.xs) {
+                        ForEach(ComparisonBoard.Background.allCases, id: \.self) { background in
+                            BackgroundSwatch(
+                                background: background,
+                                isSelected: draft.background == background
+                            ) {
+                                draft.background = background
+                            }
+                        }
+                    }
+                }
+
+                InspectorRow(label: Text("Footer line")) {
+                    Toggle("Footer line", isOn: $draft.showsFooter)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("comparison-board-footer-toggle")
                 }
 
                 inspectorSection("Captures") {
@@ -192,6 +315,7 @@ struct ComparisonBoardEditorView: View {
                 .help("Move capture later")
                 .accessibilityLabel("Move capture later")
                 Button(role: .destructive) {
+                    if editingCaption == item.id { endEditing() }
                     draft.removeItem(id: item.id)
                 } label: {
                     Image(systemName: "minus.circle")
@@ -289,7 +413,7 @@ struct ComparisonBoardEditorView: View {
 
     private func renderedBoard() throws -> RenderedAsset {
         try draft.compose(
-            scale: draft.exportScale,
+            scale: draft.resolvedExportScale,
             profile: settings.export.colorProfile)
     }
 
@@ -306,5 +430,90 @@ extension ComparisonBoard.Layout {
         case .vertical: "Column"
         case .grid: "Grid"
         }
+    }
+}
+
+extension ComparisonBoard.Size {
+    fileprivate var title: Text {
+        switch self {
+        case .automatic: Text("Auto")
+        case .widescreen: Text(verbatim: "16:10")
+        case .openGraph: Text(verbatim: "OG")
+        case .square: Text("Square")
+        }
+    }
+}
+
+extension ComparisonBoard.Background {
+    fileprivate var title: Text {
+        switch self {
+        case .vitrine: Text(verbatim: "Vitrine")
+        case .card: Text("Card")
+        case .aurora: Text(verbatim: "Aurora")
+        case .transparent: Text("Transparent")
+        }
+    }
+}
+
+/// The transparent cells a viewer would show, so the preview does not read as an opaque board.
+private struct TransparencyGrid: View {
+    var cell: CGFloat = 8
+
+    var body: some View {
+        Canvas { context, size in
+            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(white: 0.2)))
+            let squares = Path { path in
+                for row in 0...Int(size.height / cell) {
+                    for column in 0...Int(size.width / cell) where (row + column).isMultiple(of: 2)
+                    {
+                        path.addRect(
+                            CGRect(
+                                x: CGFloat(column) * cell, y: CGFloat(row) * cell,
+                                width: cell, height: cell))
+                    }
+                }
+            }
+            context.fill(squares, with: .color(Color(white: 0.28)))
+        }
+    }
+}
+
+private struct BackgroundSwatch: View {
+    let background: ComparisonBoard.Background
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        FillSwatch(title: background.title, isSelected: isSelected, action: action) {
+            if background == .transparent {
+                TransparencyGrid(cell: 6)
+            } else {
+                ComparisonBoardComposer.BackgroundFill(background: background)
+            }
+        }
+        .accessibilityIdentifier("comparison-board-background-\(background.rawValue)")
+    }
+}
+
+/// A clickable region over a caption drawn into the preview image.
+private struct CaptionHotspot: View {
+    let index: Int
+    let label: String
+    let action: () -> Void
+
+    @State private var isHovered = false
+
+    var body: some View {
+        Button(action: action) {
+            RoundedRectangle(cornerRadius: VitrineTokens.Radius.sm, style: .continuous)
+                .strokeBorder(.white.opacity(isHovered ? 0.5 : 0), lineWidth: 1)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .help("Edit caption \(index + 1)")
+        .accessibilityLabel("Edit caption \(index + 1)")
+        .accessibilityValue(Text(verbatim: label))
+        .accessibilityIdentifier("comparison-board-caption-\(index)")
     }
 }

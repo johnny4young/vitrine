@@ -1,6 +1,105 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Board size" : {
+      "comment" : "Comparison board inspector section: the exported canvas size",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño del tablero"
+          }
+        }
+      }
+    },
+    "Gap" : {
+      "comment" : "Comparison board inspector slider: space between captures",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separación"
+          }
+        }
+      }
+    },
+    "Board background" : {
+      "comment" : "Comparison board inspector row: the board's backdrop",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fondo del tablero"
+          }
+        }
+      }
+    },
+    "Footer line" : {
+      "comment" : "Comparison board inspector switch: adds the generated line under the captures",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea al pie"
+          }
+        }
+      }
+    },
+    "Square" : {
+      "comment" : "Comparison board size preset: 1080 by 1080",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuadrado"
+          }
+        }
+      }
+    },
+    "Card" : {
+      "comment" : "Comparison board background swatch: flat dark fill",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta"
+          }
+        }
+      }
+    },
+    "%lld captures" : {
+      "comment" : "Comparison board toolbar: number of captures on the board",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld capturas"
+          }
+        }
+      }
+    },
+    "%lld captures · made with Vitrine" : {
+      "comment" : "Comparison board footer line drawn into the exported image",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld capturas · hecho con Vitrine"
+          }
+        }
+      }
+    },
+    "Edit caption %lld" : {
+      "comment" : "Comparison board preview: click target over a capture's caption",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar leyenda %lld"
+          }
+        }
+      }
+    },
     "URL needs the Direct download build" : {
       "comment" : "Web Snapshot source note in a build without URL capture.",
       "localizations" : {
