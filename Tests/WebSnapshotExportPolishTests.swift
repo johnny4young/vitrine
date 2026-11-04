@@ -149,6 +149,27 @@ struct WebSnapshotExportPolishTests {
 
     // MARK: - Inspector
 
+    @Test func theWindowOpensOnTheSourceThatWorks() {
+        #expect(WebSnapshotModel(urlCaptureEnabled: true).mode == .url)
+        #expect(WebSnapshotModel(urlCaptureEnabled: false).mode == .html)
+    }
+
+    @Test func captureOptionsSummaryNamesEachChoice() {
+        let capture = AppSettings(defaults: testDefaults()).webCapture
+        capture.captureMode = .visibleViewport
+        capture.waitKind = .domContentLoaded
+        capture.usesLoggedInSession = false
+        capture.allowsLoopbackCapture = false
+        #expect(
+            WebCaptureSummary.line(for: capture) == "Visible · Loaded · no session · no localhost")
+
+        capture.captureMode = .fullPage
+        capture.waitKind = .networkQuiet
+        capture.usesLoggedInSession = true
+        capture.allowsLoopbackCapture = true
+        #expect(WebCaptureSummary.line(for: capture) == "Full page · Idle · session · localhost")
+    }
+
     @Test func urlOnlyCaptureOptionsAreHiddenForHTML() {
         #expect(WebInputMode.url.usesURLCaptureOptions)
         #expect(!WebInputMode.html.usesURLCaptureOptions)

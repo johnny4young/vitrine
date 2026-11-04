@@ -94,6 +94,8 @@ struct InspectorDisclosure<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let label: Text
+    /// A summary of what the disclosure holds, readable while it is collapsed.
+    var summary: String? = nil
     let identifier: String
     @Binding var isExpanded: Bool
     @ViewBuilder var content: Content
@@ -115,13 +117,22 @@ struct InspectorDisclosure<Content: View>: View {
                     label
                         .font(.system(size: VitrineTokens.FontSize.body, weight: .semibold))
                         .foregroundStyle(VitrineTokens.Text.primary)
+                        .fixedSize()
                     Spacer(minLength: 0)
+                    if let summary {
+                        Text(verbatim: summary)
+                            .font(.system(size: VitrineTokens.FontSize.caption))
+                            .foregroundStyle(VitrineTokens.Text.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
                 }
                 .padding(.vertical, VitrineTokens.Spacing.xs)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityValue(isExpanded ? Text("Expanded") : Text("Collapsed"))
+            .accessibilityHint(summary.map { Text(verbatim: $0) } ?? Text(verbatim: ""))
             .accessibilityIdentifier(identifier)
 
             if isExpanded {
