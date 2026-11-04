@@ -691,7 +691,7 @@ private struct StageStatusCapsule: View {
             .contentShape(Capsule(style: .continuous))
         }
         .customLabelMenu(cornerRadius: 14)
-        .frame(maxWidth: max(0, stageSize.width - 24))
+        .frame(maxWidth: stageSize.width > 24 ? stageSize.width - 24 : nil)
         .help("Choose a destination preset")
         .accessibilityLabel("Destination")
         .accessibilityValue(Text(verbatim: line))

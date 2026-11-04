@@ -186,17 +186,22 @@ struct GlassIconMenuLabel: View {
     let systemImage: String
 
     @Environment(\.isEnabled) private var isEnabled
+    @State private var isHovered = false
 
     var body: some View {
         Image(systemName: systemImage)
             .font(.system(size: 13, weight: .medium))
-            .foregroundStyle(VitrineTokens.Text.secondary)
+            .foregroundStyle(isHovered ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary)
             .frame(width: 30, height: 30)
             .overlay(
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+                    .strokeBorder(
+                        isHovered ? VitrineTokens.Text.tertiary : VitrineTokens.Line.border,
+                        lineWidth: Brand.Stroke.hairline)
             )
             .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             .opacity(isEnabled ? 1 : 0.4)
+            .onHover { isHovered = $0 }
+            .motionSensitiveAnimation(.easeInOut(duration: 0.12), value: isHovered)
     }
 }

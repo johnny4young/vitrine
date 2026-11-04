@@ -47,8 +47,7 @@ extension AnnotationTool {
             ? "Blur is visual only. Use Redact secrets to remove source text from exports." : label
     }
 
-    /// The toolbar reads in shortcut order now that it draws the digits, so ⌘0 follows ⌘9.
-    /// `allCases` keeps the persisted order.
+    /// Display order for the toolbar and the main menu: by shortcut, so ⌘0 follows ⌘9.
     static let toolbarOrder: [AnnotationTool] =
         allCases.filter { $0.shortcutCharacter != nil && $0.shortcutCharacter != "0" }
         + allCases.filter { $0.shortcutCharacter == "0" }
