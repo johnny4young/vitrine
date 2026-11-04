@@ -169,6 +169,7 @@ struct EditorInspectorView: View {
             .padding(.horizontal, VitrineTokens.Spacing.xl - 12)
             .padding(.bottom, VitrineTokens.Spacing.lg)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) { privacyFooter }
         .background(.ultraThinMaterial)
         .overlay(alignment: .leading) {
             Rectangle()
@@ -186,6 +187,21 @@ struct EditorInspectorView: View {
     }
 
     // MARK: - Sections
+
+    private var privacyFooter: some View {
+        Label("Rendered locally · nothing leaves this Mac", systemImage: "checkmark")
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, VitrineTokens.Spacing.xs)
+            .padding(.horizontal, VitrineTokens.Spacing.xl - 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.bar)
+            .overlay(alignment: .top) {
+                Rectangle().fill(VitrineTokens.Line.border).frame(height: Brand.Stroke.hairline)
+            }
+            .accessibilityIdentifier("inspector-privacy-footer")
+    }
 
     /// Clarifies the scope distinction. The editor binds a *per-window*
     /// `EditorSession.settings` (see `EditorWindowController.makeWindow`), so these controls
@@ -206,7 +222,13 @@ struct EditorInspectorView: View {
     /// Background: the shared preset swatches, with the kind picker and per-kind
     /// controls once the background is no longer a stock gradient.
     private var backgroundSection: some View {
-        InspectorSection(title: Text("Background")) {
+        InspectorSection(
+            title: Text("Background"),
+            value: (
+                InspectorReadout.background(settings.style.background),
+                "inspector-value-background"
+            )
+        ) {
             BackgroundControls(
                 background: $settings.style.background, layout: .inspector,
                 identifierPrefix: "inspector-")
@@ -272,7 +294,10 @@ struct EditorInspectorView: View {
     }
 
     private var themeSection: some View {
-        InspectorSection(title: Text("Theme")) {
+        InspectorSection(
+            title: Text("Theme"),
+            value: (settings.style.theme.displayName, "inspector-value-theme")
+        ) {
             ThemeChipPicker(
                 settings: settings, themes: themes,
                 chipSize: CGSize(width: 52, height: 34), dotSize: 6,
@@ -283,7 +308,14 @@ struct EditorInspectorView: View {
     }
 
     private var typographySection: some View {
-        InspectorSection(title: Text("Typography")) {
+        InspectorSection(
+            title: Text("Typography"),
+            value: (
+                InspectorReadout.typography(
+                    fontName: settings.style.fontName, fontSize: settings.style.fontSize),
+                "inspector-value-typography"
+            )
+        ) {
             FontChipPicker(
                 settings: settings, fontSize: 11.5, verticalPadding: 6, horizontalPadding: 13,
                 topPadding: 2, bottomPadding: 6
@@ -447,6 +479,22 @@ struct EditorInspectorView: View {
         fontHasLigatures
             ? "Render programming ligatures (->, =>, !=) for this font."
             : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
+    }
+}
+
+/// The current values the inspector's section headers print.
+enum InspectorReadout {
+    static func background(_ background: VitrineDomain.BackgroundStyle) -> String {
+        let kind = BackgroundKind(background).localizedTitle
+        return switch background {
+        case .gradient(let preset): "\(preset.rawValue) · \(Int(preset.angle))°"
+        case .customGradient(let gradient): "\(kind) · \(Int(gradient.angle))°"
+        case .solid, .image, .transparent: kind
+        }
+    }
+
+    static func typography(fontName: String, fontSize: Double) -> String {
+        "\(fontName) \(Int(fontSize.rounded()))"
     }
 }
 

@@ -17,6 +17,10 @@ can never drift.
 - Open the command palette from a toolbar button, and change the destination directly
   from the editor's status capsule.
 - Show the ⌘1…⌘0 shortcuts on the annotation tools in the title bar, in shortcut order.
+- Show the current background, theme and font in the inspector's section headers.
+- Show a watched file as a Live chip in the code header, with its name and its
+  reload and stop actions.
+- State in the inspector that captures render locally.
 
 ### Changed
 

@@ -228,6 +228,10 @@ final class VitrineUITests: XCTestCase {
         // The field takes focus when opened by mouse, so Escape reaches the palette.
         app.typeKey(.escape, modifierFlags: [])
         XCTAssertTrue(element("command-palette", in: app).waitForNonExistence(timeout: 3))
+        assertExists(element("inspector-value-background", in: app), in: app)
+        assertExists(element("inspector-value-theme", in: app), in: app)
+        assertExists(element("inspector-value-typography", in: app), in: app)
+        assertExists(element("inspector-privacy-footer", in: app), in: app)
 
         // Advanced controls start behind the collapsed Output disclosure.
         element("inspector-disclosure-output", in: app).click()

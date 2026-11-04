@@ -61,11 +61,28 @@ struct FlowLayout: Layout {
 /// column itself is the surface).
 struct InspectorSection<Content: View>: View {
     let title: Text
+    /// The section's current value and its identifier, readable without scanning the
+    /// section's controls.
+    var value: (text: String, identifier: String)? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
-            TokenGroupLabel(title: title)
+            HStack(spacing: VitrineTokens.Spacing.xs) {
+                TokenGroupLabel(title: title)
+                    .fixedSize()
+                Spacer(minLength: 0)
+                if let value {
+                    Text(verbatim: value.text)
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .monospacedDigit()
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(Text(verbatim: value.text))
+                        .accessibilityIdentifier(value.identifier)
+                }
+            }
             content
         }
     }

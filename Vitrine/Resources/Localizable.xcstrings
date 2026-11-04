@@ -1,6 +1,28 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Changed" : {
+      "comment" : "Code header chip: the watched file has a saved change waiting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambió"
+          }
+        }
+      }
+    },
+    "Unavailable" : {
+      "comment" : "Code header chip: the watched file cannot be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No disponible"
+          }
+        }
+      }
+    },
     "Choose a destination preset" : {
       "comment" : "Editor status capsule tooltip: opens the destination menu.",
       "localizations" : {
@@ -30,6 +52,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Paleta de comandos (⌘K)"
+          }
+        }
+      }
+    },
+    "Rendered locally · nothing leaves this Mac" : {
+      "comment" : "Fixed footer of the editor inspector stating the privacy contract.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se renderiza localmente · nada sale de esta Mac"
+          }
+        }
+      }
+    },
+    "Live" : {
+      "comment" : "Code header chip for a file the editor is watching.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En vivo"
           }
         }
       }
