@@ -708,6 +708,8 @@ final class ScreenshotTourUITests: XCTestCase {
 
         XCTAssertTrue(web.inspector.waitForExistence(timeout: 8))
         let window = app.windows.firstMatch
+        // Builds without URL capture open on HTML, so pick the URL source explicitly.
+        if web.urlMode.waitForExistence(timeout: 3) { web.urlMode.click() }
         save(
             window, as: "60-web-snapshot",
             note: "Web Snapshot: source picker, viewport chips, branded empty stage")
