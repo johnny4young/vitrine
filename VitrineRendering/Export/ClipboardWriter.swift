@@ -3,7 +3,8 @@ import AppKit
 /// Marks app-authored exports as confidential for cooperating clipboard managers.
 /// This is a convention, not access control; it never replaces content sanitization.
 public enum ClipboardWriter {
-    public static let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
+    public nonisolated static let concealedType = NSPasteboard.PasteboardType(
+        "org.nspasteboard.ConcealedType")
 
     /// Objects without a writable type are skipped, so an empty write never clears the
     /// existing clipboard.

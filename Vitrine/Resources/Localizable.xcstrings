@@ -7789,6 +7789,47 @@
         }
       }
     },
+    "%lld code blocks" : {
+      "comment" : "Menu bar capture summary: the clipboard holds several code blocks.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld code block"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld code blocks"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld bloque de código"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld bloques de código"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld lines redacted" : {
       "comment" : "Inspector status after a secret scan redacted lines.",
       "localizations" : {

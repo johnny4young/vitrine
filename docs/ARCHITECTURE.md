@@ -191,6 +191,9 @@ for the user-visible contract and limitations.
 - **Language detection** on paste (heuristic + manual override via the picker).
 - **Permission:** a clear `NSPasteboardUsageDescription`; content **never leaves the
   Mac** (no network by default).
+- **Panel summary:** opening the menu-bar panel lists pasteboard types only. It reads the
+  text, off the main actor, only when `accessBehavior` is `.alwaysAllow` and the content is
+  not marked concealed or transient, and keeps only its language and line count.
 
 ## Color management
 

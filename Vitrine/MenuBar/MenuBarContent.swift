@@ -36,6 +36,7 @@ struct MenuBarContent: View {
         VStack(alignment: .leading, spacing: 13) {
             header
             captureCTA
+            captureSummary
             presetCaptureMenu
             lastCaptureStatus
             recentsSection
@@ -146,6 +147,26 @@ struct MenuBarContent: View {
             button.keyboardShortcut(shortcut)
         } else {
             button
+        }
+    }
+
+    /// What the capture button will produce, updated live as the theme or clipboard changes.
+    @ViewBuilder private var captureSummary: some View {
+        if let line = MenuBarCaptureSummary.line(
+            content: panelState.clipboard,
+            themeName: settings.config.theme.displayName,
+            destination: settings.selectedPreset,
+            capturesURLs: settings.treatURLsAsScreenshot && NetworkCapability.isURLCaptureEnabled)
+        {
+            Text(verbatim: line)
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity)
+                .padding(.top, -4)
+                .help(line)
+                .accessibilityIdentifier("menu-capture-summary")
         }
     }
 

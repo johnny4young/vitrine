@@ -305,6 +305,7 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
         let popover = popover ?? makePopover()
         self.popover = popover
         panelState.refresh(hotkeyAction: environment.appSettings.hotkeyAction)
+        panelState.refreshClipboard()
         previousFrontmostApplication = AppActivation.frontmostOtherApplication(
             helperProcessID: helperProcessID)
         // The external click activates the helper. Complete the activation handoff before
@@ -339,10 +340,12 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
 
     func popoverDidShow(_ notification: Notification) {
         installDismissalObservers()
+        panelState.startWatchingClipboard()
     }
 
     func popoverDidClose(_ notification: Notification) {
         removeDismissalObservers()
+        panelState.stopWatchingClipboard()
         let helperProcessID = helperProcessID
         self.helperProcessID = nil
         discardExternalAnchor()

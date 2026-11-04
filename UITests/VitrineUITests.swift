@@ -1519,6 +1519,10 @@ final class VitrineUITests: XCTestCase {
         // panel after launch also keeps the XCTest automation handshake ahead of AppKit.
         openMenuBarPanel(in: app)
 
+        XCTAssertTrue(
+            element("menu-capture-summary", in: app).waitForExistence(timeout: 3),
+            "Text on the clipboard should show the capture summary under the capture button")
+
         assertHittable(
             "menu-capture-preset-picker", in: app,
             "The destination preset picker should be reachable from the menu-bar panel")
