@@ -83,36 +83,64 @@ struct ComparisonBoardOptionsTests {
         #expect(fixed.footerFrame != nil)
     }
 
-    @Test func footerIsGeneratedFromTheCountAlone() throws {
-        let secret = "ghp_private_value"
-        let draft = try ComparisonBoardDraft(
-            captures: [
-                Capture(code: secret, languageID: "swift", themeID: "one-dark"),
-                Capture(code: secret, languageID: "swift", themeID: "one-dark"),
-            ],
-            baseConfig: SnapshotConfig(),
-            profile: .sRGB,
-            render: { _, _, _ in solidImage() })
-        draft.showsFooter = true
-        draft.items[0].label = "Named label"
-        draft.items[0].detail = "Named detail"
-
-        let footer = try #require(try draft.board().footerText)
-
-        #expect(footer == ComparisonBoard.footerText(captureCount: 2))
-        for hidden in [secret, "Named label", "Named detail"] {
-            #expect(!footer.contains(hidden))
+    /// Nothing typed or captured can reach the footer: its pixels match across boards that
+    /// share only a capture count.
+    @Test func footerPixelsDependOnTheCountAlone() throws {
+        func compose(_ label: String, _ detail: String, color: CGColor) throws -> (CGImage, CGRect)
+        {
+            let board = try ComparisonBoard(
+                items: (0..<2).map { _ in
+                    ComparisonBoard.Item(
+                        asset: RenderedAsset(cgImage: solidImage(color: color), profile: .sRGB),
+                        label: label, detail: detail)
+                },
+                size: .widescreen, background: .card, showsFooter: true)
+            let frame = try #require(ComparisonBoardComposer.metrics(for: board).footerFrame)
+            return (try ComparisonBoardComposer.compose(board, scale: 1).cgImage, frame)
         }
-        draft.showsFooter = false
-        #expect(try draft.board().footerText == nil)
+
+        let (first, frame) = try compose(
+            "One", "ghp_private_value", color: CGColor(gray: 0.2, alpha: 1))
+        let (second, _) = try compose("Two words", "Other", color: CGColor(gray: 0.8, alpha: 1))
+
+        let footerRect = frame.integral
+        #expect(
+            rgba(try #require(first.cropping(to: footerRect)))
+                == rgba(try #require(second.cropping(to: footerRect))))
+
+        let off = try ComparisonBoardComposer.compose(
+            ComparisonBoard(
+                items: (0..<2).map { _ in captionedItem(label: "One", detail: "ghp_private_value")
+                },
+                size: .widescreen, background: .card, showsFooter: false),
+            scale: 1)
+        #expect(
+            Set(rgba(try #require(first.cropping(to: footerRect)))).count
+                > Set(rgba(try #require(off.cgImage.cropping(to: footerRect)))).count,
+            "the footer line should draw glyphs")
     }
 
-    @Test func onlyTheTransparentBackgroundKeepsAlpha() throws {
+    /// Through the real encoders, because a raster with alpha can still lose it when written.
+    @Test(arguments: [ExportFormat.png, .heic, .avif])
+    func encodedExportsKeepTransparencyOnlyWhenChosen(_ format: ExportFormat) throws {
+        guard format.isEncodingAvailable else { return }
+        let draft = try makeDraft(count: 2)
         for background in ComparisonBoard.Background.allCases {
-            let asset = try ComparisonBoardComposer.compose(
-                board(count: 2, background: background), scale: 1)
-            let corner = rgba(asset.cgImage)[3]
-            #expect(corner == (background == .transparent ? 0 : 255), "\(background)")
+            draft.background = background
+            let payload = try ComparisonBoardExporter.encodedPayloadChecked(
+                for: draft, format: format, profile: .sRGB)
+            let source = try #require(CGImageSourceCreateWithData(payload.data as CFData, nil))
+            let decoded = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+            let corner = rgba(decoded)[3]
+            if background == .transparent {
+                #expect(corner <= 2, "\(format) \(background): \(corner)")
+                let card = ComparisonBoardComposer.metrics(for: try draft.board()).cardFrames[0]
+                let inside = rgba(decoded)[
+                    Int(card.midY) * decoded.width * 4 + Int(card.minX + 3) * 4 + 3]
+                #expect(inside >= 250, "\(format): the card should stay opaque, got \(inside)")
+            } else {
+                #expect(corner >= 253, "\(format) \(background): \(corner)")
+            }
         }
     }
 
@@ -137,19 +165,45 @@ struct ComparisonBoardOptionsTests {
         }
     }
 
-    /// The preview and an export share a composer; only the budget differs.
+    /// What the stage shows must equal the file a 1× export writes, byte for byte.
     @Test(arguments: ComparisonBoard.Size.allCases)
-    func previewMatchesTheExportPixels(_ size: ComparisonBoard.Size) throws {
+    func previewEqualsTheEncodedOneXExport(_ size: ComparisonBoard.Size) throws {
         let draft = try makeDraft(count: 3)
-        draft.size = size
-        draft.gap = 12
-        draft.background = .aurora
-        draft.showsFooter = true
+        applyAllOptions(to: draft, size: size)
 
-        let preview = try draft.compose(scale: 1, profile: .sRGB, budget: .preview)
-        let export = try draft.compose(scale: 1, profile: .sRGB, budget: .export)
+        let preview = try draft.composePreview(profile: .sRGB)
+        let payload = try ComparisonBoardExporter.encodedPayloadChecked(
+            for: draft, format: .png, profile: .sRGB)
+        let source = try #require(CGImageSourceCreateWithData(payload.data as CFData, nil))
+        let exported = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
 
-        #expect(rgba(preview.cgImage) == rgba(export.cgImage))
+        #expect(rgba(preview.cgImage) == rgba(exported))
+    }
+
+    /// A 2× export is the same composition with more pixels: reduced to the preview's size,
+    /// only edge antialiasing may differ.
+    @Test(arguments: [ComparisonBoard.Size.automatic, .widescreen, .square])
+    func previewMatchesAHigherScaleExport(_ size: ComparisonBoard.Size) throws {
+        let draft = try makeDraft(count: 3, renderScale: 2)
+        applyAllOptions(to: draft, size: size)
+
+        let preview = rgba(try draft.composePreview(profile: .sRGB).cgImage)
+        let payload = try ComparisonBoardExporter.encodedPayloadChecked(
+            for: draft, format: .png, profile: .sRGB)
+        let source = try #require(CGImageSourceCreateWithData(payload.data as CFData, nil))
+        let exported = try #require(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        let metrics = draft.metrics
+        #expect(CGFloat(exported.width) == metrics.pointSize.width * 2)
+
+        let reduced = rgba(
+            exported, width: Int(metrics.pointSize.width), height: Int(metrics.pointSize.height))
+        #expect(reduced.count == preview.count)
+        var total = 0
+        for index in stride(from: 0, to: reduced.count, by: 4) {
+            total += abs(Int(reduced[index]) - Int(preview[index]))
+        }
+        let average = Double(total) / Double(reduced.count / 4)
+        #expect(average < 1.5, "mean red-channel difference \(average)")
     }
 
     /// Clicking a caption must land on what is drawn, whichever size and layout is active.
@@ -187,36 +241,99 @@ struct ComparisonBoardOptionsTests {
         #expect(draft.captionFrames.count == 2)
     }
 
-    @Test func draftCarriesEveryOptionIntoItsBoard() throws {
+    /// Each control has to reach the picture and re-trigger the preview, not just be stored.
+    @Test func everyOptionChangesThePreviewKeyAndThePixels() throws {
         let draft = try makeDraft(count: 2)
-        draft.size = .square
-        draft.gap = 12
-        draft.background = .card
-        draft.showsFooter = true
-
-        let board = try draft.board()
-
-        #expect(board.size == .square)
-        #expect(board.gap == 12)
-        #expect(board.background == .card)
-        #expect(board.showsFooter)
-        #expect(draft.metrics == ComparisonBoardComposer.metrics(for: board))
-    }
-
-    @Test func previewKeyTracksEveryOption() throws {
-        let draft = try makeDraft(count: 2)
-        var seen = [draft.previewKey(profile: .sRGB)]
+        var keys = [draft.previewKey(profile: .sRGB)]
+        var images = [rgba(try draft.composePreview(profile: .sRGB).cgImage)]
         let changes: [() -> Void] = [
-            { draft.size = .openGraph },
+            { draft.layout = .vertical },
+            { draft.size = .square },
             { draft.gap = 4 },
             { draft.background = .aurora },
             { draft.showsFooter = true },
         ]
         for change in changes {
             change()
-            let key = draft.previewKey(profile: .sRGB)
-            #expect(!seen.contains(key))
-            seen.append(key)
+            keys.append(draft.previewKey(profile: .sRGB))
+            images.append(rgba(try draft.composePreview(profile: .sRGB).cgImage))
+        }
+        #expect(Set(keys).count == keys.count)
+        #expect(Set(images).count == images.count)
+    }
+
+    /// Worst case of every arrangement: captions readable at 1× and an image worth showing.
+    @Test(arguments: [ComparisonBoard.Size.widescreen, .openGraph, .square])
+    func everyFixedArrangementStaysLegible(_ size: ComparisonBoard.Size) {
+        for count in ComparisonBoard.itemCountRange {
+            for layout in ComparisonBoard.Layout.allCases {
+                for gap in [
+                    ComparisonBoard.gapRange.lowerBound, ComparisonBoard.gapRange.upperBound,
+                ] {
+                    for showsFooter in [false, true] {
+                        let metrics = ComparisonBoardComposer.metrics(
+                            itemCount: count, layout: layout, size: size, gap: gap,
+                            showsFooter: showsFooter)
+                        let name = "\(size) \(layout) \(count) gap \(gap) footer \(showsFooter)"
+                        #expect(18 * metrics.unit >= 12, "label: \(name)")
+                        #expect(13 * metrics.unit >= 9, "detail: \(name)")
+                        #expect(metrics.imageHeight >= 100, "image: \(name)")
+                    }
+                }
+            }
+        }
+    }
+
+    /// Measures the rendered tightest case rather than trusting the metrics.
+    @Test func fourCapturesOnOpenGraphRenderLegibly() throws {
+        func compose(label: String, red: CGFloat) throws -> CGImage {
+            let items = (0..<4).map { index in
+                ComparisonBoard.Item(
+                    asset: RenderedAsset(
+                        cgImage: solidImage(
+                            width: 968, height: 720,
+                            color: CGColor(
+                                red: index == 0 ? red : 0.5, green: 0.3, blue: 0.7, alpha: 1)),
+                        profile: .sRGB),
+                    label: index == 0 ? label : "Same", detail: nil)
+            }
+            let board = try ComparisonBoard(items: items, layout: .vertical, size: .openGraph)
+            return try ComparisonBoardComposer.compose(board, scale: 1).cgImage
+        }
+
+        let glyphs = try #require(
+            changedBounds(
+                try compose(label: "HEH", red: 0.5), try compose(label: "XIX", red: 0.5)))
+        #expect(glyphs.height >= 8, "label cap height \(glyphs.height) px")
+
+        let image = try #require(
+            changedBounds(
+                try compose(label: "Same", red: 0.1), try compose(label: "Same", red: 0.9)))
+        #expect(image.height >= 100, "image height \(image.height) px")
+        #expect(image.width >= 130, "image width \(image.width) px")
+    }
+
+    /// A neighbour's shadow must not darken one side of a card when cards touch.
+    @Test(arguments: [ComparisonBoard.Background.card, .transparent])
+    func neighbouringShadowsDoNotLandOnACard(_ background: ComparisonBoard.Background) throws {
+        let wide = solidImage(width: 968, height: 720)
+        let board = try ComparisonBoard(
+            items: (0..<2).map { _ in
+                ComparisonBoard.Item(
+                    asset: RenderedAsset(cgImage: wide, profile: .sRGB), label: "Same", detail: nil)
+            },
+            gap: 0, background: background)
+        let image = try ComparisonBoardComposer.compose(board, scale: 1).cgImage
+        let pixels = rgba(image)
+        let card = ComparisonBoardComposer.metrics(for: board).cardFrames[0]
+
+        func red(_ x: CGFloat, _ y: CGFloat) -> Int {
+            Int(pixels[(Int(y) * image.width + Int(x)) * 4])
+        }
+        for y in stride(from: card.midY, to: card.maxY - 24, by: 20) {
+            let free = red(card.minX + 4, y)
+            let beside = red(card.maxX - 5, y)
+            #expect(abs(free - beside) <= 1, "row \(y): \(free) vs \(beside)")
         }
     }
 
@@ -312,14 +429,22 @@ struct ComparisonBoardOptionsTests {
             showsFooter: showsFooter)
     }
 
-    private func makeDraft(count: Int) throws -> ComparisonBoardDraft {
+    private func makeDraft(count: Int, renderScale: CGFloat = 1) throws -> ComparisonBoardDraft {
         try ComparisonBoardDraft(
             captures: (1...count).map {
                 Capture(code: "\($0)", languageID: "swift", themeID: "one-dark")
             },
             baseConfig: SnapshotConfig(),
             profile: .sRGB,
+            renderScale: renderScale,
             render: { _, _, _ in solidImage() })
+    }
+
+    private func applyAllOptions(to draft: ComparisonBoardDraft, size: ComparisonBoard.Size) {
+        draft.size = size
+        draft.gap = 12
+        draft.background = .aurora
+        draft.showsFooter = true
     }
 
     private func captionedItem(label: String, detail: String?) -> ComparisonBoard.Item {
@@ -329,32 +454,39 @@ struct ComparisonBoardOptionsTests {
             detail: detail)
     }
 
-    private func solidImage() -> CGImage {
+    private func solidImage(
+        width: Int = 320,
+        height: Int = 180,
+        color: CGColor = CGColor(red: 0.2, green: 0.3, blue: 0.7, alpha: 1)
+    ) -> CGImage {
         let context = CGContext(
             data: nil,
-            width: 320,
-            height: 180,
+            width: width,
+            height: height,
             bitsPerComponent: 8,
             bytesPerRow: 0,
             space: CGColorSpace(name: CGColorSpace.sRGB)!,
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.setFillColor(CGColor(red: 0.2, green: 0.3, blue: 0.7, alpha: 1))
-        context.fill(CGRect(x: 0, y: 0, width: 320, height: 180))
+        context.setFillColor(color)
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         return context.makeImage()!
     }
 
-    private func rgba(_ image: CGImage) -> [UInt8] {
-        var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
+    private func rgba(_ image: CGImage, width: Int? = nil, height: Int? = nil) -> [UInt8] {
+        let width = width ?? image.width
+        let height = height ?? image.height
+        var bytes = [UInt8](repeating: 0, count: width * height * 4)
         bytes.withUnsafeMutableBytes { buffer in
             let context = CGContext(
                 data: buffer.baseAddress,
-                width: image.width,
-                height: image.height,
+                width: width,
+                height: height,
                 bitsPerComponent: 8,
-                bytesPerRow: image.width * 4,
+                bytesPerRow: width * 4,
                 space: CGColorSpace(name: CGColorSpace.sRGB)!,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            context.interpolationQuality = .high
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
         }
         return bytes
     }

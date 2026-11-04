@@ -16,7 +16,8 @@ before/after explanation, review, release note, or visual decision record.
    - **Row**, **Column**, and **Grid** force a deterministic arrangement.
 6. Optionally pick a board size, gap, background, and footer line:
    - **Auto** hugs the cards. **16:10** is 1600 × 1000, **OG** is 1200 × 630, and
-     **Square** is 1080 × 1080; cards scale to fit and stay centered.
+     **Square** is 1080 × 1080; cards scale to fit and stay centered. Captions keep a
+     readable size, so three or four captures in a **Column** on **OG** draw as a grid.
    - **Transparent** keeps the backdrop's alpha and gives each card a solid fill so its
      white caption stays readable.
    - The footer line is generated from the capture count and cannot be typed.
@@ -26,7 +27,9 @@ before/after explanation, review, release note, or visual decision record.
    **OG** always exports at 1× so its pixels are exactly 1200 × 630.
 
 Click a caption on the board to edit it where it will be read. It is the same string as
-the inspector row, and Return, Escape, or a click elsewhere closes the field.
+the inspector row. Return, Escape, a click on the board or its stage, or moving to an
+inspector field closes it. Other inspector controls leave it open, so a size or
+background can be tried while the caption is being written.
 
 Every card receives the same image area and preserves its aspect ratio. Labels are
 single-line and bounded so a board cannot grow unpredictably from pasted text.

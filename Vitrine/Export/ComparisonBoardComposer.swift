@@ -18,8 +18,10 @@ enum ComparisonBoardComposer {
     static let boardPadding: CGFloat = 48
     static let cornerRadius: CGFloat = 20
     static let footerHeight: CGFloat = 40
-    /// Below this the captions stop being legible, so a tight cell shrinks the image instead.
-    static let minimumUnit: CGFloat = 0.4
+    /// Keeps labels at 12.6 pt and details at 9.1 pt at 1×; a tight cell shrinks the image instead.
+    static let minimumUnit: CGFloat = 0.7
+    /// A fixed-size column whose images would be smaller than this draws as a grid.
+    static let minimumImageHeight: CGFloat = 100
 
     enum CompositionError: Error, Equatable {
         case invalidScale
@@ -34,6 +36,10 @@ enum ComparisonBoardComposer {
         let unit: CGFloat
         let cardFrames: [CGRect]
         let footerFrame: CGRect?
+
+        var imageHeight: CGFloat {
+            max(cardFrames[0].height - chromeHeight(unit: unit), 1)
+        }
 
         /// Rendering and the inline caption editor share this rectangle, so a caption
         /// stays under the pointer whatever the board size, gap, or layout.
@@ -53,6 +59,10 @@ enum ComparisonBoardComposer {
         cardPadding * 2 + imageAreaHeight + captionGap + captionHeight
     }
 
+    static func chromeHeight(unit: CGFloat) -> CGFloat {
+        (cardPadding * 2 + captionGap + captionHeight) * unit
+    }
+
     static func metrics(for board: ComparisonBoard) -> Metrics {
         metrics(
             itemCount: board.items.count,
@@ -70,33 +80,38 @@ enum ComparisonBoardComposer {
         showsFooter: Bool
     ) -> Metrics {
         let gap = ComparisonBoard.clampedGap(gap)
-        let columns = resolvedColumnCount(itemCount: itemCount, layout: layout)
-        let rows = Int(ceil(Double(itemCount) / Double(columns)))
+        var columns = resolvedColumnCount(itemCount: itemCount, layout: layout)
         let footer = showsFooter ? footerHeight : 0
-        let columnGaps = gap * CGFloat(max(columns - 1, 0))
-        let rowGaps = gap * CGFloat(max(rows - 1, 0))
 
         let canvas: CGSize
         let card: CGSize
         let unit: CGFloat
         if let fixed = size.fixedPointSize {
-            let cell = CGSize(
-                width: (fixed.width - boardPadding * 2 - columnGaps) / CGFloat(columns),
-                height: (fixed.height - boardPadding * 2 - footer - rowGaps) / CGFloat(rows))
-            let fit = min(cell.width / cardWidth, cell.height / cardHeight)
+            var fitted = fittedCard(
+                itemCount: itemCount, columns: columns, canvas: fixed, gap: gap, footer: footer)
+            if columns == 1, itemCount > 2,
+                fitted.card.height - chromeHeight(unit: fitted.unit) < minimumImageHeight
+            {
+                columns = 2
+                fitted = fittedCard(
+                    itemCount: itemCount, columns: columns, canvas: fixed, gap: gap, footer: footer)
+            }
             canvas = fixed
-            unit = max(fit, minimumUnit)
-            card =
-                fit >= minimumUnit
-                ? CGSize(width: cardWidth * fit, height: cardHeight * fit) : cell
+            unit = fitted.unit
+            card = fitted.card
         } else {
+            let rows = rowCount(itemCount: itemCount, columns: columns)
             canvas = CGSize(
-                width: boardPadding * 2 + cardWidth * CGFloat(columns) + columnGaps,
-                height: boardPadding * 2 + footer + cardHeight * CGFloat(rows) + rowGaps)
+                width: boardPadding * 2 + cardWidth * CGFloat(columns)
+                    + gap * CGFloat(columns - 1),
+                height: boardPadding * 2 + footer + cardHeight * CGFloat(rows)
+                    + gap * CGFloat(rows - 1))
             unit = 1
             card = CGSize(width: cardWidth, height: cardHeight)
         }
 
+        let rows = rowCount(itemCount: itemCount, columns: columns)
+        let rowGaps = gap * CGFloat(rows - 1)
         let blockHeight = card.height * CGFloat(rows) + rowGaps
         let top = boardPadding + (canvas.height - boardPadding * 2 - footer - blockHeight) / 2
         let frames = (0..<itemCount).map { index in
@@ -121,6 +136,30 @@ enum ComparisonBoardComposer {
         return Metrics(
             columns: columns, rows: rows, pointSize: canvas, unit: unit,
             cardFrames: frames, footerFrame: footerFrame)
+    }
+
+    private static func rowCount(itemCount: Int, columns: Int) -> Int {
+        Int(ceil(Double(itemCount) / Double(columns)))
+    }
+
+    private static func fittedCard(
+        itemCount: Int, columns: Int, canvas: CGSize, gap: CGFloat, footer: CGFloat
+    ) -> (card: CGSize, unit: CGFloat) {
+        let rows = rowCount(itemCount: itemCount, columns: columns)
+        let cell = CGSize(
+            width: (canvas.width - boardPadding * 2 - gap * CGFloat(columns - 1))
+                / CGFloat(columns),
+            height: (canvas.height - boardPadding * 2 - footer - gap * CGFloat(rows - 1))
+                / CGFloat(rows))
+        let fit = min(cell.width / cardWidth, cell.height / cardHeight)
+        guard fit < minimumUnit else {
+            return (CGSize(width: cardWidth * fit, height: cardHeight * fit), fit)
+        }
+        // Captions hold their size, so the card takes the cell's width and the image gives way.
+        let imageWidth = cell.width - cardPadding * 2 * minimumUnit
+        let imageHeight = imageWidth * imageAreaHeight / (cardWidth - cardPadding * 2)
+        let height = min(cell.height, imageHeight + chromeHeight(unit: minimumUnit))
+        return (CGSize(width: cell.width, height: height), minimumUnit)
     }
 
     /// Produces a board at 1×, 2×, or 3×. The images are already rendered inputs, so
@@ -181,13 +220,7 @@ enum ComparisonBoardComposer {
             case .card:
                 Color(red: 0.133, green: 0.137, blue: 0.169)
             case .aurora:
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.31, green: 0.275, blue: 0.898),
-                        Color(red: 0.024, green: 0.714, blue: 0.831),
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing)
+                GradientPreset.aurora.gradient
             case .transparent:
                 Color.clear
             }
@@ -206,10 +239,12 @@ enum ComparisonBoardComposer {
                     CardView(
                         item: item,
                         size: frame.size,
+                        imageHeight: metrics.imageHeight,
                         unit: metrics.unit,
                         fill: board.background.cardFill
                     )
                     .position(x: frame.midX, y: frame.midY)
+                    .mask { outsideOtherCards(than: index) }
                 }
                 if let footer = board.footerText, let frame = metrics.footerFrame {
                     Text(verbatim: footer)
@@ -226,24 +261,32 @@ enum ComparisonBoardComposer {
                 }
             }
         }
+
+        /// A card's shadow stays on the backdrop: on a neighbour it would darken one side only.
+        private func outsideOtherCards(than index: Int) -> some View {
+            Path { path in
+                path.addRect(CGRect(origin: .zero, size: metrics.pointSize))
+                for (other, frame) in metrics.cardFrames.enumerated() where other != index {
+                    let radius = ComparisonBoardComposer.cornerRadius * metrics.unit
+                    path.addRoundedRect(
+                        in: frame, cornerSize: CGSize(width: radius, height: radius),
+                        style: .continuous)
+                }
+            }
+            .fill(style: FillStyle(eoFill: true))
+        }
     }
 
     private struct CardView: View {
         let item: ComparisonBoard.Item
         let size: CGSize
+        let imageHeight: CGFloat
         let unit: CGFloat
         let fill: Color
 
         private var cardShape: RoundedRectangle {
             RoundedRectangle(
                 cornerRadius: ComparisonBoardComposer.cornerRadius * unit, style: .continuous)
-        }
-
-        private var imageHeight: CGFloat {
-            let chrome =
-                (ComparisonBoardComposer.cardPadding * 2 + ComparisonBoardComposer.captionGap
-                    + ComparisonBoardComposer.captionHeight) * unit
-            return max(size.height - chrome, 1)
         }
 
         var body: some View {

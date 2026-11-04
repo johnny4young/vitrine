@@ -6,8 +6,9 @@ import VitrineRendering
 
 /// Session-only editing state for a comparison board.
 ///
-/// A draft owns finished capture pixels and user-visible captions only. It is never
-/// encoded into defaults or Recents, and closing its window releases the entire value.
+/// A draft owns finished capture pixels, user-visible captions, and layout options only.
+/// It is never encoded into defaults or Recents, and closing its window releases the
+/// entire value.
 @Observable
 final class ComparisonBoardDraft {
     struct Item: Identifiable, Sendable {
@@ -110,7 +111,7 @@ final class ComparisonBoardDraft {
 
     /// The scale exports use. OG is an exact pixel contract, like the OpenGraph export preset.
     var resolvedExportScale: CGFloat {
-        size == .openGraph ? 1 : exportScale
+        size == .openGraph ? CGFloat(ExportPreset.openGraph.scale) : exportScale
     }
 
     /// Available while a caption is being retyped and the board itself is not valid yet.
@@ -136,6 +137,11 @@ final class ComparisonBoardDraft {
     ) throws -> RenderedAsset {
         try ComparisonBoardComposer.compose(
             board(), scale: scale, profile: profile, budget: budget)
+    }
+
+    /// What the stage shows: the export's composition at 1×, under the interactive budget.
+    func composePreview(profile: ColorProfile) throws -> RenderedAsset {
+        try compose(scale: 1, profile: profile, budget: .preview)
     }
 
     func moveItem(id: Item.ID, offset: Int) {

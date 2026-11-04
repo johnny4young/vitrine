@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import VitrineDomain
 import VitrineRendering
 
 /// A validated, path-free description of a board made from two to four finished
@@ -36,7 +37,7 @@ nonisolated struct ComparisonBoard: Sendable {
             switch self {
             case .automatic: nil
             case .widescreen: CGSize(width: 1600, height: 1000)
-            case .openGraph: CGSize(width: 1200, height: 630)
+            case .openGraph: ExportPreset.openGraph.sizing.fixedSize
             case .square: CGSize(width: 1080, height: 1080)
             }
         }

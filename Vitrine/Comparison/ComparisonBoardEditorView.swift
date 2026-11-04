@@ -8,15 +8,6 @@ struct ComparisonBoardEditorView: View {
     private enum Field: Hashable {
         case label(UUID)
         case detail(UUID)
-        case inlineLabel(UUID)
-        case inlineDetail(UUID)
-
-        var inlineCaption: UUID? {
-            switch self {
-            case .inlineLabel(let id), .inlineDetail(let id): id
-            case .label, .detail: nil
-            }
-        }
     }
 
     @Bindable var draft: ComparisonBoardDraft
@@ -48,24 +39,7 @@ struct ComparisonBoardEditorView: View {
                 isValid: draft.isValid,
                 keepsLastFrame: editingCaption != nil,
                 captionFrames: { draft.captionFrames },
-                render: {
-                    try draft.compose(
-                        scale: 1, profile: settings.export.colorProfile, budget: .preview)
-                })
-        }
-        .task(id: editingCaption) {
-            guard let editingCaption else { return }
-            // A focus request made as the field appears is dropped; give it a turn first.
-            await Task.yield()
-            focusedField = .inlineLabel(editingCaption)
-        }
-        .onChange(of: focusedField) { previous, current in
-            // Moving straight to another caption's field must not close the new editor.
-            if let id = previous?.inlineCaption, id == editingCaption,
-                current?.inlineCaption == nil
-            {
-                editingCaption = nil
-            }
+                render: { try draft.composePreview(profile: settings.export.colorProfile) })
         }
     }
 
@@ -202,35 +176,21 @@ struct ComparisonBoardEditorView: View {
         id: UUID, index: Int, frame: CGRect, scale: CGFloat, canvas: CGSize
     ) -> some View {
         let width = max(frame.width * scale, 240)
-        let height: CGFloat = 76
-        return VStack(spacing: VitrineTokens.Spacing.xs) {
-            TextField("Label", text: labelBinding(for: id))
-                .focused($focusedField, equals: .inlineLabel(id))
-                .accessibilityIdentifier("comparison-board-inline-label-\(index)")
-            TextField("Optional detail", text: detailBinding(for: id))
-                .focused($focusedField, equals: .inlineDetail(id))
-                .accessibilityIdentifier("comparison-board-inline-detail-\(index)")
-        }
-        .multilineTextAlignment(.center)
-        .onSubmit { endEditing() }
-        .onExitCommand { endEditing() }
-        .padding(VitrineTokens.Spacing.xs)
-        .frame(width: width, height: height)
-        .background(
-            VitrineTokens.Surface.window,
-            in: RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous)
+        return ComparisonBoardCaptionEditor(
+            captureID: id,
+            index: index,
+            label: labelBinding(for: id),
+            detail: detailBinding(for: id),
+            // A field being replaced by another caption's ends after the switch.
+            onEnd: { ended in if editingCaption == ended { editingCaption = nil } }
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: VitrineTokens.Radius.md, style: .continuous)
-                .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
-        )
-        .shadow(color: .black.opacity(0.28), radius: 12, y: 6)
-        .contentShape(Rectangle())
-        .onTapGesture {}
+        .frame(width: width)
         // The rendered caption can be far smaller than a usable field on a large board.
         .position(
             x: Self.clamped(frame.midX * scale, span: width, within: canvas.width),
-            y: Self.clamped(frame.midY * scale, span: height, within: canvas.height))
+            y: Self.clamped(
+                frame.midY * scale, span: ComparisonBoardCaptionEditor.height,
+                within: canvas.height))
     }
 
     private static func clamped(_ center: CGFloat, span: CGFloat, within limit: CGFloat) -> CGFloat
@@ -523,32 +483,14 @@ private struct BackgroundSwatch: View {
     let isSelected: Bool
     let action: () -> Void
 
-    private var shape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: VitrineTokens.Radius.sm, style: .continuous)
-    }
-
     var body: some View {
-        Button(action: action) {
-            Group {
-                if background == .transparent {
-                    TransparencyGrid(cell: 6)
-                } else {
-                    ComparisonBoardComposer.BackgroundFill(background: background)
-                }
+        FillSwatch(title: background.title, isSelected: isSelected, action: action) {
+            if background == .transparent {
+                TransparencyGrid(cell: 6)
+            } else {
+                ComparisonBoardComposer.BackgroundFill(background: background)
             }
-            .frame(width: 24, height: 24)
-            .clipShape(shape)
-            .overlay(
-                shape.strokeBorder(
-                    isSelected
-                        ? VitrineTokens.Chrome.swatchSelectedBorder : VitrineTokens.Line.border,
-                    lineWidth: isSelected ? 2 : Brand.Stroke.hairline)
-            )
         }
-        .buttonStyle(.plain)
-        .help(background.title)
-        .accessibilityLabel(background.title)
-        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .accessibilityIdentifier("comparison-board-background-\(background.rawValue)")
     }
 }
