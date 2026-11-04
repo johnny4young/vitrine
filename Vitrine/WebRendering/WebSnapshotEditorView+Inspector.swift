@@ -43,6 +43,29 @@ extension WebSnapshotEditorView {
             )
             .accessibilityLabel("Source")
             .accessibilityIdentifier("web-snapshot-mode-picker")
+            if !NetworkCapability.isURLCaptureEnabled {
+                HStack(spacing: VitrineTokens.Spacing.xxs + 2) {
+                    Text("URL needs the Direct download build")
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                    Button("Why?") { showsURLCaptureExplanation = true }
+                        .buttonStyle(.link)
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .accessibilityIdentifier("web-snapshot-url-why-button")
+                        .popover(isPresented: $showsURLCaptureExplanation) {
+                            Text(
+                                "This build has no network access, so it can't load a page. HTML rendering works here."
+                            )
+                            .font(.system(size: VitrineTokens.FontSize.subhead))
+                            .frame(width: 240, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(VitrineTokens.Spacing.sm)
+                            .accessibilityIdentifier("web-snapshot-url-unavailable-note")
+                        }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("web-snapshot-url-badge")
+            }
         }
     }
 
@@ -55,15 +78,6 @@ extension WebSnapshotEditorView {
                     onSubmit: attemptCapture, disablesAutocorrection: true
                 )
                 .accessibilityIdentifier("web-snapshot-url-field")
-                if !NetworkCapability.isURLCaptureEnabled {
-                    Text(
-                        "URL capture runs only in the direct-download build. HTML rendering works here."
-                    )
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityIdentifier("web-snapshot-url-unavailable-note")
-                }
                 signInRow
             }
         case .html:

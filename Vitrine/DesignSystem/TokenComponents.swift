@@ -67,7 +67,11 @@ struct TokenGroup<Content: View>: View {
 struct TokenRow<Content: View>: View {
     var label: Text? = nil
     var caption: Text? = nil
+    /// Puts the caption behind an info button, for a column too narrow to read it inline.
+    var captionInPopover = false
     @ViewBuilder var content: Content
+
+    @State private var showsCaption = false
 
     var body: some View {
         // Center the trailing control against the *label line* (always one line,
@@ -83,6 +87,26 @@ struct TokenRow<Content: View>: View {
                         .font(.system(size: VitrineTokens.FontSize.body))
                         .foregroundStyle(VitrineTokens.Text.primary)
                 }
+                if captionInPopover, let caption {
+                    Button {
+                        showsCaption = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: VitrineTokens.FontSize.subhead))
+                            .foregroundStyle(VitrineTokens.Text.tertiary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("More information")
+                    .accessibilityValue(label ?? Text(verbatim: ""))
+                    .accessibilityHint(caption)
+                    .popover(isPresented: $showsCaption) {
+                        caption
+                            .font(.system(size: VitrineTokens.FontSize.subhead))
+                            .frame(width: 260, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(VitrineTokens.Spacing.sm)
+                    }
+                }
                 Spacer(minLength: VitrineTokens.Spacing.sm)
                 // When a caption exists, attach it to the control as its VoiceOver hint
                 // so the explanation is announced together with the control;
@@ -97,7 +121,7 @@ struct TokenRow<Content: View>: View {
                     content
                 }
             }
-            if let caption {
+            if let caption, !captionInPopover {
                 caption
                     .font(.system(size: VitrineTokens.FontSize.caption))
                     .foregroundStyle(VitrineTokens.Text.tertiary)
