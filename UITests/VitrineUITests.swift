@@ -210,14 +210,16 @@ final class VitrineUITests: XCTestCase {
         assertHittable("copy-button", in: app, "Export toolbar copy action is not reachable")
         assertHittable(
             "editor-status-capsule", in: app, "The destination menu must be reachable")
-        let capsule = element("editor-status-capsule", in: app)
-        capsule.click()
+        hittableElement("editor-status-capsule", in: app).click()
         chooseMenuItem("Docs / Blog", in: app)
         XCTAssertTrue(
-            capsule.wait(for: \.label, toEqual: "Destination", timeout: 3)
-                && (capsule.value as? String ?? "").hasPrefix("Docs / Blog"),
+            app.menuButtons.matching(
+                NSPredicate(
+                    format: "identifier == %@ AND value BEGINSWITH %@", "editor-status-capsule",
+                    "Docs / Blog")
+            ).firstMatch.waitForExistence(timeout: 3),
             "Choosing a destination must apply it")
-        capsule.click()
+        hittableElement("editor-status-capsule", in: app).click()
         chooseMenuItem("Custom", in: app)
         assertHittable(
             "command-palette-button", in: app, "The command palette button must be reachable")
