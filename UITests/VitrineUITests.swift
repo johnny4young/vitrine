@@ -1269,6 +1269,37 @@ final class VitrineUITests: XCTestCase {
         firstLabel.typeText("Original")
         XCTAssertEqual(firstLabel.value as? String, "Original")
 
+        // The caption on the board and the inspector row edit the same string.
+        assertHittable(
+            "comparison-board-caption-0", in: app,
+            "The rendered caption should be clickable once the preview draws")
+        element("comparison-board-caption-0", in: app).click()
+        let inlineLabel = element("comparison-board-inline-label-0", in: app)
+        assertExists(inlineLabel, in: app, timeout: 3)
+        assertExists(element("comparison-board-inline-detail-0", in: app), in: app)
+        inlineLabel.click()
+        inlineLabel.typeKey("a", modifierFlags: .command)
+        inlineLabel.typeText("On the board")
+        XCTAssertEqual(firstLabel.value as? String, "On the board")
+        inlineLabel.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(inlineLabel.waitForNonExistence(timeout: 3))
+
+        for control in [
+            "comparison-board-summary", "comparison-board-size-picker",
+            "comparison-board-gap-slider", "comparison-board-footer-toggle",
+            "comparison-board-background-vitrine", "comparison-board-background-card",
+            "comparison-board-background-aurora", "comparison-board-background-transparent",
+        ] {
+            assertExists(element(control, in: app), in: app)
+        }
+        element("comparison-board-background-aurora", in: app).click()
+        XCTAssertTrue(
+            element("comparison-board-background-aurora", in: app).isSelected,
+            "The chosen board background should read as selected")
+        let footer = element("comparison-board-footer-toggle", in: app)
+        footer.click()
+        XCTAssertEqual(footer.value as? Int, 1)
+
         element("comparison-board-copy-button", in: app).click()
         let copyDeadline = Date().addingTimeInterval(6)
         var copied: NSBitmapImageRep?

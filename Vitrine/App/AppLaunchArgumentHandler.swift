@@ -60,6 +60,7 @@ import VitrineRendering
         /// `--brand-accent` (Debug) keeps the brand accent whatever the macOS accent is;
         /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
         /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
+        /// `--open-comparison-board` opens a board from the newest seeded captures;
         /// `--open-menu-panel` opens the real panel at a deterministic automation anchor;
         /// `--show-help` / `--show-welcome` force those windows open past their gates;
         /// `--seen-old-version` seeds an older last-seen version and then presents What's
@@ -246,6 +247,11 @@ import VitrineRendering
                         historyConsent: HistoryConsentPrompt.resolve)
                     RecentsGalleryWindowController.shared.show()
                 }
+                didOpenWindow = true
+            }
+            if arguments.contains("--open-comparison-board") {
+                ComparisonBoardWindowController.shared.show(
+                    captures: Array(environment.recents.captures.prefix(4)))
                 didOpenWindow = true
             }
             if arguments.contains("--open-social-card") {

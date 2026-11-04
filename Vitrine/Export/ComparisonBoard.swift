@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 import VitrineRendering
 
@@ -12,6 +13,8 @@ nonisolated struct ComparisonBoard: Sendable {
     static let itemCountRange = 2...4
     static let maximumLabelLength = 48
     static let maximumDetailLength = 80
+    static let gapRange: ClosedRange<CGFloat> = 0...40
+    static let defaultGap: CGFloat = 28
 
     enum Layout: String, CaseIterable, Sendable {
         /// Before/after stays side by side, three items form one row, and four items use
@@ -20,6 +23,30 @@ nonisolated struct ComparisonBoard: Sendable {
         case horizontal
         case vertical
         case grid
+    }
+
+    enum Size: String, CaseIterable, Sendable {
+        /// Hugs the cards, so the board grows with its layout.
+        case automatic
+        case widescreen
+        case openGraph
+        case square
+
+        var fixedPointSize: CGSize? {
+            switch self {
+            case .automatic: nil
+            case .widescreen: CGSize(width: 1600, height: 1000)
+            case .openGraph: CGSize(width: 1200, height: 630)
+            case .square: CGSize(width: 1080, height: 1080)
+            }
+        }
+    }
+
+    enum Background: String, CaseIterable, Sendable {
+        case vitrine
+        case card
+        case aurora
+        case transparent
     }
 
     enum ValidationError: Error, Equatable, Sendable {
@@ -44,8 +71,19 @@ nonisolated struct ComparisonBoard: Sendable {
 
     let items: [Item]
     let layout: Layout
+    let size: Size
+    let gap: CGFloat
+    let background: Background
+    let showsFooter: Bool
 
-    init(items: [Item], layout: Layout = .automatic) throws {
+    init(
+        items: [Item],
+        layout: Layout = .automatic,
+        size: Size = .automatic,
+        gap: CGFloat = defaultGap,
+        background: Background = .vitrine,
+        showsFooter: Bool = false
+    ) throws {
         guard Self.itemCountRange.contains(items.count) else {
             throw ValidationError.itemCount(items.count)
         }
@@ -76,6 +114,25 @@ nonisolated struct ComparisonBoard: Sendable {
                 detail: trimmedDetail?.isEmpty == true ? nil : trimmedDetail)
         }
         self.layout = layout
+        self.size = size
+        self.gap = Self.clampedGap(gap)
+        self.background = background
+        self.showsFooter = showsFooter
+    }
+
+    /// The footer is generated from the count alone: a board keeps no file name or source
+    /// text, so nothing hidden in a capture can come back through this line.
+    var footerText: String? {
+        showsFooter ? Self.footerText(captureCount: items.count) : nil
+    }
+
+    static func footerText(captureCount: Int) -> String {
+        String(localized: "\(captureCount) captures · made with Vitrine")
+    }
+
+    static func clampedGap(_ gap: CGFloat) -> CGFloat {
+        guard gap.isFinite else { return defaultGap }
+        return min(max(gap, gapRange.lowerBound), gapRange.upperBound)
     }
 
     private static func containsLineBreak(_ value: String) -> Bool {

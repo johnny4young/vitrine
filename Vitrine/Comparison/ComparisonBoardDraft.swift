@@ -25,6 +25,10 @@ final class ComparisonBoardDraft {
 
     struct PreviewKey: Hashable {
         let layout: ComparisonBoard.Layout
+        let size: ComparisonBoard.Size
+        let gap: CGFloat
+        let background: ComparisonBoard.Background
+        let showsFooter: Bool
         let itemIDs: [Item.ID]
         let captions: [String]
         let profile: ColorProfile
@@ -32,6 +36,10 @@ final class ComparisonBoardDraft {
 
     var items: [Item]
     var layout: ComparisonBoard.Layout = .automatic
+    var size: ComparisonBoard.Size = .automatic
+    var gap: CGFloat = ComparisonBoard.defaultGap
+    var background: ComparisonBoard.Background = .vitrine
+    var showsFooter = false
     let exportScale: CGFloat
 
     init(
@@ -72,6 +80,10 @@ final class ComparisonBoardDraft {
     func previewKey(profile: ColorProfile) -> PreviewKey {
         PreviewKey(
             layout: layout,
+            size: size,
+            gap: gap,
+            background: background,
+            showsFooter: showsFooter,
             itemIDs: items.map(\.id),
             captions: items.flatMap { [$0.label, $0.detail] },
             profile: profile)
@@ -89,7 +101,34 @@ final class ComparisonBoardDraft {
                     label: $0.label,
                     detail: $0.detail)
             },
-            layout: layout)
+            layout: layout,
+            size: size,
+            gap: gap,
+            background: background,
+            showsFooter: showsFooter)
+    }
+
+    /// The scale exports use. OG is an exact pixel contract, like the OpenGraph export preset.
+    var resolvedExportScale: CGFloat {
+        size == .openGraph ? 1 : exportScale
+    }
+
+    /// Available while a caption is being retyped and the board itself is not valid yet.
+    var metrics: ComparisonBoardComposer.Metrics {
+        ComparisonBoardComposer.metrics(
+            itemCount: items.count,
+            layout: layout,
+            size: size,
+            gap: gap,
+            showsFooter: showsFooter)
+    }
+
+    var captionFrames: [Item.ID: CGRect] {
+        let metrics = metrics
+        return Dictionary(
+            uniqueKeysWithValues: items.enumerated().map { index, item in
+                (item.id, metrics.captionFrame(at: index))
+            })
     }
 
     func compose(
