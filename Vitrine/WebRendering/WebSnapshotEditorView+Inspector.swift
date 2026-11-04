@@ -54,7 +54,7 @@ extension WebSnapshotEditorView {
                         .accessibilityIdentifier("web-snapshot-url-why-button")
                         .popover(isPresented: $showsURLCaptureExplanation) {
                             Text(
-                                "URL capture runs only in the direct-download build. HTML rendering works here."
+                                "This build has no network access, so it can't load a page. HTML rendering works here."
                             )
                             .font(.system(size: VitrineTokens.FontSize.subhead))
                             .frame(width: 240, alignment: .leading)

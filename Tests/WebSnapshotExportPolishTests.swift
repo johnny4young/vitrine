@@ -160,14 +160,29 @@ struct WebSnapshotExportPolishTests {
         capture.waitKind = .domContentLoaded
         capture.usesLoggedInSession = false
         capture.allowsLoopbackCapture = false
+        func line(_ parts: String.LocalizationValue...) -> String {
+            parts.map { String(localized: $0) }.joined(separator: " · ")
+        }
         #expect(
-            WebCaptureSummary.line(for: capture) == "Visible · Loaded · no session · no localhost")
+            WebCaptureSummary.line(for: capture)
+                == line("Visible", "Loaded", "no session", "no localhost"))
 
         capture.captureMode = .fullPage
         capture.waitKind = .networkQuiet
         capture.usesLoggedInSession = true
         capture.allowsLoopbackCapture = true
-        #expect(WebCaptureSummary.line(for: capture) == "Full page · Idle · session · localhost")
+        #expect(
+            WebCaptureSummary.line(for: capture)
+                == line("Full page", "Idle", "session", "localhost"))
+
+        capture.waitKind = .fixedDelay
+        #expect(
+            WebCaptureSummary.line(for: capture)
+                == line("Full page", "Delay", "session", "localhost"))
+    }
+
+    @Test func theSettingsTabKeyStaysObservable() {
+        #expect(!SettingsTab.storageKey.contains("."))
     }
 
     @Test func urlOnlyCaptureOptionsAreHiddenForHTML() {

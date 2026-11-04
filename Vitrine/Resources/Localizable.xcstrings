@@ -34,13 +34,13 @@
         }
       }
     },
-    "Defaults in Settings ▸ Input" : {
-      "comment" : "Link from Web Snapshot capture options to their defaults.",
+    "Open Settings ▸ Input" : {
+      "comment" : "Link from Web Snapshot capture options to the Input settings pane.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Valores predeterminados en Ajustes ▸ Entrada"
+            "value" : "Abrir Ajustes ▸ Entrada"
           }
         }
       }
@@ -10185,13 +10185,13 @@
         }
       }
     },
-    "URL capture runs only in the direct-download build. HTML rendering works here." : {
+    "This build has no network access, so it can't load a page. HTML rendering works here." : {
       "comment" : "Web Snapshot: URL-mode unavailable note.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La captura de URL solo funciona en la versión de descarga directa. El renderizado de HTML sí funciona aquí."
+            "value" : "Esta versión no tiene acceso a la red, así que no puede cargar una página. El renderizado de HTML sí funciona aquí."
           }
         }
       }

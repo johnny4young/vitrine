@@ -126,9 +126,9 @@ struct WebCaptureControls: View {
                 loggedInSessionRow
                 savedSitesRow
                 loopbackCaptureRow
-                Button("Defaults in Settings ▸ Input") {
+                Button("Open Settings ▸ Input") {
                     AppDefaults.current.set(
-                        SettingsTab.input.rawValue, forKey: "settings.selectedTab")
+                        SettingsTab.input.rawValue, forKey: SettingsTab.storageKey)
                     SettingsWindowManager.shared.show()
                 }
                 .buttonStyle(.link)
@@ -181,8 +181,7 @@ struct WebCaptureControls: View {
             label: Text("Use my logged-in session"),
             caption: Text(
                 "Keep a signed-in session so captures can include pages behind a login. Sign in from the Web Snapshot window; the session is Vitrine's own, never taken from another browser. Off by default; your code and captures still stay on your Mac."
-            ),
-            captionInPopover: collapsesAdvanced
+            )
         ) {
             Toggle("Use my logged-in session", isOn: $settings.webCapture.usesLoggedInSession)
                 .toggleStyle(.switch)
@@ -396,7 +395,7 @@ struct WebCaptureControls: View {
                     .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
                 if let size = viewportSizeLabel(for: kind) {
                     Text(verbatim: size)
-                        .font(.system(size: 10))
+                        .font(.system(size: VitrineTokens.FontSize.caption))
                         .monospacedDigit()
                 }
             }
@@ -420,6 +419,7 @@ struct WebCaptureControls: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(viewportSegmentLabel(for: kind))
+        .accessibilityValue(viewportSizeLabel(for: kind) ?? "")
         .accessibilityAddTraits(isOn ? [.isSelected] : [])
         .accessibilityIdentifier("web-viewport-chip-\(kind.rawValue)")
     }

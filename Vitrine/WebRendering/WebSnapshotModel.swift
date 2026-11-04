@@ -20,8 +20,8 @@ final class WebSnapshotModel {
         urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
     ) {
         self.viewportRenderer = viewportRenderer
-        // Open on the source that works: a URL field whose Capture can never enable is a
-        // dead end in a build without network access.
+        // Open on the source that works: a URL capture can only fail in a build without
+        // network access.
         self.mode = urlCaptureEnabled ? .url : .html
     }
 

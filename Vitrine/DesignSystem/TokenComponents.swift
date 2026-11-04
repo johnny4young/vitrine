@@ -97,6 +97,7 @@ struct TokenRow<Content: View>: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("More information")
+                    .accessibilityValue(label ?? Text(verbatim: ""))
                     .accessibilityHint(caption)
                     .popover(isPresented: $showsCaption) {
                         caption
