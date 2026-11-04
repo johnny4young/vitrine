@@ -38,7 +38,8 @@ struct EditorPreferencesTests {
     }
 
     @Test func paletteOffersTheLiveFileActionsTheChipOffers() {
-        #expect(PaletteLiveFileAction.available(isActive: false, usesImageContent: false) == [.open])
+        #expect(
+            PaletteLiveFileAction.available(isActive: false, usesImageContent: false) == [.open])
         #expect(
             PaletteLiveFileAction.available(isActive: true, usesImageContent: false)
                 == [.reload, .openDifferent, .stop])
