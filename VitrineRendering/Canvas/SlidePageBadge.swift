@@ -18,10 +18,14 @@ struct SlidePageBadgeOverlay: ViewModifier {
 
     /// Yields the corner to a brand mark already placed there.
     private var alignment: Alignment {
-        if let watermark, watermark.hasContent, watermark.placement == .topTrailing {
-            return .topLeading
-        }
-        return .topTrailing
+        guard let watermark, watermark.hasContent else { return .topTrailing }
+        let holdsCorner =
+            switch watermark.placement {
+            case .topTrailing: true
+            case .free: watermark.freePosition.x > 0.5 && watermark.freePosition.y < 0.2
+            default: false
+            }
+        return holdsCorner ? .topLeading : .topTrailing
     }
 
     private static let inset: CGFloat = 40

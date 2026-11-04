@@ -14,6 +14,12 @@ struct CarouselExportView: View {
         var cues: CarouselPaginator.Cues
     }
 
+    /// What the planned file names depend on.
+    private struct OutputPlan: Equatable {
+        var folder: URL?
+        var slideCount: Int
+    }
+
     /// The user's current snapshot (style + any brand watermark); each slide replaces
     /// only its `code` with that page's lines.
     let baseConfig: SnapshotConfig
@@ -31,6 +37,9 @@ struct CarouselExportView: View {
 
     /// The encoded size of a sampled slide, scaled by the live slide count.
     @State private var bytesPerSlide: Int?
+
+    /// Held in state so slides written during the export don't rename the line under it.
+    @State private var plannedFilenames: [String] = []
 
     /// A short result line shown only when some slides failed to write.
     @State private var failureNote: String?
@@ -102,6 +111,9 @@ struct CarouselExportView: View {
         )
         .interactiveDismissDisabled(isExporting)
         .task(id: choices) { await refreshSizeEstimate() }
+        .task(id: OutputPlan(folder: folder, slideCount: pages.count)) {
+            refreshPlannedFilenames()
+        }
     }
 
     private var splitControls: some View {
@@ -127,24 +139,18 @@ struct CarouselExportView: View {
 
     private var slideControls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Text("Line numbers")
-                Spacer(minLength: 0)
-                Picker(
-                    "Line numbers",
-                    selection: Binding(
-                        get: { choices.cues.lineNumbers ?? .off },
-                        set: { choices.cues.lineNumbers = $0 })
-                ) {
-                    Text("Continue").tag(CarouselPaginator.Cues.LineNumbers.continuing)
-                    Text("Restart").tag(CarouselPaginator.Cues.LineNumbers.restarting)
-                    Text("Off").tag(CarouselPaginator.Cues.LineNumbers.off)
+            // Segments share one width, so a long label can outgrow the row.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    Text("Line numbers")
+                        .fixedSize()
+                    Spacer(minLength: 0)
+                    lineNumbersPicker
                 }
-                .pickerStyle(.segmented)
-                .controlSize(.small)
-                .labelsHidden()
-                .fixedSize()
-                .accessibilityIdentifier("carousel-line-numbers")
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Line numbers")
+                    lineNumbersPicker
+                }
             }
             switchRow(
                 "Page badge “2 / 4”", isOn: $choices.cues.showsPageBadge,
@@ -153,6 +159,24 @@ struct CarouselExportView: View {
                 "“continues →” cue", isOn: $choices.cues.showsContinuation,
                 identifier: "carousel-continuation-cue")
         }
+    }
+
+    private var lineNumbersPicker: some View {
+        Picker(
+            "Line numbers",
+            selection: Binding(
+                get: { choices.cues.lineNumbers ?? .off },
+                set: { choices.cues.lineNumbers = $0 })
+        ) {
+            Text("Continue").tag(CarouselPaginator.Cues.LineNumbers.continuing)
+            Text("Restart").tag(CarouselPaginator.Cues.LineNumbers.restarting)
+            Text("Off").tag(CarouselPaginator.Cues.LineNumbers.off)
+        }
+        .pickerStyle(.segmented)
+        .controlSize(.small)
+        .labelsHidden()
+        .fixedSize()
+        .accessibilityIdentifier("carousel-line-numbers")
     }
 
     private var outputControls: some View {
@@ -207,8 +231,11 @@ struct CarouselExportView: View {
     private var outputLine: String {
         let count = pages.count
         guard count > 0 else { return "" }
+        let filenames =
+            plannedFilenames.count == count
+            ? plannedFilenames : CarouselPaginator.plannedFilenames(slideCount: count, in: nil)
         let summary = CarouselPaginator.outputSummary(
-            slideCount: count, estimatedBytes: bytesPerSlide.map { $0 * count })
+            filenames: filenames, estimatedBytes: bytesPerSlide.map { $0 * count })
         return summary + " · " + String(localized: "Existing files are kept")
     }
 
@@ -220,6 +247,11 @@ struct CarouselExportView: View {
             baseConfig, slides: pages, cues: choices.cues, profile: profile)
         guard !Task.isCancelled else { return }
         bytesPerSlide = estimate
+    }
+
+    private func refreshPlannedFilenames() {
+        plannedFilenames = CarouselPaginator.plannedFilenames(
+            slideCount: pages.count, in: folder)
     }
 
     private func chooseFolder() {
@@ -256,6 +288,7 @@ struct CarouselExportView: View {
                 dismiss()
             } else {
                 failureNote = completion.failureNote
+                refreshPlannedFilenames()
             }
         }
     }

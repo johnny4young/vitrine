@@ -41,8 +41,8 @@ enum CarouselPaginator {
     }
 
     /// With `preferBlankLineBreaks`, each boundary moves to a nearby blank line and that
-    /// separator is left out of both slides. The slide count and the cap never change,
-    /// so a snippet without usable blank lines splits exactly as the balanced default.
+    /// separator is left out of both slides, so a snippet without usable blank lines splits
+    /// exactly as the balanced default. The cap always holds, and an all-blank slide is dropped.
     static func slides(
         for code: String, maxLinesPerSlide: Int, preferBlankLineBreaks: Bool = false
     ) -> [Slide] {
@@ -74,7 +74,7 @@ enum CarouselPaginator {
                     firstLine: index + 1, lineCount: bounds.end - index))
             index = bounds.next
         }
-        return slides
+        return slides.filter { !$0.text.allSatisfy(\.isWhitespace) }
     }
 
     /// The blank run nearest the balanced boundary (earliest on a tie): where this slide
@@ -132,6 +132,9 @@ enum CarouselPaginator {
         config.code = slide.text
         config.highlightedLineRanges = slide.localRanges(base.highlightedLineRanges)
         config.redactedLineRanges = slide.localRanges(base.redactedLineRanges)
+        // Focus dims every row outside a highlight, which is all of them without one.
+        config.focusHighlightedLines =
+            base.focusHighlightedLines && !config.highlightedLineRanges.isEmpty
         config.fontSize = max(config.fontSize, ExportManager.carouselMinimumFontSize)
 
         switch cues.lineNumbers {
@@ -151,9 +154,10 @@ enum CarouselPaginator {
         var cue = SlideCue()
         if cues.showsPageBadge { cue.pageLabel = "\(index + 1) / \(count)" }
         if cues.showsContinuation {
-            let lastLine = slide.firstLine + slide.lineCount - 1
-            cue.rangeLabel =
-                slide.lineCount > 1 ? "\(slide.firstLine)–\(lastLine)" : "\(slide.firstLine)"
+            // Matches a visible gutter, which may restart; without one, the document's lines.
+            let first = config.showLineNumbers ? config.firstLineNumber : slide.firstLine
+            let last = first + slide.lineCount - 1
+            cue.rangeLabel = slide.lineCount > 1 ? "\(first)–\(last)" : "\(first)"
             if index < count - 1 { cue.continuationLabel = cues.continuationLabel }
         }
         config.slideCue = cue
@@ -165,11 +169,20 @@ enum CarouselPaginator {
         String(format: "carousel-%02d.png", index + 1)
     }
 
+    /// The names the export will write: the writer's own plan once a folder is chosen, so
+    /// the sheet shows `carousel-01-2.png` when `carousel-01.png` is already there.
+    static func plannedFilenames(slideCount: Int, in directory: URL?) -> [String] {
+        let requested = (0..<slideCount).map(outputFilename(forSlideAt:))
+        guard let directory,
+            let plan = try? BatchOutputFiles.plan(filenames: requested, in: directory)
+        else { return requested }
+        return plan.map(\.image.lastPathComponent)
+    }
+
     /// `carousel-01.png … 04.png · ~1.4 MB`; the size is left out until it is known.
-    static func outputSummary(slideCount: Int, estimatedBytes: Int?) -> String {
-        var names = outputFilename(forSlideAt: 0)
-        if slideCount > 1 {
-            let last = outputFilename(forSlideAt: slideCount - 1)
+    static func outputSummary(filenames: [String], estimatedBytes: Int?) -> String {
+        var names = filenames.first ?? ""
+        if filenames.count > 1, let last = filenames.last {
             names += " … " + last.replacingOccurrences(of: "carousel-", with: "")
         }
         guard let estimatedBytes else { return names }

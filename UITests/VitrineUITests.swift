@@ -748,7 +748,9 @@ final class VitrineUITests: XCTestCase {
             "The sheet must name the files it will write")
         let badge = element("carousel-page-badge", in: app)
         badge.click()
-        XCTAssertEqual(badge.value as? Int, 0)
+        let switchedOff = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == 0"), object: badge)
+        XCTAssertEqual(XCTWaiter.wait(for: [switchedOff], timeout: 3), .completed)
         element("carousel-cancel", in: app).click()
         XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
     }
