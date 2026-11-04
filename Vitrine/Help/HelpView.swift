@@ -98,7 +98,7 @@ struct HelpView: View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: topic.symbol)
                 .font(.system(size: 20, weight: .regular))
-                .foregroundStyle(VitrineTokens.Accent.system)
+                .foregroundStyle(VitrineTokens.Accent.systemText)
                 .frame(width: 26)
                 .padding(.top, 2)
                 .accessibilityHidden(true)

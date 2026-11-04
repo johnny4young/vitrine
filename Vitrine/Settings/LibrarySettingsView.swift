@@ -207,6 +207,7 @@ struct StylePresetsSection: View {
                         pendingDeletion = preset
                     }
                 }
+                .tint(VitrineTokens.Accent.destructiveText)
                 .help("Delete this saved preset. Built-in presets can't be deleted.")
                 .disabled(!canEdit)
                 .accessibilityIdentifier("delete-style-preset-button")
@@ -429,6 +430,7 @@ struct CustomThemesSection: View {
                         pendingDeletion = theme
                     }
                 }
+                .tint(VitrineTokens.Accent.destructiveText)
                 .help("Delete this custom theme.")
                 .disabled(theme == nil)
                 .accessibilityIdentifier("delete-custom-theme-button")

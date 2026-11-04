@@ -83,6 +83,13 @@ enum VitrineTokens {
                 dynamicProvider: systemTextProvider(
                     brand: base, window: Surface.window, group: Chrome.tile)))
 
+        /// The tint for a destructive control's label: system red, stepped the same way.
+        static let destructiveText = Color(
+            nsColor: NSColor(
+                name: nil,
+                dynamicProvider: legibleTextProvider(
+                    accent: { .systemRed }, window: Surface.window, group: Chrome.tile)))
+
         /// The fill for `.borderedProminent`, whose label AppKit always draws white: the
         /// system accent, darkened only as far as that label needs.
         static let systemProminentFill = Color(
@@ -103,11 +110,18 @@ enum VitrineTokens {
         private nonisolated static func systemTextProvider(
             brand: Color, window: Color, group: Color
         ) -> @Sendable (NSAppearance) -> NSColor {
+            legibleTextProvider(
+                accent: { NSColor(system(brand: brand)) }, window: window, group: group)
+        }
+
+        private nonisolated static func legibleTextProvider(
+            accent: @escaping @Sendable () -> NSColor, window: Color, group: Color
+        ) -> @Sendable (NSAppearance) -> NSColor {
             { appearance in
                 var label = NSColor.black
                 appearance.performAsCurrentDrawingAppearance {
                     label = legibleText(
-                        accent: NSColor(system(brand: brand)),
+                        accent: accent(),
                         on: composite(NSColor(group), over: NSColor(window)))
                 }
                 return label

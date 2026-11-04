@@ -139,7 +139,7 @@ struct GeneralSettingsView: View {
                     }
                     .buttonStyle(.bordered)
                     // An inherited tint would otherwise paint it like any other action.
-                    .tint(.red)
+                    .tint(VitrineTokens.Accent.destructiveText)
                     .accessibilityIdentifier("reset-all-settings-button")
                 }
             }

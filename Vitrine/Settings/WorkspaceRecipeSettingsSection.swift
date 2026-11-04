@@ -54,6 +54,7 @@ struct WorkspaceRecipeSettingsSection: View {
                         )
                         .accessibilityIdentifier("apply-workspace-recipe-button")
                     Button("Remove", role: .destructive, action: removeSelected)
+                        .tint(VitrineTokens.Accent.destructiveText)
                         .disabled(selectedAssociation == nil)
                         .help("Remove only the local association. The recipe file is not deleted.")
                         .accessibilityIdentifier("remove-workspace-recipe-button")

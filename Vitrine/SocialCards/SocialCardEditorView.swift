@@ -331,7 +331,7 @@ private struct SocialCardInspector: View {
             Spacer(minLength: 0)
         }
         .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
-        .foregroundStyle(VitrineTokens.Accent.system)
+        .foregroundStyle(VitrineTokens.Accent.systemText)
         .padding(.horizontal, VitrineTokens.Spacing.sm)
         .padding(.vertical, VitrineTokens.Spacing.xs)
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -181,6 +181,8 @@ struct PaywallSheet: View {
                     Text("Activate").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                // The default action draws filled with a white label.
+                .tint(VitrineTokens.Accent.systemProminentFill)
                 .disabled(
                     activation.isWorking
                         || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty

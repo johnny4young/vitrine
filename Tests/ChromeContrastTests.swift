@@ -17,6 +17,7 @@ struct ChromeContrastTests {
                 NSColor(VitrineTokens.Chrome.tile), over: NSColor(VitrineTokens.Surface.window))
             for accent: NSColor in [
                 .systemGreen, .systemYellow, .systemOrange, .systemPink, .systemTeal, .systemGray,
+                .systemIndigo, .systemPurple, .systemBlue, .systemRed,
             ] {
                 let text = VitrineTokens.Accent.legibleText(accent: accent, on: group)
                 let ratio = Brand.Contrast.ratio(Color(nsColor: text), on: Color(nsColor: group))
@@ -34,6 +35,21 @@ struct ChromeContrastTests {
         appearance.performAsCurrentDrawingAppearance {
             let ratio = Brand.Contrast.ratio(.white, on: VitrineTokens.Accent.systemProminentFill)
             #expect(ratio >= Brand.Contrast.aaNormal, "\(ratio):1 in \(name.rawValue)")
+        }
+    }
+
+    @Test(arguments: [
+        NSAppearance.Name.aqua, .darkAqua,
+    ])
+    func accentAndDestructiveTintsReadOnASettingsGroup(_ name: NSAppearance.Name) throws {
+        let appearance = try #require(NSAppearance(named: name))
+        appearance.performAsCurrentDrawingAppearance {
+            let group = VitrineTokens.Accent.composite(
+                NSColor(VitrineTokens.Chrome.tile), over: NSColor(VitrineTokens.Surface.window))
+            for tint in [VitrineTokens.Accent.systemText, VitrineTokens.Accent.destructiveText] {
+                let ratio = Brand.Contrast.ratio(tint, on: Color(nsColor: group))
+                #expect(ratio >= Brand.Contrast.aaNormal, "\(ratio):1 in \(name.rawValue)")
+            }
         }
     }
 
@@ -169,4 +185,18 @@ struct ChromeContrastTests {
         #expect(Brand.Contrast.ratio(label, on: fill) >= 4.5)
     }
 
+}
+
+@MainActor
+@Suite("Paywall composition")
+struct PaywallCompositionTests {
+    /// Evaluates the body that holds the buy control, which adopts the accent fill.
+    @Test func paywallComposesAtItsFixedWidth() {
+        let host = NSHostingView(
+            rootView: PaywallSheet(
+                feature: .brandKit, entitlements: Entitlements(provider: FreeProvider())))
+        host.layoutSubtreeIfNeeded()
+        #expect(host.fittingSize.width == 380)
+        #expect(host.fittingSize.height > 0)
+    }
 }
