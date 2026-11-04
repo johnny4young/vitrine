@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Choose a destination preset" : {
+      "comment" : "Editor status capsule tooltip: opens the destination menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un destino predefinido"
+          }
+        }
+      }
+    },
+    "Command palette" : {
+      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos"
+          }
+        }
+      }
+    },
+    "Command palette (⌘K)" : {
+      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos (⌘K)"
+          }
+        }
+      }
+    },
     "panel.prompt.export" : {
       "comment" : "Save and folder panel button that exports (a verb, unlike the Export pane title).",
       "extractionState" : "manual",

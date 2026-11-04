@@ -99,8 +99,7 @@ extension EditorView {
                 .frame(width: 22, height: 22)
                 .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .customLabelMenu(cornerRadius: 4)
         .fixedSize()
         .help(livingSnapshotHelp)
         .accessibilityLabel("Live file")
@@ -661,7 +660,7 @@ private struct PreviewCardStage<Content: View>: View {
 }
 
 /// The floating status capsule: destination · output size · format and resolution ·
-/// zoom (only when scaled down). Locale-neutral data line.
+/// zoom (only when scaled down), and the one-click route to change the destination.
 ///
 /// A view of its own so the card's measured size is read here, not in the editor's body.
 /// See ``PreviewCardGeometry``.
@@ -671,14 +670,33 @@ private struct StageStatusCapsule: View {
     let stageSize: CGSize
 
     var body: some View {
-        Text(verbatim: line)
-            .font(.system(size: VitrineTokens.FontSize.caption))
-            .foregroundStyle(VitrineTokens.Text.tertiary)
+        let line = line
+        Menu {
+            DestinationMenuOptions(settings: settings)
+        } label: {
+            HStack(spacing: 7) {
+                Text(verbatim: line)
+                    .font(.system(size: VitrineTokens.FontSize.caption))
+                    .monospacedDigit()
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+            }
             .padding(.vertical, 4)
             .padding(.horizontal, VitrineTokens.Spacing.sm)
             .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
-            .padding(.bottom, 14)
-            .accessibilityIdentifier("editor-status-capsule")
+            .contentShape(Capsule(style: .continuous))
+        }
+        .customLabelMenu(cornerRadius: 14)
+        .frame(maxWidth: max(0, stageSize.width - 24))
+        .help("Choose a destination preset")
+        .accessibilityLabel("Destination")
+        .accessibilityValue(Text(verbatim: line))
+        .accessibilityIdentifier("editor-status-capsule")
+        .padding(.bottom, 14)
     }
 
     private var line: String {
@@ -693,6 +711,23 @@ private struct StageStatusCapsule: View {
             if zoom < 100 { line += " · \(zoom)%" }
         }
         return line
+    }
+}
+
+/// Every destination by its full name. A view of its own so the capsule's size changes
+/// do not rebuild the options.
+private struct DestinationMenuOptions: View {
+    let settings: AppSettings
+
+    var body: some View {
+        Picker("Destination", selection: settings.destinationSelection) {
+            Text("Custom").tag(String?.none)
+            ForEach(ExportPreset.all) { preset in
+                Text(verbatim: preset.displayName).tag(String?.some(preset.id))
+            }
+        }
+        .pickerStyle(.inline)
+        .labelsHidden()
     }
 }
 

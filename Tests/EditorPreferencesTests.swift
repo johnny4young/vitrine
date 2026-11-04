@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 import VitrineDomain
 import VitrineRendering
@@ -11,6 +12,19 @@ struct EditorPreferencesTests {
     private func environment() -> AppEnvironment {
         AppEnvironment(
             defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+    }
+
+    @Test func destinationSelectionSelectsAndClearsThePreset() {
+        let settings = AppSettings(defaults: testDefaults())
+        let selection = settings.destinationSelection
+        #expect(selection.wrappedValue == nil)
+
+        selection.wrappedValue = "opengraph"
+        #expect(settings.selectedPresetID == "opengraph")
+        #expect(selection.wrappedValue == "opengraph")
+
+        selection.wrappedValue = nil
+        #expect(settings.selectedPresetID == nil)
     }
 
     @Test func additionalWindowsKeepTheResolvedCustomDefaultTheme() {

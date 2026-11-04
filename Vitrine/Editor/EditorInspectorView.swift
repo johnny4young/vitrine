@@ -377,11 +377,11 @@ struct EditorInspectorView: View {
                 // Row 1: Custom + the first three chips. Labels come from the shared
                 // `DestinationChips` source so the editor and Settings never drift.
                 TokenSegmentedPicker(
-                    options: [(DestinationTag.custom.rawValue, Text("Custom"))]
+                    options: [(nil, Text("Custom"))]
                         + DestinationChips.all.prefix(3).map {
-                            (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))
+                            ($0.id, Text(verbatim: $0.label))
                         },
-                    selection: destinationBinding
+                    selection: settings.destinationSelection
                 )
             }
             HStack {
@@ -390,9 +390,9 @@ struct EditorInspectorView: View {
                 // the inspector keeps two compact rows beside its other controls.
                 TokenSegmentedPicker(
                     options: DestinationChips.all.dropFirst(3).map {
-                        (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))
+                        ($0.id, Text(verbatim: $0.label))
                     },
-                    selection: destinationBinding
+                    selection: settings.destinationSelection
                 )
             }
         }
@@ -436,32 +436,6 @@ struct EditorInspectorView: View {
     }
 
     // MARK: - Bindings & helpers
-
-    /// A stable string tag for the destination segments: "custom" or a preset id.
-    private enum DestinationTag: Equatable {
-        case custom
-        case preset(String)
-
-        var rawValue: String {
-            switch self {
-            case .custom: ""
-            case .preset(let id): id
-            }
-        }
-    }
-
-    private var destinationBinding: Binding<String> {
-        Binding(
-            get: { settings.selectedPresetID ?? "" },
-            set: { id in
-                if let preset = ExportPreset.preset(withID: id) {
-                    settings.selectPreset(preset)
-                } else {
-                    settings.clearPreset()
-                }
-            }
-        )
-    }
 
     /// Whether the selected font ships programming ligatures, gating the toggle
     /// so it reads as inert for a font that has none.

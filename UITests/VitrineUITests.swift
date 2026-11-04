@@ -189,6 +189,13 @@ final class VitrineUITests: XCTestCase {
             "editor-style-preset-picker", in: app, "Style preset picker is not reachable")
         assertHittable("editor-inspector", in: app, "Inspector is not reachable")
         assertHittable("copy-button", in: app, "Export toolbar copy action is not reachable")
+        assertHittable(
+            "editor-status-capsule", in: app, "The destination menu must be reachable")
+        assertHittable(
+            "command-palette-button", in: app, "The command palette button must be reachable")
+        element("command-palette-button", in: app).click()
+        assertExists(element("command-palette-field", in: app), in: app, timeout: 3)
+        app.typeKey(.escape, modifierFlags: [])
 
         // Advanced controls start behind the collapsed Output disclosure.
         element("inspector-disclosure-output", in: app).click()
