@@ -1,6 +1,105 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "URL needs the Direct download build" : {
+      "comment" : "Web Snapshot source note in a build without URL capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL requiere la versión de descarga directa"
+          }
+        }
+      }
+    },
+    "Why?" : {
+      "comment" : "Link that explains why URL capture is unavailable.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Por qué?"
+          }
+        }
+      }
+    },
+    "More information" : {
+      "comment" : "Accessibility label of an info button that shows a row's explanation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más información"
+          }
+        }
+      }
+    },
+    "Open Settings ▸ Input" : {
+      "comment" : "Link from Web Snapshot capture options to the Input settings pane.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes ▸ Entrada"
+          }
+        }
+      }
+    },
+    "session" : {
+      "comment" : "Capture options summary: a saved login session is used.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sesión"
+          }
+        }
+      }
+    },
+    "no session" : {
+      "comment" : "Capture options summary: no saved login session is used.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sin sesión"
+          }
+        }
+      }
+    },
+    "localhost" : {
+      "comment" : "Capture options summary: localhost capture is allowed.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "localhost"
+          }
+        }
+      }
+    },
+    "no localhost" : {
+      "comment" : "Capture options summary: localhost capture is blocked.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sin localhost"
+          }
+        }
+      }
+    },
+    "This build has no network access, so it can't load a page. HTML rendering works here." : {
+      "comment" : "Web Snapshot: URL-mode unavailable note.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versión no tiene acceso a la red, así que no puede cargar una página. El renderizado de HTML sí funciona aquí."
+          }
+        }
+      }
+    },
     "Use Editor Code" : {
       "comment" : "Undo action name for the Use editor code button.",
       "localizations" : {
@@ -10181,17 +10280,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fuente"
-          }
-        }
-      }
-    },
-    "URL capture runs only in the direct-download build. HTML rendering works here." : {
-      "comment" : "Web Snapshot: URL-mode unavailable note.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "La captura de URL solo funciona en la versión de descarga directa. El renderizado de HTML sí funciona aquí."
           }
         }
       }

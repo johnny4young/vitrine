@@ -26,6 +26,7 @@ struct WebSnapshotEditorView: View {
     var settings: AppSettings { environment.appSettings }
 
     @State var showDisclosure = false
+    @State var showsURLCaptureExplanation = false
     /// Which captured viewport the big preview is showing (the highlighted filmstrip
     /// tile) in a multi-resolution batch.
     @State var previewedKind: WebSnapshotConfig.ViewportPreset.Kind?

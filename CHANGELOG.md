@@ -20,6 +20,12 @@ can never drift.
 
 ### Changed
 
+- Open Web Snapshot on HTML in builds without URL capture, with the reason one click
+  away.
+- Summarize Web Snapshot's capture options in their header, move their long
+  explanations behind info buttons, and link to the defaults in Settings ▸ Input.
+- Show each Web Snapshot viewport chip's size.
+
 - Require macOS 26 Tahoe or later on Apple silicon. Vitrine 1.3.0 remains the last
   release for macOS 15 Sequoia and Intel Macs, and Sparkle no longer offers those Macs
   newer updates.

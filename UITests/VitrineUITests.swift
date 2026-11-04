@@ -859,6 +859,18 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("web-snapshot-window", in: app), in: app, timeout: 8)
+        let requiresDirect =
+            ProcessInfo.processInfo.environment["VITRINE_REQUIRE_DIRECT_WEB_SESSION"] == "1"
+        if !requiresDirect {
+            // Without network access the window opens on HTML and explains why.
+            assertExists(element("web-snapshot-html-editor", in: app), in: app, timeout: 3)
+            assertExists(element("web-snapshot-url-badge", in: app), in: app, timeout: 3)
+            hittableElement("web-snapshot-url-why-button", in: app).click()
+            assertExists(
+                element("web-snapshot-url-unavailable-note", in: app), in: app, timeout: 3)
+            app.typeKey(.escape, modifierFlags: [])
+            hittableElement("web-snapshot-mode-url", in: app).click()
+        }
         let urlField = app.textFields["web-snapshot-url-field"]
         assertExists(urlField, in: app, timeout: 3)
         urlField.click()
@@ -866,22 +878,20 @@ final class VitrineUITests: XCTestCase {
         // sign-in window, so it needs neither a website nor credentials.
         urlField.typeText("https://example.com")
 
-        let unavailable = element("web-snapshot-url-unavailable-note", in: app)
         let hint = element("web-snapshot-sign-in-hint", in: app)
         let signIn = element("web-snapshot-sign-in-button", in: app)
-        let requiresDirect =
-            ProcessInfo.processInfo.environment["VITRINE_REQUIRE_DIRECT_WEB_SESSION"] == "1"
         if !requiresDirect {
             // The ordinary UI suite uses App Store-compatible entitlements. It must
             // not offer sign-in merely because the Debug binary was compiled with
             // VITRINE_DIRECT_DOWNLOAD; runtime capability is the signed entitlement.
-            assertExists(unavailable, in: app, timeout: 3)
             XCTAssertFalse(hint.exists)
             XCTAssertFalse(signIn.exists)
             return
         }
 
-        XCTAssertFalse(unavailable.exists, "The signed Direct lane lost network capability")
+        XCTAssertFalse(
+            element("web-snapshot-url-badge", in: app).exists,
+            "The signed Direct lane lost network capability")
         assertExists(hint, in: app, timeout: 3)
         XCTAssertFalse(signIn.exists, "The default-off session must not offer sign-in")
 
