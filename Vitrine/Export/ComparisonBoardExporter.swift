@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-/// Encodes a board through the shared export formats at the scale captured by its draft.
+/// Encodes a board through the shared export formats at the scale its draft resolves.
 enum ComparisonBoardExporter {
     static func encodedPayloadChecked(
         for draft: ComparisonBoardDraft,
@@ -11,9 +11,10 @@ enum ComparisonBoardExporter {
         profile: ColorProfile
     ) throws(RenderBudgetError) -> (data: Data, type: UTType, ext: String) {
         guard format.isEncodingAvailable else { throw .encodingFailed }
+        let scale = draft.resolvedExportScale
         let asset: RenderedAsset
         do {
-            asset = try draft.compose(scale: draft.exportScale, profile: profile)
+            asset = try draft.compose(scale: scale, profile: profile)
         } catch ComparisonBoardComposer.CompositionError.renderFailure(let error) {
             throw error
         } catch {
@@ -23,6 +24,6 @@ enum ComparisonBoardExporter {
         return try ExportManager.encodedPayloadChecked(
             format,
             raster: { asset.cgImage },
-            pdf: { ExportManager.pdfData(from: asset.cgImage, scale: draft.exportScale) })
+            pdf: { ExportManager.pdfData(from: asset.cgImage, scale: scale) })
     }
 }

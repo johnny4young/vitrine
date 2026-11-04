@@ -17,6 +17,9 @@ can never drift.
 - Open the command palette from a toolbar button, and change the destination directly
   from the editor's status capsule.
 - Show the ⌘1…⌘0 shortcuts on the annotation tools in the title bar, in shortcut order.
+- Edit a comparison board's captions by clicking them on the board.
+- Choose a comparison board's size (Auto, 16:10, OG 1200 × 630, Square), gap, background
+  (including transparent), and a generated footer line.
 
 ### Changed
 
