@@ -247,6 +247,8 @@ final class VitrineUITests: XCTestCase {
         assertToolbarActionsReachable(
             ["save-button", "share-button", "make-default-button"],
             from: "editor-actions-menu", in: app)
+        // The default window folds these into More, and an open menu swallows the next click.
+        app.typeKey(.escape, modifierFlags: [])
 
         let original = try XCTUnwrap(editor.codeTextView.value as? String)
         let replacement = "struct CurrentPreview {\n    let answer = 42\n}"
