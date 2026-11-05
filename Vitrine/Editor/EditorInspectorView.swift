@@ -203,7 +203,7 @@ struct EditorInspectorView: View {
                 .fill(VitrineTokens.Line.border)
                 .frame(width: Brand.Stroke.hairline)
         }
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
@@ -540,7 +540,7 @@ private struct WindowTitleSuggestionButton: View {
             } label: {
                 Image(systemName: "wand.and.stars")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(VitrineTokens.Accent.system)
+                    .foregroundStyle(VitrineTokens.Accent.systemText)
             }
             .buttonStyle(.plain)
             .help(Text("Suggest a title: \(suggestion)"))

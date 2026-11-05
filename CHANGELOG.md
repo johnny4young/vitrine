@@ -44,6 +44,9 @@ can never drift.
 
 ### Fixed
 
+- Keep accent-tinted buttons readable with bright macOS accent colors, in light and
+  dark appearance.
+- Draw destructive buttons in Settings in red, so they no longer look like routine actions.
 - Keep the editor preview's accessible text in sync when the source changes.
 - Preserve the selected code font and size in styled syntax tokens, including
   comments and Markdown emphasis in carousel and image exports.

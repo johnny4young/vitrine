@@ -53,7 +53,7 @@ struct EmptyStateView: View {
             // though the surrounding wash lets clicks through.
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
+                    .accentProminentButtonStyle()
                     .padding(.top, Brand.Spacing.xxs)
             }
         }
