@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- Show what the next capture will be under the menu bar's capture button: language, line
+  count, theme and destination. Language and lines appear only when System Settings always
+  allows Vitrine to read the clipboard; otherwise the panel leaves the contents unread.
 - Carousel export can move slide breaks to nearby blank lines, keep line numbers
   continuous across slides, and draw a page badge and a "continues →" cue on each slide.
   The sheet shows the folder, the file names and an estimated size before anything is

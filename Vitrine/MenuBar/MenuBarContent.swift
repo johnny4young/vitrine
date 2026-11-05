@@ -36,6 +36,7 @@ struct MenuBarContent: View {
         VStack(alignment: .leading, spacing: 13) {
             header
             captureCTA
+            captureSummary
             presetCaptureMenu
             lastCaptureStatus
             recentsSection
@@ -147,6 +148,30 @@ struct MenuBarContent: View {
         } else {
             button
         }
+    }
+
+    /// What the capture button will produce, updated live as the theme or clipboard changes.
+    /// The row is always laid out because AppKit sizes the popover only when it opens.
+    private var captureSummary: some View {
+        let summary = MenuBarCaptureSummary.make(
+            content: panelState.clipboard,
+            themeName: settings.config.theme.displayName,
+            destination: settings.selectedPreset,
+            capturesURLs: settings.treatURLsAsScreenshot && NetworkCapability.isURLCaptureEnabled)
+        return ViewThatFits(in: .horizontal) {
+            Text(verbatim: summary?.line ?? " ")
+            Text(verbatim: summary?.lineWithoutTheme ?? " ")
+        }
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .foregroundStyle(VitrineTokens.Text.tertiary)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity)
+        .padding(.top, -4)
+        .help(summary?.line ?? "")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: summary?.accessibilityLabel ?? ""))
+        .accessibilityHidden(summary == nil)
+        .accessibilityIdentifier("menu-capture-summary")
     }
 
     /// The last capture outcome plus any inline recovery actions.

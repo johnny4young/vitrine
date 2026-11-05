@@ -1540,6 +1540,26 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarSummarizesACopiedImage() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setData(Data([0x89, 0x50, 0x4E, 0x47]), forType: .png))
+
+        let app = launch(arguments: VitrineLaunchArguments.menuBar)
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        openMenuBarPanel(in: app)
+
+        // Types alone identify an image, so this holds under any pasteboard access behavior.
+        let summary = element("menu-capture-summary", in: app)
+        XCTAssertTrue(summary.waitForExistence(timeout: 3), "A copied image should be summarized")
+        XCTAssertEqual(summary.label, "Image")
+    }
+
+    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general
