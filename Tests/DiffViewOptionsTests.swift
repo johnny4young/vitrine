@@ -202,6 +202,30 @@ struct DiffViewOptionsTests {
         #expect(visible.differingPixels > 0)
     }
 
+    @Test func diagnosticFoldedRedaction() throws {
+        func folded(_ secret: String) throws -> CGImage {
+            var config = diffConfig()
+            config.code = Self.patch.replacingOccurrences(of: "-four", with: "-\(secret)")
+            config.diffContextLines = 0
+            config.redactedLineRanges = [8...8]
+            return try render(config)
+        }
+        func png(_ image: CGImage) -> String {
+            let rep = NSBitmapImageRep(cgImage: image)
+            return rep.representation(using: .png, properties: [:])!.base64EncodedString()
+        }
+        let a1 = try folded("alpha")
+        let a2 = try folded("alpha")
+        let o1 = try folded("omega")
+        let same = try FontLigatureTests.compareRenderedPixels(a1, a2)
+        let other = try FontLigatureTests.compareRenderedPixels(a1, o1)
+        print("DIAG same differing=\(same.differingPixels) max=\(same.maxChannelDelta)")
+        print("DIAG other differing=\(other.differingPixels) max=\(other.maxChannelDelta)")
+        print("DIAG size \(a1.width)x\(a1.height) \(o1.width)x\(o1.height)")
+        print("DIAG PNGA \(png(a1))")
+        print("DIAG PNGO \(png(o1))")
+    }
+
     @Test func blurBoxKeepsTheCanvasWhenTheControlsMove() throws {
         let settings = AppSettings(defaults: testDefaults())
         settings.config = diffConfig()
