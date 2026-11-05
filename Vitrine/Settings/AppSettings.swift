@@ -231,6 +231,10 @@ final class AppSettings {
         didSet { defaults.set(menuBarNoticeVersion, forKey: Keys.menuBarNoticeVersion) }
     }
 
+    /// Exports this window was told to run anyway, so an unchanged document is asked once
+    /// per destination. Session memory only: never persisted.
+    @ObservationIgnored var acknowledgedPreflights: Set<Int> = []
+
     private let defaults: UserDefaults
 
     /// The Brand Kit and entitlement that resolve the export watermark, injected so
@@ -477,6 +481,21 @@ final class AppSettings {
     /// Drops back to "Custom": no preset is applied and none is persisted. The
     /// current style is left exactly as-is.
     func clearPreset() { selectedPresetID = nil }
+
+    /// The destination as an optional preset id, shared by every surface that picks one.
+    /// `nil` is "Custom".
+    var destinationSelection: Binding<String?> {
+        Binding(
+            get: { self.selectedPresetID },
+            set: { id in
+                if let preset = ExportPreset.preset(withID: id) {
+                    self.selectPreset(preset)
+                } else {
+                    self.clearPreset()
+                }
+            }
+        )
+    }
 
     // MARK: - Style presets
 

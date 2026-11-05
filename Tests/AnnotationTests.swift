@@ -433,4 +433,11 @@ struct AnnotationTests {
         #expect(!Annotation(kind: .arrow, start: .zero, end: CGPoint(x: 1, y: 1)).isBlankText)
         #expect(!Annotation(kind: .counter, start: .zero, end: .zero, number: 1).isBlankText)
     }
+
+    @Test func toolbarDrawsToolsInShortcutOrder() {
+        #expect(Set(AnnotationTool.toolbarOrder) == Set(AnnotationTool.allCases))
+        let digits = AnnotationTool.toolbarOrder.compactMap(\.shortcutCharacter)
+        #expect(digits == Array("1234567890"))
+        #expect(AnnotationTool.toolbarOrder.suffix(2).allSatisfy { $0.shortcutCharacter == nil })
+    }
 }

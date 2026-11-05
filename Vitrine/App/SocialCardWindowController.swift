@@ -18,7 +18,8 @@ final class SocialCardWindowController: NSObject {
     static let shared = SocialCardWindowController(
         environment: .shared,
         feedback: .live,
-        presentation: .live(environment: .shared, feedback: .live))
+        presentation: .live(environment: .shared, feedback: .live),
+        editorDocument: { EditorWindowController.shared.frontmostDocument })
 
     /// The data graph supplied to the window and its SwiftUI root.
     let environment: AppEnvironment
@@ -26,6 +27,8 @@ final class SocialCardWindowController: NSObject {
     let feedback: FeedbackDisplay
     /// The app-owned presentation route supplied to the SwiftUI root.
     let presentation: SocialCardPresentation
+    /// Resolves the editor document that Use Editor Code reads.
+    let editorDocument: (() -> AppSettings)?
 
     /// The single reused window, created on first show and kept alive across closes.
     private var window: NSWindow?
@@ -45,11 +48,13 @@ final class SocialCardWindowController: NSObject {
     init(
         environment: AppEnvironment,
         feedback: FeedbackDisplay,
-        presentation: SocialCardPresentation
+        presentation: SocialCardPresentation,
+        editorDocument: (() -> AppSettings)? = nil
     ) {
         self.environment = environment
         self.feedback = feedback
         self.presentation = presentation
+        self.editorDocument = editorDocument
         super.init()
     }
 
@@ -58,7 +63,8 @@ final class SocialCardWindowController: NSObject {
         SocialCardEditorView(
             environment: environment,
             feedback: feedback,
-            presentation: presentation)
+            presentation: presentation,
+            editorDocument: editorDocument)
     }
 
     /// Shows the social-card window, creating it the first time, and focuses it. This

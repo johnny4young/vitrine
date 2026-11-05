@@ -69,7 +69,7 @@ struct HelpView: View {
         .frame(width: 520)
         .frame(minHeight: 560)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityIdentifier("help-view")
     }
 
@@ -98,7 +98,7 @@ struct HelpView: View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: topic.symbol)
                 .font(.system(size: 20, weight: .regular))
-                .foregroundStyle(VitrineTokens.Accent.system)
+                .foregroundStyle(VitrineTokens.Accent.systemText)
                 .frame(width: 26)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
@@ -171,7 +171,7 @@ struct HelpView: View {
             }
             Spacer()
             Button("Done") { onDismiss() }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .keyboardShortcut(.defaultAction)
                 .help("Close Help")
                 .accessibilityIdentifier("help-done-button")
