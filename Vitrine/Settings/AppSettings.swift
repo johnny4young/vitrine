@@ -1,3 +1,4 @@
+import KeyboardShortcuts
 import OSLog
 import SwiftUI
 import VitrineDomain
@@ -153,6 +154,24 @@ final class AppSettings {
     /// only takes effect on the next launch.
     let launchLanguage: AppLanguage
 
+    /// The macOS-taken hotkey the user chose to keep, which Settings stops warning about.
+    private(set) var acknowledgedMacOSHotkey: KeyboardShortcuts.Shortcut? {
+        didSet {
+            defaults.set(
+                acknowledgedMacOSHotkey.flatMap { try? JSONEncoder().encode($0) },
+                forKey: Keys.acknowledgedMacOSHotkey)
+        }
+    }
+
+    /// Call with what a recorder saved. It saves a macOS-taken shortcut only after the
+    /// user picks Use Anyway in its alert, so saving one is the acknowledgement.
+    func noteRecordedHotkey(
+        _ shortcut: KeyboardShortcuts.Shortcut?,
+        systemShortcuts: [KeyboardShortcuts.Shortcut] = HotkeyConflict.enabledSystemShortcuts
+    ) {
+        acknowledgedMacOSHotkey = shortcut.flatMap { systemShortcuts.contains($0) ? $0 : nil }
+    }
+
     /// Whether the selected `appLanguage` differs from the language the running process
     /// was launched with, so a relaunch would change the visible UI language. Drives
     /// the Settings "Relaunch to Apply" affordance.
@@ -286,6 +305,9 @@ final class AppSettings {
         outputBehavior = sharedBehavior ?? OutputBehavior(defaults: defaults)
         ownsOutputBehavior = sharedBehavior == nil
         hotkeyAction = HotkeyAction.resolve(defaults.string(forKey: Keys.hotkeyAction))
+        acknowledgedMacOSHotkey = defaults.data(forKey: Keys.acknowledgedMacOSHotkey).flatMap {
+            try? JSONDecoder().decode(KeyboardShortcuts.Shortcut.self, from: $0)
+        }
         let resolvedLanguage = AppLanguage.resolve(defaults.string(forKey: Keys.appLanguage))
         appLanguage = resolvedLanguage
         // Capture the launch-time language so the Settings pane can tell when a change
@@ -694,6 +716,7 @@ final class AppSettings {
         export.resetToDefaults()
         if ownsOutputBehavior { outputBehavior.resetToDefaults() }
         hotkeyAction = .fallback
+        acknowledgedMacOSHotkey = nil
         appLanguage = .system
         treatURLsAsScreenshot = false
         reindentOnPaste = true

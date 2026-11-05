@@ -120,18 +120,25 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     /// The sidebar row title.
-    var title: Text {
+    var title: Text { Text(titleResource) }
+
+    var titleResource: LocalizedStringResource {
         switch self {
-        case .general: Text("General")
-        case .style: Text("Style")
-        case .brandKit: Text("Brand Kit")
-        case .library: Text("Library")
-        case .input: Text("Input")
+        case .general: "General"
+        case .style: "Style"
+        case .brandKit: "Brand Kit"
+        case .library: "Library"
+        case .input: "Input"
         // Titled "Export" (clearer than "Output" for "how the image leaves"); the raw
         // value remains "output" to keep the navigation identifier stable.
-        case .output: Text("Export")
-        case .about: Text("About")
+        case .output: "Export"
+        case .about: "About"
         }
+    }
+
+    /// Selects this pane in `defaults`; an open window follows through `@AppStorage`.
+    func select(in defaults: UserDefaults = AppDefaults.current) {
+        defaults.set(rawValue, forKey: Self.storageKey)
     }
 
     /// The sidebar row SF Symbol used by the shared settings design.

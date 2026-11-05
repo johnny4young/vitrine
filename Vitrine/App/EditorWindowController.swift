@@ -28,8 +28,11 @@ final class EditorSession {
     let presentation: EditorPresentation
     /// The window's Format Code work, retained so a large format is not cancelled early.
     let codeFormat: CodeFormatOperation
+    let copyConfirmation = CopyConfirmation()
     /// The association whose recipe styled the loaded file, for Copy Command to reference.
     var appliedRecipeID: UUID?
+    /// This window's preset thumbnails, fed from the same debounced code as the preview.
+    let presetThumbnails = PresetThumbnailModel()
 
     /// Creates a session for `identity` with its own ephemeral settings.
     ///
@@ -94,6 +97,33 @@ final class EditorSession {
         environment.appSettings.makeDefault(from: settings)
         feedback(
             Notifier.confirmation(String(localized: "Set as the default style")))
+    }
+
+    /// Renders and copies the image for the toolbar button, the command palette and the
+    /// File menu, reporting the outcome through the HUD and the button. A successful copy
+    /// closes `window` on a later turn when the app-wide preference is on, and returns
+    /// that task.
+    @discardableResult
+    func copyImage(
+        closing window: NSWindow?, pasteboard: NSPasteboard = .general
+    ) -> Task<Void, Never>? {
+        guard
+            presentation.clearsPreflight(
+                of: settings, for: .copy, delivering: EditorPresentation.copyPayload(of: settings))
+        else { return nil }
+        var pngBytes: Int?
+        let outcome = RenderedImageCopy.copy(
+            settings.exportConfig, settings: settings, pasteboard: pasteboard
+        ) { pngBytes = $0 }
+        feedback(ExportFeedback.copyOutcome(outcome, pngBytes: pngBytes))
+        copyConfirmation.record(outcome)
+        guard
+            EditorView.shouldCloseAfterCopy(
+                copied: outcome == .copied,
+                preferenceEnabled: settings.outputBehavior.closeAfterCopy),
+            let window
+        else { return nil }
+        return Task { window.close() }
     }
 
     /// Clears the ephemeral backing store when the window closes so draft objects are
@@ -247,6 +277,8 @@ final class EditorWindowController: NSObject {
         session.livingSnapshot.stop()
         session.settings.config = config
         session.settings.noteDocumentReplaced()
+        // The window may be closed, so its view can't react to the replacement.
+        session.copyConfirmation.clear()
         show()
     }
 
@@ -437,6 +469,7 @@ extension EditorWindowController: NSWindowDelegate {
         else { return }
         windows[index] = nil
         sessions[index]?.livingSnapshot.stop()
+        sessions[index]?.copyConfirmation.clear()
         // Retire this index's restorable-state observation: the next re-arm finds its
         // generation cleared and stops (the primary session persists, so without this its
         // chain would keep firing after the window closed).

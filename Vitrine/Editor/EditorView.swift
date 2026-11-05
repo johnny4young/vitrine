@@ -257,6 +257,7 @@ struct EditorView: View {
                 selectedAnnotationID = nil
                 editingAnnotationID = nil
                 pendingDrop = nil
+                session.copyConfirmation.clear()
             }
             .onReceive(NotificationCenter.default.publisher(for: .vitrineSelectAnnotationTool)) {
                 notification in

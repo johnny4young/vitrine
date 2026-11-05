@@ -104,6 +104,7 @@ public final class HighlightManager {
         let themeSource: VitrineDomain.Theme.Source
         let font: NSFont
         let columns: Int?
+        let palette: TerminalPaletteMode
         // Last, for the same reason as `HighlightKey.code`.
         let code: String
     }
@@ -245,16 +246,17 @@ public final class HighlightManager {
     /// caching the parse-emulate-and-bridge result for cacheable captures. The
     /// value is identical to bridging `ANSIRenderer.attributedString(…)` by hand.
     public func terminalAttributedString(
-        for code: String, theme: VitrineDomain.Theme, font: NSFont, columns: Int?
+        for code: String, theme: VitrineDomain.Theme, font: NSFont, columns: Int?,
+        palette mode: TerminalPaletteMode = .theme
     ) -> AttributedString {
-        let palette = ANSIPalette.forTheme(theme)
+        let palette = ANSIPalette.resolved(for: theme, mode: mode)
         let render = {
             AttributedString(
                 ANSIRenderer.attributedString(
                     code, font: font, palette: palette, columns: columns))
         }
         let key = TerminalKey(
-            themeSource: theme.source, font: font, columns: columns, code: code)
+            themeSource: theme.source, font: font, columns: columns, palette: mode, code: code)
         guard HighlightPolicy.shouldCache(code) else {
             if let recent = lastTerminal.value(forKey: key) { return recent }
             let rendered = render()
@@ -299,12 +301,14 @@ public final class HighlightManager {
     /// The terminal (ANSI) render, split into rows and cached — the terminal
     /// analogue of `swiftUIAttributedLines`, for a terminal capture shown with a gutter.
     public func terminalAttributedLines(
-        for code: String, theme: VitrineDomain.Theme, font: NSFont, columns: Int?
+        for code: String, theme: VitrineDomain.Theme, font: NSFont, columns: Int?,
+        palette: TerminalPaletteMode = .theme
     ) -> [AttributedString] {
         let bridged = terminalAttributedString(
-            for: code, theme: theme, font: font, columns: columns)
+            for: code, theme: theme, font: font, columns: columns, palette: palette)
         let key = TerminalKey(
-            themeSource: theme.source, font: font, columns: columns, code: code)
+            themeSource: theme.source, font: font, columns: columns, palette: palette,
+            code: code)
         guard HighlightPolicy.shouldCache(code) else {
             if let recent = lastTerminalLines.value(forKey: key) { return recent }
             let rows = Self.splitRows(bridged)

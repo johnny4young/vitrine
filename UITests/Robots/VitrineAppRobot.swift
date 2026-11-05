@@ -27,6 +27,7 @@ enum VitrineLocaleOverride {
 enum VitrineLaunchArguments {
     static let editor = ["--demo", "--open-editor"]
     static let emptyEditor = ["--open-editor"]
+    static let terminalEditor = ["--demo-terminal", "--open-editor"]
     static let settings = ["--open-settings"]
     static let editorTour = ["--skip-onboarding", "--demo", "--open-editor"]
     static let emptyEditorTour = ["--skip-onboarding", "--open-editor"]

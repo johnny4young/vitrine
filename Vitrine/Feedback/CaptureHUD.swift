@@ -69,6 +69,13 @@ struct CaptureHUDView: View {
                     .foregroundStyle(Brand.Palette.textPrimary.color)
                     .fixedSize(horizontal: false, vertical: true)
 
+                if let detail = feedback.detail {
+                    Text(verbatim: detail.text)
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(Brand.Palette.textSecondary.color)
+                        .monospacedDigit()
+                }
+
                 if !feedback.actions.isEmpty {
                     HStack(spacing: Brand.Spacing.xs) {
                         ForEach(feedback.actions, id: \.self) { action in
@@ -101,7 +108,7 @@ struct CaptureHUDView: View {
             withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) { shown = true }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(feedback.message)
+        .accessibilityLabel(feedback.spokenMessage)
         .accessibilityIdentifier("capture-hud")
     }
 
@@ -140,7 +147,7 @@ final class CaptureHUDController {
     }
 
     static func announcement(for feedback: Notifier.CaptureFeedback) -> Announcement {
-        Announcement(message: feedback.message, isUrgent: feedback.category == .failure)
+        Announcement(message: feedback.spokenMessage, isUrgent: feedback.category == .failure)
     }
 
     /// Speaks `feedback` through the injected announcer.

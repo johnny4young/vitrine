@@ -91,7 +91,9 @@ extension EditorView {
                     onBringToFront: bringSelectionToFront,
                     onSendToBack: sendSelectionToBack,
                     density: density.annotationDensity,
-                    onStyleEditEnded: endAnnotationEdit
+                    onStyleEditEnded: endAnnotationEdit,
+                    legend: annotationLegendEdit,
+                    onLegendSubmitted: { stageFocused = selectedAnnotationID != nil }
                 )
                 .onChange(of: activeTool) { _, newTool in
                     if newTool != .select { selectedAnnotationID = nil }
@@ -154,11 +156,7 @@ extension EditorView {
     /// to the Copy Image command's shortcut so the menu and CTA stay in lockstep.
     @ViewBuilder func copyImageCTA(compact: Bool) -> some View {
         let button = GradientCTAButton {
-            Image(systemName: VitrineCommand.copyImage.systemImageName)
-                .font(.system(size: 12, weight: .semibold))
-            if !compact {
-                Text("Copy image")
-            }
+            CopyImageCTALabel(confirmation: session.copyConfirmation, compact: compact)
         } action: {
             copyImage()
         }
@@ -253,22 +251,8 @@ extension EditorView {
     /// it gets out of the way once its job is done. Users who copy more than
     /// once can keep it open from Settings.
     func copyImage() {
-        guard clearsPreflight(.copy, EditorPresentation.copyPayload(of: settings)) else { return }
-        // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
-        // render/encode failure — mirroring the menu command and the quick-capture HUD.
-        // The HUD shows near the menu bar regardless of `closeAfterCopy`.
-        let outcome = RenderedImageCopy.copy(settings.exportConfig, settings: settings)
-        session.feedback(ExportFeedback.copyOutcome(outcome))
-        // Close *this* window — captured via `WindowAccessor`, so it never depends on
-        // `keyWindow` being right — deferred past the button's action, and `close()`
-        // (not `performClose`) so it is unconditional.
-        guard
-            Self.shouldCloseAfterCopy(
-                copied: outcome == .copied,
-                preferenceEnabled: settings.outputBehavior.closeAfterCopy)
-        else { return }
-        guard let editorWindow = editorWindow.value else { return }
-        Task { editorWindow.close() }
+        // *This* window, captured via `WindowAccessor`, so it never depends on `keyWindow`.
+        session.copyImage(closing: editorWindow.value)
     }
 
     /// A failed clipboard write leaves the editor open so the user can retry or save

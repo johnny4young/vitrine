@@ -1,5 +1,4 @@
 import AppKit
-import KeyboardShortcuts
 import SwiftUI
 import VitrineDomain
 
@@ -36,11 +35,7 @@ struct GeneralSettingsView: View {
     var body: some View {
         SettingsPaneScroll {
             TokenGroup(title: Text("Capture")) {
-                TokenRow(label: Text("Global hotkey"), caption: Text("shortcut.scope.help")) {
-                    KeyboardShortcuts.Recorder(for: .quickCapture)
-                        .accessibilityLabel("Global hotkey")
-                        .accessibilityIdentifier("settings-hotkey-recorder")
-                }
+                GlobalHotkeySettingsRows(settings: settings)
                 TokenRow(label: Text("Hotkey runs")) {
                     TokenSegmentedPicker(
                         options: [

@@ -140,6 +140,7 @@ struct CLIOptions: Equatable {
     /// the captured output. Only meaningful for `--language terminal`; set by `vgrab -w`
     /// so a known-width capture wraps exactly as it did in the live terminal.
     var terminalColumns: Int?
+    var terminalPalette: TerminalPaletteMode?
     /// Optional soft-wrap column count for long code lines. Mirrors the editor's
     /// "Wrap long lines" control and stays nil by default so bare renders still
     /// size to content.
@@ -199,6 +200,8 @@ struct CLIOptions: Equatable {
     var counterColor: RGBAColor?
     /// Optional counter size weight in the editor's supported 2...28 range.
     var counterSize: Double?
+    /// Legend text for `counterNumber`; nil lists nothing under the capture.
+    var counterLabel: String?
     /// Straight arrows described by normalized tail/head points and shared editor styling.
     var arrows: [SegmentAnnotation] = []
     /// Straight lines described by normalized endpoints and shared editor styling.
@@ -475,7 +478,7 @@ struct CLIOptions: Equatable {
             let position = counterPosition ?? CGPoint(x: 0.5, y: 0.5)
             config.annotations.append(
                 Annotation(
-                    kind: .counter, start: position, end: position,
+                    kind: .counter, start: position, end: position, text: counterLabel ?? "",
                     color: counterColor ?? Annotation.defaultColor,
                     thickness: counterSize ?? Annotation.defaultThickness,
                     number: counterNumber))
@@ -496,6 +499,7 @@ struct CLIOptions: Equatable {
         if let cornerRadius { config.cornerRadius = cornerRadius }
         if let shadowRadius { config.shadowRadius = shadowRadius }
         if let wrapColumns { config.wrapColumns = wrapColumns }
+        if let terminalPalette { config.terminalPalette = terminalPalette }
         if let windowTitle { config.windowTitle = windowTitle }
         if let showLineNumbers { config.showLineNumbers = showLineNumbers }
         if let showChrome { config.showChrome = showChrome }
