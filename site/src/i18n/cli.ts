@@ -277,6 +277,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--corner-radius', value: '<0...48>', description: both('Code-card corner radius.', 'Radio de las esquinas de la tarjeta.') },
       { flags: '--shadow-radius', value: '<0...40>', description: both('Drop-shadow blur radius.', 'Radio de desenfoque de la sombra.') },
       { flags: '--terminal-width', value: '<1...1000>', description: both('Pin terminal reconstruction width; vgrab -w sets this automatically.', 'Fija el ancho de reconstrucción; vgrab -w lo define automáticamente.') },
+      { flags: '--terminal-palette', value: '<theme|raw>', description: both('Color terminal output with the theme palette or the standard xterm colors.', 'Colorea la salida de terminal con la paleta del tema o los colores estándar de xterm.') },
       { flags: '--wrap-columns', value: '<40...200>', description: both('Soft-wrap long code lines at a stable column.', 'Ajusta líneas largas en una columna estable.') },
       { flags: '--format-code, --tidy', description: both('Apply Vitrine’s local indentation tidy before rendering.', 'Aplica el ajuste local de indentación antes de renderizar.') },
       { flags: '--line-numbers, --no-line-numbers', description: both('Show or hide the line-number gutter.', 'Muestra u oculta los números de línea.') },

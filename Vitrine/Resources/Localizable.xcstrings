@@ -1,6 +1,94 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "ANSI palette" : {
+      "comment" : "Inspector row that picks the colors of a terminal capture",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta ANSI"
+          }
+        }
+      }
+    },
+    "Raw" : {
+      "comment" : "Terminal palette option: the standard xterm colors",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estándar"
+          }
+        }
+      }
+    },
+    "Raw uses the standard xterm colors, whatever the theme." : {
+      "comment" : "Tooltip of the terminal palette control",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estándar usa los colores de xterm, sea cual sea el tema."
+          }
+        }
+      }
+    },
+    "Terminal" : {
+      "comment" : "Inspector section for terminal capture controls",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal"
+          }
+        }
+      }
+    },
+    "Prompt" : {
+      "comment" : "Inspector row that picks the glyph before a terminal command",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indicador"
+          }
+        }
+      }
+    },
+    "Hide arguments" : {
+      "comment" : "Button that keeps only the command's name in a terminal header",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar argumentos"
+          }
+        }
+      }
+    },
+    "Keep only the command's name. Type it in Title to bring the rest back." : {
+      "comment" : "Tooltip of the Hide arguments button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deja solo el nombre del comando. Escríbelo en Título para recuperar el resto."
+          }
+        }
+      }
+    },
+    "Remove %@" : {
+      "comment" : "Accessibility label of a terminal context chip's remove button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar %@"
+          }
+        }
+      }
+    },
     "Changed" : {
       "comment" : "Code header chip: the watched file has a saved change waiting.",
       "localizations" : {

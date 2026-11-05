@@ -16,6 +16,7 @@ extension StyleSnapshot {
             shadowRadius: config.shadowRadius,
             showLineNumbers: config.showLineNumbers,
             wrapColumns: config.wrapColumns,
+            terminalPalette: config.terminalPalette,
             background: config.background
         )
     }
@@ -36,6 +37,7 @@ extension StyleSnapshot {
         config.shadowRadius = SettingsDefaults.clampShadowRadius(shadowRadius)
         config.showLineNumbers = showLineNumbers
         config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
+        config.terminalPalette = terminalPalette ?? .theme
         config.background = background
     }
 }

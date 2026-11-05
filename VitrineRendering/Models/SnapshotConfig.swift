@@ -128,6 +128,9 @@ public struct SnapshotConfig: Equatable {
     /// untouched.
     public var terminalColumns: Int?
 
+    /// Which colors `.terminal` output uses. Persisted style, like the theme.
+    public var terminalPalette: TerminalPaletteMode = .theme
+
     /// Soft-wrap long code lines at this column count, or `nil` to let a line run as wide
     /// as it needs (the default). Unlike `terminalColumns`, this is a persisted document
     /// style the user toggles in the Style pane: when set, the card is sized to the wrap

@@ -119,6 +119,32 @@ public struct ANSIPalette {
         defaultForeground: rgb(0xD8, 0xDE, 0xE9),
         defaultBackground: rgb(0x2E, 0x34, 0x40))
 
+    /// The standard xterm colors. The card stays light or dark with the theme, because the
+    /// header and window title take their color from the theme.
+    private static let xterm = [
+        rgb(0x00, 0x00, 0x00), rgb(0xCD, 0x00, 0x00), rgb(0x00, 0xCD, 0x00),
+        rgb(0xCD, 0xCD, 0x00), rgb(0x00, 0x00, 0xEE), rgb(0xCD, 0x00, 0xCD),
+        rgb(0x00, 0xCD, 0xCD), rgb(0xE5, 0xE5, 0xE5),
+        rgb(0x7F, 0x7F, 0x7F), rgb(0xFF, 0x00, 0x00), rgb(0x00, 0xFF, 0x00),
+        rgb(0xFF, 0xFF, 0x00), rgb(0x5C, 0x5C, 0xFF), rgb(0xFF, 0x00, 0xFF),
+        rgb(0x00, 0xFF, 0xFF), rgb(0xFF, 0xFF, 0xFF),
+    ]
+    private static let rawDark = ANSIPalette(
+        base: xterm, defaultForeground: rgb(0xE5, 0xE5, 0xE5),
+        defaultBackground: rgb(0x00, 0x00, 0x00))
+    private static let rawLight = ANSIPalette(
+        base: xterm, defaultForeground: rgb(0x00, 0x00, 0x00),
+        defaultBackground: rgb(0xFF, 0xFF, 0xFF))
+
+    /// The palette a capture renders with. Every terminal surface resolves it here, so the
+    /// preview and each export can't disagree.
+    public static func resolved(for theme: Theme, mode: TerminalPaletteMode) -> ANSIPalette {
+        switch mode {
+        case .theme: forTheme(theme)
+        case .raw: theme.appearance == .light ? rawLight : rawDark
+        }
+    }
+
     /// The terminal palette to use for a syntax theme: a signature palette for the
     /// themes that have one, otherwise a light or dark default matching the theme's
     /// appearance — so the Style theme picker also drives the terminal look (and a

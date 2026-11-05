@@ -59,6 +59,19 @@ that restyles a code snapshot restyles a terminal one:
 - A **dark** theme renders on a dark card with a balanced One-Dark-family palette.
 - **Dracula** and **Nord** map to their own signature ANSI palettes.
 
+**Terminal ▸ ANSI palette ▸ Raw** (`--terminal-palette raw`) uses the standard xterm colors
+instead. The card stays light or dark with the theme, so the header stays readable.
+
+## Prompt and context chips
+
+In the inspector's **Header** section, a terminal capture lists its **Filename** and **Title**
+as chips: `weather-app · main` becomes two labels and `$ htop` a prompt and a command. Removing
+a chip, changing the prompt, or using **Hide arguments** rewrites those two fields, so the
+result is the same in the image, share links and the copied command. The chips read only those
+fields, never the transcript. Hide arguments keeps only the command's name: it drops the
+command's directory and any leading `VAR=value`, and it discards the rest rather than hiding it.
+`vgrab -e` still opens without a header, so the chips start empty until you fill those fields.
+
 ## The catch: color is lost when you copy
 
 The hard part isn't Vitrine — it's *getting* colored output. Most programs **disable
@@ -198,6 +211,7 @@ vitrine render --stdin --copy                 # read a pipe, copy the image
 vitrine render <input-file> --edit            # open it in the editor (no image)
 vitrine render <input-file> --out <image> --text-sidecar   # image + .txt of the output
 vitrine render <input-file> --out <image> --sidecars all    # image + txt/md/html
+vitrine render <input-file> --out <image> --terminal-palette raw
 vitrine shell-init [zsh|bash|fish]            # print the helpers
 ```
 

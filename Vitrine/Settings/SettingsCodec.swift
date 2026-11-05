@@ -30,6 +30,7 @@ enum SettingsCodec {
         static let showShadow = "showShadow"
         static let showLineNumbers = "showLineNumbers"
         static let wrapColumns = "wrapColumns"
+        static let terminalPalette = "terminalPalette"
         static let highlightedLines = "highlightedLines"
         static let focusHighlightedLines = "focusHighlightedLines"
         static let diffDecorations = "diffDecorations"
@@ -109,7 +110,8 @@ enum SettingsCodec {
         static let all = [
             themeID, languageID, fontSize, padding, cornerRadius, shadowRadius, showChrome,
             windowTitle,
-            showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
+            showShadow, showLineNumbers, wrapColumns, terminalPalette,
+            highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
             colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction, appLanguage,
@@ -181,6 +183,11 @@ enum SettingsCodec {
         // column range so a hand-edited number cannot distort the card.
         if let value = defaults.object(forKey: Keys.wrapColumns) as? Int {
             config.wrapColumns = SettingsDefaults.clampWrapColumns(value)
+        }
+        if let value = defaults.string(forKey: Keys.terminalPalette)
+            .flatMap(TerminalPaletteMode.init(rawValue:))
+        {
+            config.terminalPalette = value
         }
         if let value = defaults.object(forKey: Keys.focusHighlightedLines) as? Bool {
             config.focusHighlightedLines = value
@@ -304,6 +311,7 @@ enum SettingsCodec {
         } else {
             defaults.removeObject(forKey: Keys.wrapColumns)
         }
+        defaults.set(config.terminalPalette.rawValue, forKey: Keys.terminalPalette)
         defaults.set(config.focusHighlightedLines, forKey: Keys.focusHighlightedLines)
         defaults.set(config.diffDecorations, forKey: Keys.diffDecorations)
         defaults.set(

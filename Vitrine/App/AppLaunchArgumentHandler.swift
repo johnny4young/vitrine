@@ -58,6 +58,7 @@ import VitrineRendering
         /// `--demo-html-format` preloads compact markup for the Format Code smoke test;
         /// `--demo-sql-format` does the same for a compact query;
         /// `--demo-secret` preloads a synthetic token for the export pre-flight smoke test;
+        /// `--demo-terminal` preloads a colored capture with a project and command header;
         /// `--brand-accent` (Debug) keeps the brand accent whatever the macOS accent is;
         /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
         /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
@@ -109,6 +110,15 @@ import VitrineRendering
                         }
                     }
                     """
+            }
+            if arguments.contains("--demo-terminal") {
+                var demo = settings.config
+                demo.code =
+                    "\u{1B}[32m✓\u{1B}[0m 42 tests passed\n\u{1B}[33m!\u{1B}[0m 1 skipped\n\u{1B}[31m✗\u{1B}[0m 0 failed"
+                demo.language = .terminal
+                demo.metadata.filename = "weather-app · main"
+                demo.metadata.title = "$ swift test --parallel"
+                settings.config = demo
             }
             if arguments.contains("--demo-large-document") {
                 let comment = String(repeating: "x", count: 480)

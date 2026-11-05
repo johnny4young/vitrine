@@ -43,6 +43,9 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
     public var showLineNumbers: Bool
     /// Optional code soft-wrap column count; `nil` keeps the card size-to-content.
     public var wrapColumns: Int?
+    /// The terminal palette, `nil` at its default so existing presets and recipes encode
+    /// unchanged and stay readable by builds that reject unknown recipe fields.
+    public var terminalPalette: TerminalPaletteMode?
     /// The canvas background. Round-trips through `BackgroundStyle`'s own tolerant
     /// `Codable`, which degrades an unknown gradient name or a corrupt blob to a
     /// safe value rather than failing the whole decode.
@@ -62,6 +65,7 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
         shadowRadius: Double = SettingsDefaults.shadowRadius,
         showLineNumbers: Bool = false,
         wrapColumns: Int? = nil,
+        terminalPalette: TerminalPaletteMode? = nil,
         background: BackgroundStyle
     ) {
         self.themeID = themeID
@@ -75,6 +79,7 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
         self.shadowRadius = SettingsDefaults.clampShadowRadius(shadowRadius)
         self.showLineNumbers = showLineNumbers
         self.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
+        self.terminalPalette = terminalPalette == .theme ? nil : terminalPalette
         self.background = Self.portableBackground(background)
     }
 
@@ -90,6 +95,7 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case themeID, fontName, fontSize, fontLigatures, padding, cornerRadius
         case showChrome, showShadow, shadowRadius, showLineNumbers, wrapColumns, background
+        case terminalPalette
     }
 
     /// Set to `true` on a decoder's `userInfo` where a mistyped value must fail rather
@@ -123,6 +129,8 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
             try value(Double.self, .shadowRadius) ?? SettingsDefaults.shadowRadius)
         showLineNumbers = try value(Bool.self, .showLineNumbers) ?? false
         wrapColumns = try value(Int.self, .wrapColumns).map(SettingsDefaults.clampWrapColumns)
+        let palette = try value(TerminalPaletteMode.self, .terminalPalette)
+        terminalPalette = palette == .theme ? nil : palette
         // A missing or corrupt background degrades to the signature gradient rather
         // than failing the whole snapshot.
         let decodedBackground = try value(BackgroundStyle.self, .background) ?? .gradient(.aurora)

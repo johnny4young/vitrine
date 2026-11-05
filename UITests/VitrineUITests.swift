@@ -188,6 +188,33 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testTerminalCaptureShowsPaletteAndContextChips() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.terminalEditor)
+        defer { app.terminate() }
+
+        assertExists(element("terminal-palette-picker", in: app), in: app, timeout: 8)
+
+        let header = element("inspector-disclosure-header", in: app)
+        assertExists(header, in: app)
+        // The Terminal section can push Header below the fold on a small display.
+        if !header.isHittable {
+            element("editor-inspector", in: app).scroll(byDeltaX: 0, deltaY: -800)
+        }
+        header.click()
+        assertExists(element("terminal-context-label-0", in: app), in: app, timeout: 3)
+        assertExists(element("terminal-context-label-1-remove", in: app), in: app)
+        assertExists(element("terminal-context-command", in: app), in: app)
+        assertExists(element("terminal-prompt-picker", in: app), in: app)
+
+        let hideArguments = element("terminal-hide-arguments-button", in: app)
+        assertExists(hideArguments, in: app)
+        hideArguments.click()
+        XCTAssertTrue(hideArguments.waitForNonExistence(timeout: 3))
+    }
+
+    @MainActor
     func testEditorLaunchesWithPrimaryControls() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
