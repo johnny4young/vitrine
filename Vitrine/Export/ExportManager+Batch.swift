@@ -251,7 +251,7 @@ extension ExportManager {
         _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
         cues: CarouselPaginator.Cues, profile: ColorProfile = .sRGB
     ) async -> Int? {
-        guard let first = slides.first else { return nil }
+        guard let first = slides.first, CarouselFilmstripModel.canPreview(first) else { return nil }
         let config = CarouselPaginator.slideConfig(
             baseConfig, slide: first, at: 0, of: slides.count, cues: cues)
         guard

@@ -898,7 +898,8 @@ final class VitrineUITests: XCTestCase {
         for identifier in [
             "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
             "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
-            "carousel-output-summary",
+            "carousel-output-summary", "carousel-filmstrip", "carousel-slide-tile-0",
+            "carousel-slide-size",
         ] {
             assertExists(element(identifier, in: app), in: app, timeout: 3)
         }

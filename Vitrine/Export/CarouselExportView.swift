@@ -7,11 +7,10 @@ import VitrineRendering
 /// Splitting and per-slide configs live in `CarouselPaginator`; rendering in
 /// `ExportManager.exportCarousel` — this view only collects the choices.
 struct CarouselExportView: View {
-    /// Everything that changes the rendered slides, so the size estimate follows it.
-    private struct Choices: Equatable {
-        var linesPerSlide = CarouselPaginator.defaultLinesPerSlide
-        var prefersBlankLineBreaks = true
-        var cues: CarouselPaginator.Cues
+    /// What a split depends on.
+    private struct SplitRequest: Equatable {
+        var split: CarouselSplit
+        var code: String
     }
 
     /// What the planned file names depend on.
@@ -29,7 +28,14 @@ struct CarouselExportView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var choices: Choices
+    @State private var split = CarouselSplit()
+
+    @State private var cues: CarouselPaginator.Cues
+
+    /// The latest finished split, which the sheet reads for everything it shows.
+    @State private var outcome: CarouselPaginator.Outcome?
+
+    @State private var filmstrip = CarouselFilmstripModel()
 
     /// The folder chosen in this sheet. Without one, confirming asks for it, because
     /// the sandbox grants no folder until the user picks it.
@@ -55,23 +61,30 @@ struct CarouselExportView: View {
         self.profile = profile
         self.feedback = feedback
         self.presentation = presentation
-        _choices = State(
-            initialValue: Choices(
-                cues: CarouselPaginator.Cues(
-                    lineNumbers: baseConfig.showLineNumbers ? .continuing : .off,
-                    showsPageBadge: true,
-                    showsContinuation: true,
-                    continuationLabel: String(
-                        localized: "continues →",
-                        comment: "Cue drawn on a carousel slide when another slide follows."))))
+        _cues = State(
+            initialValue: CarouselPaginator.Cues(
+                lineNumbers: baseConfig.showLineNumbers ? .continuing : .off,
+                showsPageBadge: true,
+                showsContinuation: true,
+                continuationLabel: String(
+                    localized: "continues →",
+                    comment: "Cue drawn on a carousel slide when another slide follows.")))
     }
 
     private var isExporting: Bool { progress != nil }
 
-    private var pages: [CarouselPaginator.Slide] {
-        CarouselPaginator.slides(
-            for: baseConfig.code, maxLinesPerSlide: choices.linesPerSlide,
-            preferBlankLineBreaks: choices.prefersBlankLineBreaks)
+    private var rule: LocalizedStringKey? { EditorView.carouselRule(for: baseConfig) }
+
+    private var pages: [CarouselPaginator.Slide] { outcome?.slides ?? [] }
+
+    /// A refused capture has nothing to split, so nothing of it can reach a tile.
+    private var request: SplitRequest {
+        SplitRequest(split: split, code: rule == nil ? baseConfig.code : "")
+    }
+
+    private var filmstripInput: CarouselFilmstripModel.Input {
+        CarouselFilmstripModel.Input(
+            base: baseConfig, slides: pages, cues: cues, profile: profile)
     }
 
     private var confirmTitle: LocalizedStringKey {
@@ -84,7 +97,7 @@ struct CarouselExportView: View {
         ExportSheetScaffold(
             title: "Export carousel",
             subtitle: "Split the snippet into numbered 4:5 slides for a carousel post.",
-            width: 400,
+            width: 440,
             rootIdentifier: "carousel-export-sheet",
             failureNote: failureNote,
             progress: progress,
@@ -97,20 +110,31 @@ struct CarouselExportView: View {
             confirmDisabled: pages.isEmpty || isExporting,
             onConfirm: exportSlides,
             content: {
-                VStack(alignment: .leading, spacing: 12) {
-                    splitControls
-                    Divider()
-                    slideControls
-                    Divider()
-                    outputControls
+                if let rule {
+                    Text(rule)
+                        .font(.system(size: VitrineTokens.FontSize.body))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("carousel-rule")
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        splitControls
+                        Divider()
+                        slideControls
+                        Divider()
+                        outputControls
+                    }
+                    .toggleStyle(.switch)
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .disabled(isExporting)
                 }
-                .toggleStyle(.switch)
-                .font(.system(size: VitrineTokens.FontSize.body))
-                .disabled(isExporting)
             }
         )
         .interactiveDismissDisabled(isExporting)
-        .task(id: choices) { await refreshSizeEstimate() }
+        // Synchronously, so the sheet doesn't open on an empty strip and a zero count.
+        .onAppear { outcome = CarouselPaginator.Outcome(split: request.split, code: request.code) }
+        .task(id: request) { await refreshSplit() }
+        .task(id: filmstripInput) { await refreshSizeEstimate() }
         .task(id: OutputPlan(folder: folder, slideCount: pages.count)) {
             refreshPlannedFilenames()
         }
@@ -119,8 +143,10 @@ struct CarouselExportView: View {
     private var splitControls: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                Stepper(value: $choices.linesPerSlide, in: CarouselPaginator.linesPerSlideRange) {
-                    Text("Lines per slide: \(choices.linesPerSlide)")
+                Stepper(
+                    value: $split.linesPerSlide, in: CarouselPaginator.linesPerSlideRange
+                ) {
+                    Text("Lines per slide: \(split.linesPerSlide)")
                 }
                 .accessibilityIdentifier("carousel-lines-stepper")
                 Spacer(minLength: 0)
@@ -131,8 +157,19 @@ struct CarouselExportView: View {
                     .monospacedDigit()
                     .accessibilityIdentifier("carousel-slide-count")
             }
+            CarouselFilmstrip(
+                input: filmstripInput, hasShortTail: outcome?.hasShortTail ?? false,
+                model: filmstrip)
+            HStack(spacing: 10) {
+                Text("Slide size")
+                Spacer(minLength: 0)
+                Text(verbatim: CarouselPaginator.slideSizeLabel(ExportManager.carouselSlideSize))
+                    .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+                    .accessibilityIdentifier("carousel-slide-size")
+            }
             switchRow(
-                "Prefer blank-line breaks", isOn: $choices.prefersBlankLineBreaks,
+                "Prefer blank-line breaks", isOn: $split.prefersBlankLineBreaks,
                 identifier: "carousel-prefer-blank-lines")
         }
     }
@@ -153,10 +190,10 @@ struct CarouselExportView: View {
                 }
             }
             switchRow(
-                "Page badge “2 / 4”", isOn: $choices.cues.showsPageBadge,
+                "Page badge “2 / 4”", isOn: $cues.showsPageBadge,
                 identifier: "carousel-page-badge")
             switchRow(
-                "“continues →” cue", isOn: $choices.cues.showsContinuation,
+                "“continues →” cue", isOn: $cues.showsContinuation,
                 identifier: "carousel-continuation-cue")
         }
     }
@@ -165,8 +202,8 @@ struct CarouselExportView: View {
         Picker(
             "Line numbers",
             selection: Binding(
-                get: { choices.cues.lineNumbers ?? .off },
-                set: { choices.cues.lineNumbers = $0 })
+                get: { cues.lineNumbers ?? .off },
+                set: { cues.lineNumbers = $0 })
         ) {
             Text("Continue").tag(CarouselPaginator.Cues.LineNumbers.continuing)
             Text("Restart").tag(CarouselPaginator.Cues.LineNumbers.restarting)
@@ -195,7 +232,8 @@ struct CarouselExportView: View {
                 .font(.system(size: VitrineTokens.FontSize.caption))
                 .foregroundStyle(VitrineTokens.Text.secondary)
                 .monospacedDigit()
-                .fixedSize(horizontal: false, vertical: true)
+                // Two rows held from the start: the size arrives late and can wrap the line.
+                .lineLimit(2, reservesSpace: true)
                 .accessibilityIdentifier("carousel-output-summary")
         }
     }
@@ -239,12 +277,20 @@ struct CarouselExportView: View {
         return summary + " · " + String(localized: "Existing files are kept")
     }
 
+    private func refreshSplit() async {
+        let request = request
+        guard outcome?.split != request.split || outcome?.code != request.code else { return }
+        let finished = await request.split.outcome(of: request.code)
+        guard !Task.isCancelled else { return }
+        outcome = finished
+    }
+
     /// Waits out a stepper run before rendering, since the sample renders on the main actor.
     private func refreshSizeEstimate() async {
         try? await Task.sleep(for: .milliseconds(300))
         guard !Task.isCancelled else { return }
         let estimate = await ExportManager.estimatedCarouselSlideBytes(
-            baseConfig, slides: pages, cues: choices.cues, profile: profile)
+            baseConfig, slides: pages, cues: cues, profile: profile)
         guard !Task.isCancelled else { return }
         bytesPerSlide = estimate
     }
@@ -265,7 +311,8 @@ struct CarouselExportView: View {
     }
 
     private func exportSlides() {
-        let pages = pages
+        // A click can land before the split catches up with the last stepper tick.
+        let pages = request.split.slides(of: request.code)
         guard !pages.isEmpty else { return }
         guard let directory = folder ?? presentation.chooseDirectory(message: folderPrompt)
         else { return }
@@ -274,7 +321,7 @@ struct CarouselExportView: View {
         progress = (0, pages.count)
         Task {
             let result = await ExportManager.exportCarousel(
-                baseConfig, slides: pages, cues: choices.cues, to: directory, profile: profile,
+                baseConfig, slides: pages, cues: cues, to: directory, profile: profile,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil
             let completion = BatchExportCompletion(

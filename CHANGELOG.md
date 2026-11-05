@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- The carousel export sheet shows a filmstrip of the real slides before writing files, with
+  redactions in place, a flag on a last slide that came out short, and the slide size. PRO
+  users opening it on a terminal capture or one with blur boxes now see why it can't export.
 - Preview the style presets as thumbnails of the current capture under Presets in the
   inspector, and apply one with a click. They show a preset's style on a short excerpt,
   update once typing settles, and mask redacted or blurred content. An image capture shows
