@@ -10,8 +10,8 @@ import VitrineRendering
 
 // MARK: - Gradient swatches
 
-/// One gradient swatch (`.swatch`): rounded, hover-scaled, with the selected
-/// border + focus ring. 26 pt in Settings, 28 pt in the editor inspector.
+/// One gradient swatch (`.swatch`): rounded, hover-scaled, with a hairline, or a
+/// ring when selected. 26 pt in Settings, 28 pt in the editor inspector.
 struct GradientSwatch: View {
     let preset: GradientPreset
     let isSelected: Bool
@@ -43,29 +43,57 @@ struct FillSwatch<Fill: View>: View {
     var body: some View {
         Button(action: action) {
             fill
+                .clipShape(
+                    RoundedRectangle(cornerRadius: isSelected ? 6 : 9, style: .continuous)
+                )
+                // The gap keeps the ring readable on a fill of its own color, such as Aurora.
+                .padding(isSelected ? 3.5 : 0)
                 .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 9, style: .continuous)
                         .strokeBorder(
-                            isSelected ? VitrineTokens.Chrome.swatchSelectedBorder : .clear,
-                            lineWidth: 2
+                            isSelected
+                                ? VitrineTokens.Chrome.swatchSelectedBorder
+                                : VitrineTokens.Line.border,
+                            lineWidth: isSelected ? Brand.Stroke.focus : Brand.Stroke.hairline
                         )
                 )
-                .background(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .inset(by: -1.5)
-                        .stroke(isSelected ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
-                )
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 .modifier(
                     DecorativeScaleEffect(
-                        isActive: isHovered, scale: 1.08, reduceMotion: reduceMotion))
+                        isActive: isHovered, scale: DecorativeScaleEffect.hoverScale,
+                        reduceMotion: reduceMotion))
         }
         .buttonStyle(.plain)
         .onHover { isHovered = $0 }
         .help(title)
         .accessibilityLabel(title)
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+}
+
+/// The cells an image viewer shows behind transparency.
+struct TransparencyGrid: View {
+    var cell: CGFloat = 8
+
+    var body: some View {
+        Canvas { context, size in
+            context.fill(
+                Path(CGRect(origin: .zero, size: size)),
+                with: .color(VitrineTokens.Chrome.checkerBase))
+            let squares = Path { path in
+                for row in 0...Int(size.height / cell) {
+                    for column in 0...Int(size.width / cell) where (row + column).isMultiple(of: 2)
+                    {
+                        path.addRect(
+                            CGRect(
+                                x: CGFloat(column) * cell, y: CGFloat(row) * cell,
+                                width: cell, height: cell))
+                    }
+                }
+            }
+            context.fill(squares, with: .color(VitrineTokens.Chrome.checkerSquare))
+        }
     }
 }
 
@@ -93,7 +121,8 @@ struct CustomBackgroundSwatch: View {
                 )
                 .modifier(
                     DecorativeScaleEffect(
-                        isActive: isHovered, scale: 1.08, reduceMotion: reduceMotion)
+                        isActive: isHovered, scale: DecorativeScaleEffect.hoverScale,
+                        reduceMotion: reduceMotion)
                 )
                 .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
         }

@@ -79,7 +79,7 @@ struct WhatsNewView: View {
 
     private var highlights: some View {
         VStack(alignment: .leading, spacing: 14) {
-            ForEach(Array(note.localizedHighlights.enumerated()), id: \.offset) { _, highlight in
+            ForEach(Array(note.localizedLedHighlights.enumerated()), id: \.offset) { _, highlight in
                 HStack(alignment: .top, spacing: VitrineTokens.Spacing.sm) {
                     Circle()
                         .fill(VitrineTokens.Accent.system)
@@ -157,7 +157,21 @@ struct WhatsNewView: View {
 
 extension ReleaseNote {
     var localizedHeadline: String { Self.localized(headline) }
-    var localizedHighlights: [String] { highlights.map { Self.localized($0) } }
+    /// Each highlight as one run of text, led by its bold phrase when the note has one.
+    var localizedLedHighlights: [AttributedString] {
+        highlights.enumerated().map { index, highlight in
+            Self.ledHighlight(
+                lead: leads.indices.contains(index) ? Self.localized(leads[index]) : nil,
+                text: Self.localized(highlight))
+        }
+    }
+
+    static func ledHighlight(lead: String?, text: String) -> AttributedString {
+        guard let lead else { return AttributedString(text) }
+        var phrase = AttributedString(lead)
+        phrase.inlinePresentationIntent = .stronglyEmphasized
+        return phrase + AttributedString(" " + text)
+    }
 
     /// Looks the English text up as a String Catalog key, falling back to English.
     /// `localizedString(forKey:)` never parses format specifiers, so a literal `%` stays literal.

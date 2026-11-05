@@ -50,6 +50,7 @@ enum SettingsCodec {
         static let concealClipboard = "concealClipboard"
         static let textSidecar = "textSidecar"
         static let hotkeyAction = "hotkeyAction"
+        static let acknowledgedMacOSHotkey = "acknowledgedMacOSHotkey"
         static let appLanguage = "appLanguage"
         static let treatURLs = "treatURLsAsScreenshot"
         static let reindentOnPaste = "reindentOnPaste"
@@ -114,7 +115,8 @@ enum SettingsCodec {
             highlightedLines, focusHighlightedLines,
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
-            colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction, appLanguage,
+            colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction,
+            acknowledgedMacOSHotkey, appLanguage,
             treatURLs,
             reindentOnPaste,
             webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,

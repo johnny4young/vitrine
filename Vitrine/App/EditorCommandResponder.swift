@@ -92,30 +92,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
 
     @objc func copyRenderedImage(_ sender: Any?) {
         guard canPerform(.copyImage) else { return }
-        copyImage(from: activeSettings, editorWindow: NSApp.keyWindow ?? NSApp.mainWindow)
-    }
-
-    /// Copies `settings`' image and, when the app-wide "Close the editor after copying"
-    /// preference is on and the copy succeeded, closes `editorWindow` on a later turn.
-    /// Returns the close task, if one was scheduled.
-    @discardableResult
-    func copyImage(
-        from settings: AppSettings, editorWindow: NSWindow?, pasteboard: NSPasteboard = .general
-    ) -> Task<Void, Never>? {
-        guard
-            presentation.clearsPreflight(
-                of: settings, for: .copy, delivering: EditorPresentation.copyPayload(of: settings))
-        else { return nil }
-        let outcome = RenderedImageCopy.copy(
-            settings.exportConfig, settings: settings, pasteboard: pasteboard)
-        feedback(ExportFeedback.copyOutcome(outcome))
-        guard
-            EditorView.shouldCloseAfterCopy(
-                copied: outcome == .copied,
-                preferenceEnabled: settings.outputBehavior.closeAfterCopy),
-            let editorWindow
-        else { return nil }
-        return Task { editorWindow.close() }
+        EditorWindowController.shared.keyWindowSession?.copyImage(
+            closing: NSApp.keyWindow ?? NSApp.mainWindow)
     }
 
     @objc func saveRenderedImage(_ sender: Any?) {

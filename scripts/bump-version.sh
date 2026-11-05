@@ -329,7 +329,9 @@ else
 
 Still yours to write — these carry meaning, not a substitution:
   CHANGELOG.md                    a '## [$1]' section, plus its link definitions
-  Vitrine/Help/ReleaseNotes.swift the in-app What's New entry for $1
+  Vitrine/Help/ReleaseNotes.swift the in-app What's New entry for $1, each highlight led by
+                                  a bold phrase (trailing period, at most 5 words, English
+                                  and Spanish)
 
 Then: open the bump as a pull request and tag only after it merges. A tag on the
 pre-bump commit fails the release workflow's version guard (docs/RELEASING.md).
