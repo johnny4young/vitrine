@@ -1,4 +1,3 @@
-import AppKit
 import Foundation
 import SwiftUI
 import Testing
@@ -193,37 +192,20 @@ struct DiffViewOptionsTests {
             config.redactedLineRanges = redacted ? [8...8] : []
             return try render(config)
         }
-        #expect(
-            try differingPixels(
-                { try folded("alpha", redacted: true) }, { try folded("omega", redacted: true) })
-                == 0)
+        // Fresh values per attempt: the highlight cache would otherwise keep a perturbed frame.
+        var hidden = 0
+        for attempt in 1...RenderSettling.strictRenderAttempts {
+            hidden = try FontLigatureTests.compareRenderedPixels(
+                try folded("alpha\(attempt)", redacted: true),
+                try folded("omega\(attempt)", redacted: true)
+            ).differingPixels
+            if hidden == 0 { break }
+            RenderSettling.settleFontCaches()
+        }
+        #expect(hidden == 0)
         let visible = try FontLigatureTests.compareRenderedPixels(
             try folded("alpha", redacted: false), try folded("omega", redacted: false))
         #expect(visible.differingPixels > 0)
-    }
-
-    @Test func diagnosticFoldedRedaction() throws {
-        func folded(_ secret: String) throws -> CGImage {
-            var config = diffConfig()
-            config.code = Self.patch.replacingOccurrences(of: "-four", with: "-\(secret)")
-            config.diffContextLines = 0
-            config.redactedLineRanges = [8...8]
-            return try render(config)
-        }
-        func png(_ image: CGImage) -> String {
-            let rep = NSBitmapImageRep(cgImage: image)
-            return rep.representation(using: .png, properties: [:])!.base64EncodedString()
-        }
-        let a1 = try folded("alpha")
-        let a2 = try folded("alpha")
-        let o1 = try folded("omega")
-        let same = try FontLigatureTests.compareRenderedPixels(a1, a2)
-        let other = try FontLigatureTests.compareRenderedPixels(a1, o1)
-        print("DIAG same differing=\(same.differingPixels) max=\(same.maxChannelDelta)")
-        print("DIAG other differing=\(other.differingPixels) max=\(other.maxChannelDelta)")
-        print("DIAG size \(a1.width)x\(a1.height) \(o1.width)x\(o1.height)")
-        print("DIAG PNGA \(png(a1))")
-        print("DIAG PNGO \(png(o1))")
     }
 
     @Test func blurBoxKeepsTheCanvasWhenTheControlsMove() throws {
