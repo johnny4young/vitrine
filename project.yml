@@ -140,7 +140,7 @@ targets:
           - "Resources/Vitrine.DirectDownload.entitlements"
           - "Resources/Fonts"
           # The command-line surface compiles into VitrineCLICore. The app keeps only
-          # the two files it calls itself, listed below.
+          # the files it calls itself, listed below.
           - "CLI"
       # Folder reference so the fonts land in Contents/Resources/Fonts/, which
       # ATSApplicationFontsPath ("Fonts") registers at launch.
@@ -151,6 +151,8 @@ targets:
       # (Settings) are shared with the CLI, which compiles its own copy in VitrineCLICore.
       - path: Vitrine/CLI/EditorHandoff.swift
       - path: Vitrine/CLI/ShellInit.swift
+      # The recipes card shows these lines; the CLI tests pin them to the real gate.
+      - path: Vitrine/CLI/CLICookbookEntry.swift
     dependencies:
       - target: VitrineDomain
       - target: VitrineRendering

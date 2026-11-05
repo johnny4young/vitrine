@@ -14,6 +14,8 @@ can never drift.
 
 ### Added
 
+- See five copyable recipe commands with their free or PRO access, and the order in which
+  defaults, recipes and flags override each other.
 - Deleting a counter renumbers the badges above it, so they stay in order.
 - Show what the next capture will be under the menu bar's capture button: language, line
   count, theme and destination. Language and lines appear only when System Settings always

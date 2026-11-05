@@ -693,6 +693,11 @@ final class VitrineUITests: XCTestCase {
         assertHittable(
             "export-workspace-recipe-button", in: app,
             "The portable recipe export action should be reachable")
+        for command in ["validate-0", "render-0", "override-0", "multiSize-0", "terminal-2"] {
+            assertExists(element("recipe-command-\(command)", in: app), in: app, timeout: 3)
+        }
+        assertExists(element("recipe-precedence-ladder", in: app), in: app, timeout: 3)
+        assertExists(element("recipe-command-shell-integration-link", in: app), in: app, timeout: 3)
 
         element("save-style-preset-button", in: app).click()
         let presetName = app.windows.firstMatch.sheets.textFields.firstMatch

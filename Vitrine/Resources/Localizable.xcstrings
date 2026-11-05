@@ -1,94 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Use Editor Code" : {
-      "comment" : "Undo action name for the Use editor code button.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usar código del editor"
-          }
-        }
-      }
-    },
-    "Output size %lld by %lld, %@" : {
-      "comment" : "VoiceOver label for the social card's output size capsule.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tamaño de salida: %lld por %lld, %@"
-          }
-        }
-      }
-    },
-    "The editor has no code to use" : {
-      "comment" : "Message shown when Use editor code finds an empty editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El editor no tiene código para usar"
-          }
-        }
-      }
-    },
-    "Code excerpt" : {
-      "comment" : "Social card preview: dashed placeholder for an empty code slot. Never exported.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fragmento de código"
-          }
-        }
-      }
-    },
-    "Author · Project" : {
-      "comment" : "Social card preview: dashed placeholder for an empty footer. Never exported.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Autor · Proyecto"
-          }
-        }
-      }
-    },
-    "Paste a code excerpt…" : {
-      "comment" : "Placeholder of the social card's code field.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pega un fragmento de código…"
-          }
-        }
-      }
-    },
-    "Use editor code" : {
-      "comment" : "Button that fills the social card from the main editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usar el código del editor"
-          }
-        }
-      }
-    },
-    "Copy the code from the frontmost editor window into this card" : {
-      "comment" : "Tooltip of the Use editor code button.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copia el código de la ventana del editor al frente a esta tarjeta"
-          }
-        }
-      }
-    },
     "Changed" : {
       "comment" : "Code header chip: the watched file has a saved change waiting.",
       "localizations" : {
@@ -129,138 +41,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "En vivo"
-          }
-        }
-      }
-    },
-    "Board size" : {
-      "comment" : "Comparison board inspector section: the exported canvas size",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tamaño del tablero"
-          }
-        }
-      }
-    },
-    "Gap" : {
-      "comment" : "Comparison board inspector slider: space between captures",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Separación"
-          }
-        }
-      }
-    },
-    "Board background" : {
-      "comment" : "Comparison board inspector row: the board's backdrop",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fondo del tablero"
-          }
-        }
-      }
-    },
-    "Footer line" : {
-      "comment" : "Comparison board inspector switch: adds the generated line under the captures",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Línea al pie"
-          }
-        }
-      }
-    },
-    "Square" : {
-      "comment" : "Comparison board size preset: 1080 by 1080",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cuadrado"
-          }
-        }
-      }
-    },
-    "Card" : {
-      "comment" : "Comparison board background swatch: flat dark fill",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tarjeta"
-          }
-        }
-      }
-    },
-    "%lld captures" : {
-      "comment" : "Comparison board toolbar: number of captures on the board",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld capturas"
-          }
-        }
-      }
-    },
-    "%lld captures · made with Vitrine" : {
-      "comment" : "Comparison board footer line drawn into the exported image",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld capturas · hecho con Vitrine"
-          }
-        }
-      }
-    },
-    "Edit caption %lld" : {
-      "comment" : "Comparison board preview: click target over a capture's caption",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Editar leyenda %lld"
-          }
-        }
-      }
-    },
-    "Choose a destination preset" : {
-      "comment" : "Editor status capsule tooltip: opens the destination menu.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elige un destino predefinido"
-          }
-        }
-      }
-    },
-    "Command palette" : {
-      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paleta de comandos"
-          }
-        }
-      }
-    },
-    "Command palette (⌘K)" : {
-      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Paleta de comandos (⌘K)"
           }
         }
       }
@@ -628,105 +408,6 @@
         }
       }
     },
-    "URL needs the Direct download build" : {
-      "comment" : "Web Snapshot source note in a build without URL capture.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "URL requiere la versión de descarga directa"
-          }
-        }
-      }
-    },
-    "Why?" : {
-      "comment" : "Link that explains why URL capture is unavailable.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¿Por qué?"
-          }
-        }
-      }
-    },
-    "More information" : {
-      "comment" : "Accessibility label of an info button that shows a row's explanation.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Más información"
-          }
-        }
-      }
-    },
-    "Open Settings ▸ Input" : {
-      "comment" : "Link from Web Snapshot capture options to the Input settings pane.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abrir Ajustes ▸ Entrada"
-          }
-        }
-      }
-    },
-    "session" : {
-      "comment" : "Capture options summary: a saved login session is used.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "sesión"
-          }
-        }
-      }
-    },
-    "no session" : {
-      "comment" : "Capture options summary: no saved login session is used.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "sin sesión"
-          }
-        }
-      }
-    },
-    "localhost" : {
-      "comment" : "Capture options summary: localhost capture is allowed.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "localhost"
-          }
-        }
-      }
-    },
-    "no localhost" : {
-      "comment" : "Capture options summary: localhost capture is blocked.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "sin localhost"
-          }
-        }
-      }
-    },
-    "This build has no network access, so it can't load a page. HTML rendering works here." : {
-      "comment" : "Web Snapshot: URL-mode unavailable note.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta versión no tiene acceso a la red, así que no puede cargar una página. El renderizado de HTML sí funciona aquí."
-          }
-        }
-      }
-    },
     "continues →" : {
       "comment" : "Cue drawn on a carousel slide when another slide follows.",
       "localizations" : {
@@ -844,6 +525,537 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Los archivos existentes se conservan"
+          }
+        }
+      }
+    },
+    "%lld by %lld" : {
+      "comment" : "Menu bar capture summary, read aloud: output width by height in pixels.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld by %2$lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld por %2$lld"
+          }
+        }
+      }
+    },
+    "%lld code blocks" : {
+      "comment" : "Menu bar capture summary: the clipboard holds several code blocks.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld code block"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld code blocks"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld bloque de código"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld bloques de código"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Command line" : {
+      "comment" : "Settings section with copyable CLI commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea de comandos"
+          }
+        }
+      }
+    },
+    "Precedence, low to high" : {
+      "comment" : "Settings list of what overrides what in a CLI render.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precedencia, de menor a mayor"
+          }
+        }
+      }
+    },
+    "Vitrine defaults" : {
+      "comment" : "Lowest precedence step for a CLI render.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valores predeterminados de Vitrine"
+          }
+        }
+      }
+    },
+    "Destination preset (--preset or recipe)" : {
+      "comment" : "Precedence step: the destination preset, from the flag or from a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destino (--preset o receta)"
+          }
+        }
+      }
+    },
+    "Recipe style and output defaults" : {
+      "comment" : "Precedence step: style and output values in a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo y salida de la receta"
+          }
+        }
+      }
+    },
+    "Explicit flags" : {
+      "comment" : "Highest precedence step: CLI flags passed on the command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opciones explícitas"
+          }
+        }
+      }
+    },
+    "Check a recipe" : {
+      "comment" : "Label above the recipe validate command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisa una receta"
+          }
+        }
+      }
+    },
+    "One file; the recipe decides theme, size and format" : {
+      "comment" : "Label above a CLI command rendering one file with a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un archivo; la receta decide tema, tamaño y formato"
+          }
+        }
+      }
+    },
+    "Override one value; flags beat the recipe" : {
+      "comment" : "Label above a CLI command overriding a recipe value.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia un valor; las opciones ganan sobre la receta"
+          }
+        }
+      }
+    },
+    "Several sizes at once, into a folder" : {
+      "comment" : "Label above the multi-size CLI command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varios tamaños a la vez, en una carpeta"
+          }
+        }
+      }
+    },
+    "Capture the terminal screen, or open it in the editor" : {
+      "comment" : "Label above the vgrab and vpane commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura la pantalla de la terminal o ábrela en el editor"
+          }
+        }
+      }
+    },
+    "Free to use" : {
+      "comment" : "Badge on a CLI command that needs no PRO license.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gratis"
+          }
+        }
+      }
+    },
+    "Needs Shell integration. vpane also needs tmux, and PRO without -e." : {
+      "comment" : "Prerequisites of the vgrab and vpane commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requiere la integración del shell. vpane también requiere tmux y, sin -e, PRO."
+          }
+        }
+      }
+    },
+    "Open Shell integration" : {
+      "comment" : "Link to the Shell integration row in General settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir integración del shell"
+          }
+        }
+      }
+    },
+    "Choose a destination preset" : {
+      "comment" : "Editor status capsule tooltip: opens the destination menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un destino predefinido"
+          }
+        }
+      }
+    },
+    "Command palette" : {
+      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos"
+          }
+        }
+      }
+    },
+    "Command palette (⌘K)" : {
+      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos (⌘K)"
+          }
+        }
+      }
+    },
+    "Board size" : {
+      "comment" : "Comparison board inspector section: the exported canvas size",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño del tablero"
+          }
+        }
+      }
+    },
+    "Gap" : {
+      "comment" : "Comparison board inspector slider: space between captures",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separación"
+          }
+        }
+      }
+    },
+    "Board background" : {
+      "comment" : "Comparison board inspector row: the board's backdrop",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fondo del tablero"
+          }
+        }
+      }
+    },
+    "Footer line" : {
+      "comment" : "Comparison board inspector switch: adds the generated line under the captures",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea al pie"
+          }
+        }
+      }
+    },
+    "Square" : {
+      "comment" : "Comparison board size preset: 1080 by 1080",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuadrado"
+          }
+        }
+      }
+    },
+    "Card" : {
+      "comment" : "Comparison board background swatch: flat dark fill",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta"
+          }
+        }
+      }
+    },
+    "%lld captures" : {
+      "comment" : "Comparison board toolbar: number of captures on the board",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld capturas"
+          }
+        }
+      }
+    },
+    "%lld captures · made with Vitrine" : {
+      "comment" : "Comparison board footer line drawn into the exported image",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld capturas · hecho con Vitrine"
+          }
+        }
+      }
+    },
+    "Edit caption %lld" : {
+      "comment" : "Comparison board preview: click target over a capture's caption",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar leyenda %lld"
+          }
+        }
+      }
+    },
+    "URL needs the Direct download build" : {
+      "comment" : "Web Snapshot source note in a build without URL capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "URL requiere la versión de descarga directa"
+          }
+        }
+      }
+    },
+    "Why?" : {
+      "comment" : "Link that explains why URL capture is unavailable.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Por qué?"
+          }
+        }
+      }
+    },
+    "More information" : {
+      "comment" : "Accessibility label of an info button that shows a row's explanation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más información"
+          }
+        }
+      }
+    },
+    "Open Settings ▸ Input" : {
+      "comment" : "Link from Web Snapshot capture options to the Input settings pane.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes ▸ Entrada"
+          }
+        }
+      }
+    },
+    "session" : {
+      "comment" : "Capture options summary: a saved login session is used.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sesión"
+          }
+        }
+      }
+    },
+    "no session" : {
+      "comment" : "Capture options summary: no saved login session is used.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sin sesión"
+          }
+        }
+      }
+    },
+    "localhost" : {
+      "comment" : "Capture options summary: localhost capture is allowed.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "localhost"
+          }
+        }
+      }
+    },
+    "no localhost" : {
+      "comment" : "Capture options summary: localhost capture is blocked.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sin localhost"
+          }
+        }
+      }
+    },
+    "This build has no network access, so it can't load a page. HTML rendering works here." : {
+      "comment" : "Web Snapshot: URL-mode unavailable note.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versión no tiene acceso a la red, así que no puede cargar una página. El renderizado de HTML sí funciona aquí."
+          }
+        }
+      }
+    },
+    "Use Editor Code" : {
+      "comment" : "Undo action name for the Use editor code button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar código del editor"
+          }
+        }
+      }
+    },
+    "Output size %lld by %lld, %@" : {
+      "comment" : "VoiceOver label for the social card's output size capsule.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño de salida: %lld por %lld, %@"
+          }
+        }
+      }
+    },
+    "The editor has no code to use" : {
+      "comment" : "Message shown when Use editor code finds an empty editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El editor no tiene código para usar"
+          }
+        }
+      }
+    },
+    "Code excerpt" : {
+      "comment" : "Social card preview: dashed placeholder for an empty code slot. Never exported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragmento de código"
+          }
+        }
+      }
+    },
+    "Author · Project" : {
+      "comment" : "Social card preview: dashed placeholder for an empty footer. Never exported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autor · Proyecto"
+          }
+        }
+      }
+    },
+    "Paste a code excerpt…" : {
+      "comment" : "Placeholder of the social card's code field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega un fragmento de código…"
+          }
+        }
+      }
+    },
+    "Use editor code" : {
+      "comment" : "Button that fills the social card from the main editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar el código del editor"
+          }
+        }
+      }
+    },
+    "Copy the code from the frontmost editor window into this card" : {
+      "comment" : "Tooltip of the Use editor code button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el código de la ventana del editor al frente a esta tarjeta"
           }
         }
       }
@@ -8313,64 +8525,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Título de la ventana"
-          }
-        }
-      }
-    },
-    "%lld by %lld" : {
-      "comment" : "Menu bar capture summary, read aloud: output width by height in pixels.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld by %2$lld"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld por %2$lld"
-          }
-        }
-      }
-    },
-    "%lld code blocks" : {
-      "comment" : "Menu bar capture summary: the clipboard holds several code blocks.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld code block"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld code blocks"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld bloque de código"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld bloques de código"
-                }
-              }
-            }
           }
         }
       }

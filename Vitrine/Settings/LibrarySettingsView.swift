@@ -16,6 +16,9 @@ struct LibrarySettingsView: View {
             StylePresetsSection(settings: settings, store: presets, themes: themes)
             WorkspaceRecipeSettingsSection(
                 settings: settings, store: workspaceRecipes, themes: themes)
+            if CLIToolInstaller.embeddedCLI != nil {
+                WorkspaceRecipeCommandsSection(settings: settings)
+            }
             CustomThemesSection(settings: settings, store: themes)
         }
         .accessibilityIdentifier("settings-library-pane")
