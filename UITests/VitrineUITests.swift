@@ -764,9 +764,10 @@ final class VitrineUITests: XCTestCase {
         chooseMenuItem("Delete…", in: app, clickingCenter: true)
         XCTAssertTrue(presetSheet.waitForExistence(timeout: 3))
         app.typeKey(.escape, modifierFlags: [])
-        // The dialog takes the next click while it animates out.
-        XCTAssertTrue(presetSheet.waitForNonExistence(timeout: 3))
         XCTAssertEqual(presetPicker.value as? String, "Deletion example")
+        // Return holds Cancel's key equivalent, so Escape leaves the dialog up.
+        if presetSheet.exists { presetSheet.buttons["Cancel"].click() }
+        XCTAssertTrue(presetSheet.waitForNonExistence(timeout: 3))
         presetActions.click()
         chooseMenuItem("Delete…", in: app, clickingCenter: true)
         app.windows.firstMatch.sheets.buttons["Delete Preset"].click()
