@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- Copy the command line that reproduces an editor window's image, from its More menu or
+  the command palette. It names what the line can't include, such as annotations or a
+  pasted image.
 - Bring the main editor's code into a social card with Use editor code.
 - Show a social card's empty code and footer slots in the preview, and its output size
   under it. Empty slots are never exported.

@@ -245,7 +245,10 @@ final class VitrineUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
 
         assertToolbarActionsReachable(
-            ["save-button", "share-button", "make-default-button"],
+            [
+                "save-button", "share-button", "copy-reproduction-command-button",
+                "make-default-button",
+            ],
             from: "editor-actions-menu", in: app)
         // The default window folds these into More, and an open menu swallows the next click.
         app.typeKey(.escape, modifierFlags: [])

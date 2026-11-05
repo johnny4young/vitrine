@@ -90,7 +90,7 @@ extension EditorView {
         exportCommands(
             for: PaletteExport.available(
                 hasRenderableContent: settings.hasRenderableContent,
-                usesImageContent: settings.style.usesImageContent))
+                usesImageContent: settings.style.usesImageContent)) + reproductionPaletteCommands
     }
 
     func exportCommands(for exports: [PaletteExport]) -> [EditorCommand] {

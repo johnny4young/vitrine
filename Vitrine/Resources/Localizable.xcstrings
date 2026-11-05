@@ -1,6 +1,149 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Copied. Run it in your project and replace %@." : {
+      "comment" : "Shown after copying a CLI command. The argument is the placeholder input file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Ejecútalo en tu proyecto y reemplaza %@."
+          }
+        }
+      }
+    },
+    "Copy Command — Requires PRO" : {
+      "comment" : "Editor menu item for the CLI command that reproduces the image, when PRO is locked.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar comando — Requiere PRO"
+          }
+        }
+      }
+    },
+    "Copy Command can't include: %@" : {
+      "comment" : "Shown when the command line builder leaves out part of the image. The argument lists what is missing.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar comando no puede incluir: %@"
+          }
+        }
+      }
+    },
+    "Couldn't copy the command" : {
+      "comment" : "Shown when the clipboard write fails.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo copiar el comando"
+          }
+        }
+      }
+    },
+    "annotations" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "anotaciones"
+          }
+        }
+      }
+    },
+    "pasted image" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "imagen pegada"
+          }
+        }
+      }
+    },
+    "image background" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "fondo de imagen"
+          }
+        }
+      }
+    },
+    "custom theme" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tema personalizado"
+          }
+        }
+      }
+    },
+    "unevenly spaced gradient" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "degradado con espaciado irregular"
+          }
+        }
+      }
+    },
+    "brand logo, QR or footer" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "logo, QR o pie de marca"
+          }
+        }
+      }
+    },
+    "control characters in header text" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "caracteres de control en el texto del encabezado"
+          }
+        }
+      }
+    },
+    "likely secret in header text" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "posible secreto en el texto del encabezado"
+          }
+        }
+      }
+    },
+    "recipe outside its folder" : {
+      "comment" : "Part of an image the command line builder leaves out.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "receta fuera de su carpeta"
+          }
+        }
+      }
+    },
     "Choose a destination preset" : {
       "comment" : "Editor status capsule tooltip: opens the destination menu.",
       "localizations" : {
