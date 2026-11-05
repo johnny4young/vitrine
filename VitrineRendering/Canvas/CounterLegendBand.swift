@@ -7,6 +7,8 @@ struct CounterLegendBand: View {
     let font: NSFont
     let textColor: Color
     let background: Color
+    /// Whether to fill the height offered, past the height of its own text.
+    var fillsHeight = false
 
     var body: some View {
         CounterLegendRows {
@@ -30,13 +32,15 @@ struct CounterLegendBand: View {
         }
         .padding(.horizontal, CounterLegendMetrics.horizontalInset)
         .padding(.vertical, CounterLegendMetrics.verticalInset)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(
+            maxWidth: .infinity, maxHeight: fillsHeight ? .infinity : nil, alignment: .topLeading
+        )
         .background(background)
     }
 }
 
-/// What the canvas reports about its legend: the band's height, so the editor can keep
-/// handles on the capture above it, and how many entries a fixed frame left out.
+/// What the band reports out of the canvas: its height, so the editor can keep handles on
+/// the capture above it, and how many entries a fixed frame left out.
 public struct CounterLegendReport: Equatable {
     public var height: CGFloat = 0
     public var dropped = 0
@@ -108,7 +112,8 @@ private struct CounterLegendRows: Layout {
     }
 }
 
-/// The band's geometry.
+/// The band's geometry, shared by its layout and the cap a fixed frame applies, which has
+/// to be known outside a layout pass to tell the user what was left out.
 nonisolated enum CounterLegendMetrics {
     static let horizontalInset: CGFloat = 26
     static let verticalInset: CGFloat = 12
@@ -132,5 +137,26 @@ nonisolated enum CounterLegendMetrics {
             }
             return CGRect(origin: origin, size: size)
         }
+    }
+
+    /// How many entries, from the top, fit in a third of `frame`'s height.
+    static func entriesFitting(
+        _ entries: [CounterLegend.Entry], font: NSFont, frame: CGSize
+    ) -> Int {
+        let width = frame.width - horizontalInset * 2
+        let badge = badgeSide(font)
+        let labelWidth = max(width - badge - badgeGap, 1)
+        let sizes = entries.map { entry in
+            let label = NSAttributedString(string: entry.label, attributes: [.font: font])
+                .boundingRect(
+                    with: CGSize(width: labelWidth, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin, .usesFontLeading]
+                ).size
+            return CGSize(
+                width: label.width.rounded(.up) + badge + badgeGap,
+                height: max(label.height.rounded(.up), badge))
+        }
+        let limit = frame.height / 3 - verticalInset * 2
+        return flow(sizes, width: width).prefix { $0.maxY <= limit }.count
     }
 }

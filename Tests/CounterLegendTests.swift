@@ -249,20 +249,19 @@ struct CounterLegendTests {
         #expect(wrapped.height > short.height)
     }
 
-    @Test func aFixedFrameDrawsNoLegendAndReportsIt() throws {
+    @Test func aFixedFrameKeepsItsSizeAndItsMarks() throws {
         let frame = CGSize(width: 800, height: 600)
-        let capture = config([counter(1, "the struct"), counter(2), counter(3, "the secret")])
-        let fit = capture.counterLegendFit(in: frame)
-        #expect(fit.entries.isEmpty)
-        #expect(fit.dropped == 2)
-        #expect(capture.counterLegendFit(in: nil).entries.count == 2)
+        let plain = try #require(
+            ExportManager.renderCGImage(config([counter(1)]), scale: 1, fixedSize: frame))
+        let labeled = try #require(
+            ExportManager.renderCGImage(
+                config([counter(1, "the struct")]), scale: 1, fixedSize: frame))
 
-        let plain = config([counter(1), counter(2), counter(3)])
-        let unlabeled = try #require(
-            ExportManager.renderCGImage(plain, scale: 1, fixedSize: frame))
-        let image = try #require(
-            ExportManager.renderCGImage(capture, scale: 1, fixedSize: frame))
-        #expect(try pixels(image) == pixels(unlabeled))
+        #expect(labeled.width == 800)
+        #expect(labeled.height == 600)
+        // The band only covers the bottom edge of the frame.
+        #expect(try pixels(labeled, height: 500) == pixels(plain, height: 500))
+        #expect(try pixels(labeled) != pixels(plain))
     }
 
     @Test func aMaskedLabelRendersDifferentlyFromItsRawText() throws {
@@ -304,6 +303,54 @@ struct CounterLegendTests {
                 #expect(opaque, "\(lineCount) lines at \(fontSize) pt")
             }
         }
+    }
+
+    // MARK: - Fixed-frame cap
+
+    private func labeled(_ count: Int) -> SnapshotConfig {
+        config((1...count).map { counter($0, "a label long enough to take room \($0)") })
+    }
+
+    @Test func aNaturalCanvasKeepsEveryEntry() {
+        let fit = labeled(30).counterLegendFit(in: nil)
+        #expect(fit.entries.count == 30)
+        #expect(fit.dropped == 0)
+    }
+
+    @Test func aFixedFrameKeepsTheEntriesThatFitFromTheTop() throws {
+        let frame = CGSize(width: 800, height: 300)
+        let capture = labeled(30)
+        let fit = capture.counterLegendFit(in: frame)
+        #expect(!fit.entries.isEmpty)
+        #expect(fit.dropped > 0)
+        #expect(fit.entries.count + fit.dropped == 30)
+        #expect(fit.entries.map(\.number) == Array(1...fit.entries.count))
+
+        let plain = try #require(
+            ExportManager.renderCGImage(
+                config((1...30).map { counter($0) }), scale: 1, fixedSize: frame))
+        let image = try #require(
+            ExportManager.renderCGImage(capture, scale: 1, fixedSize: frame))
+        #expect(image.height == 300)
+        // The band stays inside the bottom third of the frame.
+        #expect(try pixels(image, height: 199) == pixels(plain, height: 199))
+        #expect(try pixels(image) != pixels(plain))
+    }
+
+    @Test func aFrameTooShortForAnyEntryDrawsNoBand() throws {
+        let frame = CGSize(width: 800, height: 90)
+        let capture = labeled(2)
+        let fit = capture.counterLegendFit(in: frame)
+        #expect(fit.entries.isEmpty)
+        #expect(fit.dropped == 2)
+
+        let plain = try #require(
+            ExportManager.renderCGImage(config([counter(1)]), scale: 1, fixedSize: frame))
+        let image = try #require(
+            ExportManager.renderCGImage(
+                config([counter(1, "a label long enough to take room")]), scale: 1,
+                fixedSize: frame))
+        #expect(try pixels(image) == pixels(plain))
     }
 
     // MARK: - Editing geometry

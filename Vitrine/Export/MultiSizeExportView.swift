@@ -151,8 +151,7 @@ struct MultiSizeExportView: View {
                 feedback(
                     Notifier.confirmation(
                         droppedLegend
-                            ? String(
-                                localized: "Images exported. Fixed sizes leave out the legend.")
+                            ? String(localized: "Images exported. Some legend entries didn't fit.")
                             : String(localized: "Images exported")))
                 presentation.reveal(directory)
                 dismiss()

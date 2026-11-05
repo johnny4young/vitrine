@@ -710,7 +710,7 @@ final class PreviewCardGeometry {
     var size: CGSize = .zero
     /// The part of `size` a legend band takes up below the annotation canvas.
     var legendHeight: CGFloat = 0
-    /// Legend entries a fixed frame leaves out.
+    /// Legend entries a fixed frame had no room for.
     var legendDropped = 0
 
     /// The space normalized annotations are placed in.
@@ -794,7 +794,7 @@ private struct StageStatusCapsule: View {
             if zoom < 100 { line += " · \(zoom)%" }
         }
         if geometry.legendDropped > 0 {
-            line += " · " + String(localized: "No legend at this size")
+            line += " · " + String(localized: "Legend: \(geometry.legendDropped) hidden")
         }
         return line
     }

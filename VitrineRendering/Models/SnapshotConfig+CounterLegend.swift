@@ -30,13 +30,17 @@ extension SnapshotConfig {
         return CounterLegend.entries(from: annotations, hiding: legendHiddenText)
     }
 
-    /// A natural canvas grows to fit its legend. A fixed frame draws none, and reports the
-    /// entries it left out so the user can be told.
+    /// A natural canvas grows to fit its legend. A fixed frame gives it at most a third of
+    /// its height and keeps the entries that fit, from the top.
     public func counterLegendFit(in fixedSize: CGSize?) -> CounterLegendFit {
         let entries = counterLegend
-        return fixedSize == nil
-            ? CounterLegendFit(entries: entries, dropped: 0)
-            : CounterLegendFit(entries: [], dropped: entries.count)
+        guard let fixedSize, !entries.isEmpty else {
+            return CounterLegendFit(entries: entries, dropped: 0)
+        }
+        let kept = CounterLegendMetrics.entriesFitting(
+            entries, font: counterLegendFont, frame: fixedSize)
+        return CounterLegendFit(
+            entries: Array(entries.prefix(kept)), dropped: entries.count - kept)
     }
 
     public func isLegendLabelMasked(_ annotation: Annotation) -> Bool {

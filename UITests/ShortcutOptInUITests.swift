@@ -53,6 +53,23 @@ final class ShortcutOptInUITests: XCTestCase {
     }
 
     @MainActor
+    func testStoredMenuShortcutReportsConflictUntilChanged() {
+        continueAfterFailure = false
+        let app = VitrineAppRobot(testCase: self, suitePrefix: "shortcut-stored-conflict").launch(
+            arguments: ["--demo-hotkey-conflict"] + VitrineLaunchArguments.settings)
+        defer { app.terminate() }
+        let conflict = element("settings-hotkey-conflict", in: app)
+        XCTAssertTrue(conflict.waitForExistence(timeout: 8), app.debugDescription)
+        retainScreenshot(app.windows.firstMatch, name: "Stored shortcut conflict")
+
+        element("settings-hotkey-change-button", in: app).click()
+        app.typeKey("k", modifierFlags: [.control, .option, .command, .shift])
+        XCTAssertTrue(conflict.waitForNonExistence(timeout: 3), app.debugDescription)
+        let value = element("settings-hotkey-recorder", in: app).value as? String ?? ""
+        XCTAssertTrue(value.contains("K"), "Recorded shortcut missing: \(value)")
+    }
+
+    @MainActor
     func testWelcomeOffersMenuCaptureBeforeOptionalShortcut() {
         continueAfterFailure = false
         let app = VitrineAppRobot(testCase: self, suitePrefix: "shortcut-welcome").launch(

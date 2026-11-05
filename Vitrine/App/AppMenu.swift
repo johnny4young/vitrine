@@ -51,7 +51,12 @@ final class AppMenu {
         installed = menu
         sentinel = menu.items.first
         NSApp.mainMenu = menu
+        NotificationCenter.default.post(name: Self.didInstallNotification, object: nil)
     }
+
+    /// Posted after every install, for anything that reads the main menu's contents: a
+    /// window shown during launch would otherwise read SwiftUI's temporary menu.
+    static let didInstallNotification = Notification.Name("VitrineMainMenuDidInstall")
 
     /// Puts the designed menu back when SwiftUI has taken `NSApp.mainMenu` over.
     ///
