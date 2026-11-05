@@ -14,6 +14,8 @@ can never drift.
 
 ### Added
 
+- See five copyable recipe commands with their free or PRO access, and the order in which
+  defaults, recipes and flags override each other.
 - Bring the main editor's code into a social card with Use editor code.
 - Show a social card's empty code and footer slots in the preview, and its output size
   under it. Empty slots are never exported.

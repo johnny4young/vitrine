@@ -17,6 +17,7 @@ implementations. The CLI target does not compile app adapters as an allowlist.
 | Logging | Each process/module | App, CLI and rendering own their loggers; `LogCategory` in Domain owns the subsystem/category vocabulary. No app lifecycle code compiles into CLI. |
 | Editor handoff | `Vitrine/CLI/EditorHandoff.swift` | Deliberately source-shared local pasteboard/URL adapter for two processes, not a render or Domain dependency. The app consumes; the CLI stages. |
 | Shell integration | `Vitrine/CLI/ShellInit.swift` | Deliberately source-shared shell selection/snippet contract. Settings installs the same snippet the CLI prints. No extra module is justified for these two small integration boundaries. |
+| Recipes card commands | `Vitrine/CLI/CLICookbookEntry.swift` | Deliberately source-shared sample lines. Settings copies them; hostless CLI tests parse them and pin their access tier against the real gate. |
 
 The Domain import guard permits CryptoKit only for pure signed-token operations, not
 Security or StoreKit. Hostless token tests pin the wire format and rejection behavior;

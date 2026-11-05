@@ -1,6 +1,160 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Command line" : {
+      "comment" : "Settings section with copyable CLI commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea de comandos"
+          }
+        }
+      }
+    },
+    "Precedence, low to high" : {
+      "comment" : "Settings list of what overrides what in a CLI render.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precedencia, de menor a mayor"
+          }
+        }
+      }
+    },
+    "Vitrine defaults" : {
+      "comment" : "Lowest precedence step for a CLI render.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valores predeterminados de Vitrine"
+          }
+        }
+      }
+    },
+    "Destination preset (--preset or recipe)" : {
+      "comment" : "Precedence step: the destination preset, from the flag or from a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destino (--preset o receta)"
+          }
+        }
+      }
+    },
+    "Recipe style and output defaults" : {
+      "comment" : "Precedence step: style and output values in a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo y salida de la receta"
+          }
+        }
+      }
+    },
+    "Explicit flags" : {
+      "comment" : "Highest precedence step: CLI flags passed on the command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opciones explícitas"
+          }
+        }
+      }
+    },
+    "Check a recipe" : {
+      "comment" : "Label above the recipe validate command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisa una receta"
+          }
+        }
+      }
+    },
+    "One file; the recipe decides theme, size and format" : {
+      "comment" : "Label above a CLI command rendering one file with a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un archivo; la receta decide tema, tamaño y formato"
+          }
+        }
+      }
+    },
+    "Override one value; flags beat the recipe" : {
+      "comment" : "Label above a CLI command overriding a recipe value.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia un valor; las opciones ganan sobre la receta"
+          }
+        }
+      }
+    },
+    "Several sizes at once, into a folder" : {
+      "comment" : "Label above the multi-size CLI command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varios tamaños a la vez, en una carpeta"
+          }
+        }
+      }
+    },
+    "Capture the terminal screen, or open it in the editor" : {
+      "comment" : "Label above the vgrab and vpane commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura la pantalla de la terminal o ábrela en el editor"
+          }
+        }
+      }
+    },
+    "Free to use" : {
+      "comment" : "Badge on a CLI command that needs no PRO license.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gratis"
+          }
+        }
+      }
+    },
+    "Needs Shell integration. vpane also needs tmux, and PRO without -e." : {
+      "comment" : "Prerequisites of the vgrab and vpane commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requiere la integración del shell. vpane también requiere tmux y, sin -e, PRO."
+          }
+        }
+      }
+    },
+    "Open Shell integration" : {
+      "comment" : "Link to the Shell integration row in General settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir integración del shell"
+          }
+        }
+      }
+    },
     "Choose a destination preset" : {
       "comment" : "Editor status capsule tooltip: opens the destination menu.",
       "localizations" : {
