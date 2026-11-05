@@ -452,19 +452,24 @@ extension EditorView {
             // The card's measured size reaches this content through `PreviewCardStage`,
             // which reads it in its own body. See `PreviewCardGeometry` for why the
             // editor's body must not read it.
-            PreviewCardStage(geometry: cardGeometry, stageSize: proxy.size) { cardSize in
+            PreviewCardStage(geometry: cardGeometry, stageSize: proxy.size) { canvasSize in
                 // The preview mirrors the active preset's framing, so selecting a
                 // fixed-size preset (e.g. OpenGraph 1200×630) updates the canvas
                 // immediately. The interactive annotation overlay is a sibling at
                 // the canvas's natural size, so it shares the canvas coordinate space and
                 // scales with it — a pointer drag maps straight to normalized
-                // annotation coordinates.
-                ZStack {
+                // annotation coordinates. Top-aligned, because a legend band extends
+                // the card below that coordinate space.
+                ZStack(alignment: .top) {
                     SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
                         .equatable()
                         .fixedSize()
                         .onGeometryChange(for: CGSize.self, of: \.size) {
                             cardGeometry.size = $0
+                        }
+                        .onPreferenceChange(CounterLegendReportKey.self) {
+                            cardGeometry.legendHeight = $0.height
+                            cardGeometry.legendDropped = $0.dropped
                         }
                         .compositingGroup()
                         .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
@@ -474,7 +479,7 @@ extension EditorView {
                     AnnotationEditingOverlay(
                         settings: settings, selection: $selectedAnnotationID,
                         editingAnnotationID: $editingAnnotationID,
-                        canvasSize: cardSize, activeTool: activeTool,
+                        canvasSize: canvasSize, activeTool: activeTool,
                         drawColor: newDrawColor, drawThickness: newDrawThickness,
                         stickerGlyph: newStickerGlyph,
                         onBeginEdit: beginAnnotationEdit,
@@ -485,14 +490,14 @@ extension EditorView {
                     if previewConfig.watermark?.placement == .free {
                         FreeWatermarkDragHandle(
                             position: $brandKit.brandKit.freePosition,
-                            contentRect: CGRect(origin: .zero, size: cardSize))
+                            contentRect: CGRect(origin: .zero, size: canvasSize))
                     }
                     // Safe-area guide: editor-only chrome over the preview —
                     // never part of the export, which is why it lives here beside the
                     // annotation overlay rather than inside SnapshotCanvas.
                     if showsSafeAreaGuides {
                         SafeAreaGuideOverlay(
-                            canvasSize: cardSize,
+                            canvasSize: canvasSize,
                             code: previewConfig.sidecarText,
                             showsGuideRect: settings.effectiveFixedSize != nil)
                     }
@@ -695,10 +700,19 @@ extension EditorView {
 @Observable
 final class PreviewCardGeometry {
     var size: CGSize = .zero
+    /// The part of `size` a legend band takes up below the annotation canvas.
+    var legendHeight: CGFloat = 0
+    /// Legend entries a fixed frame had no room for.
+    var legendDropped = 0
+
+    /// The space normalized annotations are placed in.
+    var canvasSize: CGSize {
+        CGSize(width: size.width, height: max(size.height - legendHeight, 0))
+    }
 }
 
 /// Scales the preview card to fit the stage and pins its layout footprint to the scaled
-/// size, handing the card's measured size to `content`.
+/// size, handing `content` the annotation canvas's size, without any legend band.
 private struct PreviewCardStage<Content: View>: View {
     let geometry: PreviewCardGeometry
     let stageSize: CGSize
@@ -707,7 +721,7 @@ private struct PreviewCardStage<Content: View>: View {
     var body: some View {
         let cardSize = geometry.size
         let scale = EditorView.fitScale(card: cardSize, in: stageSize)
-        content(cardSize)
+        content(geometry.canvasSize)
             .scaleEffect(scale)
             // `scaleEffect` does not shrink the layout footprint, so without this the
             // unscaled (often very wide) card stays full-width in layout and its
@@ -770,6 +784,9 @@ private struct StageStatusCapsule: View {
         if stageSize.width > 0 {
             let zoom = Int((EditorView.fitScale(card: cardSize, in: stageSize) * 100).rounded())
             if zoom < 100 { line += " · \(zoom)%" }
+        }
+        if geometry.legendDropped > 0 {
+            line += " · " + String(localized: "Legend: \(geometry.legendDropped) hidden")
         }
         return line
     }

@@ -91,7 +91,9 @@ extension EditorView {
                     onBringToFront: bringSelectionToFront,
                     onSendToBack: sendSelectionToBack,
                     density: density.annotationDensity,
-                    onStyleEditEnded: endAnnotationEdit
+                    onStyleEditEnded: endAnnotationEdit,
+                    legend: annotationLegendEdit,
+                    onLegendSubmitted: { stageFocused = selectedAnnotationID != nil }
                 )
                 .onChange(of: activeTool) { _, newTool in
                     if newTool != .select { selectedAnnotationID = nil }
@@ -200,6 +202,12 @@ extension EditorView {
             }
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("pin-snapshot-button")
+
+            if let title = reproductionCommandTitle {
+                Button(title, systemImage: "terminal", action: copyReproductionCommand)
+                    .disabled(!settings.hasRenderableContent)
+                    .accessibilityIdentifier("copy-reproduction-command-button")
+            }
 
             if foldsExports {
                 Button(action: presentMultiSizeExport) {
@@ -437,6 +445,8 @@ extension EditorView {
                 presentation: session.presentation.batchExport)
         case .carouselPaywall:
             PaywallSheet(feature: .carouselExport, entitlements: entitlements)
+        case .automationPaywall:
+            PaywallSheet(feature: .automation, entitlements: entitlements)
         }
     }
 

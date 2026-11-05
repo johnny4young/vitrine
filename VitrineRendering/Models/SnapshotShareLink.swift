@@ -48,7 +48,7 @@ public struct SharedSnapshot: Codable, Equatable {
         self.code = config.richClipboardText
         self.languageID = config.language.rawValue
         self.style = StyleSnapshot(capturing: config)
-        self.annotations = Self.sanitizedAnnotations(config.annotations)
+        self.annotations = Self.sanitizedAnnotations(config.annotationsWithSafeLegendLabels)
         self.windowTitle = config.windowTitle
         self.metadata = config.metadata
         self.altText = config.altText

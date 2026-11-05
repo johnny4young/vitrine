@@ -225,6 +225,14 @@ extension CLIArgumentParser {
         try resolveVisibleText(raw, flag: "--callout")
     }
 
+    func resolveCounterLabel(_ raw: String, flag: String) throws -> String {
+        let label = try resolveVisibleText(raw, flag: flag)
+        guard label.count <= CounterLegend.maxLabelLength else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return label
+    }
+
     /// Trims user-facing badge copy and rejects values that cannot produce pixels.
     func resolveVisibleText(_ raw: String, flag: String) throws -> String {
         let normalized = raw.trimmingCharacters(in: .whitespacesAndNewlines)

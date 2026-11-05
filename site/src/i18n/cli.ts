@@ -335,6 +335,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--counter-x, --counter-y', value: '<0...1>', description: both('Set the counter center; provide both together.', 'Define el centro; proporciona ambas coordenadas.') },
       { flags: '--counter-color', value: '<hex>', description: both('Counter fill color.', 'Color de relleno del contador.') },
       { flags: '--counter-size', value: '<2...28>', description: both('Counter visual weight.', 'Peso visual del contador.') },
+      { flags: '--counter-label', value: '<text>', description: both('Legend text listed under the capture.', 'Texto de la leyenda bajo la captura.') },
       { flags: '--arrow', value: '<x1,y1,x2,y2>', description: both('Draw a repeatable arrow from tail to head.', 'Dibuja una flecha repetible desde la cola a la punta.') },
       { flags: '--arrow-color, --arrow-size', value: '<hex> / <2...28>', description: both('Shared color and weight for every arrow.', 'Color y peso compartidos por todas las flechas.') },
       { flags: '--line', value: '<x1,y1,x2,y2>', description: both('Draw a repeatable straight line.', 'Dibuja una línea recta repetible.') },

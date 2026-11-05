@@ -23,6 +23,48 @@ public struct SnapshotCanvas: View, Equatable {
     }
 
     public var body: some View {
+        let fit = config.counterLegendFit(in: fixedSize)
+        if fit.entries.isEmpty && fit.dropped == 0 {
+            watermarkedCanvas
+        } else if fixedSize != nil {
+            // A fixed frame can't grow, so the band covers its bottom edge. The capture
+            // keeps the whole frame, which keeps marks on their content.
+            watermarkedCanvas
+                .overlay(alignment: .bottom) {
+                    if !fit.entries.isEmpty { legendBand(fit.entries) }
+                }
+                .clipped()
+                .preference(
+                    key: CounterLegendReportKey.self,
+                    value: CounterLegendReport(dropped: fit.dropped))
+        } else {
+            CounterLegendStack {
+                watermarkedCanvas
+                legendBand(fit.entries, fillsHeight: true)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: CounterLegendReportKey.self,
+                                value: CounterLegendReport(height: proxy.size.height))
+                        }
+                    }
+            }
+            .fixedSize()
+        }
+    }
+
+    private func legendBand(
+        _ entries: [CounterLegend.Entry], fillsHeight: Bool = false
+    ) -> some View {
+        CounterLegendBand(
+            entries: entries,
+            font: config.counterLegendFont,
+            textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme),
+            background: cardBackgroundColor,
+            fillsHeight: fillsHeight)
+    }
+
+    private var watermarkedCanvas: some View {
         // The optional brand watermark composites onto the finished canvas.
         // `WatermarkOverlay` is a no-op when `config.watermark` is nil — it returns the
         // content unchanged — so the default render and every golden stay byte-for-byte

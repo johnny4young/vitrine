@@ -191,6 +191,25 @@ enum CLIOutputWriter {
     /// failure maps to an actionable render error; an unavailable system writer to
     /// `CLIError.unsupportedOutputFormat`; a write failure to
     /// `CLIError.writeFailed` — neither ever crashes the process.
+    /// What a render changed about the legend the user asked for. Never quotes a label.
+    static func legendNotices(
+        _ config: SnapshotConfig, fixedSize: CGSize?, output: String
+    ) -> [String] {
+        var notices: [String] = []
+        if config.annotations.contains(where: {
+            $0.kind == .counter && config.isLegendLabelMasked($0)
+        }) {
+            notices.append(
+                "note: \(output): masked a counter legend label that matches hidden text.")
+        }
+        let dropped = config.counterLegendFit(in: fixedSize).dropped
+        if dropped > 0 {
+            notices.append(
+                "note: \(output): left out \(dropped) counter legend entries that didn't fit.")
+        }
+        return notices
+    }
+
     static func renderAndWrite(
         _ config: SnapshotConfig, options: CLIOptions,
         backgroundStore: BackgroundImageStore = .container,
@@ -210,6 +229,11 @@ enum CLIOutputWriter {
     ) throws -> WrittenArtifact {
         guard isEncodable(options.format) else {
             throw CLIError.unsupportedOutputFormat(options.format.displayName)
+        }
+        for notice in legendNotices(
+            config, fixedSize: options.fixedSize, output: url.lastPathComponent)
+        {
+            FileHandle.standardError.write(Data((notice + "\n").utf8))
         }
         var rasterImage: CGImage?
         let payload: (data: Data, type: UTType, ext: String)

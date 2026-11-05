@@ -414,6 +414,7 @@ extension CLIArgumentParser {
             counterPosition: annotations.counter.position,
             counterColor: annotations.counter.color,
             counterSize: annotations.counter.size,
+            counterLabel: annotations.counterLabel,
             arrows: annotations.arrows.materialized,
             lines: annotations.lines.materialized,
             rectangles: annotations.rectangles.materialized,

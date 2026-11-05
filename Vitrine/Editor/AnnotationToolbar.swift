@@ -8,6 +8,64 @@ enum AnnotationToolbarDensity: Equatable {
     case compact
 }
 
+/// The legend label of the selected counter, as the toolbar edits it.
+struct AnnotationLegendEdit {
+    let id: UUID
+    let text: Binding<String>
+    let isMasked: Bool
+}
+
+/// Types the legend label. An edit stays open until the field gives up focus, so typing is
+/// one undo step.
+private struct CounterLegendField: View {
+    let legend: AnnotationLegendEdit
+    let onEditEnded: () -> Void
+    let onSubmitted: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            TextField(
+                "Counter legend text", text: legend.text,
+                prompt: Text("Legend").foregroundStyle(VitrineTokens.Text.tertiary)
+            )
+            .textFieldStyle(.plain)
+            .labelsHidden()
+            .focused($isFocused)
+            .onSubmit(submit)
+            .onExitCommand(perform: submit)
+            .accessibilityIdentifier("annotation-legend-field")
+            if legend.isMasked {
+                Image(systemName: "eye.slash")
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .help("Hidden in the export")
+                    .accessibilityLabel("Hidden in the export")
+                    .accessibilityIdentifier("annotation-legend-masked")
+            }
+        }
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .foregroundStyle(VitrineTokens.Text.primary)
+        .padding(.horizontal, 8)
+        .frame(width: 150, height: 25)
+        .background(Capsule().fill(VitrineTokens.Surface.stage.opacity(0.6)))
+        .overlay(
+            Capsule().strokeBorder(
+                isFocused ? VitrineTokens.Line.focusRing : VitrineTokens.Line.border,
+                lineWidth: isFocused ? Brand.Stroke.focus : Brand.Stroke.hairline)
+        )
+        .onChange(of: isFocused) { _, focused in
+            if !focused { onEditEnded() }
+        }
+        .onDisappear(perform: onEditEnded)
+    }
+
+    private func submit() {
+        isFocused = false
+        onSubmitted()
+    }
+}
+
 /// The annotation tool palette in the editor's title bar, modeled on
 /// CleanShot: a row of tools (the active one highlighted), then the active tool's
 /// options — a color swatch that opens a palette, and a size slider. Picking a tool
@@ -40,6 +98,9 @@ struct AnnotationToolbar: View {
     var density: AnnotationToolbarDensity = .full
     /// Closes a selected mark's color or size edit as one undo step.
     var onStyleEditEnded: () -> Void = {}
+    var legend: AnnotationLegendEdit?
+    /// Return or Escape in the legend field hands the keyboard back to the selected mark.
+    var onLegendSubmitted: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 8) {
@@ -99,6 +160,12 @@ struct AnnotationToolbar: View {
                     .accessibilityIdentifier("annotation-thickness-slider")
                 }
                 .help("Stroke and badge size")
+            }
+            if let legend {
+                CounterLegendField(
+                    legend: legend, onEditEnded: onStyleEditEnded, onSubmitted: onLegendSubmitted
+                )
+                .id(legend.id)
             }
         }
         // The toolbar lives in the title bar, which macOS treats as a window-drag

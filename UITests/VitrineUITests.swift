@@ -254,7 +254,10 @@ final class VitrineUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
 
         assertToolbarActionsReachable(
-            ["save-button", "share-button", "make-default-button"],
+            [
+                "save-button", "share-button", "copy-reproduction-command-button",
+                "make-default-button",
+            ],
             from: "editor-actions-menu", in: app)
         // The default window folds these into More, and an open menu swallows the next click.
         app.typeKey(.escape, modifierFlags: [])
@@ -620,6 +623,36 @@ final class VitrineUITests: XCTestCase {
         assertExists(field, in: app, timeout: 3)
         field.typeText("Callout")
         XCTAssertEqual(field.value as? String, "Callout")
+    }
+
+    /// The toolbar offers the selected counter's legend field until the badge is gone.
+    @MainActor
+    func testSelectedCounterOffersItsLegendField() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        revealToolbarAction(
+            "annotation-tool-counter", from: "annotation-tool-picker", in: app
+        ).click()
+        let stage = element("editor-preview-stage", in: app).staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
+        assertExists(stage, in: app, timeout: 3)
+        stage.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        let field = app.textFields.matching(identifier: "annotation-legend-field").firstMatch
+        assertExists(field, in: app, timeout: 3)
+        XCTAssertFalse(
+            element("editor-preview-stage", in: app).textFields["annotation-legend-field"].exists,
+            "The field must not sit on the canvas, where the next counter is placed")
+        field.click()
+        field.typeText("the struct\r")
+        XCTAssertEqual(field.value as? String, "the struct")
+        let delete = app.buttons["Delete annotation"]
+        assertExists(delete, in: app)
+        delete.click()
+        XCTAssertTrue(field.waitForNonExistence(timeout: 3))
     }
 
     /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and

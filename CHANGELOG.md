@@ -19,6 +19,14 @@ can never drift.
   reveal other apps' hotkeys, so clashes with them are not reported. A macOS shortcut kept
   with the recorder's Use Anyway is not reported again.
 - The locked Brand Kit pane previews a sample mark drawn by the real renderer.
+- Type a legend on a selected counter, or pass `--counter-label`, to list it under the
+  capture. Masking is best effort: a label that looks like a secret or matches a redacted
+  line or a value in blurred code is replaced, so check the legend before sharing.
+  A fixed-size frame gives the legend at most a third of its height and says when
+  entries don't fit.
+- Copy the command line that reproduces an editor window's image, from its More menu or
+  the command palette. It names what the line can't include, such as annotations or a
+  pasted image.
 - See five copyable recipe commands with their free or PRO access, and the order in which
   defaults, recipes and flags override each other.
 - Deleting a counter renumbers the badges above it, so they stay in order.

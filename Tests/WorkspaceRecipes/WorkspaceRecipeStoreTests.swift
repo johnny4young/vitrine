@@ -32,6 +32,22 @@ struct WorkspaceRecipeStoreTests {
         #expect(!json.contains("workspacePath"))
     }
 
+    @Test func aRecipeHasARelativePathOnlyInsideItsWorkspace() throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = WorkspaceRecipeStore(defaults: try fixture.defaults())
+        let outside = try fixture.writeRecipe(named: "outside.json", recipeName: "Outside")
+        let association = try store.associate(workspaceURL: fixture.workspace, recipeURL: outside)
+        #expect(try store.resolvedRecipe(id: association.id).recipeRelativePath == nil)
+
+        let inside = try fixture.writeSource("docs/team recipe.json")
+        try FileManager.default.removeItem(at: inside)
+        try FileManager.default.copyItem(at: outside, to: inside)
+        let nested = try store.associate(workspaceURL: fixture.workspace, recipeURL: inside)
+        #expect(
+            try store.resolvedRecipe(id: nested.id).recipeRelativePath == "docs/team recipe.json")
+    }
+
     @Test func nestedWorkspaceWinsAndUnavailableAssociationsFallBack() throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
