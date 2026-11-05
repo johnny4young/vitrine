@@ -757,11 +757,15 @@ final class VitrineUITests: XCTestCase {
             ).firstMatch.exists)
         // Return is deliberately the safe choice, not implicit deletion.
         app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(presetSheet.waitForNonExistence(timeout: 3))
         let presetPicker = element("style-preset-picker", in: app)
         XCTAssertEqual(presetPicker.value as? String, "Deletion example")
         presetActions.click()
         chooseMenuItem("Delete…", in: app, clickingCenter: true)
+        XCTAssertTrue(presetSheet.waitForExistence(timeout: 3))
         app.typeKey(.escape, modifierFlags: [])
+        // The dialog takes the next click while it animates out.
+        XCTAssertTrue(presetSheet.waitForNonExistence(timeout: 3))
         XCTAssertEqual(presetPicker.value as? String, "Deletion example")
         presetActions.click()
         chooseMenuItem("Delete…", in: app, clickingCenter: true)
