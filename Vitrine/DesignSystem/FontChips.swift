@@ -68,7 +68,7 @@ struct FontChipPicker: View {
                 ChipFilterField(query: $query, prompt: "Filter fonts")
                     .accessibilityIdentifier("font-filter-field")
             }
-            ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
+            ChipScroll(name: "font", topPadding: topPadding, bottomPadding: bottomPadding) {
                 ForEach(filteredFonts, id: \.self) { family in
                     FontChip(
                         family: family, isSelected: settings.style.fontName == family,
@@ -77,6 +77,7 @@ struct FontChipPicker: View {
                     ) {
                         settings.style.fontName = family
                     }
+                    .chipScrollItem(id: family, isSelected: settings.style.fontName == family)
                 }
             }
         }

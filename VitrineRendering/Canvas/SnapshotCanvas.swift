@@ -432,7 +432,9 @@ public struct SnapshotCanvas: View, Equatable {
 
     /// The terminal color palette for the active theme — drives both the ANSI text
     /// colors and the card background when rendering terminal output.
-    private var terminalPalette: ANSIPalette { ANSIPalette.forTheme(config.theme) }
+    private var terminalPalette: ANSIPalette {
+        ANSIPalette.resolved(for: config.theme, mode: config.terminalPalette)
+    }
 
     /// The card fill: the syntax theme's background, or the terminal palette's
     /// background (theme-matched) when rendering ANSI terminal output.
@@ -451,7 +453,7 @@ public struct SnapshotCanvas: View, Equatable {
         if config.language == .terminal {
             return HighlightManager.shared.terminalAttributedString(
                 for: source, theme: config.theme, font: codeFont,
-                columns: config.terminalColumns)
+                columns: config.terminalColumns, palette: config.terminalPalette)
         }
         return HighlightManager.shared.swiftUIAttributedString(
             for: source,
@@ -471,7 +473,7 @@ public struct SnapshotCanvas: View, Equatable {
         if config.language == .terminal {
             return HighlightManager.shared.terminalAttributedLines(
                 for: source, theme: config.theme, font: codeFont,
-                columns: config.terminalColumns)
+                columns: config.terminalColumns, palette: config.terminalPalette)
         }
         return HighlightManager.shared.swiftUIAttributedLines(
             for: source, language: config.language, theme: config.theme, font: codeFont)

@@ -367,7 +367,7 @@ private enum RecipeJSONShape {
             allowing: [
                 "themeID", "fontName", "fontSize", "fontLigatures", "padding",
                 "cornerRadius", "shadowRadius", "showChrome", "showShadow", "showLineNumbers",
-                "wrapColumns",
+                "wrapColumns", "terminalPalette",
                 "background",
             ],
             path: path)

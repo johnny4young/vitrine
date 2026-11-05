@@ -127,6 +127,7 @@ struct EditorWindowState: Codable, Equatable {
     var imageFrameAppearanceID: String
     var windowTitle: String
     var wrapColumns: Int?
+    var terminalPalette: TerminalPaletteMode?
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
     var annotations: [Annotation]
@@ -162,6 +163,7 @@ struct EditorWindowState: Codable, Equatable {
         imageFrameAppearanceID = config.imageFrameAppearance.rawValue
         windowTitle = config.windowTitle
         wrapColumns = config.wrapColumns
+        terminalPalette = config.terminalPalette
         focusHighlightedLines = config.focusHighlightedLines
         diffDecorations = config.diffDecorations
         annotations = config.annotations
@@ -224,6 +226,7 @@ struct EditorWindowState: Codable, Equatable {
         config.imageFrameAppearance = FrameAppearance(rawValue: imageFrameAppearanceID) ?? .auto
         config.windowTitle = windowTitle
         config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
+        config.terminalPalette = terminalPalette ?? .theme
         config.focusHighlightedLines = focusHighlightedLines
         config.diffDecorations = diffDecorations
         config.annotations = annotations
@@ -236,6 +239,7 @@ struct EditorWindowState: Codable, Equatable {
         case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
+        case terminalPalette
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
 
@@ -286,6 +290,8 @@ struct EditorWindowState: Codable, Equatable {
         windowTitle =
             (try? container.decode(String.self, forKey: .windowTitle)) ?? fallback.windowTitle
         wrapColumns = try? container.decodeIfPresent(Int.self, forKey: .wrapColumns)
+        terminalPalette = try? container.decodeIfPresent(
+            TerminalPaletteMode.self, forKey: .terminalPalette)
         focusHighlightedLines =
             (try? container.decode(Bool.self, forKey: .focusHighlightedLines))
             ?? fallback.focusHighlightedLines

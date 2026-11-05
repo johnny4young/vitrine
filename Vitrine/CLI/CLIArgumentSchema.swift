@@ -35,6 +35,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case cornerRadius
     case shadowRadius
     case terminalWidth
+    case terminalPalette
     case wrapColumns
     case formatCode
     case format
@@ -263,6 +264,12 @@ nonisolated enum CLIArgumentSchema {
             description:
                 "Reconstruct terminal output at exactly n columns instead of inferring the width (1-1000). Only affects --language terminal; set by `vgrab -w`.",
             terminalCaptureAllowed: true),
+        definition(
+            .terminalPalette, ["--terminal-palette"], .value("theme|raw"),
+            synopsis: "--terminal-palette <theme|raw>",
+            description:
+                "Color terminal output with the theme's palette or legible xterm colors. Only affects --language terminal."
+        ),
         definition(
             .wrapColumns, ["--wrap-columns", "--wrap"], .value("n"), synopsis: "--wrap-columns <n>",
             description: "Soft-wrap long code lines at n columns (40-200)."),

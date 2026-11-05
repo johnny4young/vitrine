@@ -168,6 +168,21 @@ struct StyleSettingsView: View {
             }
         }
 
+        TokenGroup(title: Text("Terminal")) {
+            TokenRow(label: Text("ANSI palette")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (TerminalPaletteMode.theme, Text("Theme")),
+                        (TerminalPaletteMode.raw, Text("Raw")),
+                    ],
+                    selection: $settings.config.terminalPalette
+                )
+                .help("Raw uses the standard xterm colors, lifted only where they would vanish.")
+                .accessibilityLabel("ANSI palette")
+                .accessibilityIdentifier("settings-terminal-palette-picker")
+            }
+        }
+
         TokenGroup(title: Text("Canvas")) {
             TokenRow(label: Text("Padding")) {
                 ValueSlider(

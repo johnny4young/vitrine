@@ -455,29 +455,6 @@ extension ComparisonBoard.Background {
     }
 }
 
-/// The transparent cells a viewer would show, so the preview does not read as an opaque board.
-private struct TransparencyGrid: View {
-    var cell: CGFloat = 8
-
-    var body: some View {
-        Canvas { context, size in
-            context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(white: 0.2)))
-            let squares = Path { path in
-                for row in 0...Int(size.height / cell) {
-                    for column in 0...Int(size.width / cell) where (row + column).isMultiple(of: 2)
-                    {
-                        path.addRect(
-                            CGRect(
-                                x: CGFloat(column) * cell, y: CGFloat(row) * cell,
-                                width: cell, height: cell))
-                    }
-                }
-            }
-            context.fill(squares, with: .color(Color(white: 0.28)))
-        }
-    }
-}
-
 private struct BackgroundSwatch: View {
     let background: ComparisonBoard.Background
     let isSelected: Bool

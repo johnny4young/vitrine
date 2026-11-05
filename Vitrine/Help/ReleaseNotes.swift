@@ -20,6 +20,21 @@ struct ReleaseNote: Identifiable, Equatable {
     let headline: String
     /// The notable changes in this version, each a short user-facing sentence.
     let highlights: [String]
+    /// The bold phrases What's New leads each highlight with, index-aligned with
+    /// `highlights`. Empty on older notes, which the window no longer shows.
+    private(set) var leads: [String] = []
+
+    init(version: String, headline: String, highlights: [String]) {
+        self.version = version
+        self.headline = headline
+        self.highlights = highlights
+    }
+
+    /// A note whose highlights each lead with a phrase, written as `lead: highlight`.
+    init(version: String, headline: String, ledHighlights: KeyValuePairs<String, String>) {
+        self.init(version: version, headline: headline, highlights: ledHighlights.map(\.value))
+        leads = ledHighlights.map(\.key)
+    }
 
     /// A stable identity for `ForEach`: a version ships its notes exactly once.
     var id: String { version }
@@ -44,26 +59,34 @@ enum ReleaseNotes {
         ReleaseNote(
             version: "1.3.0",
             headline: "Private by default, safer to automate",
-            highlights: [
-                "Capture history leaves out the lines you redacted, asks before keeping text "
+            ledHighlights: [
+                "Private history.":
+                    "Capture history leaves out the lines you redacted, asks before keeping text "
                     + "that looks like a secret, and can be turned off without deleting what is "
                     + "already saved.",
-                "New installations start without a global capture shortcut, so Vitrine claims "
+                "No default hotkey.":
+                    "New installations start without a global capture shortcut, so Vitrine claims "
                     + "no system-wide keys until you pick one. Shortcuts you already set are kept.",
-                "Export for Documentation saves a PNG with matching Markdown, HTML, and plain "
+                "Ready for your docs.":
+                    "Export for Documentation saves a PNG with matching Markdown, HTML, and plain "
                     + "text, and the alt text you write travels with the image and its share "
                     + "links.",
-                "The command line refuses an output that would replace a source file, a recipe, "
+                "Safer command line.":
+                    "The command line refuses an output that would replace a source file, a recipe, "
                     + "or another output, even through a symbolic link or a difference in letter "
                     + "case, before it writes anything. Sending code to the editor with "
                     + "render --edit is free.",
-                "The Services menu command that turns selected code into an image now works; "
+                "Services menu fixed.":
+                    "The Services menu command that turns selected code into an image now works; "
                     + "Vitrine registers it at launch.",
-                "Terminal captures keep CJK characters and emoji whole, erase with the right "
+                "Truer terminal captures.":
+                    "Terminal captures keep CJK characters and emoji whole, erase with the right "
                     + "background color, and keep the final screen of apps such as lazygit.",
-                "Settings, errors, and What's New now appear in Spanish for Spanish users, and "
+                "Now in Spanish.":
+                    "Settings, errors, and What's New now appear in Spanish for Spanish users, and "
                     + "controls respect Reduce Motion and keyboard navigation.",
-                "Vitrine continues to require macOS 15 Sequoia or later and qualifies "
+                "Same macOS support.":
+                    "Vitrine continues to require macOS 15 Sequoia or later and qualifies "
                     + "Tahoe, and direct downloads remain universal for Apple silicon and "
                     + "Intel.",
             ]),

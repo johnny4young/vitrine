@@ -18,6 +18,28 @@ can never drift.
   inspector, and apply one with a click. They show a preset's style on a short excerpt,
   update once typing settles, and mask redacted or blurred content. An image capture shows
   the image; an empty document shows the sample.
+- Terminal captures get an ANSI palette control, Theme or Raw xterm colors, in the inspector
+  and Settings ▸ Style, with `--terminal-palette`. The default is today's rendering.
+- The inspector's Header section lists a terminal capture's filename and title as removable
+  chips, with a prompt picker and an undoable Remove arguments. Text they remove also leaves
+  the alternative text and window title.
+- Open what a Help topic describes from a button on its card: the Settings pane it names
+  or the editor. Help never runs a capture.
+- What's New leads each highlight with a bold phrase, so a release scans at a glance.
+- Chip rows that overflow fade only the edges that hide chips and add a button that pages
+  through them, so they scroll without a trackpad. Selecting a theme, font, or background
+  brings its chip into view. Nothing is drawn when the chips fit.
+- The editor's Copy button turns into a check after a successful copy, without changing
+  its width. A failed copy never shows the check.
+- Annotation tools tint under the pointer and scale slightly on press; theme chips lift on
+  hover like the swatches. Reduce Motion removes the scaling and every transition.
+- A transparent background now shows a checker behind the editor's preview. The checker
+  follows the system appearance there and on comparison boards.
+- General settings report when the global hotkey is also a Vitrine menu command or an
+  enabled macOS shortcut, with a Change… action that starts recording. macOS does not
+  reveal other apps' hotkeys, so clashes with them are not reported. A macOS shortcut kept
+  with the recorder's Use Anyway is not reported again.
+- The locked Brand Kit pane previews a sample mark drawn by the real renderer.
 - Type a legend on a selected counter, or pass `--counter-label`, to list it under the
   capture. Masking is best effort: a label that looks like a secret or matches a redacted
   line or a value in blurred code is replaced, so check the legend before sharing.
@@ -58,6 +80,8 @@ can never drift.
 
 ### Changed
 
+- Gather the Library's preset actions in one menu beside the preset picker. Export is
+  labeled Export Saved Presets… because it writes every saved preset to one file.
 - Move Pin snapshot and Make This Window the Default into the toolbar's More menu until
   the window is wide enough for every action.
 - Open Web Snapshot on HTML in builds without URL capture, with the reason one click

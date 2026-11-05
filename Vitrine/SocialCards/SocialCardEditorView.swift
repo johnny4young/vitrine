@@ -501,7 +501,7 @@ private struct SocialCardThemePicker: View {
     var themes: CustomThemeStore
 
     var body: some View {
-        ChipScroll(topPadding: 2, bottomPadding: 6) {
+        ChipScroll(name: "social-card-theme", topPadding: 5, bottomPadding: 6) {
             ForEach(ThemeChipColors.orderedBuiltIns) { chip(for: $0) }
             ForEach(themes.customThemes) { chip(for: $0) }
         }
@@ -517,6 +517,7 @@ private struct SocialCardThemePicker: View {
         ) {
             theme = themes.theme(withID: candidate.id)
         }
+        .chipScrollItem(id: candidate.id, isSelected: theme.id == candidate.id)
     }
 }
 
@@ -525,7 +526,7 @@ private struct SocialCardFontPicker: View {
     @Binding var fontName: String
 
     var body: some View {
-        ChipScroll(topPadding: 2, bottomPadding: 6) {
+        ChipScroll(name: "social-card-font", topPadding: 2, bottomPadding: 6) {
             ForEach(CodeFont.all, id: \.self) { family in
                 FontChip(
                     family: family, isSelected: fontName == family,
@@ -533,6 +534,7 @@ private struct SocialCardFontPicker: View {
                 ) {
                     fontName = family
                 }
+                .chipScrollItem(id: family, isSelected: fontName == family)
             }
         }
         .accessibilityElement(children: .contain)

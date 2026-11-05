@@ -339,6 +339,26 @@ struct CLIReproductionCommandTests: CLITestSupport {
         return style
     }
 
+    @Test func aDocumentOnThemeOverridesARawRecipe() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let recipe = WorkspaceRecipe(
+            name: "Raw",
+            style: StyleSnapshot(
+                themeID: Theme.oneDark.id, terminalPalette: .raw, background: .gradient(.aurora)))
+        let file = try recipeFile(recipe, in: directory)
+        var style = applied(recipe)
+        style.language = .terminal
+        #expect(style.terminalPalette == .raw)
+        let matching = try line(command(style).outcome(recipe: file))
+        #expect(!matching.contains("--terminal-palette"))
+
+        style.terminalPalette = .theme
+        let overriding = command(style)
+        #expect(try line(overriding.outcome(recipe: file)).contains("--terminal-palette theme"))
+        try inDirectory(directory) { try expectRoundTrip(overriding, recipe: file) }
+    }
+
     @Test func aMatchingRecipeNeedsOnlyItsPathAndFlagsOverrideTheRest() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

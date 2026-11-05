@@ -140,6 +140,7 @@ struct CLIOptions: Equatable {
     /// the captured output. Only meaningful for `--language terminal`; set by `vgrab -w`
     /// so a known-width capture wraps exactly as it did in the live terminal.
     var terminalColumns: Int?
+    var terminalPalette: TerminalPaletteMode?
     /// Optional soft-wrap column count for long code lines. Mirrors the editor's
     /// "Wrap long lines" control and stays nil by default so bare renders still
     /// size to content.
@@ -498,6 +499,7 @@ struct CLIOptions: Equatable {
         if let cornerRadius { config.cornerRadius = cornerRadius }
         if let shadowRadius { config.shadowRadius = shadowRadius }
         if let wrapColumns { config.wrapColumns = wrapColumns }
+        if let terminalPalette { config.terminalPalette = terminalPalette }
         if let windowTitle { config.windowTitle = windowTitle }
         if let showLineNumbers { config.showLineNumbers = showLineNumbers }
         if let showChrome { config.showChrome = showChrome }
