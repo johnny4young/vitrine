@@ -264,6 +264,18 @@ final class ScreenshotTourUITests: XCTestCase {
         save(
             boardWindow, as: "36-comparison-board",
             note: "Comparison board with editable captions, layout, reorder, copy, save, and share")
+
+        let caption = element("comparison-board-caption-0", in: app)
+        guard caption.waitForExistence(timeout: 5) else {
+            miss("36-comparison-board-inline-caption", reason: "caption target did not appear")
+            return
+        }
+        caption.click()
+        XCTAssertTrue(
+            element("comparison-board-inline-label-0", in: app).waitForExistence(timeout: 3))
+        save(
+            boardWindow, as: "36-comparison-board-inline-caption",
+            note: "A caption being edited where it is drawn on the board")
     }
 
     @MainActor
@@ -708,6 +720,8 @@ final class ScreenshotTourUITests: XCTestCase {
 
         XCTAssertTrue(web.inspector.waitForExistence(timeout: 8))
         let window = app.windows.firstMatch
+        // Builds without URL capture open on HTML, so pick the URL source explicitly.
+        if web.urlMode.waitForExistence(timeout: 3) { web.urlMode.click() }
         save(
             window, as: "60-web-snapshot",
             note: "Web Snapshot: source picker, viewport chips, branded empty stage")

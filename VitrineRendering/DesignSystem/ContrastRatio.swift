@@ -9,7 +9,7 @@ extension Brand {
     public enum Contrast {
 
         /// WCAG AA threshold for normal-size body text.
-        public static let aaNormal = 4.5
+        public nonisolated static let aaNormal = 4.5
         /// WCAG AA threshold for large text (>= ~18 pt, or 14 pt bold).
         public static let aaLarge = 3.0
 

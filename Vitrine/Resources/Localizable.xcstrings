@@ -1,6 +1,270 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Use Editor Code" : {
+      "comment" : "Undo action name for the Use editor code button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar código del editor"
+          }
+        }
+      }
+    },
+    "Output size %lld by %lld, %@" : {
+      "comment" : "VoiceOver label for the social card's output size capsule.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño de salida: %lld por %lld, %@"
+          }
+        }
+      }
+    },
+    "The editor has no code to use" : {
+      "comment" : "Message shown when Use editor code finds an empty editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El editor no tiene código para usar"
+          }
+        }
+      }
+    },
+    "Code excerpt" : {
+      "comment" : "Social card preview: dashed placeholder for an empty code slot. Never exported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragmento de código"
+          }
+        }
+      }
+    },
+    "Author · Project" : {
+      "comment" : "Social card preview: dashed placeholder for an empty footer. Never exported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autor · Proyecto"
+          }
+        }
+      }
+    },
+    "Paste a code excerpt…" : {
+      "comment" : "Placeholder of the social card's code field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega un fragmento de código…"
+          }
+        }
+      }
+    },
+    "Use editor code" : {
+      "comment" : "Button that fills the social card from the main editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar el código del editor"
+          }
+        }
+      }
+    },
+    "Copy the code from the frontmost editor window into this card" : {
+      "comment" : "Tooltip of the Use editor code button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el código de la ventana del editor al frente a esta tarjeta"
+          }
+        }
+      }
+    },
+    "Changed" : {
+      "comment" : "Code header chip: the watched file has a saved change waiting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambió"
+          }
+        }
+      }
+    },
+    "Unavailable" : {
+      "comment" : "Code header chip: the watched file cannot be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No disponible"
+          }
+        }
+      }
+    },
+    "Rendered locally · your code never leaves this Mac" : {
+      "comment" : "Fixed footer of the editor inspector stating the privacy contract.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se renderiza localmente · tu código nunca sale de esta Mac"
+          }
+        }
+      }
+    },
+    "Live" : {
+      "comment" : "Code header chip for a file the editor is watching.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En vivo"
+          }
+        }
+      }
+    },
+    "Board size" : {
+      "comment" : "Comparison board inspector section: the exported canvas size",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño del tablero"
+          }
+        }
+      }
+    },
+    "Gap" : {
+      "comment" : "Comparison board inspector slider: space between captures",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Separación"
+          }
+        }
+      }
+    },
+    "Board background" : {
+      "comment" : "Comparison board inspector row: the board's backdrop",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fondo del tablero"
+          }
+        }
+      }
+    },
+    "Footer line" : {
+      "comment" : "Comparison board inspector switch: adds the generated line under the captures",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea al pie"
+          }
+        }
+      }
+    },
+    "Square" : {
+      "comment" : "Comparison board size preset: 1080 by 1080",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuadrado"
+          }
+        }
+      }
+    },
+    "Card" : {
+      "comment" : "Comparison board background swatch: flat dark fill",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta"
+          }
+        }
+      }
+    },
+    "%lld captures" : {
+      "comment" : "Comparison board toolbar: number of captures on the board",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld capturas"
+          }
+        }
+      }
+    },
+    "%lld captures · made with Vitrine" : {
+      "comment" : "Comparison board footer line drawn into the exported image",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld capturas · hecho con Vitrine"
+          }
+        }
+      }
+    },
+    "Edit caption %lld" : {
+      "comment" : "Comparison board preview: click target over a capture's caption",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar leyenda %lld"
+          }
+        }
+      }
+    },
+    "Choose a destination preset" : {
+      "comment" : "Editor status capsule tooltip: opens the destination menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un destino predefinido"
+          }
+        }
+      }
+    },
+    "Command palette" : {
+      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos"
+          }
+        }
+      }
+    },
+    "Command palette (⌘K)" : {
+      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos (⌘K)"
+          }
+        }
+      }
+    },
     "Detection is not exhaustive." : {
       "comment" : "Export pre-flight dialog: the limit of the scan.",
       "localizations" : {

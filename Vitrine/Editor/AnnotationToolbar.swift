@@ -67,7 +67,7 @@ struct AnnotationToolbar: View {
                 toolPicker
             } else {
                 HStack(spacing: 2) {
-                    ForEach(AnnotationTool.allCases) { tool in
+                    ForEach(AnnotationTool.toolbarOrder) { tool in
                         toolButton(tool)
                     }
                 }
@@ -154,8 +154,7 @@ struct AnnotationToolbar: View {
                 )
                 .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .customLabelMenu(cornerRadius: 7)
         .fixedSize()
         .help("Selected mark actions")
         .accessibilityLabel("Selected mark actions")
@@ -164,7 +163,7 @@ struct AnnotationToolbar: View {
 
     private var toolPicker: some View {
         Menu {
-            ForEach(AnnotationTool.allCases) { tool in
+            ForEach(AnnotationTool.toolbarOrder) { tool in
                 Button {
                     activeTool = tool
                 } label: {
@@ -188,8 +187,7 @@ struct AnnotationToolbar: View {
                     Capsule().strokeBorder(
                         VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline))
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .customLabelMenu(cornerRadius: 14)
         .fixedSize()
         .help(Text("Annotation tool: \(Text(activeTool.label))"))
         .accessibilityLabel("Annotation tool")
@@ -198,20 +196,34 @@ struct AnnotationToolbar: View {
     }
 
     private func toolButton(_ tool: AnnotationTool) -> some View {
+        let isActive = activeTool == tool
         let button = Button {
             activeTool = tool
         } label: {
             Image(systemName: tool.systemImage)
                 .font(.system(size: 12.5, weight: .medium))
+                .padding(.bottom, 3)
                 .frame(width: 28, height: 25)
                 .foregroundStyle(
-                    activeTool == tool
-                        ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
+                    isActive ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
                 )
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(activeTool == tool ? VitrineTokens.Accent.system : Color.clear)
+                        .fill(isActive ? VitrineTokens.Accent.system : Color.clear)
                 )
+                .overlay(alignment: .bottomTrailing) {
+                    if let shortcut = tool.shortcutCharacter {
+                        Text(verbatim: "⌘\(shortcut)")
+                            .font(.system(size: 7.5, weight: .heavy))
+                            .foregroundStyle(
+                                isActive
+                                    ? VitrineTokens.Accent.systemContrast
+                                    : VitrineTokens.Text.tertiary
+                            )
+                            .padding(.trailing, 1)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -222,9 +234,9 @@ struct AnnotationToolbar: View {
         // reliably on macOS and never hijacks the code editor's typing (a modifier-less
         // key would). Tools past the digit row have no shortcut and a plain tooltip.
         return Group {
-            if let key = tool.keyEquivalent {
+            if let shortcut = tool.shortcutCharacter {
                 button
-                    .help(Text("\(Text(tool.helpText)) (⌘\(String(key.character)))"))
+                    .help(Text("\(Text(tool.helpText)) (⌘\(String(shortcut)))"))
             } else {
                 button.help(tool.helpText)
             }

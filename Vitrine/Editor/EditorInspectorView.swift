@@ -37,6 +37,30 @@ struct EditorInspectorView: View {
     @State private var secretScan: SecretScanReport?
 
     var body: some View {
+        ScrollViewReader { proxy in
+            inspectorScrollView
+                .onChange(of: showLines) { _, open in
+                    reveal("inspector-disclosure-lines", when: open, proxy)
+                }
+                .onChange(of: showHeader) { _, open in
+                    reveal("inspector-disclosure-header", when: open, proxy)
+                }
+                .onChange(of: showOutput) { _, open in
+                    reveal("inspector-disclosure-output", when: open, proxy)
+                }
+        }
+    }
+
+    /// A section opened at the bottom edge would otherwise expand out of view.
+    private func reveal(_ section: String, when isExpanded: Bool, _ proxy: ScrollViewProxy) {
+        guard isExpanded else { return }
+        Task {
+            await Task.yield()
+            proxy.scrollTo(section, anchor: .top)
+        }
+    }
+
+    private var inspectorScrollView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 scopeNote
@@ -147,6 +171,7 @@ struct EditorInspectorView: View {
                                     .accessibilityIdentifier("secret-scan-summary")
                             }
                         }
+                        .id("inspector-disclosure-lines")
                     }
 
                     InspectorDisclosure(
@@ -155,6 +180,7 @@ struct EditorInspectorView: View {
                     ) {
                         MetadataFields(settings: settings)
                     }
+                    .id("inspector-disclosure-header")
 
                     InspectorDisclosure(
                         label: Text("Output"), identifier: "inspector-disclosure-output",
@@ -163,19 +189,21 @@ struct EditorInspectorView: View {
                         AlternativeTextField(settings: settings)
                         outputControls
                     }
+                    .id("inspector-disclosure-output")
                 }
             }
             .padding(.top, 18)
             .padding(.horizontal, VitrineTokens.Spacing.xl - 12)
             .padding(.bottom, VitrineTokens.Spacing.lg)
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) { privacyFooter }
         .background(.ultraThinMaterial)
         .overlay(alignment: .leading) {
             Rectangle()
                 .fill(VitrineTokens.Line.border)
                 .frame(width: Brand.Stroke.hairline)
         }
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("editor-inspector")
@@ -186,6 +214,21 @@ struct EditorInspectorView: View {
     }
 
     // MARK: - Sections
+
+    private var privacyFooter: some View {
+        Text("Rendered locally · your code never leaves this Mac")
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.vertical, VitrineTokens.Spacing.xs)
+            .padding(.horizontal, VitrineTokens.Spacing.xl - 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.bar)
+            .overlay(alignment: .top) {
+                Rectangle().fill(VitrineTokens.Line.border).frame(height: Brand.Stroke.hairline)
+            }
+            .accessibilityIdentifier("inspector-privacy-footer")
+    }
 
     /// Clarifies the scope distinction. The editor binds a *per-window*
     /// `EditorSession.settings` (see `EditorWindowController.makeWindow`), so these controls
@@ -206,7 +249,12 @@ struct EditorInspectorView: View {
     /// Background: the shared preset swatches, with the kind picker and per-kind
     /// controls once the background is no longer a stock gradient.
     private var backgroundSection: some View {
-        InspectorSection(title: Text("Background")) {
+        InspectorSection(
+            title: Text("Background"),
+            value: InspectorReadout.background(settings.style.background).map {
+                ($0, "inspector-value-background")
+            }
+        ) {
             BackgroundControls(
                 background: $settings.style.background, layout: .inspector,
                 identifierPrefix: "inspector-")
@@ -272,7 +320,10 @@ struct EditorInspectorView: View {
     }
 
     private var themeSection: some View {
-        InspectorSection(title: Text("Theme")) {
+        InspectorSection(
+            title: Text("Theme"),
+            value: (settings.style.theme.displayName, "inspector-value-theme")
+        ) {
             ThemeChipPicker(
                 settings: settings, themes: themes,
                 chipSize: CGSize(width: 52, height: 34), dotSize: 6,
@@ -283,7 +334,14 @@ struct EditorInspectorView: View {
     }
 
     private var typographySection: some View {
-        InspectorSection(title: Text("Typography")) {
+        InspectorSection(
+            title: Text("Typography"),
+            value: (
+                InspectorReadout.typography(
+                    fontName: settings.style.fontName, fontSize: settings.style.fontSize),
+                "inspector-value-typography"
+            )
+        ) {
             FontChipPicker(
                 settings: settings, fontSize: 11.5, verticalPadding: 6, horizontalPadding: 13,
                 topPadding: 2, bottomPadding: 6
@@ -377,11 +435,11 @@ struct EditorInspectorView: View {
                 // Row 1: Custom + the first three chips. Labels come from the shared
                 // `DestinationChips` source so the editor and Settings never drift.
                 TokenSegmentedPicker(
-                    options: [(DestinationTag.custom.rawValue, Text("Custom"))]
+                    options: [(nil, Text("Custom"))]
                         + DestinationChips.all.prefix(3).map {
-                            (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))
+                            ($0.id, Text(verbatim: $0.label))
                         },
-                    selection: destinationBinding
+                    selection: settings.destinationSelection
                 )
             }
             HStack {
@@ -390,9 +448,9 @@ struct EditorInspectorView: View {
                 // the inspector keeps two compact rows beside its other controls.
                 TokenSegmentedPicker(
                     options: DestinationChips.all.dropFirst(3).map {
-                        (DestinationTag.preset($0.id).rawValue, Text(verbatim: $0.label))
+                        ($0.id, Text(verbatim: $0.label))
                     },
-                    selection: destinationBinding
+                    selection: settings.destinationSelection
                 )
             }
         }
@@ -437,32 +495,6 @@ struct EditorInspectorView: View {
 
     // MARK: - Bindings & helpers
 
-    /// A stable string tag for the destination segments: "custom" or a preset id.
-    private enum DestinationTag: Equatable {
-        case custom
-        case preset(String)
-
-        var rawValue: String {
-            switch self {
-            case .custom: ""
-            case .preset(let id): id
-            }
-        }
-    }
-
-    private var destinationBinding: Binding<String> {
-        Binding(
-            get: { settings.selectedPresetID ?? "" },
-            set: { id in
-                if let preset = ExportPreset.preset(withID: id) {
-                    settings.selectPreset(preset)
-                } else {
-                    settings.clearPreset()
-                }
-            }
-        )
-    }
-
     /// Whether the selected font ships programming ligatures, gating the toggle
     /// so it reads as inert for a font that has none.
     private var fontHasLigatures: Bool {
@@ -473,6 +505,20 @@ struct EditorInspectorView: View {
         fontHasLigatures
             ? "Render programming ligatures (->, =>, !=) for this font."
             : "The selected font has no ligatures; choose Fira Code or JetBrains Mono."
+    }
+}
+
+/// The current values the inspector's section headers print.
+enum InspectorReadout {
+    /// Only a preset needs naming: its swatch has no label, and every other kind shows
+    /// its value in the controls right below the header.
+    static func background(_ background: VitrineDomain.BackgroundStyle) -> String? {
+        guard case .gradient(let preset) = background else { return nil }
+        return preset.rawValue
+    }
+
+    static func typography(fontName: String, fontSize: Double) -> String {
+        "\(fontName) \(Int(fontSize.rounded()))"
     }
 }
 
@@ -494,7 +540,7 @@ private struct WindowTitleSuggestionButton: View {
             } label: {
                 Image(systemName: "wand.and.stars")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(VitrineTokens.Accent.system)
+                    .foregroundStyle(VitrineTokens.Accent.systemText)
             }
             .buttonStyle(.plain)
             .help(Text("Suggest a title: \(suggestion)"))

@@ -123,4 +123,31 @@ struct SocialCardCommandTests {
         // it would wrongly enable the editor's Copy/Save/Share while it is key.
         #expect(!SocialCardWindowController.windowIdentifier.hasPrefix("editor-window"))
     }
+
+    /// Empty slots are a preview aid: without labels, which is what every export path
+    /// passes, the card draws exactly as before.
+    @Test func emptySlotsDrawOnlyWhenLabeled() throws {
+        let model = SocialCardModel(title: "Ship beautiful code", template: .standard)
+        func pixels(_ labels: (code: String, footer: String)?) throws -> Data {
+            let image = try ExportManager.renderCGImageChecked(
+                SocialCardCanvas(model: model, emptySlotLabels: labels),
+                proposedSize: SocialCardModel.defaultSize, scale: 1, profile: .sRGB)
+            return try #require(ExportManager.pngData(from: image))
+        }
+        let plain = try pixels(nil)
+        #expect(plain != (try pixels(("Code", "Footer"))))
+        #expect(plain == (try pixels(nil)))
+    }
+
+    @Test func aCompleteCardIgnoresEmptySlotLabels() throws {
+        let model = SocialCardModel(
+            title: "Ship", codeExcerpt: "let a = 1", author: "@jane", template: .standard)
+        func pixels(_ labels: (code: String, footer: String)?) throws -> Data {
+            let image = try ExportManager.renderCGImageChecked(
+                SocialCardCanvas(model: model, emptySlotLabels: labels),
+                proposedSize: SocialCardModel.defaultSize, scale: 1, profile: .sRGB)
+            return try #require(ExportManager.pngData(from: image))
+        }
+        #expect(try pixels(nil) == (try pixels(("Code", "Footer"))))
+    }
 }

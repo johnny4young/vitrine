@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import Testing
 import VitrineDomain
 import VitrineRendering
@@ -11,6 +12,38 @@ struct EditorPreferencesTests {
     private func environment() -> AppEnvironment {
         AppEnvironment(
             defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
+    }
+
+    @Test func destinationSelectionSelectsAndClearsThePreset() {
+        let settings = AppSettings(defaults: testDefaults())
+        let selection = settings.destinationSelection
+        #expect(selection.wrappedValue == nil)
+
+        selection.wrappedValue = "opengraph"
+        #expect(settings.selectedPresetID == "opengraph")
+        #expect(selection.wrappedValue == "opengraph")
+
+        selection.wrappedValue = nil
+        #expect(settings.selectedPresetID == nil)
+    }
+
+    @Test func inspectorHeadersPrintTheCurrentValue() {
+        #expect(InspectorReadout.background(.gradient(.aurora)) == "Aurora")
+        #expect(InspectorReadout.typography(fontName: "Hack", fontSize: 14) == "Hack 14")
+        #expect(InspectorReadout.typography(fontName: "Hack", fontSize: 13.6) == "Hack 14")
+        #expect(
+            InspectorReadout.background(.customGradient(CustomGradient(stops: [], angle: 90)))
+                == nil)
+        #expect(InspectorReadout.background(.transparent) == nil)
+    }
+
+    @Test func paletteOffersTheLiveFileActionsTheChipOffers() {
+        #expect(
+            PaletteLiveFileAction.available(isActive: false, usesImageContent: false) == [.open])
+        #expect(
+            PaletteLiveFileAction.available(isActive: true, usesImageContent: false)
+                == [.reload, .openDifferent, .stop])
+        #expect(PaletteLiveFileAction.available(isActive: true, usesImageContent: true).isEmpty)
     }
 
     @Test func additionalWindowsKeepTheResolvedCustomDefaultTheme() {
