@@ -170,9 +170,11 @@ struct StageMotionTests {
     // MARK: - Stage fit
 
     private func measurement(
-        _ width: CGFloat, _ height: CGFloat, destination: CGSize? = nil
+        _ width: CGFloat, _ height: CGFloat, destination: CGSize? = nil, document: Int = 0
     ) -> PreviewCardGeometry.Measurement {
-        .init(size: CGSize(width: width, height: height), destination: destination)
+        .init(
+            size: CGSize(width: width, height: height), destination: destination,
+            document: document)
     }
 
     @Test func aDestinationThatMovesTheCardStartsAMorphFromTheOldCard() {
@@ -213,6 +215,18 @@ struct StageMotionTests {
         #expect(geometry.morph.generation == 0)
     }
 
+    @Test func aLoadedDocumentThatMovesTheDestinationDoesNotMorph() {
+        let geometry = PreviewCardGeometry()
+        geometry.record(measurement(1600, 900, destination: CGSize(width: 1600, height: 900)))
+        geometry.record(measurement(540, 456, document: 1))
+        #expect(geometry.morph.generation == 0)
+        #expect(geometry.size == CGSize(width: 540, height: 456))
+
+        geometry.record(
+            measurement(1600, 900, destination: CGSize(width: 1600, height: 900), document: 1))
+        #expect(geometry.morph.generation == 1, "the next destination change still morphs")
+    }
+
     @Test func theStartingScalePutsTheNewCardWhereTheOldOneWasDrawn() {
         let stage = CGSize(width: 800, height: 700)
         let old = CGSize(width: 540, height: 456)
@@ -232,8 +246,8 @@ struct StageMotionTests {
     }
 
     @Test func theEffectRunsFromTheOldRectToIdentity() {
-        let morph = StageFitMorph(generation: 3, previousCard: .zero)
-        var effect = StageFitMorphEffect(morph: morph, startingScale: CGSize(width: 0.5, height: 2))
+        var effect = StageFitMorphEffect(
+            generation: 3, startingScale: CGSize(width: 0.5, height: 2))
         let size = CGSize(width: 100, height: 100)
         let center = CGPoint(x: 50, y: 50)
         let corner = CGPoint(x: 100, y: 100)
@@ -254,91 +268,288 @@ struct StageMotionTests {
         #expect(mapped(corner) == CGPoint(x: 75, y: 150), "interrupted: never past the start")
     }
 
-    // MARK: - Hit testing
+    // MARK: - The real views
 
-    @Observable final class ProbeModel {
-        var morph = StageFitMorph()
-        var taps: [CGPoint] = []
+    @Observable final class FadeModel {
+        var canvas: SnapshotCanvas
+        var layerCounts: [Int] = []
+        init(canvas: SnapshotCanvas) { self.canvas = canvas }
     }
 
-    private struct MorphProbe: View {
-        let model: ProbeModel
-        let animation: Animation?
+    private struct FadeHost: View {
+        let model: FadeModel
+        let reduceMotion: Bool
 
         var body: some View {
-            Color.red
-                .contentShape(Rectangle())
-                .gesture(SpatialTapGesture().onEnded { model.taps.append($0.location) })
-                .frame(width: 200, height: 200)
-                .modifier(
-                    StageFitMorphEffect(
-                        morph: model.morph, startingScale: CGSize(width: 0.25, height: 0.25))
-                )
-                .animation(animation, value: model.morph.generation)
-                .frame(width: 400, height: 400)
-                .allowsWindowActivationEvents()
+            ThemeFadingCanvas(canvas: model.canvas)
+                .environment(\.reduceMotionOverride, reduceMotion)
+                .onPreferenceChange(ThemeFadeLayerCountKey.self) { model.layerCounts.append($0) }
         }
     }
 
-    /// Clicks `offset` points right of the probe's center and returns where it landed.
-    private func click(
-        _ window: NSWindow, _ hosting: NSView, _ model: ProbeModel, offset: CGFloat
-    ) async throws -> CGPoint? {
-        model.taps = []
-        let point = hosting.convert(NSPoint(x: 200 + offset, y: 200), to: nil)
-        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
-            window.sendEvent(
-                try #require(
-                    NSEvent.mouseEvent(
-                        with: type, location: point, modifierFlags: [],
-                        timestamp: ProcessInfo.processInfo.systemUptime,
-                        windowNumber: window.windowNumber, context: nil, eventNumber: 0,
-                        clickCount: 1, pressure: 1)))
-            try await Task.sleep(for: .milliseconds(30))
-        }
-        try await Task.sleep(for: .milliseconds(100))
-        return model.taps.first
-    }
-
-    private func withProbe(
-        animation: Animation?, _ body: (NSWindow, NSView, ProbeModel) async throws -> Void
+    private func withFade(
+        reduceMotion: Bool = false,
+        _ body: (FadeModel, () -> Void) async throws -> Void
     ) async throws {
-        let model = ProbeModel()
+        let model = FadeModel(canvas: canvas())
+        let hosting = NSHostingView(rootView: FadeHost(model: model, reduceMotion: reduceMotion))
+        hosting.frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        let window = showing(hosting)
+        defer { window.orderOut(nil) }
+        try await Task.sleep(for: .milliseconds(200))
+        model.layerCounts = []
+        try await body(model) {
+            hosting.needsLayout = true
+            hosting.layoutSubtreeIfNeeded()
+        }
+    }
+
+    private func showing(_ view: NSView) -> NSWindow {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 400), styleMask: [.titled],
-            backing: .buffered, defer: false)
+            contentRect: view.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.isReleasedWhenClosed = false
-        let hosting = NSHostingView(rootView: MorphProbe(model: model, animation: animation))
-        hosting.frame = NSRect(x: 0, y: 0, width: 400, height: 400)
-        window.contentView = hosting
+        window.contentView = view
+        window.alphaValue = 0
         window.orderFrontRegardless()
+        return window
+    }
+
+    @Test func aFadeHoldsTwoLayersAndThenOne() async throws {
+        try await withFade { model, flush in
+            model.canvas = canvas(theme: Self.oneLight)
+            flush()
+            #expect(model.layerCounts.last == 2)
+            try await Task.sleep(for: .milliseconds(500))
+            #expect(model.layerCounts.last == 1)
+        }
+    }
+
+    @Test func reduceMotionNeverHoldsTwoLayers() async throws {
+        try await withFade(reduceMotion: true) { model, flush in
+            model.canvas = canvas(theme: Self.oneLight)
+            flush()
+            try await Task.sleep(for: .milliseconds(300))
+            #expect(!model.layerCounts.contains(2))
+        }
+    }
+
+    @Test func aStyleChangeDoesNotHoldTwoLayers() async throws {
+        try await withFade { model, flush in
+            model.canvas = canvas(padding: 64)
+            flush()
+            try await Task.sleep(for: .milliseconds(300))
+            #expect(!model.layerCounts.contains(2))
+        }
+    }
+
+    @Test func typingDuringAFadeDropsTheOldLayerAtOnce() async throws {
+        try await withFade { model, flush in
+            model.canvas = canvas(theme: Self.oneLight)
+            flush()
+            #expect(model.layerCounts.last == 2)
+            model.canvas = canvas(code: "let answer = 43", theme: Self.oneLight)
+            flush()
+            #expect(model.layerCounts.last == 1)
+        }
+    }
+
+    /// Without the cooldown a burst alternates: fade, snap, fade, snap.
+    @Test func aBurstOfThemesFadesOnceAndThenSnapsUntilItPauses() async throws {
+        let dracula = Theme.builtIns.first { $0.id == "dracula" }!
+        try await withFade { model, flush in
+            for theme in [Self.oneLight, dracula, Self.oneDark, Self.oneLight, dracula] {
+                model.canvas = canvas(theme: theme)
+                flush()
+            }
+            #expect(model.layerCounts.filter { $0 == 2 }.count == 1)
+            #expect(model.layerCounts.last == 1)
+
+            try await Task.sleep(for: .milliseconds(500))
+            model.canvas = canvas(theme: Self.oneDark)
+            flush()
+            #expect(model.layerCounts.last == 2, "fades again after the pause")
+        }
+    }
+
+    private static let stage = CGSize(width: 600, height: 400)
+    /// Long enough that a test reads the start of the animation whatever the machine is doing.
+    private static let slowSpring = Spring(settlingDuration: 30, dampingRatio: 1)
+
+    private final class TapLog { var count = 0 }
+
+    private struct StageHost: View {
+        let geometry: PreviewCardGeometry
+        let fitAnimation: Animation
+        let morphSpring: Spring
+        let reduceMotion: Bool
+        let taps: TapLog
+
+        var body: some View {
+            PreviewCardStage(
+                geometry: geometry, stageSize: StageMotionTests.stage,
+                fitAnimation: fitAnimation, morphSpring: morphSpring
+            ) { _ in
+                Color.red
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .contentShape(Rectangle())
+                    .gesture(SpatialTapGesture().onEnded { _ in taps.count += 1 })
+            }
+            .environment(\.reduceMotionOverride, reduceMotion)
+            .frame(width: StageMotionTests.stage.width, height: StageMotionTests.stage.height)
+            .background(Color.white)
+            .allowsWindowActivationEvents()
+        }
+    }
+
+    private struct StageHarness {
+        let window: NSWindow
+        let hosting: NSView
+        let geometry: PreviewCardGeometry
+        let taps: TapLog
+
+        /// The card's drawn rect, read from the rendered pixels.
+        func drawnRect() throws -> CGRect {
+            let rep = try #require(hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds))
+            hosting.cacheDisplay(in: hosting.bounds, to: rep)
+            var box = CGRect.null
+            let scale = CGFloat(rep.pixelsWide) / hosting.bounds.width
+            for y in stride(from: 0, to: rep.pixelsHigh, by: 2) {
+                for x in stride(from: 0, to: rep.pixelsWide, by: 2) {
+                    guard let color = rep.colorAt(x: x, y: y),
+                        color.redComponent > 0.8, color.greenComponent < 0.5
+                    else { continue }
+                    box = box.union(
+                        CGRect(x: CGFloat(x) / scale, y: CGFloat(y) / scale, width: 1, height: 1))
+                }
+            }
+            return box
+        }
+
+        func clickCenter() async throws {
+            let point = hosting.convert(NSPoint(x: 300, y: 200), to: nil)
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                window.sendEvent(
+                    try #require(
+                        NSEvent.mouseEvent(
+                            with: type, location: point, modifierFlags: [],
+                            timestamp: ProcessInfo.processInfo.systemUptime,
+                            windowNumber: window.windowNumber, context: nil, eventNumber: 0,
+                            clickCount: 1, pressure: 1)))
+                try await Task.sleep(for: .milliseconds(30))
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+    }
+
+    private func withStage(
+        fitAnimation: Animation = .easeInOut(duration: 0.25),
+        morphSpring: Spring = StageFitMorph.spring, reduceMotion: Bool = false,
+        _ body: (StageHarness) async throws -> Void
+    ) async throws {
+        let geometry = PreviewCardGeometry()
+        geometry.record(measurement(1000, 400))
+        let taps = TapLog()
+        let hosting = NSHostingView(
+            rootView: StageHost(
+                geometry: geometry, fitAnimation: fitAnimation, morphSpring: morphSpring,
+                reduceMotion: reduceMotion, taps: taps))
+        hosting.frame = NSRect(origin: .zero, size: Self.stage)
+        let window = showing(hosting)
         defer { window.orderOut(nil) }
         try await Task.sleep(for: .milliseconds(300))
-        try await body(window, hosting, model)
+        try await body(
+            StageHarness(window: window, hosting: hosting, geometry: geometry, taps: taps))
     }
 
-    /// A mark is hit where it is drawn during the morph, not where it will land.
-    @Test func hitTestingFollowsTheCardDuringAMorph() async throws {
-        try await withProbe(animation: .linear(duration: 30)) { window, hosting, model in
-            model.morph = StageFitMorph(generation: 1, previousCard: .zero)
-            try await Task.sleep(for: .milliseconds(100))
+    private func expectCentered(_ rect: CGRect, _ comment: Comment) {
+        #expect(abs(rect.midX - 300) <= 2, comment)
+        #expect(abs(rect.midY - 200) <= 2, comment)
+    }
 
-            // The drawn card is about 25 pt either side of center; the final one, 100.
-            let outside = try await click(window, hosting, model, offset: 80)
-            #expect(outside == nil, "inside the final rect but outside what is drawn")
-            let inside = try await click(window, hosting, model, offset: 20)
-            let location = try #require(inside, "inside what is drawn")
-            #expect(location.x > 150, "mapped through the drawn scale, not the final one")
+    private func expectSize(_ rect: CGRect, _ width: CGFloat, _ height: CGFloat, _ comment: Comment)
+    {
+        #expect(abs(rect.width - width) <= 4, comment)
+        #expect(abs(rect.height - height) <= 4, comment)
+    }
+
+    private static let oldFit = (width: 528.0, height: 211.2)
+    private static let newFit = (width: 365.0, height: 328.0)
+
+    /// The card grows without a destination change, limited by the stage on both sides.
+    @Test func aFitAnimationKeepsTheCardCentered() async throws {
+        try await withStage(fitAnimation: .linear(duration: 30)) { stage in
+            expectCentered(try stage.drawnRect(), "at rest")
+            stage.geometry.record(measurement(1000, 900))
+            try await Task.sleep(for: .milliseconds(100))
+            let rect = try stage.drawnRect()
+            expectCentered(rect, "during the fit animation")
+            #expect(stage.geometry.morph.generation == 0)
         }
     }
 
-    /// With no animation, which is what Reduce Motion gives the effect, the card is final.
-    @Test func withoutAnimationTheCardIsFinalAtOnce() async throws {
-        try await withProbe(animation: nil) { window, hosting, model in
-            model.morph = StageFitMorph(generation: 1, previousCard: .zero)
+    @Test func aMorphStartsOnTheOldRectAndStaysCentered() async throws {
+        try await withStage(morphSpring: Self.slowSpring) { stage in
+            stage.geometry.record(
+                measurement(1000, 900, destination: CGSize(width: 1000, height: 900)))
             try await Task.sleep(for: .milliseconds(100))
-            let location = try await click(window, hosting, model, offset: 80)
-            #expect(location == CGPoint(x: 180, y: 100))
+            let rect = try stage.drawnRect()
+            expectCentered(rect, "during the morph")
+            expectSize(rect, Self.oldFit.width, Self.oldFit.height, "on the old rect")
         }
+    }
+
+    @Test func aMorphEndsOnTheNewRectAndThenTakesClicks() async throws {
+        try await withStage { stage in
+            stage.geometry.record(
+                measurement(1000, 900, destination: CGSize(width: 1000, height: 900)))
+            try await Task.sleep(for: .milliseconds(700))
+            let rect = try stage.drawnRect()
+            expectCentered(rect, "at rest")
+            expectSize(rect, Self.newFit.width, Self.newFit.height, "on the new rect")
+            try await stage.clickCenter()
+            #expect(stage.taps.count == 1)
+        }
+    }
+
+    @Test func aClickDuringAMorphReachesNothing() async throws {
+        try await withStage(morphSpring: Self.slowSpring) { stage in
+            try await stage.clickCenter()
+            #expect(stage.taps.count == 1, "before the morph")
+
+            stage.geometry.record(
+                measurement(1000, 900, destination: CGSize(width: 1000, height: 900)))
+            try await Task.sleep(for: .milliseconds(100))
+            try await stage.clickCenter()
+            #expect(stage.taps.count == 1, "during the morph")
+        }
+    }
+
+    /// The slow animations show that nothing is interpolated at all.
+    @Test func reduceMotionLandsOnTheNewRectAndTakesClicksAtOnce() async throws {
+        try await withStage(
+            fitAnimation: .linear(duration: 30), morphSpring: Self.slowSpring, reduceMotion: true
+        ) { stage in
+            stage.geometry.record(
+                measurement(1000, 900, destination: CGSize(width: 1000, height: 900)))
+            try await Task.sleep(for: .milliseconds(100))
+            let rect = try stage.drawnRect()
+            expectCentered(rect, "at once")
+            expectSize(rect, Self.newFit.width, Self.newFit.height, "at once")
+            try await stage.clickCenter()
+            #expect(stage.taps.count == 1)
+        }
+    }
+
+    // MARK: - Background kind
+
+    @Test func theGradientKindReturnsToTheLastPreset() {
+        let store = BackgroundImageStore.container
+        let solid = VitrineDomain.BackgroundStyle.solid(RGBAColor(.black))
+        #expect(
+            BackgroundKind.gradient.makeDefault(from: solid, lastPreset: .sunset, imageStore: store)
+                == .gradient(.sunset))
+        #expect(
+            BackgroundKind.gradient.makeDefault(from: solid, imageStore: store)
+                == .gradient(.aurora))
     }
 }

@@ -21,6 +21,9 @@ struct BackgroundControls: View {
     /// Keeps each surface's accessibility identifiers distinct (e.g. "social-card-").
     var identifierPrefix = ""
 
+    /// The preset to return to when the Gradient kind is chosen again.
+    @State private var lastPreset: GradientPreset?
+
     var body: some View {
         switch layout {
         case .settings:
@@ -44,10 +47,7 @@ struct BackgroundControls: View {
                 .chipScrollItem(id: preset.id, isSelected: selectedPreset == preset)
             }
             if layout == .inspector {
-                CustomBackgroundSwatch(size: swatchSize) {
-                    background = BackgroundKind.solid.makeDefault(
-                        from: background, imageStore: imageStore)
-                }
+                CustomBackgroundSwatch(size: swatchSize) { switchKind(to: .solid) }
             }
         }
         .accessibilityElement(children: .contain)
@@ -139,8 +139,14 @@ struct BackgroundControls: View {
     private var kindBinding: Binding<BackgroundKind> {
         Binding(
             get: { BackgroundKind(background) },
-            set: { background = $0.makeDefault(from: background, imageStore: imageStore) }
+            set: { switchKind(to: $0) }
         )
+    }
+
+    private func switchKind(to kind: BackgroundKind) {
+        if let selectedPreset { lastPreset = selectedPreset }
+        background = kind.makeDefault(
+            from: background, lastPreset: lastPreset, imageStore: imageStore)
     }
 }
 
@@ -168,14 +174,15 @@ enum BackgroundKind: String, CaseIterable, Identifiable {
     /// A default `BackgroundStyle` for this kind, seeded from the previous style
     /// where it makes sense so switching kinds carries intent forward.
     func makeDefault(
-        from previous: VitrineDomain.BackgroundStyle, imageStore: BackgroundImageStore
+        from previous: VitrineDomain.BackgroundStyle, lastPreset: GradientPreset? = nil,
+        imageStore: BackgroundImageStore
     )
         -> VitrineDomain.BackgroundStyle
     {
         switch self {
         case .gradient:
             if case .gradient = previous { return previous }
-            return .gradient(.aurora)
+            return .gradient(lastPreset ?? .aurora)
         case .customGradient:
             switch previous {
             case .customGradient: return previous

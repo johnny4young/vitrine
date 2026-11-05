@@ -20,6 +20,11 @@ struct PreviewThemeFade: Equatable {
         live = Layer(id: 0, canvas: canvas)
     }
 
+    init(live: Layer, outgoing: Layer?) {
+        self.live = live
+        self.outgoing = outgoing
+    }
+
     var layers: [Layer] { [outgoing, live].compactMap(\.self) }
 
     func applying(_ canvas: SnapshotCanvas, animated: Bool) -> PreviewThemeFade {
@@ -82,7 +87,14 @@ struct ThemeFadeLayers: View {
             }
         }
         .compositingGroup()
+        .preference(key: ThemeFadeLayerCountKey.self, value: fade.layers.count)
     }
+}
+
+/// How many canvases the stage is drawing, so a fade can be observed from outside it.
+struct ThemeFadeLayerCountKey: PreferenceKey {
+    static let defaultValue = 0
+    static func reduce(value: inout Int, nextValue: () -> Int) { value = nextValue() }
 }
 
 /// The stage's canvas. A layer keeps its identity across a fade, so the outgoing canvas is
@@ -90,31 +102,70 @@ struct ThemeFadeLayers: View {
 struct ThemeFadingCanvas: View {
     let canvas: SnapshotCanvas
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var fade: PreviewThemeFade
+    /// What the canvas was, and whether a burst is cooling down. Not observed, because an
+    /// ordinary style change must not cost this view a second pass.
+    private final class Memory {
+        var canvas: SnapshotCanvas
+        private(set) var isCoolingDown = false
+        private var cooldown: Task<Void, Never>?
+
+        init(canvas: SnapshotCanvas) { self.canvas = canvas }
+
+        /// Long enough to outlast the gap between clicks in a burst, which would otherwise
+        /// alternate a fade and a snap.
+        func coolDown() {
+            isCoolingDown = true
+            cooldown?.cancel()
+            cooldown = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+                self?.isCoolingDown = false
+            }
+        }
+    }
+
+    @ReducesMotion private var reduceMotion
+    @State private var memory: Memory
+    // These change only when a fade starts or ends.
+    @State private var outgoing: PreviewThemeFade.Layer?
+    @State private var liveLayer = 0
     @State private var revealedLayer = 0
 
     init(canvas: SnapshotCanvas) {
         self.canvas = canvas
-        _fade = State(initialValue: PreviewThemeFade(canvas: canvas))
+        _memory = State(initialValue: Memory(canvas: canvas))
     }
+
+    private var settled: PreviewThemeFade {
+        PreviewThemeFade(
+            live: PreviewThemeFade.Layer(id: liveLayer, canvas: memory.canvas), outgoing: outgoing)
+    }
+
+    private var fades: Bool { !reduceMotion && !memory.isCoolingDown }
 
     var body: some View {
         // Derived here too: `onChange` runs after this pass, which must already hold
         // the old canvas rather than draw the new theme over it.
-        let current = fade.applying(canvas, animated: !reduceMotion)
+        let current = settled.applying(canvas, animated: fades)
         ThemeFadeLayers(fade: current, progress: revealedLayer == current.live.id ? 1 : 0)
-            .onChange(of: canvas) { _, canvas in
-                let previousLive = fade.live.id
-                fade = fade.applying(canvas, animated: !reduceMotion)
-                guard fade.outgoing != nil, fade.live.id != previousLive else { return }
-                let layer = fade.live.id
-                withAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22)) {
-                    revealedLayer = layer
-                } completion: {
-                    fade = fade.finishing(layer)
-                }
-            }
+            .onChange(of: canvas) { _, canvas in record(canvas) }
+    }
+
+    private func record(_ canvas: SnapshotCanvas) {
+        let previous = settled
+        let next = previous.applying(canvas, animated: fades)
+        memory.canvas = canvas
+        if previous.outgoing != nil || memory.isCoolingDown { memory.coolDown() }
+        guard next.live.id != previous.live.id else { return }
+        liveLayer = next.live.id
+        outgoing = next.outgoing
+        guard next.outgoing != nil else { return }
+        let layer = next.live.id
+        withAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22)) {
+            revealedLayer = layer
+        } completion: {
+            outgoing = settled.finishing(layer).outgoing
+        }
     }
 }
 
@@ -122,6 +173,8 @@ struct ThemeFadingCanvas: View {
 
 /// A destination change: the card size the stage was showing before it.
 struct StageFitMorph: Equatable {
+    static let spring = Spring(settlingDuration: 0.24, dampingRatio: 0.85)
+
     var generation = 0
     var previousCard = CGSize.zero
 
@@ -142,17 +195,17 @@ struct StageFitMorph: Equatable {
 }
 
 /// Eases the card's frame from the previous destination's rect to the new one. A transform
-/// only, so layout is final from the first frame, and annotations share it with the canvas:
-/// SwiftUI hit-tests through the animated value, so a mark is hit where it is drawn.
-struct StageFitMorphEffect: GeometryEffect {
+/// only, so layout is final from the first frame. A second destination during a morph starts
+/// from the first one's rect, not from where the card was drawn, so the card jumps there.
+nonisolated struct StageFitMorphEffect: GeometryEffect {
     /// Animates up to `generation`, so a morph never needs a second pass to reset itself.
     var progress: CGFloat
     let generation: Int
     let startingScale: CGSize
 
-    init(morph: StageFitMorph, startingScale: CGSize) {
-        progress = CGFloat(morph.generation)
-        generation = morph.generation
+    init(generation: Int, startingScale: CGSize) {
+        progress = CGFloat(generation)
+        self.generation = generation
         self.startingScale = startingScale
     }
 
