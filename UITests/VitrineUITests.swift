@@ -712,6 +712,33 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testPresetThumbnailApplies() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.emptyEditor)
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        let disclosure = element("inspector-disclosure-presets", in: app)
+        assertExists(disclosure, in: app)
+        XCTAssertFalse(element("inspector-preset-thumbnails", in: app).exists)
+
+        // The section sits last, so scroll to it before opening it.
+        let inspector = element("editor-inspector", in: app)
+        for _ in 0..<5 where !disclosure.isHittable {
+            inspector.swipeUp()
+        }
+        disclosure.click()
+        assertExists(element("inspector-preset-thumbnails", in: app), in: app, timeout: 3)
+        assertHittable(
+            "preset-thumbnail-builtin.sunset", in: app, "A preset tile must be reachable")
+        element("preset-thumbnail-builtin.sunset", in: app).click()
+        let theme = element("inspector-value-theme", in: app)
+        let applied = NSPredicate(format: "value == %@", "Dracula")
+        wait(for: [expectation(for: applied, evaluatedWith: theme)], timeout: 3)
+    }
+
+    @MainActor
     func testStylePaneShowsDestinationPresetPicker() {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.settings)
@@ -2164,8 +2191,10 @@ final class VitrineUITests: XCTestCase {
             return false
         }
 
-        // The sign of a horizontal delta follows the system's scroll direction.
+        // The sign of a horizontal delta follows the system's scroll direction. Wheel events
+        // go where the pointer is, so bring it over the row first.
         let start = chip.frame.minX
+        row.hover()
         row.scroll(byDeltaX: -120, deltaY: 0)
         if !moved(from: start) { row.scroll(byDeltaX: 120, deltaY: 0) }
         XCTAssertTrue(moved(from: start), "A pointer scroll did not move the row")

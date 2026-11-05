@@ -546,6 +546,8 @@ extension EditorView {
         .background {
             PreviewCodeSynchronizer(settings: settings) { code in
                 stagedPreviewCode = code
+                session.presetThumbnails.stagedCode = code
+                session.presetThumbnails.stagedGeneration = settings.documentGeneration
             }
         }
     }
@@ -616,7 +618,8 @@ extension EditorView {
     /// controls, on glass per the current design.
     var inspectorColumn: some View {
         EditorInspectorView(
-            settings: settings, themes: themes, entitlements: entitlements)
+            settings: settings, themes: themes, presets: presets, entitlements: entitlements,
+            presetThumbnails: session.presetThumbnails)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a
@@ -931,10 +934,18 @@ private struct PreviewCodeSynchronizer: View {
 
     @State private var hasSynchronized = false
 
+    /// The generation is here so a replacement with identical text still hands off.
+    private struct Document: Equatable {
+        let code: String
+        let generation: Int
+    }
+
     var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
-            .task(id: settings.documentCode) {
+            .task(
+                id: Document(code: settings.documentCode, generation: settings.documentGeneration)
+            ) {
                 let code = settings.documentCode
                 if !hasSynchronized {
                     hasSynchronized = true

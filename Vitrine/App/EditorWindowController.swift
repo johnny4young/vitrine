@@ -31,6 +31,8 @@ final class EditorSession {
     let copyConfirmation = CopyConfirmation()
     /// The association whose recipe styled the loaded file, for Copy Command to reference.
     var appliedRecipeID: UUID?
+    /// This window's preset thumbnails, fed from the same debounced code as the preview.
+    let presetThumbnails = PresetThumbnailModel()
 
     /// Creates a session for `identity` with its own ephemeral settings.
     ///

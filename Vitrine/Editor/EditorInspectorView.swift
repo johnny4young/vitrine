@@ -21,7 +21,13 @@ struct EditorInspectorView: View {
     @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
     private var showsSafeAreaGuides = false
     var themes: CustomThemeStore
+    var presets: PresetStore
     var entitlements: Entitlements
+    var presetThumbnails: PresetThumbnailModel
+
+    /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
+    @AppStorage(PresetThumbnailModel.expandedStorageKey, store: AppDefaults.current)
+    private var showPresets = false
 
     /// Disclosure state for the advanced sections. All start collapsed so the
     /// inspector opens compact; the primary style cluster above them is always
@@ -47,6 +53,9 @@ struct EditorInspectorView: View {
                 }
                 .onChange(of: showOutput) { _, open in
                     reveal("inspector-disclosure-output", when: open, proxy)
+                }
+                .onChange(of: showPresets) { _, open in
+                    reveal("inspector-disclosure-presets", when: open, proxy)
                 }
         }
     }
@@ -196,6 +205,12 @@ struct EditorInspectorView: View {
                         outputControls
                     }
                     .id("inspector-disclosure-output")
+
+                    PresetThumbnailSection(
+                        settings: settings, themes: themes, presets: presets,
+                        model: presetThumbnails, isExpanded: $showPresets
+                    )
+                    .id("inspector-disclosure-presets")
                 }
             }
             .padding(.top, 18)
