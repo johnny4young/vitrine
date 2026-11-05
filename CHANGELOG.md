@@ -16,6 +16,9 @@ can never drift.
 
 - Terminal captures get an ANSI palette control, Theme or Raw xterm colors, in the inspector
   and Settings ▸ Style, with `--terminal-palette`. The default is today's rendering.
+- Terminal captures can draw their cursor, Hidden, Block or Bar, in the inspector and
+  Settings ▸ Style, with `--terminal-cursor`. The default stays Hidden, and plain text exports
+  never include the cursor.
 - The inspector's Header section lists a terminal capture's filename and title as removable
   chips, with a prompt picker and an undoable Remove arguments. Text they remove also leaves
   the alternative text and window title.

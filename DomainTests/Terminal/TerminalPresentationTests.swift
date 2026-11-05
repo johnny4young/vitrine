@@ -2,6 +2,95 @@ import Testing
 
 @testable import VitrineDomain
 
+@Suite("Terminal cursor")
+struct TerminalCursorTests {
+    private func runs(_ text: String, _ cursor: TerminalCursorStyle) -> [ANSIRun] {
+        TerminalScreen.runs(text, columns: 20, cursor: cursor)
+    }
+
+    private func inverted(_ runs: [ANSIRun]) -> String {
+        runs.filter(\.style.inverse).map(\.text).joined()
+    }
+
+    private func text(_ runs: [ANSIRun]) -> String { runs.map(\.text).joined() }
+
+    @Test func hiddenDrawsNothing() {
+        let stream = "one\u{1B}[3;2Htwo\u{1B}[1;1H"
+        #expect(runs(stream, .hidden) == TerminalScreen.runs(stream, columns: 20))
+        #expect(inverted(runs(stream, .hidden)).isEmpty)
+    }
+
+    @Test func blockInvertsTheCellUnderTheCursor() {
+        let result = runs("abc\u{1B}[1;2H", .block)
+        #expect(text(result) == "abc")
+        #expect(inverted(result) == "b")
+    }
+
+    @Test func blockUndoesAnAlreadyInverseCell() {
+        let result = runs("\u{1B}[7mabc\u{1B}[0m\u{1B}[1;2H", .block)
+        #expect(inverted(result) == "ac")
+    }
+
+    @Test func aCursorPastTheTextPadsToItsColumn() {
+        let result = runs("ab\u{1B}[1;5H", .block)
+        #expect(text(result) == "ab   ")
+        #expect(inverted(result) == " ")
+    }
+
+    @Test func aCursorBelowTheTextAddsOnlyItsRow() {
+        let result = runs("ab\u{1B}[2;1H", .block)
+        #expect(text(result) == "ab\n ")
+    }
+
+    @Test func barKeepsTheCellItCovers() {
+        let result = runs("abc\u{1B}[1;2H", .bar)
+        #expect(text(result) == "a\u{258F}bc")
+        #expect(result.filter(\.style.isCursorBar).map(\.text) == ["\u{258F}"])
+    }
+
+    @Test func barInvertsACellWithItsOwnBackgroundInstead() {
+        let colored = runs("\u{1B}[41mabc\u{1B}[0m\u{1B}[1;2H", .bar)
+        #expect(text(colored) == "abc")
+        #expect(inverted(colored) == "b")
+        #expect(inverted(runs("\u{1B}[7mabc\u{1B}[0m\u{1B}[1;2H", .bar)) == "ac")
+    }
+
+    @Test func aCursorOnAWideCharactersRightHalfMarksTheCharacter() {
+        let result = runs("\u{1B}[1;1H日本\u{1B}[1;2H", .block)
+        #expect(inverted(result) == "日")
+    }
+
+    @Test func aProgramThatHidItsCursorHasNoneToDraw() {
+        #expect(inverted(runs("abc\u{1B}[?25l\u{1B}[1;2H", .block)).isEmpty)
+        #expect(inverted(runs("abc\u{1B}[?25l\u{1B}[?25h\u{1B}[1;2H", .block)) == "b")
+    }
+
+    @Test func aFrameKeptFromAnExitedFullScreenAppHasNoCursor() {
+        let exited = "\u{1B}[?1049h\u{1B}[2J\u{1B}[1;1Hframe\u{1B}[?1049l"
+        #expect(inverted(runs(exited, .block)).isEmpty)
+        #expect(text(runs(exited, .block)) == "frame")
+    }
+
+    @Test func aFullScreenAppStillRunningKeepsItsCursor() {
+        let running = "\u{1B}[?1049h\u{1B}[1;1Hframe\u{1B}[1;2H"
+        #expect(inverted(runs(running, .block)) == "r")
+    }
+
+    @Test func lineModeReadsTheLastVisibilityEscape() {
+        #expect(TerminalScreen.leavesCursorHidden("plain") == false)
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25l spin"))
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25l spin \u{1B}[?25h") == false)
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25h \u{1B}[?25l"))
+    }
+
+    @Test func lineModeReadsACompoundModeAndIgnoresOtherModes() {
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?1;25l x"))
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25l \u{1B}[?25;1h") == false)
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?2004l x") == false)
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[25l x") == false)
+    }
+}
+
 @Suite("Terminal header context")
 struct TerminalHeaderContextTests {
     @Test func splitsWhatVgrabWrites() {

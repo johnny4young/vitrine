@@ -39,6 +39,7 @@ struct StyleCodecCompletenessTests {
         config.showLineNumbers = true
         config.wrapColumns = 72
         config.terminalPalette = .raw
+        config.terminalCursor = .bar
         config.highlightedLineRanges = [1...1, 3...5]
         config.focusHighlightedLines = true
         config.diffDecorations = true

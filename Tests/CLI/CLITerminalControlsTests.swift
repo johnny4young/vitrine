@@ -56,6 +56,55 @@ struct CLITerminalPaletteTests {
         }
     }
 
+    @Test func theCursorFlagReachesTheConfigAndKeepsItsDefault() throws {
+        let flagged = try CLIArguments.parse([
+            "render", "in.log", "--out", "o.png", "--language", "terminal",
+            "--terminal-cursor", "BAR",
+        ])
+        #expect(flagged.makeConfig(code: "x", language: .terminal).terminalCursor == .bar)
+        let bare = try CLIArguments.parse(["render", "in.log", "--out", "o.png"])
+        #expect(bare.makeConfig(code: "x", language: .terminal).terminalCursor == .hidden)
+    }
+
+    @Test func theCursorFlagIsRefusedWhereItCannotApply() {
+        #expect(throws: CLIError.invalidValue(flag: "--terminal-cursor", value: "beam")) {
+            try CLIArguments.parse([
+                "render", "in.log", "--out", "o.png", "--terminal-cursor", "beam",
+            ])
+        }
+        #expect(throws: CLIError.unknownFlag("--terminal-cursor")) {
+            try CLIArguments.parse([
+                "terminal-capture", "in.log", "--copy", "--terminal-cursor", "bar",
+            ])
+        }
+        #expect(throws: CLIError.self) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--terminal-cursor", "bar"])
+        }
+        #expect(throws: CLIError.self) {
+            try CLIArguments.parse([
+                "render", "--image", "a.png", "--out", "o.png", "--terminal-cursor", "bar",
+            ])
+        }
+    }
+
+    @Test func theCopiedCommandCarriesTheCursorOnlyWhereItApplies() {
+        func line(_ style: SnapshotConfig) -> String {
+            let command = CLIReproductionCommand(
+                style: style, destinationPresetID: nil, scale: SettingsDefaults.exportScale,
+                format: .png, profile: .fallback, watermark: nil)
+            guard case .command(let line) = command.outcome() else { return "" }
+            return line
+        }
+        var bar = capture(.theme)
+        bar.terminalCursor = .bar
+        #expect(line(bar).contains("--terminal-cursor bar"))
+        #expect(line(capture(.theme)).contains("--terminal-cursor") == false)
+
+        bar.language = .swift
+        #expect(line(bar).contains("vitrine render"))
+        #expect(line(bar).contains("--terminal-cursor") == false)
+    }
+
     @Test func theCopiedCommandReproducesThePaletteOnlyWhereItApplies() {
         func line(_ style: SnapshotConfig) -> String {
             let command = CLIReproductionCommand(

@@ -1,6 +1,61 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Cursor" : {
+      "comment" : "Row that picks the cursor style of a terminal capture",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cursor"
+          }
+        }
+      }
+    },
+    "Hidden" : {
+      "comment" : "Terminal cursor style",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oculto"
+          }
+        }
+      }
+    },
+    "Block" : {
+      "comment" : "Terminal cursor style",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloque"
+          }
+        }
+      }
+    },
+    "Bar" : {
+      "comment" : "Terminal cursor style",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra"
+          }
+        }
+      }
+    },
+    "Drawn where the output left it, unless the program hid it or a full-screen app already exited." : {
+      "comment" : "Tooltip of the terminal cursor control",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se dibuja donde lo dejó la salida, salvo que el programa lo haya ocultado o que una app de pantalla completa ya haya salido."
+          }
+        }
+      }
+    },
     "Conflict: %@ is also a macOS shortcut" : {
       "comment" : "Settings notice under the global hotkey recorder. %@ is the shortcut, such as ⇧⌘3.",
       "localizations" : {

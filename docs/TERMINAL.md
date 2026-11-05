@@ -65,6 +65,16 @@ lifts one of the 16 base colors only where it would vanish on that card, such as
 on white. 256-color and truecolor values are drawn as written. Settings ▸ Style sets the default
 for new captures, and a preset carries Raw only when saved from a terminal capture.
 
+## Cursor
+
+**Terminal ▸ Cursor** (`--terminal-cursor block|bar`) draws the cursor on the image and in rich
+text. The default is Hidden, and plain text never includes it. Scrolling output gets the cursor
+where the output ended; a full-screen app still running at the end of the capture gets it at its
+real cell. A bar on a cell with its own background inverts that cell instead, because the cell
+would paint over the bar. There is no cursor to draw when the program hid it (`ESC[?25l`), or when the frame comes
+from a full-screen app that already exited, which is the usual `vgrab htop`. A share link of a
+redacted capture holds only the final screen, so it opens without a cursor.
+
 ## Prompt and context chips
 
 In the inspector's **Header** section, a terminal capture lists its **Filename** and **Title**
@@ -221,6 +231,7 @@ vitrine render <input-file> --edit            # open it in the editor (no image)
 vitrine render <input-file> --out <image> --text-sidecar   # image + .txt of the output
 vitrine render <input-file> --out <image> --sidecars all    # image + txt/md/html
 vitrine render <input-file> --out <image> --terminal-palette raw   # only affects --language terminal
+vitrine render <input-file> --out <image> --terminal-cursor block  # only affects --language terminal
 vitrine shell-init [zsh|bash|fish]            # print the helpers
 ```
 

@@ -197,6 +197,7 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("terminal-palette-picker", in: app), in: app, timeout: 8)
+        assertExists(element("terminal-cursor-picker", in: app), in: app)
 
         let header = element("inspector-disclosure-header", in: app)
         assertExists(header, in: app)
@@ -1003,6 +1004,7 @@ final class VitrineUITests: XCTestCase {
         let background = element("style-subtab-background", in: app)
         assertExists(appearance, in: app, timeout: 3)
         assertExists(element("settings-terminal-palette-picker", in: app), in: app)
+        assertExists(element("settings-terminal-cursor-picker", in: app), in: app)
         lines.click()
         XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(appearance.isSelected)

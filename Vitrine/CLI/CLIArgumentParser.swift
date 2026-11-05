@@ -28,6 +28,7 @@ struct CLIArgumentParser {
     var shadowRadius: Double?
     var terminalColumns: Int?
     var terminalPalette: TerminalPaletteMode?
+    var terminalCursor: TerminalCursorStyle?
     var wrapColumns: Int?
     var formatCode = false
     var explicitFormat: ExportFormat?
@@ -199,6 +200,8 @@ struct CLIArgumentParser {
             terminalColumns = try resolveColumns(value, flag: token)
         case .terminalPalette:
             terminalPalette = try resolveTerminalPalette(value, flag: token)
+        case .terminalCursor:
+            terminalCursor = try resolveTerminalCursor(value, flag: token)
         case .wrapColumns:
             wrapColumns = try resolveWrapColumns(value, flag: token)
         case .formatCode:
