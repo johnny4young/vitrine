@@ -119,7 +119,7 @@ struct WebPrivacyDisclosureView: View {
                 .accessibilityIdentifier("web-privacy-cancel")
 
             Button(disclosure.confirmTitle, action: onConfirm)
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .keyboardShortcut(.defaultAction)
                 .help("Load this webpage locally in WebKit and capture it.")
                 .accessibilityIdentifier("web-privacy-confirm")

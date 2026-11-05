@@ -51,4 +51,48 @@ enum AppActivation {
         else { return }
         previous.activate()
     }
+
+    /// Whether to go back to `previousProcessID` after a prompt that interrupted it. Unlike
+    /// closing a surface, a visible Vitrine window is no reason to keep focus here.
+    static func shouldReturnFocusAfterPrompt(
+        previousProcessID: pid_t?,
+        appIsActive: Bool,
+        appProcessID: pid_t = ProcessInfo.processInfo.processIdentifier
+    ) -> Bool {
+        guard let previousProcessID, appIsActive else { return false }
+        return previousProcessID != appProcessID
+    }
+}
+
+/// Holds the app a capture interrupted until all of that capture's prompts are answered.
+/// Activation is asynchronous, so returning between prompts would leave the next one
+/// reading Vitrine as the frontmost app and losing the real target.
+final class PromptFocus {
+    private let returnFocus: () -> Void
+    private var didAsk = false
+
+    init(returnFocus: @escaping () -> Void) {
+        self.returnFocus = returnFocus
+    }
+
+    convenience init(returningTo previous: NSRunningApplication?) {
+        self.init {
+            guard let previous, !previous.isTerminated,
+                AppActivation.shouldReturnFocusAfterPrompt(
+                    previousProcessID: previous.processIdentifier, appIsActive: NSApp.isActive)
+            else { return }
+            previous.activate()
+        }
+    }
+
+    func asking<Answer>(_ prompt: () -> Answer) -> Answer {
+        didAsk = true
+        return prompt()
+    }
+
+    func finish() {
+        guard didAsk else { return }
+        didAsk = false
+        returnFocus()
+    }
 }

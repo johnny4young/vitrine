@@ -60,6 +60,8 @@ struct StyleCodecCompletenessTests {
         config.imageFrame = .macOSWindow
         config.imageFrameAppearance = .dark
         config.terminalColumns = 100
+        config.firstLineNumber = 9
+        config.slideCue = SlideCue(pageLabel: "2 / 4")
         return config
     }
 
@@ -89,6 +91,8 @@ struct StyleCodecCompletenessTests {
         expected.imageFrame = .none  // frame of that image, travels with it
         expected.imageFrameAppearance = .auto
         expected.terminalColumns = nil  // measured from the capture, not a preference
+        expected.firstLineNumber = 1  // derived per carousel slide at export
+        expected.slideCue = nil  // derived per carousel slide at export
         return expected
     }
 

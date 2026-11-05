@@ -192,7 +192,7 @@ struct EditorView: View {
     // Split so each part type-checks quickly on older compilers.
     var body: some View {
         withDialogs(withEvents(editorLayout))
-            .tint(VitrineTokens.Accent.system)
+            .tint(VitrineTokens.Accent.systemText)
     }
 
     /// The editor's columns and window-level chrome.
@@ -288,8 +288,26 @@ struct EditorView: View {
                 if ProcessInfo.processInfo.arguments.contains("--open-command-palette") {
                     showCommandPalette = true
                 }
+                #if DEBUG
+                    // Same gates as the toolbar button: without PRO this opens the paywall.
+                    if Self.carouselHookOpens(
+                        settings.style, hasRenderableContent: settings.hasRenderableContent,
+                        arguments: ProcessInfo.processInfo.arguments)
+                    {
+                        presentCarouselExport()
+                    }
+                #endif
             }
     }
+
+    #if DEBUG
+        static func carouselHookOpens(
+            _ style: SnapshotConfig, hasRenderableContent: Bool, arguments: [String]
+        ) -> Bool {
+            arguments.contains("--open-carousel-export") && hasRenderableContent
+                && !style.usesImageContent && carouselAccepts(style)
+        }
+    #endif
 
     /// The preset prompt, load errors, and the replace/append drop dialog.
     private func withDialogs(_ content: some View) -> some View {

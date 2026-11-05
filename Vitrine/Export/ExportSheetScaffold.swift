@@ -98,9 +98,10 @@ struct ExportSheetScaffold<Body: View>: View {
                 }
             }
             Button(confirmTitle, action: onConfirm)
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .disabled(confirmDisabled)
                 .accessibilityIdentifier(confirmIdentifier)
+                .keyboardShortcut(.return, modifiers: .command)
         }
     }
 }

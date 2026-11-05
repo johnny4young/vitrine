@@ -87,7 +87,7 @@ struct RecentsGalleryView: View {
         }
         .frame(minWidth: 560, minHeight: 420)
         .background(Brand.Palette.stage.color)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityContainerIdentifier("recents-gallery")
     }
 
@@ -228,7 +228,7 @@ struct RecentsGalleryView: View {
                 createComparisonBoard()
             }
             .disabled(!comparisonSelection.canCreateBoard)
-            .buttonStyle(.borderedProminent)
+            .accentProminentButtonStyle()
             .accessibilityIdentifier("recents-create-comparison-button")
         } else {
             Button {
