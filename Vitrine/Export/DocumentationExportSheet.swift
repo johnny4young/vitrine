@@ -53,6 +53,8 @@ struct DocumentationExportSheet: View {
                 .accessibilityIdentifier("documentation-cancel")
                 Button("Choose Parent Folder…", action: export)
                     .keyboardShortcut(.defaultAction)
+                    // The default action draws filled with a white label.
+                    .tint(VitrineTokens.Accent.systemProminentFill)
                     .disabled(
                         writing || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     )

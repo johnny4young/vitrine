@@ -150,6 +150,17 @@ struct GlassIconButton: View {
     }
 }
 
+// MARK: - Prominent actions
+
+extension View {
+    /// The filled system button on a fill its white label stays readable on. It cannot
+    /// share `Accent.systemText`, which lightens in dark appearance.
+    func accentProminentButtonStyle() -> some View {
+        buttonStyle(.borderedProminent)
+            .tint(VitrineTokens.Accent.systemProminentFill)
+    }
+}
+
 // MARK: - Menus
 
 extension View {

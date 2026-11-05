@@ -9,13 +9,11 @@ enum HistoryConsentPrompt {
         guard case .requiresConsent = decision else { return .doNotSave }
         let alert = makeAlert()
         // Quick capture runs from a global hotkey while another app is frontmost; an
-        // inactive agent app's modal would otherwise open behind it. Focus goes back to
-        // that app afterward so the next paste lands there.
-        let previous = AppActivation.frontmostOtherApplication()
+        // inactive agent app's modal would otherwise open behind it. The caller returns
+        // focus once the whole capture is done.
         AppActivation.bringForward()
         alert.window.level = .modalPanel
         let response = alert.runModal()
-        AppActivation.restoreFocus(to: previous)
         return choice(for: response)
     }
 

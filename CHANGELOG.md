@@ -16,6 +16,19 @@ can never drift.
 
 - See five copyable recipe commands with their free or PRO access, and the order in which
   defaults, recipes and flags override each other.
+- Deleting a counter renumbers the badges above it, so they stay in order.
+- Show what the next capture will be under the menu bar's capture button: language, line
+  count, theme and destination. Language and lines appear only when System Settings always
+  allows Vitrine to read the clipboard; otherwise the panel leaves the contents unread.
+- Carousel export can move slide breaks to nearby blank lines, keep line numbers
+  continuous across slides, and draw a page badge and a "continues →" cue on each slide.
+  The sheet shows the folder, the file names and an estimated size before anything is
+  written, and ⌘⏎ confirms it and the multi-size sheet.
+- Check for likely secrets on this Mac before copying, saving, sharing, or exporting. A
+  clean capture is not interrupted; otherwise choose to redact the flagged lines, continue
+  anyway, or cancel. `vitrine render` and `batch` warn on stderr and leave the output
+  unchanged.
+- Draft alternative text from the document's language, line count, filename, and title.
 - Bring the main editor's code into a social card with Use editor code.
 - Show a social card's empty code and footer slots in the preview, and its output size
   under it. Empty slots are never exported.
@@ -25,6 +38,11 @@ can never drift.
 - Edit a comparison board's captions by clicking them on the board.
 - Choose a comparison board's size (Auto, 16:10, OG 1200 × 630, Square), gap, background
   (including transparent), and a generated footer line.
+- Show the current background, theme and font in the inspector's section headers.
+- Show a watched file as a Live chip under the code header, with its name and its
+  reload and stop actions, and add those actions to the command palette.
+- State in the inspector that captures render locally.
+- Scroll an inspector section into view when it opens.
 
 ### Changed
 
@@ -41,6 +59,9 @@ can never drift.
 
 ### Fixed
 
+- Keep accent-tinted buttons readable with bright macOS accent colors, in light and
+  dark appearance.
+- Draw destructive buttons in Settings in red, so they no longer look like routine actions.
 - Keep the editor preview's accessible text in sync when the source changes.
 - Preserve the selected code font and size in styled syntax tokens, including
   comments and Markdown emphasis in carousel and image exports.

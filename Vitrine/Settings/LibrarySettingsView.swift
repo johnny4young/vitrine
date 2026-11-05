@@ -92,7 +92,7 @@ struct StylePresetsSection: View {
                         saveName = settings.config.theme.displayName
                         showSavePrompt = true
                     }
-                    .buttonStyle(.borderedProminent)
+                    .accentProminentButtonStyle()
                     .help("Save the default style as a new named preset you can reuse.")
                     .accessibilityIdentifier("save-style-preset-button")
 
@@ -210,6 +210,7 @@ struct StylePresetsSection: View {
                         pendingDeletion = preset
                     }
                 }
+                .tint(VitrineTokens.Accent.destructiveText)
                 .help("Delete this saved preset. Built-in presets can't be deleted.")
                 .disabled(!canEdit)
                 .accessibilityIdentifier("delete-style-preset-button")
@@ -375,7 +376,7 @@ struct CustomThemesSection: View {
     private var themeActionButtons: some View {
         HStack(spacing: VitrineTokens.Spacing.xs) {
             Button("New Theme…") { editorDraft = CustomThemeDraft() }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .help("Create a custom syntax theme with a live preview.")
                 .accessibilityIdentifier("new-custom-theme-button")
 
@@ -432,6 +433,7 @@ struct CustomThemesSection: View {
                         pendingDeletion = theme
                     }
                 }
+                .tint(VitrineTokens.Accent.destructiveText)
                 .help("Delete this custom theme.")
                 .disabled(theme == nil)
                 .accessibilityIdentifier("delete-custom-theme-button")

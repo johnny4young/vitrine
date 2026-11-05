@@ -91,7 +91,7 @@ struct WelcomeView: View {
         .frame(minWidth: 480, idealWidth: 700, maxWidth: 700)
         .frame(minHeight: 360, idealHeight: 770)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityContainerIdentifier("welcome-view")
         // Help and Settings have their own recorders; re-read when returning here.
         .onReceive(
@@ -258,7 +258,7 @@ struct WelcomeView: View {
                 Button(action: runSampleCapture) {
                     Label("Try a sample capture", systemImage: "wand.and.stars")
                 }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .accessibilityIdentifier("welcome-sample-capture-button")
 
                 Button("Open the editor", action: openSampleEditor)

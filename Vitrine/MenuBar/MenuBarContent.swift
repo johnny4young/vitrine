@@ -36,6 +36,7 @@ struct MenuBarContent: View {
         VStack(alignment: .leading, spacing: 13) {
             header
             captureCTA
+            captureSummary
             presetCaptureMenu
             lastCaptureStatus
             recentsSection
@@ -45,8 +46,8 @@ struct MenuBarContent: View {
         .padding(14)
         .frame(width: 340)
         // Controls follow the user's macOS accent; `Color.accentColor` is the app's
-        // brand asset in this repo, so force the AppKit system token.
-        .tint(VitrineTokens.Accent.system)
+        // brand asset in this repo, so use the token that reads the system accent.
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityContainerIdentifier("menubar-panel")
         .onExitCommand {
             dismiss()
@@ -149,6 +150,30 @@ struct MenuBarContent: View {
         }
     }
 
+    /// What the capture button will produce, updated live as the theme or clipboard changes.
+    /// The row is always laid out because AppKit sizes the popover only when it opens.
+    private var captureSummary: some View {
+        let summary = MenuBarCaptureSummary.make(
+            content: panelState.clipboard,
+            themeName: settings.config.theme.displayName,
+            destination: settings.selectedPreset,
+            capturesURLs: settings.treatURLsAsScreenshot && NetworkCapability.isURLCaptureEnabled)
+        return ViewThatFits(in: .horizontal) {
+            Text(verbatim: summary?.line ?? " ")
+            Text(verbatim: summary?.lineWithoutTheme ?? " ")
+        }
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .foregroundStyle(VitrineTokens.Text.tertiary)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity)
+        .padding(.top, -4)
+        .help(summary?.line ?? "")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: summary?.accessibilityLabel ?? ""))
+        .accessibilityHidden(summary == nil)
+        .accessibilityIdentifier("menu-capture-summary")
+    }
+
     /// The last capture outcome plus any inline recovery actions.
     /// Hidden until a capture has run, so a clean launch shows no stale status.
     @ViewBuilder private var lastCaptureStatus: some View {
@@ -185,7 +210,7 @@ struct MenuBarContent: View {
                 } label: {
                     Text("View All →")
                         .font(.system(size: VitrineTokens.FontSize.caption))
-                        .foregroundStyle(VitrineTokens.Accent.system)
+                        .foregroundStyle(VitrineTokens.Accent.systemText)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("menu-recents-gallery")
@@ -231,7 +256,7 @@ struct MenuBarContent: View {
                 dismiss()
             } label: {
                 Text("Turn on Save capture history in Settings ▸ Export.")
-                    .foregroundStyle(VitrineTokens.Accent.system)
+                    .foregroundStyle(VitrineTokens.Accent.systemText)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("menu-history-off-settings")
@@ -266,7 +291,7 @@ struct MenuBarContent: View {
                 } label: {
                     Label("Surprise Me", systemImage: "dice")
                         .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
-                        .foregroundStyle(VitrineTokens.Accent.system)
+                        .foregroundStyle(VitrineTokens.Accent.systemText)
                 }
                 .buttonStyle(.plain)
                 .help("Apply the next curated style without changing your code")

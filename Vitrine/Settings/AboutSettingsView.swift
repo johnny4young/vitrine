@@ -42,7 +42,7 @@ struct AboutSettingsView: View {
                 if let repository = VitrineLinks.githubRepository {
                     Link("GitHub", destination: repository)
                         .font(.system(size: VitrineTokens.FontSize.body))
-                        .foregroundStyle(VitrineTokens.Accent.system)
+                        .foregroundStyle(VitrineTokens.Accent.systemText)
                         .padding(.top, 4)
                 }
 
