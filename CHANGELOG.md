@@ -20,6 +20,8 @@ can never drift.
 - See five copyable recipe commands with their free or PRO access, and the order in which
   defaults, recipes and flags override each other.
 - Deleting a counter renumbers the badges above it, so they stay in order.
+- The multi-size sheet shows an estimated total for the selected sizes, measured from real
+  renders, except for very large documents.
 - Show what the next capture will be under the menu bar's capture button: language, line
   count, theme and destination. Language and lines appear only when System Settings always
   allows Vitrine to read the clipboard; otherwise the panel leaves the contents unread.

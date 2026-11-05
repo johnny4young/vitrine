@@ -7,11 +7,17 @@ import VitrineRendering
 /// Splitting and per-slide configs live in `CarouselPaginator`; rendering in
 /// `ExportManager.exportCarousel` — this view only collects the choices.
 struct CarouselExportView: View {
-    /// Everything that changes the rendered slides, so the size estimate follows it.
     private struct Choices: Equatable {
         var linesPerSlide = CarouselPaginator.defaultLinesPerSlide
         var prefersBlankLineBreaks = true
         var cues: CarouselPaginator.Cues
+    }
+
+    /// Everything that changes the rendered slides, so the size estimate follows it.
+    private struct EstimateInput: Equatable {
+        var choices: Choices
+        var config: SnapshotConfig
+        var profile: ColorProfile
     }
 
     /// What the planned file names depend on.
@@ -110,7 +116,9 @@ struct CarouselExportView: View {
             }
         )
         .interactiveDismissDisabled(isExporting)
-        .task(id: choices) { await refreshSizeEstimate() }
+        .task(id: EstimateInput(choices: choices, config: baseConfig, profile: profile)) {
+            await refreshSizeEstimate()
+        }
         .task(id: OutputPlan(folder: folder, slideCount: pages.count)) {
             refreshPlannedFilenames()
         }
@@ -180,7 +188,10 @@ struct CarouselExportView: View {
     }
 
     private var outputControls: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        // Paginated once here: every line below needs only the count.
+        let slideCount = pages.count
+        let estimatedBytes = bytesPerSlide.map { $0 * slideCount }
+        return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
                 folderLabel
                     .lineLimit(1)
@@ -191,12 +202,25 @@ struct CarouselExportView: View {
                     .controlSize(.small)
                     .accessibilityIdentifier("carousel-folder-change")
             }
-            Text(verbatim: outputLine)
-                .font(.system(size: VitrineTokens.FontSize.caption))
-                .foregroundStyle(VitrineTokens.Text.secondary)
-                .monospacedDigit()
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityIdentifier("carousel-output-summary")
+            // A hidden copy holds room for the size, so its arrival cannot add a line.
+            ZStack(alignment: .topLeading) {
+                Text(
+                    verbatim: outputLine(
+                        slideCount: slideCount, estimatedBytes: estimatedBytes ?? 999_000_000)
+                )
+                .hidden()
+                Text(verbatim: outputLine(slideCount: slideCount, estimatedBytes: estimatedBytes))
+                    .accessibilityLabel(
+                        Text(
+                            verbatim: spokenOutputLine(
+                                slideCount: slideCount, estimatedBytes: estimatedBytes))
+                    )
+                    .accessibilityIdentifier("carousel-output-summary")
+            }
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .foregroundStyle(VitrineTokens.Text.secondary)
+            .monospacedDigit()
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -228,19 +252,29 @@ struct CarouselExportView: View {
         }
     }
 
-    private var outputLine: String {
-        let count = pages.count
-        guard count > 0 else { return "" }
-        let filenames =
-            plannedFilenames.count == count
-            ? plannedFilenames : CarouselPaginator.plannedFilenames(slideCount: count, in: nil)
+    private func outputLine(slideCount: Int, estimatedBytes: Int?) -> String {
+        guard slideCount > 0 else { return "" }
         let summary = CarouselPaginator.outputSummary(
-            filenames: filenames, estimatedBytes: bytesPerSlide.map { $0 * count })
+            filenames: outputFilenames(slideCount: slideCount), estimatedBytes: estimatedBytes)
         return summary + " · " + String(localized: "Existing files are kept")
+    }
+
+    private func spokenOutputLine(slideCount: Int, estimatedBytes: Int?) -> String {
+        guard slideCount > 0 else { return "" }
+        let summary = CarouselPaginator.spokenOutputSummary(
+            filenames: outputFilenames(slideCount: slideCount), estimatedBytes: estimatedBytes)
+        return summary + ", " + String(localized: "Existing files are kept")
+    }
+
+    private func outputFilenames(slideCount: Int) -> [String] {
+        plannedFilenames.count == slideCount
+            ? plannedFilenames : CarouselPaginator.plannedFilenames(slideCount: slideCount, in: nil)
     }
 
     /// Waits out a stepper run before rendering, since the sample renders on the main actor.
     private func refreshSizeEstimate() async {
+        // The old sample described other slides, so the size is left out until the new one.
+        bytesPerSlide = nil
         try? await Task.sleep(for: .milliseconds(300))
         guard !Task.isCancelled else { return }
         let estimate = await ExportManager.estimatedCarouselSlideBytes(
