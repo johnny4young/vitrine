@@ -73,6 +73,9 @@ struct EditorInspectorView: View {
                 } else {
                     themeSection
                     typographySection
+                    if settings.style.language == .terminal {
+                        terminalSection
+                    }
                 }
                 canvasSection
 
@@ -178,6 +181,9 @@ struct EditorInspectorView: View {
                         label: Text("Header"), identifier: "inspector-disclosure-header",
                         isExpanded: $showHeader
                     ) {
+                        if settings.style.language == .terminal, !settings.style.usesImageContent {
+                            TerminalContextChips(settings: settings)
+                        }
                         MetadataFields(settings: settings)
                     }
                     .id("inspector-disclosure-header")
@@ -360,6 +366,23 @@ struct EditorInspectorView: View {
                     label: "Font size", value: $settings.style.fontSize,
                     range: SettingsDefaults.fontSizeRange,
                     step: 1, identifier: "font-size-slider", width: 92)
+            }
+        }
+    }
+
+    private var terminalSection: some View {
+        InspectorSection(title: Text("Terminal")) {
+            InspectorRow(label: Text("ANSI palette")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (TerminalPaletteMode.theme, Text("Theme")),
+                        (TerminalPaletteMode.raw, Text("Raw")),
+                    ],
+                    selection: $settings.style.terminalPalette
+                )
+                .help("Raw uses the standard xterm colors, lifted only where they would vanish.")
+                .accessibilityLabel("ANSI palette")
+                .accessibilityIdentifier("terminal-palette-picker")
             }
         }
     }

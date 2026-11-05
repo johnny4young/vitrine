@@ -229,6 +229,7 @@ extension CLIArgumentParser {
             let codeOnlyOptionsRequested =
                 themeID != nil || languageID != nil || fontName != nil || fontLigatures != nil
                 || fontSize != nil || terminalColumns != nil || wrapColumns != nil || formatCode
+                || terminalPalette != nil
                 || metadataFilename != nil || metadataTitle != nil
                 || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
@@ -282,6 +283,10 @@ extension CLIArgumentParser {
             if wrapColumns != nil {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --wrap-columns.")
+            }
+            if terminalPalette != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with --terminal-palette.")
             }
             if styleOptionsRequested || themeID != nil {
                 throw CLIError.incompatibleOptions(
@@ -390,6 +395,7 @@ extension CLIArgumentParser {
             cornerRadius: cornerRadius,
             shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,
+            terminalPalette: terminalPalette,
             wrapColumns: wrapColumns,
             formatCode: formatCode,
             format: resolvedFormat,
