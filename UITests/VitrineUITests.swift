@@ -2160,8 +2160,10 @@ final class VitrineUITests: XCTestCase {
             return false
         }
 
-        // The sign of a horizontal delta follows the system's scroll direction.
+        // The sign of a horizontal delta follows the system's scroll direction. Wheel events
+        // go where the pointer is, so bring it over the row first.
         let start = chip.frame.minX
+        row.hover()
         row.scroll(byDeltaX: -120, deltaY: 0)
         if !moved(from: start) { row.scroll(byDeltaX: 120, deltaY: 0) }
         XCTAssertTrue(moved(from: start), "A pointer scroll did not move the row")
