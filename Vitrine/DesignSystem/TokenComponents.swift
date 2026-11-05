@@ -306,8 +306,8 @@ struct TokenTextField: View {
 nonisolated struct ChipScrollExtent: Equatable {
     /// The width of the edge fades, reserved after the last chip so it clears them.
     static let fadeWidth: CGFloat = 26
-    /// The strip's normal breathing room at each end.
-    /// Holds a hovered chip's selected glow: the scroll view clips anything past it.
+    /// The strip's normal breathing room at each end, which also holds a hovered chip's
+    /// selected glow: the scroll view clips anything past it.
     static let edgeInset: CGFloat = 5
 
     var offset: CGFloat = 0

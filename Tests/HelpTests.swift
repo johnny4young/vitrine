@@ -442,7 +442,7 @@ struct HelpTopicActionTests {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         let promises: [(HelpAction, String, String)] = [
-            (.settings(.general), "GeneralSettingsView", "Recorder(for: .quickCapture)"),
+            (.settings(.general), "GeneralSettingsView", "GlobalHotkeySettingsRows("),
             (.settings(.library), "LibrarySettingsView", "StylePresetsSection("),
             (.settings(.style), "StyleSettingsView", "DestinationSegmentedPicker("),
             (.settings(.input), "InputSettingsView", "WebCaptureConsentRow("),
