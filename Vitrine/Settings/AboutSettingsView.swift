@@ -236,19 +236,11 @@ struct AboutSettingsView: View {
                 .foregroundStyle(VitrineTokens.Text.secondary)
                 .accessibilityIdentifier("store-pro-status")
                 if !entitlements.isPro {
-                    Button("Restore Purchases") {
-                        Task {
-                            isRestoring = true
-                            restoreMessage = nil
-                            if !(await entitlements.restorePurchases()) {
-                                restoreMessage = String(
-                                    localized: "No previous purchase was found.")
-                            }
-                            isRestoring = false
-                        }
-                    }
+                    RestorePurchasesButton(
+                        entitlements: entitlements, isWorking: $isRestoring,
+                        notice: $restoreMessage
+                    )
                     .buttonStyle(.bordered)
-                    .disabled(isRestoring)
                     .accessibilityIdentifier("store-restore-button")
                 }
                 if let restoreMessage {
