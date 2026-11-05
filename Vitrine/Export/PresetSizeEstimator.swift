@@ -66,6 +66,10 @@ final class PresetSizeEstimator {
         try? await Task.sleep(for: debounce)
         for preset in missing {
             guard !Task.isCancelled, run == currentRun else { return }
+            // A replaced run may have finished this preset during the debounce.
+            guard measuredBytes[preset.id] == nil, !failedPresets.contains(preset.id) else {
+                continue
+            }
             let bytes = await measurePreset(preset, input)
             // A result stays valid for its input, even if the run that asked was replaced.
             guard self.input == input else { return }

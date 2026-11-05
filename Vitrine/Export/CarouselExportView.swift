@@ -206,7 +206,8 @@ struct CarouselExportView: View {
             ZStack(alignment: .topLeading) {
                 Text(
                     verbatim: outputLine(
-                        slideCount: slideCount, estimatedBytes: estimatedBytes ?? 999_000_000)
+                        slideCount: slideCount,
+                        estimatedBytes: estimatedBytes ?? ExportSizeEstimate.widestBytes)
                 )
                 .hidden()
                 Text(verbatim: outputLine(slideCount: slideCount, estimatedBytes: estimatedBytes))

@@ -3,7 +3,11 @@ import VitrineDomain
 
 /// A size shown before any file exists. It comes from real renders, and the mark says the
 /// files themselves are not written yet.
-nonisolated enum ExportSizeEstimate {
+enum ExportSizeEstimate {
+    /// Shown at least as wide as any estimate from 1 kB up, so a hidden copy can hold room
+    /// for one. A rendered image is never smaller.
+    static let widestBytes = 888_800_000
+
     static func shown(_ bytes: Int) -> String {
         "~" + Int64(bytes).formatted(.byteCount(style: .file))
     }

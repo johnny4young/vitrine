@@ -160,6 +160,21 @@ struct ExportSizeEstimateTests {
         #expect(fake.requested == two.map(\.id))
     }
 
+    @Test func aPresetMeasuredDuringTheDebounceIsNotRenderedAgain() async throws {
+        let fake = FakeMeasure()
+        fake.isHeld = true
+        let estimator = PresetSizeEstimator(debounce: .milliseconds(300)) { await fake($0, $1) }
+        let first = Task { await estimator.measure(two, for: input()) }
+        await waitForRequests(1, fake)
+
+        let second = Task { await estimator.measure(two, for: input()) }
+        try await Task.sleep(for: .milliseconds(50))
+        fake.release()
+        await first.value
+        await second.value
+        #expect(fake.requested == two.map(\.id))
+    }
+
     @Test func aDocumentAboveTheLimitIsNotRendered() async {
         let fake = FakeMeasure()
         let estimator = estimator(fake)
@@ -226,6 +241,16 @@ struct ExportSizeEstimateTests {
         #expect(summary.spokenText.hasSuffix(size))
         #expect(!summary.spokenText.contains("~"))
         #expect(!summary.spokenText.contains("·"))
+    }
+
+    @Test func theReservedSizeIsAsWideAsAnyEstimate() {
+        let reserved = ExportSizeEstimate.shown(ExportSizeEstimate.widestBytes).count
+        for exponent in 3...10 {
+            for mantissa in [1.0, 1.23, 4.56, 7.89, 9.99] {
+                let bytes = Int(mantissa * pow(10, Double(exponent)))
+                #expect(ExportSizeEstimate.shown(bytes).count <= reserved, "\(bytes)")
+            }
+        }
     }
 
     @Test func aSpokenEstimateIsTranslated() throws {
