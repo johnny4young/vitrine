@@ -33,6 +33,7 @@ final class EditorSession {
     var appliedRecipeID: UUID?
     /// This window's preset thumbnails, fed from the same debounced code as the preview.
     let presetThumbnails = PresetThumbnailModel()
+    let carouselSplit = CarouselSplitModel()
 
     /// Creates a session for `identity` with its own ephemeral settings.
     ///

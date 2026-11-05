@@ -49,7 +49,10 @@ extension EditorView {
                         reindentOnPaste: environment.appSettings.reindentOnPaste,
                         pasteFromClipboard: pasteFromClipboard,
                         beginPastedDocument: beginPastedDocument,
-                        leaveAnnotationContext: leaveAnnotationContext)
+                        leaveAnnotationContext: leaveAnnotationContext,
+                        carouselSplit: session.carouselSplit,
+                        thumbnails: session.presetThumbnails,
+                        entitlements: entitlements)
                 }
             }
         }
@@ -932,6 +935,9 @@ private struct CodeDocumentEditor: View {
     let pasteFromClipboard: () -> Void
     let beginPastedDocument: (String) -> LanguageDetector.Interpretation
     let leaveAnnotationContext: () -> Void
+    let carouselSplit: CarouselSplitModel
+    let thumbnails: PresetThumbnailModel
+    let entitlements: Entitlements
 
     var body: some View {
         CodeEditorView(
@@ -943,8 +949,15 @@ private struct CodeDocumentEditor: View {
             fontLigatures: settings.style.fontLigatures,
             reindentOnPaste: reindentOnPaste,
             onReplaceAllPaste: beginPastedDocument,
-            onUserEdit: leaveAnnotationContext
+            onUserEdit: leaveAnnotationContext,
+            slideDividers: carouselSplit.dividers,
+            slideDividerRevision: carouselSplit.dividerRevision
         )
+        .background {
+            SlideDividerRefresher(
+                settings: settings, model: carouselSplit, thumbnails: thumbnails,
+                entitlements: entitlements)
+        }
         .overlay {
             if settings.documentIsEmpty {
                 // The overlay is non-interactive except for its "Paste Code" button
@@ -966,6 +979,32 @@ private struct CodeDocumentEditor: View {
                 )
             }
         }
+    }
+}
+
+/// Childless, and it reads the document only while dividers are on and only once settled, so
+/// a keystroke never re-evaluates it.
+private struct SlideDividerRefresher: View {
+    let settings: AppSettings
+    let model: CarouselSplitModel
+    let thumbnails: PresetThumbnailModel
+    let entitlements: Entitlements
+
+    private struct Input: Equatable {
+        let code: String?
+        let split: CarouselSplit
+    }
+
+    var body: some View {
+        let code = model.dividerSource(
+            style: settings.style, isUnlocked: entitlements.isUnlocked(.carouselExport),
+            thumbnails: thumbnails, documentGeneration: settings.documentGeneration)
+        Color.clear
+            .frame(width: 0, height: 0)
+            .task(id: Input(code: code, split: model.split)) {
+                await model.refreshDividers(code: code)
+            }
+            .accessibilityHidden(true)
     }
 }
 

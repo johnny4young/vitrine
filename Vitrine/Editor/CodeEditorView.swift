@@ -22,6 +22,8 @@ struct CodeEditorView: NSViewRepresentable {
     }
     /// Called on each user edit, so a draw tool or selected mark stops owning ⌘Z.
     var onUserEdit: () -> Void = {}
+    var slideDividers: [SlideDivider] = []
+    var slideDividerRevision = 0
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -100,6 +102,10 @@ struct CodeEditorView: NSViewRepresentable {
             // Theme/language/font changed: recolor now (text edits are debounced).
             coordinator.applyHighlight(to: textView)
         }
+        if coordinator.appliedDividerRevision != slideDividerRevision {
+            coordinator.appliedDividerRevision = slideDividerRevision
+            (textView as? CodeTextView)?.slideDividers = slideDividers
+        }
     }
 
     static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {
@@ -122,6 +128,7 @@ struct CodeEditorView: NSViewRepresentable {
         private var appliedFontSize: Double?
         private var appliedFontLigatures: Bool?
         private var appliedMode: HighlightMode?
+        var appliedDividerRevision = 0
 
         /// The inputs that decide the text view's font and tab stops.
         struct FontInputs: Equatable {
@@ -262,6 +269,7 @@ struct CodeEditorView: NSViewRepresentable {
             textView.insertionPointColor =
                 hasContent
                 ? NSColor(VitrineTokens.Text.readable(on: background)) : .textColor
+            (textView as? CodeTextView)?.slideDividerColor = textView.insertionPointColor
         }
 
         func textDidChange(_ notification: Notification) {
@@ -347,6 +355,76 @@ final class CodeTextView: NSTextView {
     /// the *entire* document (a select-all paste, or a paste into an empty editor),
     /// which the editor treats as a new capture.
     var onPaste: ((_ replacedEntireDocument: Bool) -> Void)?
+
+    /// Painted under the text: the storage, the selection and undo never see them.
+    var slideDividers: [SlideDivider] = [] {
+        didSet {
+            guard slideDividers != oldValue else { return }
+            dividersByOffset = Dictionary(
+                slideDividers.map { ($0.offset, $0) }, uniquingKeysWith: { first, _ in first })
+            setNeedsDisplay(visibleRect)
+        }
+    }
+    var slideDividerColor: NSColor = .tertiaryLabelColor
+    private var dividersByOffset: [Int: SlideDivider] = [:]
+
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
+        guard !dividersByOffset.isEmpty else { return }
+        drawSlideDividers()
+    }
+
+    /// Asks only the laid-out fragments in the viewport, so the cost follows the window's
+    /// height and not the document's.
+    private func drawSlideDividers() {
+        guard let manager = textLayoutManager, let content = manager.textContentManager,
+            let viewport = manager.textViewportLayoutController.viewportRange
+        else { return }
+        let top = textContainerOrigin.y
+        let start = content.documentRange.location
+        manager.enumerateTextLayoutFragments(from: viewport.location) { fragment in
+            let location = fragment.rangeInElement.location
+            guard location.compare(viewport.endLocation) == .orderedAscending else { return false }
+            if let divider = dividersByOffset[content.offset(from: start, to: location)] {
+                drawSlideDivider(divider, atY: (fragment.layoutFragmentFrame.minY + top).rounded())
+            }
+            return true
+        }
+    }
+
+    private func drawSlideDivider(_ divider: SlideDivider, atY y: CGFloat) {
+        let label = NSAttributedString(
+            string: String(
+                localized: "slide \(divider.slideNumber) · lines \(divider.lineRange)"),
+            attributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 9, weight: .medium),
+                .foregroundColor: slideDividerColor.withAlphaComponent(0.75),
+            ])
+        let size = label.size()
+        let inset = textContainerInset.width
+        slideDividerColor.withAlphaComponent(0.45).setFill()
+        NSRect(x: inset, y: y, width: bounds.width - 2 * inset, height: 1).fill()
+        // Above the rule: the end of a slide's last line is the likeliest empty spot.
+        label.draw(at: NSPoint(x: bounds.maxX - inset - size.width, y: y - size.height))
+    }
+
+    override func shouldChangeText(in range: NSRange, replacementString: String?) -> Bool {
+        guard super.shouldChangeText(in: range, replacementString: replacementString) else {
+            return false
+        }
+        if !slideDividers.isEmpty, let replacementString {
+            slideDividers = slideDividers.compactMap {
+                $0.shifted(replacing: range, with: replacementString)
+            }
+        }
+        return true
+    }
+
+    override func didChangeText() {
+        super.didChangeText()
+        // A new line moves every divider below it, past the rect the edit redraws.
+        if !slideDividers.isEmpty { setNeedsDisplay(visibleRect) }
+    }
 
     override func paste(_ sender: Any?) {
         // Measure the replacement target *before* the paste mutates the text.

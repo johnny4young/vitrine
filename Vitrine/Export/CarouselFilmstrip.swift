@@ -2,6 +2,44 @@ import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
+/// A window's split choices, and the dividers they put in its code editor when asked for.
+/// Window state only: nothing here reaches the document, its history or an export's text.
+@Observable
+final class CarouselSplitModel {
+    var split = CarouselSplit()
+    var showsDividers = false
+    private(set) var dividers: [SlideDivider] = []
+    /// Moves with every settled split, even an equal one: the text view's copy has been
+    /// shifted by edits since, and an edit undone can leave it out of step with `dividers`.
+    private(set) var dividerRevision = 0
+
+    /// The settled text dividers follow, or `nil` when the editor must show none: turned off,
+    /// no longer unlocked, a capture the carousel refuses, or text from a replaced document.
+    func dividerSource(
+        style: SnapshotConfig, isUnlocked: Bool, thumbnails: PresetThumbnailModel,
+        documentGeneration: Int
+    ) -> String? {
+        guard showsDividers, isUnlocked, !style.usesImageContent,
+            EditorView.carouselAccepts(style), thumbnails.stagedGeneration == documentGeneration
+        else { return nil }
+        return thumbnails.stagedCode
+    }
+
+    func refreshDividers(code: String?) async {
+        guard let code else {
+            if !dividers.isEmpty {
+                dividers = []
+                dividerRevision += 1
+            }
+            return
+        }
+        let dividers = await split.dividers(in: code)
+        guard !Task.isCancelled else { return }
+        self.dividers = dividers
+        dividerRevision += 1
+    }
+}
+
 /// The slide tiles shown before anything is written, each one the export's own config through
 /// the export's own renderer at a smaller scale. Only tiles on screen render, one per frame,
 /// after a quiet window, and any change cancels the pass.

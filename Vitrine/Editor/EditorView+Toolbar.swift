@@ -442,7 +442,8 @@ extension EditorView {
                 baseConfig: settings.exportConfig,
                 profile: settings.export.colorProfile,
                 feedback: session.feedback,
-                presentation: session.presentation.batchExport)
+                presentation: session.presentation.batchExport,
+                splitModel: session.carouselSplit)
         case .carouselPaywall:
             PaywallSheet(feature: .carouselExport, entitlements: entitlements)
         case .automationPaywall:
