@@ -1,6 +1,127 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Open Settings ▸ %@" : {
+      "comment" : "A Help button that opens one Settings pane. The argument is the pane's sidebar title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes ▸ %@"
+          }
+        }
+      }
+    },
+    "Show more" : {
+      "comment" : "Button that pages a horizontally scrolling chip row forward.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver más"
+          }
+        }
+      }
+    },
+    "Back to start" : {
+      "comment" : "Button that returns a horizontally scrolling chip row to its start.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver al inicio"
+          }
+        }
+      }
+    },
+    "Private history." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historial privado."
+          }
+        }
+      }
+    },
+    "No default hotkey." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin atajo predeterminado."
+          }
+        }
+      }
+    },
+    "Ready for your docs." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo para tu documentación."
+          }
+        }
+      }
+    },
+    "Safer command line." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea de comandos más segura."
+          }
+        }
+      }
+    },
+    "Services menu fixed." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menú Servicios corregido."
+          }
+        }
+      }
+    },
+    "Truer terminal captures." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de terminal más fieles."
+          }
+        }
+      }
+    },
+    "Now in Spanish." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora en español."
+          }
+        }
+      }
+    },
+    "Same macOS support." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mismo soporte de macOS."
+          }
+        }
+      }
+    },
     "Changed" : {
       "comment" : "Code header chip: the watched file has a saved change waiting.",
       "localizations" : {
@@ -7816,13 +7937,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Code rendering stays on your Mac and needs no account, Screen Recording, or Accessibility-control permission. The direct-download build uses the network only for requested web content, updates, or license activation; the App Store build has no network-client entitlement."
+            "value" : "Code rendering stays on your Mac and needs no account, Screen Recording, or Accessibility-control permission. The direct-download build uses the network only for requested web content, updates, or license activation; the App Store build has no network-client entitlement. Review network use in Settings ▸ Input."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El código se procesa en tu Mac sin cuenta ni permisos de grabación de pantalla o control de Accesibilidad. La versión de descarga directa usa la red solo para contenido web solicitado, actualizaciones o activación; la de App Store no tiene permiso de cliente de red."
+            "value" : "El código se procesa en tu Mac sin cuenta ni permisos de grabación de pantalla o control de Accesibilidad. La versión de descarga directa usa la red solo para contenido web solicitado, actualizaciones o activación; la de App Store no tiene permiso de cliente de red. Revisa el uso de red en Ajustes ▸ Entrada."
           }
         }
       }

@@ -302,102 +302,208 @@ struct TokenTextField: View {
     }
 }
 
-/// A horizontally scrolling chip strip (`.hscroll`): 7 pt gaps, hidden scroller, and a
-/// 26 pt fade-out on the trailing edge hinting at more.
+/// How far a chip strip can scroll and where it is, in the scroll view's own offsets.
+nonisolated struct ChipScrollExtent: Equatable {
+    /// The width of the edge fades, reserved after the last chip so it clears them.
+    static let fadeWidth: CGFloat = 26
+    /// The strip's normal breathing room at each end.
+    static let edgeInset: CGFloat = 2
+
+    var offset: CGFloat = 0
+    var visibleWidth: CGFloat = 0
+    var chipsWidth: CGFloat = 0
+
+    /// The reserved trailing inset is excluded: counting it would report overflow for a
+    /// strip that fits exactly. The 0.5 pt slack absorbs fractional layout rounding.
+    var overflows: Bool { chipsWidth + Self.edgeInset > visibleWidth + 0.5 }
+
+    private var startOffset: CGFloat { -Self.edgeInset }
+    private var endOffset: CGFloat {
+        max(startOffset, chipsWidth + Self.fadeWidth - visibleWidth)
+    }
+
+    var edges: ChipScrollEdges {
+        ChipScrollEdges(
+            overflows: overflows,
+            hidesLeading: overflows && offset > startOffset + 1,
+            hidesTrailing: overflows && offset < endOffset - 1)
+    }
+
+    /// One page on, keeping the chips under the fades in view; at the end, back to the start.
+    /// In `ScrollPosition.scrollTo(x:)` terms, which count from the chips, not the margin.
+    var nextScrollX: CGFloat {
+        guard edges.hidesTrailing else { return 0 }
+        return min(endOffset, offset + visibleWidth - 2 * Self.fadeWidth) + Self.edgeInset
+    }
+}
+
+/// What a chip strip's cue shows. Kept apart from the offset so scrolling redraws the
+/// strip only when an edge changes.
+nonisolated struct ChipScrollEdges: Equatable {
+    var overflows = false
+    var hidesLeading = false
+    var hidesTrailing = false
+}
+
+/// A chip strip's scroll state, shared with its chips by identity. The live extent is not
+/// observed, so scrolling redraws nothing until an edge changes.
+@Observable
+final class ChipScrollModel {
+    var position = ScrollPosition(idType: String.self)
+    var edges = ChipScrollEdges()
+    @ObservationIgnored var extent = ChipScrollExtent()
+
+    func track(_ new: ChipScrollExtent) {
+        extent = new
+        if edges != new.edges { edges = new.edges }
+    }
+
+    func scroll(animated: Bool, _ change: (inout ScrollPosition) -> Void) {
+        withAnimation(animated ? .easeOut(duration: 0.2) : nil) { change(&position) }
+    }
+}
+
+extension EnvironmentValues {
+    @Entry var chipScrollModel: ChipScrollModel?
+}
+
+extension View {
+    /// Marks a chip of a `ChipScroll` so selecting it brings it clear of the edge fades.
+    func chipScrollItem(id: String, isSelected: Bool) -> some View {
+        modifier(ChipScrollItem(id: id, isSelected: isSelected))
+    }
+}
+
+private struct ChipScrollItem: ViewModifier {
+    let id: String
+    let isSelected: Bool
+
+    @Environment(\.chipScrollModel) private var model
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isClearOfFades = false
+
+    func body(content: Content) -> some View {
+        let fadeWidth = ChipScrollExtent.fadeWidth
+        return
+            content
+            .id(id)
+            .onGeometryChange(for: Bool.self) { proxy in
+                guard let visible = proxy.bounds(of: .scrollView) else { return false }
+                let clear = visible.insetBy(dx: fadeWidth, dy: 0)
+                return clear.minX <= 0 && proxy.size.width <= clear.maxX
+            } action: {
+                isClearOfFades = $0
+            }
+            .onAppear { reveal(animated: false) }
+            .onChange(of: isSelected) { reveal(animated: !reduceMotion) }
+            // Overflow is first known after layout, the earliest a scroll can reach a chip.
+            .onChange(of: model?.edges.overflows ?? false) { reveal(animated: false) }
+    }
+
+    private func reveal(animated: Bool) {
+        guard isSelected else { return }
+        Task {
+            // A scroll requested during the layout pass that reported this is dropped.
+            await Task.yield()
+            guard !isClearOfFades else { return }
+            model?.scroll(animated: animated) { $0.scrollTo(id: id, anchor: .center) }
+        }
+    }
+}
+
+/// A horizontally scrolling chip strip (`.hscroll`): 7 pt gaps and a hidden scroller.
 ///
-/// The fade is applied **only when the chips actually overflow**, and the strip reserves
-/// the fade's width as trailing content inset so the last chip clears it when scrolled to
-/// the end. Without those two rules a strip that fits looked clipped anyway — its final
-/// chip permanently dimmed and cut mid-word against the panel edge — which reads as a
-/// layout bug rather than "there is more this way", and left the last theme or font
-/// unreadable no matter how far the user scrolled.
+/// While chips overflow, each edge hiding chips fades and a button pages through them, so
+/// the strip also scrolls without a trackpad. Nothing is drawn when the chips fit. Reduce
+/// Transparency swaps the fades for a hard clip; the button stays opaque either way.
 struct ChipScroll<Content: View>: View {
+    /// Prefixes the button's identifier, `<name>-chip-scroll-button`.
+    let name: String
     var topPadding: CGFloat = 12
     var bottomPadding: CGFloat = 12
     @ViewBuilder var content: Content
 
-    /// The trailing fade's width; also the inset reserved for it while it is drawn, so the
-    /// two can never drift apart and re-clip the last chip.
-    private static var fadeWidth: CGFloat { 26 }
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
-    /// The strip's normal breathing room at each end.
-    private static var edgeInset: CGFloat { 2 }
+    @State private var model = ChipScrollModel()
 
-    @State private var contentWidth: CGFloat = 0
-    @State private var viewportWidth: CGFloat = 0
-
-    /// Whether any chip is actually hidden.
-    ///
-    /// Compares the chips plus the leading inset — the content that has to be visible —
-    /// against the viewport. The reserved trailing inset is deliberately excluded: it is
-    /// blank space held for the fade, and counting it would report overflow for a strip
-    /// that fits exactly and fade its last chip for nothing. The 0.5 pt slack absorbs
-    /// fractional layout rounding.
-    private var overflows: Bool { contentWidth + Self.edgeInset > viewportWidth + 0.5 }
+    private var edges: ChipScrollEdges { model.edges }
 
     var body: some View {
+        @Bindable var model = model
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 7) {
                 content
             }
-            // Measured bare, before any inset, so `contentWidth` is the chips alone. That
-            // is what keeps it independent of the padding below — and therefore what makes
-            // varying that padding safe, rather than the measure-then-resize cycle that
-            // took the capture HUD down.
-            .background(
-                GeometryReader { proxy in
-                    Color.clear.preference(key: ChipStripWidthKey.self, value: proxy.size.width)
-                }
-            )
             .padding(.top, topPadding)
             .padding(.bottom, bottomPadding)
-            .padding(.leading, Self.edgeInset)
-            // Room for the fade only while the fade is drawn; otherwise the strip would be
-            // scrollable into 26 pt of nothing.
-            .padding(.trailing, overflows ? Self.fadeWidth : Self.edgeInset)
         }
-        .onPreferenceChange(ChipStripWidthKey.self) { contentWidth = $0 }
-        .background(
-            GeometryReader { proxy in
-                Color.clear.preference(key: ChipStripViewportKey.self, value: proxy.size.width)
-            }
+        // Margins, not padding: `contentSize` then stays the chips alone, so varying the
+        // trailing one can't feed back into the overflow it depends on.
+        .contentMargins(.leading, ChipScrollExtent.edgeInset, for: .scrollContent)
+        .contentMargins(
+            .trailing, edges.overflows ? ChipScrollExtent.fadeWidth : ChipScrollExtent.edgeInset,
+            for: .scrollContent
         )
-        .onPreferenceChange(ChipStripViewportKey.self) { viewportWidth = $0 }
+        .scrollPosition($model.position)
+        .onScrollGeometryChange(for: ChipScrollExtent.self) { geometry in
+            ChipScrollExtent(
+                offset: geometry.contentOffset.x,
+                // Not `containerSize`, which shrinks with the margins this feeds.
+                visibleWidth: geometry.visibleRect.width,
+                chipsWidth: geometry.contentSize.width)
+        } action: { _, new in
+            model.track(new)
+        }
         .mask(fade)
+        .overlay(alignment: .trailing) {
+            if edges.overflows { pageButton }
+        }
+        .environment(\.chipScrollModel, model)
     }
 
-    /// Opaque across the strip, fading out over the trailing `fadeWidth` — and fully
-    /// opaque when nothing is hidden, so a complete strip is never dimmed.
-    @ViewBuilder private var fade: some View {
-        if overflows {
-            GeometryReader { proxy in
-                LinearGradient(
-                    stops: [
-                        .init(color: .black, location: 0),
-                        .init(
-                            color: .black,
-                            location: max(
-                                0,
-                                (proxy.size.width - Self.fadeWidth) / max(proxy.size.width, 1))),
-                        .init(color: .black.opacity(0), location: 1),
-                    ],
-                    startPoint: .leading, endPoint: .trailing
+    /// One button whose direction flips at the end, so it never vanishes under keyboard
+    /// focus the way a pair of edge buttons would.
+    private var pageButton: some View {
+        let label = edges.hidesTrailing ? Text("Show more") : Text("Back to start")
+        return Button {
+            let target = model.extent.nextScrollX
+            model.scroll(animated: !reduceMotion) { $0.scrollTo(x: target) }
+        } label: {
+            Image(systemName: edges.hidesTrailing ? "chevron.right" : "chevron.left")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .frame(width: 20, height: 20)
+                .background(Circle().fill(VitrineTokens.Surface.card))
+                .overlay(
+                    Circle().strokeBorder(
+                        VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
                 )
-            }
-        } else {
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("\(name)-chip-scroll-button")
+    }
+
+    /// Opaque across the strip, fading out over `fadeWidth` at each edge hiding chips.
+    private var fade: some View {
+        HStack(spacing: 0) {
+            edgeMask(fades: edges.hidesLeading, from: .leading, to: .trailing)
             Color.black
+            edgeMask(fades: edges.hidesTrailing, from: .trailing, to: .leading)
         }
     }
-}
 
-/// The measured width of a chip strip's content (the chips plus their padding).
-private struct ChipStripWidthKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
-}
-
-/// The measured width of the space a chip strip is shown in.
-private struct ChipStripViewportKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
+    @ViewBuilder
+    private func edgeMask(fades: Bool, from start: UnitPoint, to end: UnitPoint) -> some View {
+        if fades && !reduceTransparency {
+            LinearGradient(colors: [.clear, .black], startPoint: start, endPoint: end)
+                .frame(width: ChipScrollExtent.fadeWidth)
+        } else {
+            Color.black.frame(width: ChipScrollExtent.fadeWidth)
+        }
+    }
 }

@@ -409,6 +409,9 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-inspector", in: app), in: app)
         assertExists(element("style-theme-picker", in: app), in: app)
         assertExists(element("style-font-picker", in: app), in: app)
+        // Thirteen themes never fit the inspector, so the row offers its scroll button.
+        assertExists(element("theme-chip-scroll-button", in: app), in: app)
+        assertExists(element("font-chip-scroll-button", in: app), in: app)
 
         // The same launch pins the large-document mode without another app launch.
         assertExists(element("large-document-highlight-notice", in: app), in: app, timeout: 5)
@@ -1988,6 +1991,34 @@ final class VitrineUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.2)
         }
         XCTAssertEqual(query.count, count, file: file, line: line)
+    }
+
+    @MainActor
+    func testHelpTopicsOpenWhatTheyDescribe() throws {
+        let identifiers = [
+            "help-action-settings-general", "help-action-new-capture", "help-action-open-editor",
+            "help-action-settings-library", "help-action-settings-style",
+            "help-action-settings-input",
+        ]
+        var app = launch(arguments: ["--skip-onboarding", "--show-help"])
+        assertExists(element("help-view", in: app), in: app, timeout: 8)
+        for identifier in identifiers {
+            assertExists(element(identifier, in: app), in: app)
+        }
+        // The first two cards sit above the fold of the fixed-size window.
+        element("help-action-settings-general", in: app).click()
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 5)
+        app.terminate()
+
+        app = launch(arguments: ["--skip-onboarding", "--show-help"])
+        defer { app.terminate() }
+        assertExists(element("help-view", in: app), in: app, timeout: 8)
+        for _ in 0..<5 where !waitForHittableElement("help-action-open-editor", in: app, timeout: 1)
+        {
+            element("help-view", in: app).swipeUp()
+        }
+        element("help-action-open-editor", in: app).click()
+        assertExists(element("editor-toolbar", in: app), in: app, timeout: 5)
     }
 
     @MainActor

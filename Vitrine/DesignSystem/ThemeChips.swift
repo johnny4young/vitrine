@@ -187,7 +187,7 @@ struct ThemeChipPicker: View {
                 ChipFilterField(query: $query, prompt: "Filter themes")
                     .accessibilityIdentifier("theme-filter-field")
             }
-            ChipScroll(topPadding: topPadding, bottomPadding: bottomPadding) {
+            ChipScroll(name: "theme", topPadding: topPadding, bottomPadding: bottomPadding) {
                 ForEach(filteredThemes) { theme in
                     chip(for: theme)
                 }
@@ -209,5 +209,6 @@ struct ThemeChipPicker: View {
         ) {
             settings.style.theme = themes.theme(withID: theme.id)
         }
+        .chipScrollItem(id: theme.id, isSelected: settings.style.theme.id == theme.id)
     }
 }

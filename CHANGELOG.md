@@ -14,6 +14,12 @@ can never drift.
 
 ### Added
 
+- Open what a Help topic describes from a button on its card: the Settings pane it names,
+  the editor, or a capture from the clipboard.
+- What's New leads each highlight with a bold phrase, so a release scans at a glance.
+- Chip rows that overflow fade only the edges that hide chips and add a button that pages
+  through them, so they scroll without a trackpad. Selecting a theme, font, or background
+  brings its chip into view. Nothing is drawn when the chips fit.
 - Type a legend on a selected counter, or pass `--counter-label`, to list it under the
   capture. Masking is best effort: a label that looks like a secret or matches a redacted
   line or a value in blurred code is replaced, so check the legend before sharing.

@@ -760,10 +760,14 @@ For each release, add a `ReleaseNote` entry to `ReleaseNotes.all`, **newest firs
 ReleaseNote(
     version: "0.2.0",                 // must match MARKETING_VERSION
     headline: "One-line summary",
-    highlights: [
-        "A short, user-facing sentence per notable change.",
+    ledHighlights: [
+        "Bold phrase.": "A short, user-facing sentence per notable change.",
     ])
 ```
+
+The window opens each highlight with its bold phrase, so readers can scan the release.
+Keep phrases to a few words and translate both the phrase and the sentence in
+`Localizable.xcstrings`; `HelpTests` fails a newest note that leaves a phrase out.
 
 The `version` string must match the `MARKETING_VERSION` you bump in `project.yml`.
 What's New appears once when the bundled version is newer than the version the user

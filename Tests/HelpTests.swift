@@ -377,3 +377,137 @@ struct HelpCommandTests {
         }
     }
 }
+
+@MainActor
+@Suite("Help topic actions")
+struct HelpTopicActionTests {
+    private final class RouteSpy {
+        var routes: [String] = []
+
+        var navigation: HelpNavigation {
+            HelpNavigation(
+                newCapture: { self.routes.append("capture") },
+                openEditor: { self.routes.append("editor") },
+                showSettings: { self.routes.append("settings-\($0.rawValue)") })
+        }
+    }
+
+    private static var actions: [HelpAction] { HelpView.topics.flatMap(\.actions) }
+
+    @Test func everyTopicOpensSomethingAndIdentifiersAreDistinct() {
+        #expect(HelpView.topics.allSatisfy { !$0.actions.isEmpty })
+        #expect(Set(Self.actions.map(\.identifier)).count == Self.actions.count)
+    }
+
+    @Test func commandActionsRepeatARealMenuItem() throws {
+        // Menu items hold their responder weakly, and the builder owns it.
+        let appMenu = makeIsolatedAppMenu()
+        defer { withExtendedLifetime(appMenu) {} }
+        let items = appMenu.make().items.compactMap(\.submenu).flatMap(\.items)
+        let commands = Self.actions.compactMap(\.command)
+        #expect(!commands.isEmpty)
+        for command in commands {
+            let item = try #require(
+                items.first { $0.accessibilityIdentifier() == command.accessibilityIdentifier },
+                "\(command) has no menu item")
+            let action = try #require(item.action)
+            #expect(item.target?.responds(to: action) == true)
+            #expect(item.title == command.title)
+        }
+    }
+
+    /// The buttons and the copy must name the same panes, using the sidebar's own titles.
+    @Test func settingsActionsOpenThePanesTheCopyNames() throws {
+        for language in ["en", "es"] {
+            let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+            let bundle = try #require(Bundle(path: path))
+            func text(_ key: String) -> String {
+                bundle.localizedString(forKey: key, value: key, table: nil)
+            }
+            for topic in HelpView.topics {
+                let body = text(topic.body.key)
+                for case .settings(let tab) in topic.actions {
+                    let pane = "\(text("Settings")) ▸ \(text(tab.titleResource.key))"
+                    #expect(body.contains(pane), "\(topic.identifier) omits \(pane) in \(language)")
+                }
+            }
+        }
+    }
+
+    /// Each pane must still host what its topic sends people there for, in every build.
+    @Test func panesHostWhatTheirTopicsPromise() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let promises: [(HelpAction, String, String)] = [
+            (.settings(.general), "GeneralSettingsView", "Recorder(for: .quickCapture)"),
+            (.settings(.library), "LibrarySettingsView", "StylePresetsSection("),
+            (.settings(.style), "StyleSettingsView", "DestinationSegmentedPicker("),
+            (.settings(.input), "InputSettingsView", "WebCaptureConsentRow("),
+        ]
+        #expect(
+            Set(promises.map(\.0)) == Set(Self.actions.filter { $0.command == nil }),
+            "A settings action has no promise to check")
+        for (_, file, control) in promises {
+            let source = try String(
+                contentsOf: root.appendingPathComponent("Vitrine/Settings/\(file).swift"),
+                encoding: .utf8)
+            #expect(sourceCodeWithoutLineComments(source).contains(control), "\(file): \(control)")
+        }
+    }
+
+    @Test func navigationRunsTheRouteEachActionNames() {
+        let spy = RouteSpy()
+        for action in [HelpAction.newCapture, .openEditor, .settings(.library)] {
+            spy.navigation.perform(action)
+        }
+        #expect(spy.routes == ["capture", "editor", "settings-library"])
+    }
+
+    @Test func selectingATabWritesWhatTheSettingsWindowReads() {
+        let defaults = freshDefaults()
+        for tab in SettingsTab.allCases {
+            tab.select(in: defaults)
+            #expect(
+                defaults.string(forKey: SettingsTab.storageKey).flatMap(SettingsTab.init) == tab)
+        }
+    }
+}
+
+@MainActor
+@Suite("What's New bold phrases")
+struct WhatsNewLeadTests {
+    @Test func theNewestNoteLeadsEveryHighlightInEveryLanguage() throws {
+        let note = try #require(ReleaseNotes.latest)
+        #expect(note.leads.count == note.highlights.count)
+        for language in ["en", "es"] {
+            let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+            let bundle = try #require(Bundle(path: path))
+            for lead in note.leads {
+                let phrase = ReleaseNote.localized(lead, in: bundle)
+                #expect(phrase.hasSuffix("."), "\(phrase) must read as its own sentence")
+                #expect(phrase.split(separator: " ").count <= 5, "\(phrase) is too long to scan")
+            }
+        }
+    }
+
+    @Test func ledHighlightsBoldOnlyTheirPhrase() {
+        let note = ReleaseNote(
+            version: "9.9.9", headline: "Test",
+            ledHighlights: ["Lead one.": "First text.", "Lead two.": "Second text."])
+        #expect(note.highlights == ["First text.", "Second text."])
+        #expect(note.leads == ["Lead one.", "Lead two."])
+
+        let text = note.localizedLedHighlights[1]
+        #expect(String(text.characters) == "Lead two. Second text.")
+        let bold = text.runs.filter { $0.inlinePresentationIntent == .stronglyEmphasized }
+        #expect(bold.map { String(text[$0.range].characters) } == ["Lead two."])
+    }
+
+    @Test func aNoteWithoutPhrasesStaysPlain() {
+        let note = ReleaseNote(version: "9.9.9", headline: "Test", highlights: ["Only text."])
+        let text = note.localizedLedHighlights[0]
+        #expect(String(text.characters) == "Only text.")
+        #expect(text.runs.allSatisfy { $0.inlinePresentationIntent == nil })
+    }
+}

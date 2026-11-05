@@ -23,6 +23,12 @@ final class SettingsWindowManager {
         AppActivation.bringForward()
     }
 
+    /// Shows the window on `tab`, moving it there if it is already open on another pane.
+    func show(tab: SettingsTab) {
+        tab.select()
+        show()
+    }
+
     private func makeWindow() -> NSWindow {
         // Built directly (not via `NSWindow(contentViewController:)`) so the
         // hosting view never re-derives the frame: with the transparent,

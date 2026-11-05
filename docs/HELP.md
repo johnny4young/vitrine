@@ -5,7 +5,8 @@ This is the source of truth for Vitrine's in-app Help content. The Help window
 available **offline** with no web dependency. Keep this document and the in-app
 copy in step: when you change one, change the other.
 
-Open Help from the **Help ▸ Vitrine Help** menu (or press `⌘?`).
+Open Help from the **Help ▸ Vitrine Help** menu (or press `⌘?`). Each topic has a
+button that opens what it describes.
 
 ## The global hotkey
 
@@ -52,7 +53,7 @@ for an explicitly requested webpage or remote image, updates, and license
 activation; the App Store build has no network-client entitlement. A requested
 webpage loads on this Mac, but the website still receives a request. See the
 [capability reference](CAPABILITIES.md) and [permissions](PERMISSIONS.md) for
-retention, consent, and channel details.
+retention, consent, and channel details. Review network use in **Settings ▸ Input**.
 
 ## What's New
 

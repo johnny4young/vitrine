@@ -256,7 +256,8 @@ struct LocalizationTests {
             haystack.range(of: text, options: .literal).location != NSNotFound
         }
         // Release notes are concatenated in source, so their keys never appear as literals.
-        let releaseNoteText = Set(ReleaseNotes.all.flatMap { [$0.headline] + $0.highlights })
+        let releaseNoteText = Set(
+            ReleaseNotes.all.flatMap { [$0.headline] + $0.highlights + $0.leads })
         for key in catalog.strings.keys where !key.contains("%") && !releaseNoteText.contains(key) {
             let literal = key.replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\"", with: "\\\"")
@@ -268,11 +269,11 @@ struct LocalizationTests {
     }
 
     /// What's New looks every release note up by its English text, so each release must
-    /// ship its headline and highlights translated.
+    /// ship its headline, highlights, and their bold phrases translated.
     @Test func everyReleaseNoteIsTranslated() throws {
         let catalog = try decodedCatalog()
         for note in ReleaseNotes.all {
-            for text in [note.headline] + note.highlights {
+            for text in [note.headline] + note.highlights + note.leads {
                 #expect(
                     catalog.strings[text]?.localizations["es"]?.isTranslated == true,
                     "Release note \(note.version) text \"\(text)\" has no Spanish catalog entry.")

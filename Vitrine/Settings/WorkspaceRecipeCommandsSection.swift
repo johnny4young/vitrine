@@ -79,8 +79,7 @@ struct WorkspaceRecipeCommandsSection: View {
                 .foregroundStyle(VitrineTokens.Text.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
             Button("Open Shell integration") {
-                AppDefaults.current.set(
-                    SettingsTab.general.rawValue, forKey: SettingsTab.storageKey)
+                SettingsTab.general.select()
             }
             .buttonStyle(.link)
             .font(.system(size: VitrineTokens.FontSize.caption))
