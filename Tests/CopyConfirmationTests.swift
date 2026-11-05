@@ -110,35 +110,144 @@ struct CopyConfirmationTests {
         #expect(try pixels(after: .failed) == idle)
         #expect(try pixels(after: .copied) != idle)
     }
+}
 
-    @Test func theMenuCommandConfirmsARealCopyOnly() throws {
+/// The one path the Copy button, the command palette and the File menu call.
+@Suite("Editor session copy")
+struct EditorSessionCopyTests {
+    private final class FeedbackSpy {
+        var received: [Notifier.CaptureFeedback] = []
+        var display: FeedbackDisplay { FeedbackDisplay { [self] item, _ in received.append(item) } }
+    }
+
+    private func makeSession(
+        code: String = "let x = 1", feedback: FeedbackDisplay = .noOp,
+        presentation: EditorPresentation = .noOp
+    ) -> EditorSession {
         let settings = AppSettings(defaults: testDefaults())
+        settings.config.code = code
         settings.outputBehavior.closeAfterCopy = false
         settings.export.richClipboard = false
         settings.export.textSidecar = true
-        let hold = ManualHold()
-        let confirmation = CopyConfirmation(sleep: hold.sleep)
+        return EditorSession(
+            identity: EditorWindowIdentity(index: 62),
+            environment: AppEnvironment(defaults: testDefaults()),
+            feedback: feedback, presentation: presentation, settings: settings)
+    }
+
+    @Test func aSuccessCopiesReportsAndConfirms() throws {
+        let spy = FeedbackSpy()
+        let session = makeSession(feedback: spy.display)
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
 
-        // Cancelling the export check leaves nothing copied, so nothing to confirm.
+        #expect(session.copyImage(closing: nil, pasteboard: pasteboard) == nil)
+
+        #expect(pasteboard.data(forType: .png) != nil)
+        #expect(spy.received == [ExportFeedback.copyOutcome(.copied)])
+        #expect(session.copyConfirmation.isShowing)
+    }
+
+    /// A canvas past the render budget is a real failed copy, not a stubbed one.
+    @Test func aFailedCopyReportsAndClearsAnEarlierCheck() throws {
+        let spy = FeedbackSpy()
+        let session = makeSession(feedback: spy.display)
+        session.settings.outputBehavior.closeAfterCopy = true
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        session.copyConfirmation.record(.copied)
+        session.settings.config.padding = 1_000_000
+
+        let window = NSWindow()
+        window.isReleasedWhenClosed = false
+        #expect(session.copyImage(closing: window, pasteboard: pasteboard) == nil)
+
+        #expect(try #require(spy.received.first).category == .failure)
+        #expect(!session.copyConfirmation.isShowing)
+    }
+
+    @Test func cancellingTheExportCheckCopiesAndConfirmsNothing() {
+        let spy = FeedbackSpy()
         let cancelling = EditorPresentation(
             presentPin: { _ in }, presentShare: { _, _ in }, batchExport: .noOp,
             resolvePreflight: { _, _ in .cancel })
-        settings.config.code = "let a = \"gh" + "p_" + String(repeating: "x", count: 36) + "\""
-        EditorCommandResponder(settings: settings, feedback: .noOp, presentation: cancelling)
-            .copyImage(
-                from: settings, editorWindow: nil, confirmation: confirmation,
-                pasteboard: pasteboard)
-        #expect(!confirmation.isShowing)
-        #expect(pasteboard.pasteboardItems?.isEmpty ?? true)
+        let session = makeSession(
+            code: "let a = \"gh" + "p_" + String(repeating: "x", count: 36) + "\"",
+            feedback: spy.display, presentation: cancelling)
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
 
-        settings.config.code = "let x = 1"
-        EditorCommandResponder(settings: settings, feedback: .noOp, presentation: .noOp)
-            .copyImage(
-                from: settings, editorWindow: nil, confirmation: confirmation,
-                pasteboard: pasteboard)
-        #expect(confirmation.isShowing)
-        #expect(pasteboard.data(forType: .png) != nil)
+        #expect(session.copyImage(closing: nil, pasteboard: pasteboard) == nil)
+
+        #expect(pasteboard.pasteboardItems?.isEmpty ?? true)
+        #expect(spy.received.isEmpty)
+        #expect(!session.copyConfirmation.isShowing)
+    }
+}
+
+/// The primary session outlives its window, so a check must not outlive the copy's context.
+@Suite("Copy confirmation lifetime", .serialized)
+struct CopyConfirmationLifetimeTests {
+    private func makeController() -> EditorWindowController {
+        EditorWindowController(
+            environment: AppEnvironment(defaults: testDefaults()), feedback: .noOp,
+            presentation: .noOp)
+    }
+
+    @Test func closingThePrimaryWindowClearsTheCheckItsReusedSessionWouldShow() throws {
+        let controller = makeController()
+        defer { controller.discardAllSessions() }
+        controller.show()
+        let window = try #require(controller.movePrimaryEditorOffScreenForTesting())
+        let session = controller.session(for: .primary)
+        session.copyConfirmation.record(.copied)
+
+        window.close()
+
+        #expect(controller.session(for: .primary) === session)
+        #expect(!session.copyConfirmation.isShowing)
+    }
+
+    @Test func loadingIntoAClosedPrimaryWindowClearsTheCheck() throws {
+        let controller = makeController()
+        defer { controller.discardAllSessions() }
+        let session = controller.session(for: .primary)
+        session.copyConfirmation.record(.copied)
+
+        controller.loadIntoPrimary(SnapshotConfig())
+        let window = try #require(controller.movePrimaryEditorOffScreenForTesting())
+        defer { window.close() }
+
+        #expect(!session.copyConfirmation.isShowing)
+    }
+
+    @Test func replacingTheDocumentClearsTheCheck() {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 63), environment: environment,
+            feedback: .noOp, presentation: .noOp)
+        defer { session.discard() }
+        let hosting = EditorWindowController.makeHostingController(
+            environment: environment, session: session)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 1_180, height: 680),
+            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentViewController = hosting
+        defer { window.contentViewController = nil }
+        func settle() {
+            for _ in 0..<5 {
+                hosting.view.layoutSubtreeIfNeeded()
+                RunLoop.current.run(until: Date(timeIntervalSinceNow: 0.02))
+            }
+        }
+        settle()
+        session.copyConfirmation.record(.copied)
+
+        session.settings.noteDocumentReplaced()
+        settle()
+
+        #expect(!session.copyConfirmation.isShowing)
     }
 }

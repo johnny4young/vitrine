@@ -251,23 +251,8 @@ extension EditorView {
     /// it gets out of the way once its job is done. Users who copy more than
     /// once can keep it open from Settings.
     func copyImage() {
-        guard clearsPreflight(.copy, EditorPresentation.copyPayload(of: settings)) else { return }
-        // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
-        // render/encode failure — mirroring the menu command and the quick-capture HUD.
-        // The HUD shows near the menu bar regardless of `closeAfterCopy`.
-        let outcome = RenderedImageCopy.copy(settings.exportConfig, settings: settings)
-        session.feedback(ExportFeedback.copyOutcome(outcome))
-        session.copyConfirmation.record(outcome)
-        // Close *this* window — captured via `WindowAccessor`, so it never depends on
-        // `keyWindow` being right — deferred past the button's action, and `close()`
-        // (not `performClose`) so it is unconditional.
-        guard
-            Self.shouldCloseAfterCopy(
-                copied: outcome == .copied,
-                preferenceEnabled: settings.outputBehavior.closeAfterCopy)
-        else { return }
-        guard let editorWindow = editorWindow.value else { return }
-        Task { editorWindow.close() }
+        // *This* window, captured via `WindowAccessor`, so it never depends on `keyWindow`.
+        session.copyImage(closing: editorWindow.value)
     }
 
     /// A failed clipboard write leaves the editor open so the user can retry or save

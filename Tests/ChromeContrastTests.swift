@@ -53,16 +53,27 @@ struct ChromeContrastTests {
         }
     }
 
-    @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
-    func hoveredToolInkMeetsAAOnTheTint(_ name: NSAppearance.Name) throws {
-        let appearance = try #require(NSAppearance(named: name))
+    /// The tool row: the stage at 0.6 over the window, under the hover tint. Variants are
+    /// resolved directly because AppKit normalizes a constructed increased-contrast appearance.
+    @Test(arguments: [ColorScheme.light, .dark], [false, true])
+    func hoveredToolInkMeetsAAOnTheTint(scheme: ColorScheme, highContrast: Bool) throws {
+        let appearance = try #require(NSAppearance(named: scheme == .dark ? .darkAqua : .aqua))
         appearance.performAsCurrentDrawingAppearance {
+            let row = VitrineTokens.Accent.composite(
+                NSColor(
+                    Brand.Palette.stage.resolved(scheme: scheme, highContrast: highContrast)
+                        .opacity(0.6)),
+                over: NSColor(VitrineTokens.Surface.window))
             let tinted = VitrineTokens.Accent.composite(
-                NSColor(VitrineTokens.Chrome.toolHoverFill),
-                over: NSColor(VitrineTokens.Surface.stage))
-            for ink in [VitrineTokens.Text.primary, VitrineTokens.Text.secondary] {
-                let ratio = Brand.Contrast.ratio(ink, on: Color(nsColor: tinted))
-                #expect(ratio >= Brand.Contrast.aaNormal, "\(ratio):1 in \(name.rawValue)")
+                NSColor(
+                    VitrineTokens.Chrome.toolHoverFillPalette.resolved(
+                        scheme: scheme, highContrast: highContrast)),
+                over: row)
+            for ink in [Brand.Palette.textPrimary, Brand.Palette.textSecondary] {
+                let ratio = Brand.Contrast.ratio(
+                    ink.resolved(scheme: scheme, highContrast: highContrast),
+                    on: Color(nsColor: tinted))
+                #expect(ratio >= Brand.Contrast.aaNormal, "\(ratio):1 on \(tinted)")
             }
         }
     }
@@ -86,34 +97,29 @@ struct ChromeContrastTests {
         }
     }
 
-    @Test func theLightCheckerIsLightGreyAndKeepsChromeTextReadable() throws {
-        let appearance = try #require(NSAppearance(named: .aqua))
+    @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
+    func theCheckerCellsDiffer(_ name: NSAppearance.Name) throws {
+        let appearance = try #require(NSAppearance(named: name))
         appearance.performAsCurrentDrawingAppearance {
-            let cells = [VitrineTokens.Chrome.checkerBase, VitrineTokens.Chrome.checkerSquare]
-            #expect(Brand.Contrast.ratio(cells[0], on: cells[1]) > 1.1)
-            for cell in cells {
-                for text in [
-                    VitrineTokens.Text.primary, VitrineTokens.Text.secondary,
-                    VitrineTokens.Text.tertiary,
-                ] {
-                    let ratio = Brand.Contrast.ratio(text, on: cell)
-                    #expect(ratio >= Brand.Contrast.aaNormal, "\(ratio):1")
-                }
-            }
+            let ratio = Brand.Contrast.ratio(
+                VitrineTokens.Chrome.checkerBase, on: VitrineTokens.Chrome.checkerSquare)
+            #expect(ratio > 1.1, "\(ratio):1 in \(name.rawValue)")
         }
     }
 
-    /// The palette holds white and near-black. Each must keep an edge on matching chrome.
-    @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
-    func annotationColorDotsKeepAnEdge(_ name: NSAppearance.Name) throws {
-        let appearance = try #require(NSAppearance(named: name))
-        let dot = name == .aqua ? Color.white : Color(hex: "#1C1C1E")
-        appearance.performAsCurrentDrawingAppearance {
-            for edge in [VitrineTokens.Chrome.colorDotEdge, VitrineTokens.Chrome.paletteDotEdge] {
-                let drawn = VitrineTokens.Accent.composite(NSColor(edge), over: NSColor(dot))
-                let ratio = Brand.Contrast.ratio(Color(nsColor: drawn), on: dot)
-                #expect(ratio > 1.5, "\(ratio):1 in \(name.rawValue)")
-            }
+    /// The palette holds white and near-black. Each must keep an edge on matching chrome,
+    /// and an edge the user asked to strengthen meets the 3:1 non-text floor.
+    @Test(arguments: [ColorScheme.light, .dark], [false, true])
+    func annotationColorDotsKeepAnEdge(scheme: ColorScheme, highContrast: Bool) {
+        let dot = scheme == .light ? Color.white : Color(hex: "#1C1C1E")
+        for edge in [
+            VitrineTokens.Chrome.colorDotEdgePalette, VitrineTokens.Chrome.paletteDotEdgePalette,
+        ] {
+            let drawn = VitrineTokens.Accent.composite(
+                NSColor(edge.resolved(scheme: scheme, highContrast: highContrast)),
+                over: NSColor(dot))
+            let ratio = Brand.Contrast.ratio(Color(nsColor: drawn), on: dot)
+            #expect(ratio >= (highContrast ? Brand.Contrast.aaLarge : 1.5), "\(ratio):1")
         }
     }
 

@@ -326,20 +326,29 @@ enum VitrineTokens {
             dark: Color(white: 0.28)
         ).color
         /// An annotation tool under the pointer.
-        static let toolHoverFill = Brand.BrandColor(
+        static let toolHoverFillPalette = Brand.BrandColor(
             light: Color(hex: "#1A1B22").opacity(0.08),
-            dark: Color(hex: "#FFFFFF").opacity(0.08)
-        ).color
+            dark: Color(hex: "#FFFFFF").opacity(0.08),
+            lightHighContrast: Color(hex: "#1A1B22").opacity(0.16),
+            darkHighContrast: Color(hex: "#FFFFFF").opacity(0.18)
+        )
+        static let toolHoverFill = toolHoverFillPalette.color
         /// The edge that keeps a white annotation color visible on light chrome, and a
         /// near-black one on dark chrome: on the toolbar, and in its palette.
-        static let colorDotEdge = Brand.BrandColor(
+        static let colorDotEdgePalette = Brand.BrandColor(
             light: Color(hex: "#1A1B22").opacity(0.24),
-            dark: Color(hex: "#FFFFFF").opacity(0.55)
-        ).color
-        static let paletteDotEdge = Brand.BrandColor(
+            dark: Color(hex: "#FFFFFF").opacity(0.55),
+            lightHighContrast: Color(hex: "#1A1B22").opacity(0.5),
+            darkHighContrast: Color(hex: "#FFFFFF").opacity(0.8)
+        )
+        static let colorDotEdge = colorDotEdgePalette.color
+        static let paletteDotEdgePalette = Brand.BrandColor(
             light: Color(hex: "#1A1B22").opacity(0.24),
-            dark: Color(hex: "#FFFFFF").opacity(0.25)
-        ).color
+            dark: Color(hex: "#FFFFFF").opacity(0.25),
+            lightHighContrast: Color(hex: "#1A1B22").opacity(0.5),
+            darkHighContrast: Color(hex: "#FFFFFF").opacity(0.5)
+        )
+        static let paletteDotEdge = paletteDotEdgePalette.color
 
         /// The selected segment's lift (`0 1px 3px rgba(0,0,0,0.3)`).
         static let segmentShadow = Brand.ShadowStyle(

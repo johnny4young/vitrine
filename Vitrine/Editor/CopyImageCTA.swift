@@ -22,15 +22,21 @@ final class CopyConfirmation {
 
     /// Any outcome replaces the previous one, so a failure clears an earlier check at once.
     func record(_ outcome: ExportManager.CopyOutcome) {
-        resetTask?.cancel()
-        resetTask = nil
-        isShowing = outcome == .copied
-        guard isShowing else { return }
+        clear()
+        guard outcome == .copied else { return }
+        isShowing = true
         resetTask = Task { [weak self, hold, sleep] in
             try? await sleep(hold)
             guard !Task.isCancelled else { return }
             self?.isShowing = false
         }
+    }
+
+    /// Ends a confirmation that no longer describes what the window shows.
+    func clear() {
+        resetTask?.cancel()
+        resetTask = nil
+        isShowing = false
     }
 }
 

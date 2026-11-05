@@ -291,6 +291,7 @@ private struct AnnotationToolButton: View {
     @Binding var activeTool: AnnotationTool
 
     @State private var isHovered = false
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         let isActive = activeTool == tool
@@ -328,11 +329,20 @@ private struct AnnotationToolButton: View {
                             .accessibilityHidden(true)
                     }
                 }
+                // Outside the tool, because the ring and the selected fill share a color.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .inset(by: -1.5)
+                        .stroke(
+                            isFocused ? VitrineTokens.Line.focusRing : .clear,
+                            lineWidth: Brand.Stroke.focus)
+                )
                 .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .motionSensitiveAnimation(.easeOut(duration: 0.15), value: isActive)
                 .motionSensitiveAnimation(.easeOut(duration: 0.15), value: isHovered)
         }
         .buttonStyle(AnnotationToolPressStyle())
+        .focused($isFocused)
         .onHover { isHovered = $0 }
         .accessibilityLabel(tool.label)
         .accessibilityAddTraits(isActive ? [.isSelected] : [])
