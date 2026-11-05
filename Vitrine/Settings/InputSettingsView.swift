@@ -127,9 +127,7 @@ struct WebCaptureControls: View {
                 savedSitesRow
                 loopbackCaptureRow
                 Button("Open Settings ▸ Input") {
-                    AppDefaults.current.set(
-                        SettingsTab.input.rawValue, forKey: SettingsTab.storageKey)
-                    SettingsWindowManager.shared.show()
+                    SettingsWindowManager.shared.show(tab: .input)
                 }
                 .buttonStyle(.link)
                 .font(.system(size: VitrineTokens.FontSize.caption))

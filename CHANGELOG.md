@@ -14,6 +14,12 @@ can never drift.
 
 ### Added
 
+- Open what a Help topic describes from a button on its card: the Settings pane it names
+  or the editor. Help never runs a capture.
+- What's New leads each highlight with a bold phrase, so a release scans at a glance.
+- Chip rows that overflow fade only the edges that hide chips and add a button that pages
+  through them, so they scroll without a trackpad. Selecting a theme, font, or background
+  brings its chip into view. Nothing is drawn when the chips fit.
 - The editor's Copy button turns into a check after a successful copy, without changing
   its width. A failed copy never shows the check.
 - Annotation tools tint under the pointer and scale slightly on press; theme chips lift on

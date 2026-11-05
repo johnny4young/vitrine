@@ -298,9 +298,11 @@ struct MenuBarContent: View {
                 .accessibilityHint("Apply the next curated style without changing your code")
                 .accessibilityIdentifier("menu-surprise-style-button")
             }
-            ChipScroll(topPadding: 5, bottomPadding: 4) {
+            ChipScroll(name: "menu-theme", topPadding: 5, bottomPadding: 4) {
                 ForEach(ThemeChipColors.orderedBuiltIns) { theme in
                     themeChip(for: theme)
+                        .chipScrollItem(
+                            id: theme.id, isSelected: settings.config.theme.id == theme.id)
                 }
             }
             .accessibilityElement(children: .contain)

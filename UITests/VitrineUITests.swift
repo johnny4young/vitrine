@@ -411,6 +411,9 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("editor-inspector", in: app), in: app)
         assertExists(element("style-theme-picker", in: app), in: app)
         assertExists(element("style-font-picker", in: app), in: app)
+        // Thirteen themes never fit the inspector, so the row offers its scroll button.
+        assertExists(element("theme-chip-scroll-button", in: app), in: app)
+        assertExists(element("font-chip-scroll-button", in: app), in: app)
 
         // The same launch pins the large-document mode without another app launch.
         assertExists(element("large-document-highlight-notice", in: app), in: app, timeout: 5)
@@ -2008,6 +2011,118 @@ final class VitrineUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.2)
         }
         XCTAssertEqual(query.count, count, file: file, line: line)
+    }
+
+    @MainActor
+    func testHelpTopicsOpenWhatTheyDescribe() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--show-help"])
+        defer { app.terminate() }
+        assertExists(element("help-view", in: app), in: app, timeout: 8)
+        for identifier in [
+            "help-topic-hotkey-settings-general", "help-topic-quick-capture-open-editor",
+            "help-topic-editor-open-editor", "help-topic-presets-settings-library",
+            "help-topic-presets-settings-style", "help-topic-privacy-settings-input",
+        ] {
+            assertExists(element(identifier, in: app), in: app)
+        }
+        clickHelpAction("help-topic-editor-open-editor", in: app)
+        assertExists(element("editor-toolbar", in: app), in: app, timeout: 5)
+    }
+
+    /// General is the default pane, so this starts elsewhere to prove the move happens.
+    @MainActor
+    func testHelpMovesAnOpenSettingsWindowToTheTopicsPane() throws {
+        let app = launch(arguments: ["--skip-onboarding", "--open-settings", "--show-help"])
+        defer { app.terminate() }
+        assertExists(element("help-view", in: app), in: app, timeout: 8)
+
+        // Help covers most of Settings, so click the part of the row that sticks out.
+        element("settings-nav-input", in: app)
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).click()
+        assertExists(element("settings-input-pane", in: app), in: app, timeout: 5)
+
+        // That raised Settings over Help, so click a corner of Help that it doesn't cover.
+        // This window shows no menu bar of its own to reopen Help from.
+        let help = element("help-view", in: app)
+        let settings = app.windows.firstMatch.frame
+        let corner = [
+            CGVector(dx: 0.02, dy: 0.02), CGVector(dx: 0.98, dy: 0.02),
+            CGVector(dx: 0.02, dy: 0.98), CGVector(dx: 0.98, dy: 0.98),
+        ].first { offset in
+            !settings.contains(
+                CGPoint(
+                    x: help.frame.minX + help.frame.width * offset.dx,
+                    y: help.frame.minY + help.frame.height * offset.dy))
+        }
+        help.coordinate(withNormalizedOffset: try XCTUnwrap(corner)).click()
+        clickHelpAction("help-topic-hotkey-settings-general", in: app)
+
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 5)
+        XCTAssertFalse(element("settings-input-pane", in: app).exists)
+    }
+
+    @MainActor
+    func testHelpQuickCaptureOpensTheEditorAndLeavesTheDraftAlone() throws {
+        // Two fenced blocks are what a capture would load into the editor.
+        let clipboard = "```swift\nlet a = 1\n```\n\n```swift\nlet b = 2\n```"
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setString(clipboard, forType: .string))
+
+        let app = launch(arguments: ["--skip-onboarding", "--demo", "--open-editor", "--show-help"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        let editor = element("code-editor-text-view", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        let draft = editor.value as? String
+        XCTAssertFalse(draft?.isEmpty ?? true)
+
+        clickHelpAction("help-topic-quick-capture-open-editor", in: app)
+
+        assertExists(element("editor-toolbar", in: app), in: app, timeout: 5)
+        XCTAssertEqual(element("code-editor-text-view", in: app).value as? String, draft)
+        XCTAssertEqual(pasteboard.string(forType: .string), clipboard)
+    }
+
+    @MainActor
+    func testChipRowPageButtonStillMovesAfterAPointerScroll() throws {
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo", "--open-editor"])
+        defer { app.terminate() }
+        let row = element("style-theme-picker", in: app)
+        assertExists(row, in: app, timeout: 8)
+        let chip = row.buttons["Dracula"]
+        assertExists(chip, in: app, timeout: 3)
+
+        func moved(from x: CGFloat) -> Bool {
+            let deadline = Date().addingTimeInterval(2)
+            while Date() < deadline {
+                if abs(chip.frame.minX - x) > 1 { return true }
+                RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            }
+            return false
+        }
+
+        // The sign of a horizontal delta follows the system's scroll direction.
+        let start = chip.frame.minX
+        row.scroll(byDeltaX: -120, deltaY: 0)
+        if !moved(from: start) { row.scroll(byDeltaX: 120, deltaY: 0) }
+        XCTAssertTrue(moved(from: start), "A pointer scroll did not move the row")
+
+        let scrolled = chip.frame.minX
+        element("theme-chip-scroll-button", in: app).click()
+        XCTAssertTrue(moved(from: scrolled), "The page button did not move the row")
+    }
+
+    /// Help scrolls in a fixed-size window, so a lower card's button may start below the fold.
+    @MainActor
+    private func clickHelpAction(_ identifier: String, in app: XCUIApplication) {
+        for _ in 0..<5 where !waitForHittableElement(identifier, in: app, timeout: 1) {
+            element("help-view", in: app).swipeUp()
+        }
+        element(identifier, in: app).click()
     }
 
     @MainActor

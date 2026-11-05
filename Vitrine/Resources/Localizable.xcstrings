@@ -122,6 +122,157 @@
         }
       }
     },
+    "Legend: %lld hidden" : {
+      "comment" : "Status capsule: how many legend entries a fixed frame had no room for.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda: %lld ocultas"
+          }
+        }
+      }
+    },
+    "Images exported. Some legend entries didn't fit." : {
+      "comment" : "Confirmation after a multi-size export where a fixed frame left out legend entries.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imágenes exportadas. Algunas entradas de la leyenda no cupieron."
+          }
+        }
+      }
+    },
+    "Open Settings ▸ %@" : {
+      "comment" : "A Help button that opens one Settings pane. The argument is the pane's sidebar title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes ▸ %@"
+          }
+        }
+      }
+    },
+    "Show more" : {
+      "comment" : "Button that pages a horizontally scrolling chip row forward.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver más"
+          }
+        }
+      }
+    },
+    "Back to start" : {
+      "comment" : "Button that returns a horizontally scrolling chip row to its start.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver al inicio"
+          }
+        }
+      }
+    },
+    "Private history." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historial privado."
+          }
+        }
+      }
+    },
+    "No default hotkey." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin atajo predeterminado."
+          }
+        }
+      }
+    },
+    "Ready for your docs." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo para tu documentación."
+          }
+        }
+      }
+    },
+    "Safer command line." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea de comandos más segura."
+          }
+        }
+      }
+    },
+    "Services menu fixed." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menú Servicios corregido."
+          }
+        }
+      }
+    },
+    "Truer terminal captures." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de terminal más fieles."
+          }
+        }
+      }
+    },
+    "Now in Spanish." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora en español."
+          }
+        }
+      }
+    },
+    "Same macOS support." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mismo soporte de macOS."
+          }
+        }
+      }
+    },
     "Changed" : {
       "comment" : "Code header chip: the watched file has a saved change waiting.",
       "localizations" : {
@@ -1012,28 +1163,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Oculto en la exportación"
-          }
-        }
-      }
-    },
-    "Legend: %lld hidden" : {
-      "comment" : "Status capsule: how many legend entries a fixed frame had no room for.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leyenda: %lld ocultas"
-          }
-        }
-      }
-    },
-    "Images exported. Some legend entries didn't fit." : {
-      "comment" : "Confirmation after a multi-size export where a fixed frame left out legend entries.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imágenes exportadas. Algunas entradas de la leyenda no cupieron."
           }
         }
       }
@@ -7904,13 +8033,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Code rendering stays on your Mac and needs no account, Screen Recording, or Accessibility-control permission. The direct-download build uses the network only for requested web content, updates, or license activation; the App Store build has no network-client entitlement."
+            "value" : "Code rendering stays on your Mac and needs no account, Screen Recording, or Accessibility-control permission. The direct-download build uses the network only for requested web content, updates, or license activation; the App Store build has no network-client entitlement. Review web capture's network use in Settings ▸ Input."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El código se procesa en tu Mac sin cuenta ni permisos de grabación de pantalla o control de Accesibilidad. La versión de descarga directa usa la red solo para contenido web solicitado, actualizaciones o activación; la de App Store no tiene permiso de cliente de red."
+            "value" : "El código se procesa en tu Mac sin cuenta ni permisos de grabación de pantalla o control de Accesibilidad. La versión de descarga directa usa la red solo para contenido web solicitado, actualizaciones o activación; la de App Store no tiene permiso de cliente de red. Revisa el uso de red de la captura web en Ajustes ▸ Entrada."
           }
         }
       }
@@ -7940,13 +8069,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy code anywhere, choose New Capture from Clipboard from the menu bar (or use your enabled hotkey), and Vitrine renders it with your current style. With Copy to clipboard automatically on (the default), a successful copy places the image on your clipboard; a failed copy reports an error."
+            "value" : "Copy code anywhere, choose New Capture from Clipboard from the menu bar, press ⇧⌘S in Vitrine, or use your enabled hotkey, and Vitrine renders it with your current style. With Copy to clipboard automatically on (the default), a successful copy places the image on your clipboard; a failed copy reports an error."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia código en cualquier parte y elige Nueva captura desde el portapapeles en la barra de menús (o usa tu atajo activado). Vitrine lo procesa con tu estilo actual. Con Copiar al portapapeles automáticamente activado (el valor predeterminado), si la copia funciona, la imagen queda en el portapapeles; si falla, se informa el error."
+            "value" : "Copia código en cualquier parte y elige Nueva captura desde el portapapeles en la barra de menús, presiona ⇧⌘S en Vitrine o usa tu atajo activado. Vitrine lo procesa con tu estilo actual. Con Copiar al portapapeles automáticamente activado (el valor predeterminado), si la copia funciona, la imagen queda en el portapapeles; si falla, se informa el error."
           }
         }
       }

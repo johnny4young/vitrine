@@ -12,9 +12,13 @@ import VitrineRendering
 /// `docs/ARCHITECTURE.md`, the README, and `docs/HELP.md` (the repo's source of
 /// truth for this content).
 ///
-/// The view is static text and a few links, so it is keyboard- and VoiceOver-
-/// accessible by construction and introduces no motion to respect Reduced Motion.
+/// The view is static text, a few links, and standard buttons that open what each topic
+/// describes, so it is keyboard- and VoiceOver-accessible by construction and
+/// introduces no motion to respect Reduced Motion.
 struct HelpView: View {
+    /// Routes a topic's button to the surface it opens.
+    let navigation: HelpNavigation
+
     /// Closes the hosting window. Injected by the window controller so the view has
     /// no dependency on how it is presented.
     var onDismiss: () -> Void
@@ -27,27 +31,32 @@ struct HelpView: View {
             symbol: "command",
             title: "help.topic.hotkey.title",
             body: "help.topic.hotkey.body",
-            identifier: "help-topic-hotkey"),
+            identifier: "help-topic-hotkey",
+            actions: [.settings(.general)]),
         HelpTopic(
             symbol: "camera.viewfinder",
             title: "help.topic.quick-capture.title",
             body: "help.topic.quick-capture.body",
-            identifier: "help-topic-quick-capture"),
+            identifier: "help-topic-quick-capture",
+            actions: [.openEditor]),
         HelpTopic(
             symbol: "macwindow",
             title: "help.topic.editor.title",
             body: "help.topic.editor.body",
-            identifier: "help-topic-editor"),
+            identifier: "help-topic-editor",
+            actions: [.openEditor]),
         HelpTopic(
             symbol: "slider.horizontal.3",
             title: "help.topic.presets.title",
             body: "help.topic.presets.body",
-            identifier: "help-topic-presets"),
+            identifier: "help-topic-presets",
+            actions: [.settings(.library), .settings(.style)]),
         HelpTopic(
             symbol: "lock.shield",
             title: "help.topic.privacy.title",
             body: "help.topic.privacy.body",
-            identifier: "help-topic-privacy"),
+            identifier: "help-topic-privacy",
+            actions: [.settings(.input)]),
     ]
 
     var body: some View {
@@ -102,15 +111,34 @@ struct HelpView: View {
                 .frame(width: 26)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(topic.title)
-                    .font(.system(size: VitrineTokens.FontSize.headline, weight: .semibold))
-                    .foregroundStyle(VitrineTokens.Text.primary)
-                Text(topic.body)
-                    .font(.system(size: VitrineTokens.FontSize.body))
-                    .foregroundStyle(VitrineTokens.Text.secondary)
-                    .lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xs) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(topic.title)
+                        .font(.system(size: VitrineTokens.FontSize.headline, weight: .semibold))
+                        .foregroundStyle(VitrineTokens.Text.primary)
+                    Text(topic.body)
+                        .font(.system(size: VitrineTokens.FontSize.body))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                // One VoiceOver passage per topic; the buttons below stay separate stops.
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(
+                    Text("\(String(localized: topic.title)). \(String(localized: topic.body))")
+                )
+                HStack(spacing: VitrineTokens.Spacing.xs) {
+                    ForEach(topic.actions, id: \.self) { action in
+                        Button {
+                            navigation.perform(action)
+                        } label: {
+                            action.label
+                        }
+                        .accessibilityIdentifier(topic.identifier(for: action))
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -124,14 +152,7 @@ struct HelpView: View {
             RoundedRectangle(cornerRadius: VitrineTokens.Radius.lg, style: .continuous)
                 .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
         )
-        // Combine the icon-less title and body into one VoiceOver element per topic
-        // so navigation reads each card as a single, coherent passage. The label is
-        // built from the localized title and body.
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            Text("\(String(localized: topic.title)). \(String(localized: topic.body))")
-        )
-        .accessibilityIdentifier(topic.identifier)
+        .accessibilityContainerIdentifier(topic.identifier)
     }
 
     /// A live hotkey recorder so Help is also actionable: a user reading "set the
@@ -191,8 +212,65 @@ struct HelpTopic: Identifiable {
     let title: LocalizedStringResource
     let body: LocalizedStringResource
     let identifier: String
+    /// What the topic's buttons open.
+    let actions: [HelpAction]
 
     var id: String { identifier }
+
+    /// Scoped to the topic, since two topics can open the same surface.
+    func identifier(for action: HelpAction) -> String {
+        "\(identifier)-\(action.identifierSuffix)"
+    }
+}
+
+/// Where a Help topic's button goes. Each case only opens a surface: Help never captures,
+/// because a capture can replace the editor's draft and the clipboard.
+enum HelpAction: Hashable {
+    case openEditor
+    case settings(SettingsTab)
+
+    /// The menu command this repeats, so the button reads and behaves like the menu item.
+    var command: VitrineCommand? {
+        switch self {
+        case .openEditor: .openEditor
+        case .settings: nil
+        }
+    }
+
+    var label: Text {
+        switch self {
+        case .openEditor: Text(verbatim: VitrineCommand.openEditor.title)
+        case .settings(let tab): Text("Open Settings ▸ \(tab.title)")
+        }
+    }
+
+    var identifierSuffix: String {
+        switch self {
+        case .openEditor: "open-editor"
+        case .settings(let tab): "settings-\(tab.rawValue)"
+        }
+    }
+}
+
+/// Routes Help's buttons to app-owned surfaces without tying the view to their global
+/// lifecycles. Every target exists in every build: without URL capture, Settings ▸ Input
+/// still opens and says so in its Network use row.
+struct HelpNavigation {
+    let openEditor: () -> Void
+    let showSettings: (SettingsTab) -> Void
+
+    func perform(_ action: HelpAction) {
+        switch action {
+        case .openEditor: openEditor()
+        case .settings(let tab): showSettings(tab)
+        }
+    }
+
+    static let live = HelpNavigation(
+        openEditor: { EditorWindowController.shared.show() },
+        showSettings: { SettingsWindowManager.shared.show(tab: $0) })
+
+    static let noOp = HelpNavigation(openEditor: {}, showSettings: { _ in })
 }
 
 /// Owns and presents the in-app Help window.
@@ -212,7 +290,7 @@ final class HelpWindowController {
     func show() {
         if window == nil {
             let hosting = NSHostingController(
-                rootView: HelpView(onDismiss: { [weak self] in self?.close() }))
+                rootView: HelpView(navigation: .live, onDismiss: { [weak self] in self?.close() }))
             let window = NSWindow(contentViewController: hosting)
             window.title = String(localized: "Vitrine Help")
             // Help is a fixed-width reference surface; allow resize so a user at a
@@ -236,6 +314,6 @@ final class HelpWindowController {
 
 #if DEBUG
     #Preview("Help") {
-        HelpView(onDismiss: {})
+        HelpView(navigation: .noOp, onDismiss: {})
     }
 #endif

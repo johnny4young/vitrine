@@ -22,13 +22,14 @@ struct BackgroundControls: View {
     var identifierPrefix = ""
 
     var body: some View {
-        ChipScroll(topPadding: 2, bottomPadding: 6) {
+        ChipScroll(name: "\(identifierPrefix)background", topPadding: 2, bottomPadding: 6) {
             ForEach(GradientPreset.allCases) { preset in
                 GradientSwatch(
                     preset: preset, isSelected: selectedPreset == preset, size: swatchSize
                 ) {
                     background = .gradient(preset)
                 }
+                .chipScrollItem(id: preset.id, isSelected: selectedPreset == preset)
             }
             CustomBackgroundSwatch(size: swatchSize) {
                 background = BackgroundKind.solid.makeDefault(
