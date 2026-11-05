@@ -716,6 +716,138 @@
         }
       }
     },
+    "This build has no network access, so it can't load a page. HTML rendering works here." : {
+      "comment" : "Web Snapshot: URL-mode unavailable note.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versión no tiene acceso a la red, así que no puede cargar una página. El renderizado de HTML sí funciona aquí."
+          }
+        }
+      }
+    },
+    "continues →" : {
+      "comment" : "Cue drawn on a carousel slide when another slide follows.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "continúa →"
+          }
+        }
+      }
+    },
+    "Export 1 slide" : {
+      "comment" : "Carousel export button once a folder is chosen.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar 1 diapositiva"
+          }
+        }
+      }
+    },
+    "Export %lld slides" : {
+      "comment" : "Carousel export button once a folder is chosen.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar %lld diapositivas"
+          }
+        }
+      }
+    },
+    "Prefer blank-line breaks" : {
+      "comment" : "Carousel sheet switch: move slide boundaries to nearby blank lines.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preferir cortes en líneas en blanco"
+          }
+        }
+      }
+    },
+    "Restart" : {
+      "comment" : "Carousel line numbers: each slide starts again at 1.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reiniciar"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "comment" : "Carousel line numbers: no gutter on the slides.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivados"
+          }
+        }
+      }
+    },
+    "Page badge “2 / 4”" : {
+      "comment" : "Carousel sheet switch: draw the page position on each slide.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indicador de página “2 / 4”"
+          }
+        }
+      }
+    },
+    "“continues →” cue" : {
+      "comment" : "Carousel sheet switch: draw the line range and swipe cue on each slide.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indicador “continúa →”"
+          }
+        }
+      }
+    },
+    "No folder chosen" : {
+      "comment" : "Carousel sheet folder row before a folder is picked.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin carpeta elegida"
+          }
+        }
+      }
+    },
+    "Change…" : {
+      "comment" : "Button: pick a different export folder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar…"
+          }
+        }
+      }
+    },
+    "Existing files are kept" : {
+      "comment" : "Carousel sheet output line: an export never replaces a file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos existentes se conservan"
+          }
+        }
+      }
+    },
     "panel.prompt.export" : {
       "comment" : "Save and folder panel button that exports (a verb, unlike the Export pane title).",
       "extractionState" : "manual",
@@ -10808,17 +10940,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fuente"
-          }
-        }
-      }
-    },
-    "This build has no network access, so it can't load a page. HTML rendering works here." : {
-      "comment" : "Web Snapshot: URL-mode unavailable note.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Esta versión no tiene acceso a la red, así que no puede cargar una página. El renderizado de HTML sí funciona aquí."
           }
         }
       }

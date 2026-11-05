@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Carousel export can move slide breaks to nearby blank lines, keep line numbers
+  continuous across slides, and draw a page badge and a "continues →" cue on each slide.
+  The sheet shows the folder, the file names and an estimated size before anything is
+  written, and ⌘⏎ confirms it and the multi-size sheet.
 - Check for likely secrets on this Mac before copying, saving, sharing, or exporting. A
   clean capture is not interrupted; otherwise choose to redact the flagged lines, continue
   anyway, or cancel. `vitrine render` and `batch` warn on stderr and leave the output

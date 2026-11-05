@@ -773,6 +773,36 @@ final class VitrineUITests: XCTestCase {
             "Free Brand Kit placement should expose a reachable preview drag handle")
     }
 
+    @MainActor
+    func testCarouselSheetShowsSplitCueAndOutputControls() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-carousel-export"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+
+        assertExists(element("carousel-export-sheet", in: app), in: app, timeout: 8)
+        for identifier in [
+            "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
+            "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
+            "carousel-output-summary",
+        ] {
+            assertExists(element(identifier, in: app), in: app, timeout: 3)
+        }
+        let summary = element("carousel-output-summary", in: app)
+        XCTAssertTrue(
+            (summary.value as? String ?? summary.label).hasPrefix("carousel-01.png"),
+            "The sheet must name the files it will write")
+        let badge = element("carousel-page-badge", in: app)
+        badge.click()
+        let switchedOff = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == 0"), object: badge)
+        XCTAssertEqual(XCTWaiter.wait(for: [switchedOff], timeout: 3), .completed)
+        element("carousel-cancel", in: app).click()
+        XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
+    }
+
     /// One license round trip: activation dismisses the paywall and unlocks Brand Kit,
     /// then deactivation relocks it in the same running app without a network. The
     /// partial-activation failure is unit-tested in `EntitlementsTests`.
