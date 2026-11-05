@@ -135,11 +135,15 @@ extension EditorView {
         if replacing {
             session.livingSnapshot.stop()
         }
-        if replacing, let sourceURL = loaded.sourceURL,
-            environment.workspaceRecipes.applyRecipe(
-                for: sourceURL, to: settings, themes: environment.customThemes) != nil
-        {
-            Log.capture.info("Applied a workspace recipe to an explicitly loaded file")
+        if replacing {
+            let applied = loaded.sourceURL.flatMap {
+                environment.workspaceRecipes.applyRecipe(
+                    for: $0, to: settings, themes: environment.customThemes)
+            }
+            session.appliedRecipeID = applied?.association.id
+            if applied != nil {
+                Log.capture.info("Applied a workspace recipe to an explicitly loaded file")
+            }
         }
         loaded.apply(to: &settings.config, replacing: replacing)
         if replacing { settings.noteDocumentReplaced() }

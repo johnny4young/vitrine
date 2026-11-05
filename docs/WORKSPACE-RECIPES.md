@@ -24,6 +24,17 @@ recipes ▸ Export Current…**. The export captures the current default style, 
 header metadata, destination, scale, format, and color profile. Source text,
 annotations, and every filesystem path stay out of the document.
 
+**Copy Command**, in an editor window's More menu and command palette, copies the
+`vitrine render` line for that window's image, with a placeholder `input` file to replace.
+A recipe that styled the file and sits inside its folder is referenced by relative path,
+with flags only for what differs; otherwise the line uses flags alone. It holds no source
+text, and redaction travels as `--redact-lines` plus `--redact-secrets`.
+
+Copy Command can't include annotations, a pasted image, an image background, a custom theme
+outside a referenced recipe, an unevenly spaced gradient, a Brand Kit logo, QR code or footer
+bar, or control characters or a likely secret in header text. It names what is missing and
+copies nothing. The CLI has flags for some of these; this builder leaves them out.
+
 ## Local folder associations
 
 In **Settings ▸ Library ▸ Workspace recipes**, choose **Add…**, then select one
@@ -62,7 +73,7 @@ to Vitrine's signature gradient when a style is captured.
 Settings are applied from lowest to highest precedence:
 
 1. Vitrine defaults;
-2. the recipe's destination preset;
+2. the destination preset, from `--preset` or the recipe;
 3. the recipe's style and output defaults;
 4. an explicit `--style-preset`;
 5. explicit CLI flags such as `--theme`, `--padding`, `--format`, or

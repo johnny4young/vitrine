@@ -24,6 +24,19 @@ extension Array where Element == Annotation {
         insert(mark, at: target)
     }
 
+    /// Removes a mark. Deleting a counter closes the gap it leaves, so the remaining
+    /// badges keep reading in order and the next one placed continues the sequence.
+    public mutating func removeMark(_ id: UUID) {
+        guard let index = firstIndex(where: { $0.id == id }) else { return }
+        let removed = remove(at: index)
+        guard removed.kind == .counter,
+            !contains(where: { $0.kind == .counter && $0.number == removed.number })
+        else { return }
+        for index in indices where self[index].kind == .counter {
+            if self[index].number > removed.number { self[index].number -= 1 }
+        }
+    }
+
     private func reorderTarget(for id: UUID, front: Bool) -> Int? {
         guard let index = firstIndex(where: { $0.id == id }),
             self[index].kind.participatesInZOrder

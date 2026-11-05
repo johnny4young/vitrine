@@ -61,7 +61,7 @@ struct WebSnapshotEditorView: View {
             if pending { autoCaptureIfPending() }
         }
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .sheet(isPresented: $showDisclosure) {
             WebPrivacyDisclosureView(
                 onConfirm: {

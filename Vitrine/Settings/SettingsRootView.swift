@@ -27,7 +27,7 @@ struct SettingsRootView: View {
         .frame(width: 720)
         .frame(maxHeight: .infinity)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
     }
 
     // MARK: - Sidebar

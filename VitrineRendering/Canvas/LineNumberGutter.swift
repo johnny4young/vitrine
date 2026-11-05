@@ -49,6 +49,8 @@ struct CodeLinesView: View {
     let rows: [AttributedString]
     /// Whether to draw the leading line-number gutter.
     let showLineNumbers: Bool
+    /// The number drawn on the first row. Highlight and redaction ranges stay row-based.
+    var firstLineNumber = 1
     /// Normalized 1-based inclusive ranges to highlight.
     let highlightedRanges: [ClosedRange<Int>]
     /// Normalized 1-based inclusive ranges to redact: the code on these lines is blurred
@@ -75,7 +77,7 @@ struct CodeLinesView: View {
     var diffDecorations: Bool = false
 
     var body: some View {
-        let metrics = GutterMetrics(font: font, lineCount: rows.count)
+        let metrics = GutterMetrics(font: font, lineCount: rows.count + firstLineNumber - 1)
         VStack(alignment: .leading, spacing: lineSpacing) {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, line in
                 row(line, lineNumber: index + 1, metrics: metrics)
@@ -97,7 +99,7 @@ struct CodeLinesView: View {
                 // Verbatim: a line number is a locale-neutral numeral, not catalog
                 // copy — and this also keeps Xcode's extractor from emitting a bare
                 // "%@" key into the String Catalog.
-                Text(verbatim: "\(lineNumber)")
+                Text(verbatim: "\(lineNumber + firstLineNumber - 1)")
                     .font(Font(font))
                     .monospacedDigit()
                     .foregroundStyle(textColor.opacity(isHighlighted ? 0.85 : 0.4))
@@ -196,7 +198,7 @@ public enum LineSplitter {
     /// and trailing lines counted. Empty text counts as a single (empty) row. Count
     /// line-feed bytes directly so status updates for large documents do not allocate
     /// an array of every line merely to read its count.
-    public static func lineCount(of text: String) -> Int {
+    public nonisolated static func lineCount(of text: String) -> Int {
         var count = 1
         for byte in text.utf8 where byte == 0x0A { count += 1 }
         return count

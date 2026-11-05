@@ -228,6 +228,13 @@ final class VitrineUITests: XCTestCase {
         // The field takes focus when opened by mouse, so Escape reaches the palette.
         app.typeKey(.escape, modifierFlags: [])
         XCTAssertTrue(element("command-palette", in: app).waitForNonExistence(timeout: 3))
+        for readout in [
+            "inspector-value-background", "inspector-value-theme", "inspector-value-typography",
+        ] {
+            assertExists(element(readout, in: app), in: app)
+            XCTAssertNotEqual(element(readout, in: app).value as? String, "", readout)
+        }
+        assertExists(element("inspector-privacy-footer", in: app), in: app)
 
         // Advanced controls start behind the collapsed Output disclosure.
         element("inspector-disclosure-output", in: app).click()
@@ -245,7 +252,10 @@ final class VitrineUITests: XCTestCase {
         app.typeKey(.escape, modifierFlags: [])
 
         assertToolbarActionsReachable(
-            ["save-button", "share-button", "make-default-button"],
+            [
+                "save-button", "share-button", "copy-reproduction-command-button",
+                "make-default-button",
+            ],
             from: "editor-actions-menu", in: app)
         // The default window folds these into More, and an open menu swallows the next click.
         app.typeKey(.escape, modifierFlags: [])
@@ -716,6 +726,11 @@ final class VitrineUITests: XCTestCase {
         assertHittable(
             "export-workspace-recipe-button", in: app,
             "The portable recipe export action should be reachable")
+        for command in ["validate-0", "render-0", "override-0", "multiSize-0", "terminal-2"] {
+            assertExists(element("recipe-command-\(command)", in: app), in: app, timeout: 3)
+        }
+        assertExists(element("recipe-precedence-ladder", in: app), in: app, timeout: 3)
+        assertExists(element("recipe-command-shell-integration-link", in: app), in: app, timeout: 3)
 
         element("save-style-preset-button", in: app).click()
         let presetName = app.windows.firstMatch.sheets.textFields.firstMatch
@@ -794,6 +809,36 @@ final class VitrineUITests: XCTestCase {
         assertHittable(
             "brand-kit-free-drag-handle", in: app,
             "Free Brand Kit placement should expose a reachable preview drag handle")
+    }
+
+    @MainActor
+    func testCarouselSheetShowsSplitCueAndOutputControls() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-carousel-export"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+
+        assertExists(element("carousel-export-sheet", in: app), in: app, timeout: 8)
+        for identifier in [
+            "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
+            "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
+            "carousel-output-summary",
+        ] {
+            assertExists(element(identifier, in: app), in: app, timeout: 3)
+        }
+        let summary = element("carousel-output-summary", in: app)
+        XCTAssertTrue(
+            (summary.value as? String ?? summary.label).hasPrefix("carousel-01.png"),
+            "The sheet must name the files it will write")
+        let badge = element("carousel-page-badge", in: app)
+        badge.click()
+        let switchedOff = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == 0"), object: badge)
+        XCTAssertEqual(XCTWaiter.wait(for: [switchedOff], timeout: 3), .completed)
+        element("carousel-cancel", in: app).click()
+        XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
     }
 
     /// One license round trip: activation dismisses the paywall and unlocks Brand Kit,
@@ -1533,6 +1578,26 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarSummarizesACopiedImage() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setData(Data([0x89, 0x50, 0x4E, 0x47]), forType: .png))
+
+        let app = launch(arguments: VitrineLaunchArguments.menuBar)
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        openMenuBarPanel(in: app)
+
+        // Types alone identify an image, so this holds under any pasteboard access behavior.
+        let summary = element("menu-capture-summary", in: app)
+        XCTAssertTrue(summary.waitForExistence(timeout: 3), "A copied image should be summarized")
+        XCTAssertEqual(summary.label, "Image")
+    }
+
+    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general
@@ -1784,6 +1849,54 @@ final class VitrineUITests: XCTestCase {
         let recents = RecentsRobot(testCase: self, app: app)
         assertExists(recents.gallery, in: app, timeout: 5)
         XCTAssertEqual(recents.cards.count, 0)
+    }
+
+    @MainActor
+    func testExportPreflightAsksBeforeCopyingAndCanCancelOrRedact() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo-secret", "--open-editor"])
+        defer { app.terminate() }
+        assertExists(element("code-editor-text-view", in: app), in: app, timeout: 8)
+        assertHittable("copy-button", in: app, "Copy image is not reachable")
+
+        element("copy-button", in: app).click()
+        let redact = element("export-preflight-redact", in: app)
+        assertExists(redact, in: app, timeout: 5)
+        assertExists(element("export-preflight-anyway", in: app), in: app)
+        assertExists(element("export-preflight-cancel", in: app), in: app)
+
+        app.typeKey(.escape, modifierFlags: [])
+        assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
+        XCTAssertTrue(redact.waitForNonExistence(timeout: 3), "Cancel must dismiss the check")
+
+        element("copy-button", in: app).click()
+        assertExists(redact, in: app, timeout: 5)
+        redact.click()
+        XCTAssertTrue(redact.waitForNonExistence(timeout: 5), "Redact must dismiss the check")
+    }
+
+    @MainActor
+    func testAlternativeTextDraftFillsAnEmptyFieldOnly() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("inspector-disclosure-output", in: app), in: app, timeout: 8)
+        element("inspector-disclosure-output", in: app).click()
+
+        let draft = element("alternative-text-draft-button", in: app)
+        assertExists(draft, in: app, timeout: 3)
+        draft.click()
+        let field = element("alternative-text-field", in: app)
+        let filled = NSPredicate { _, _ in !((field.value as? String) ?? "").isEmpty }
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [XCTNSPredicateExpectation(predicate: filled, object: nil)], timeout: 3),
+            .completed)
+        XCTAssertTrue(
+            draft.waitForNonExistence(timeout: 3),
+            "A filled field must not offer to replace its text")
     }
 
     // MARK: - Localization smoke

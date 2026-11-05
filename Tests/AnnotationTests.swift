@@ -55,6 +55,39 @@ struct AnnotationTests {
             moved.fingerprint != a.fingerprint, "moving an endpoint must change the fingerprint")
     }
 
+    // MARK: - Renumbering
+
+    private func counter(_ number: Int) -> Annotation {
+        Annotation(kind: .counter, start: .zero, end: .zero, number: number)
+    }
+
+    @Test func deletingACounterClosesTheGap() {
+        let first = counter(1)
+        let second = counter(2)
+        let third = counter(3)
+        let arrow = Annotation(kind: .arrow, start: .zero, end: CGPoint(x: 1, y: 1), number: 9)
+        var marks = [first, second, arrow, third]
+        marks.removeMark(second.id)
+        #expect(marks.map(\.id) == [first.id, arrow.id, third.id])
+        #expect(marks.map(\.number) == [1, 9, 2], "only counters renumber")
+    }
+
+    @Test func deletingAnotherMarkOrAnUnknownIDLeavesCountersAlone() {
+        let arrow = Annotation(kind: .arrow, start: .zero, end: CGPoint(x: 1, y: 1))
+        var marks = [counter(5), arrow, counter(7)]
+        marks.removeMark(UUID())
+        #expect(marks.count == 3)
+        marks.removeMark(arrow.id)
+        #expect(marks.map(\.number) == [5, 7], "a set that starts at 5 keeps its numbers")
+    }
+
+    @Test func deletingOneOfTwoEqualBadgesKeepsThatNumberInUse() {
+        let duplicate = counter(2)
+        var marks = [counter(1), duplicate, counter(2), counter(3)]
+        marks.removeMark(duplicate.id)
+        #expect(marks.map(\.number) == [1, 2, 3])
+    }
+
     // MARK: - Content lifecycle
 
     @Test func clearContentMarksDropsAnnotationsAndHighlightsButKeepsStyle() {
