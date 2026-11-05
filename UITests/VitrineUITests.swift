@@ -925,9 +925,13 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
         assertExists(element("multi-size-export-sheet", in: app), in: app, timeout: 8)
 
+        // A static text exposes what VoiceOver reads as its value, once every size is measured.
         let estimate = element("multi-size-size-estimate", in: app)
-        assertExists(estimate, in: app, timeout: 20)
-        XCTAssertTrue(estimate.label.contains("about"), "Unexpected label: \(estimate.label)")
+        let measured = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value CONTAINS %@", "about"), object: estimate)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [measured], timeout: 20), .completed,
+            "It reads \(String(describing: estimate.value))")
 
         // With nothing selected there is nothing to estimate.
         element("multi-size-select-none", in: app).click()
