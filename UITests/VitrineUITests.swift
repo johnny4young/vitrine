@@ -1522,6 +1522,35 @@ final class VitrineUITests: XCTestCase {
         let board = try XCTUnwrap(copied, "Comparison board did not copy a PNG")
         XCTAssertGreaterThan(board.pixelsWide, 1_000)
         XCTAssertGreaterThan(board.pixelsHigh, 500)
+
+        // Two captures offer the slider: its divider has a real value and captions still open.
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label == 'Slider' OR title == 'Slider'"))
+            .firstMatch.click()
+        let divider = element("comparison-board-divider", in: app)
+        assertExists(divider, in: app, timeout: 5)
+        XCTAssertEqual(divider.value as? String, "50%")
+        let dividerSlider = element("comparison-board-divider-slider", in: app)
+        assertExists(dividerSlider, in: app)
+        XCTAssertFalse(element("comparison-board-gap-slider", in: app).exists)
+        dividerSlider.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).click()
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [
+                    XCTNSPredicateExpectation(
+                        predicate: NSPredicate(format: "value != '50%'"), object: divider)
+                ],
+                timeout: 3),
+            .completed, "The inspector slider should move the divider")
+
+        assertHittable(
+            "comparison-board-caption-1", in: app, "A slider caption should stay clickable",
+            timeout: 5)
+        element("comparison-board-caption-1", in: app).click()
+        let sliderCaption = element("comparison-board-inline-label-1", in: app)
+        assertExists(sliderCaption, in: app, timeout: 3)
+        sliderCaption.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(sliderCaption.waitForNonExistence(timeout: 3))
     }
 
     @MainActor

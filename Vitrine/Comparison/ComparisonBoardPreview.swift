@@ -18,13 +18,18 @@ final class ComparisonBoardPreview {
     /// Where the captions sit in `asset`, in its pixels. Set with the asset so a click on
     /// the preview always targets what is drawn, not a newer layout still rendering.
     private(set) var captionFrames: [UUID: CGRect] = [:]
+    /// The divider `asset` draws, set with it for the same reason.
+    private(set) var wipe: ComparisonBoardComposer.Wipe?
     private(set) var phase: Phase = .rendering
+
+    static let debounce: Duration = .milliseconds(80)
 
     func refresh(
         isValid: Bool,
         keepsLastFrame: Bool = false,
-        debounce: Duration = .milliseconds(80),
+        debounce: Duration = ComparisonBoardPreview.debounce,
         captionFrames: () -> [UUID: CGRect] = { [:] },
+        wipe: () -> ComparisonBoardComposer.Wipe? = { nil },
         render: () throws -> RenderedAsset
     ) async {
         guard isValid else {
@@ -40,6 +45,7 @@ final class ComparisonBoardPreview {
             try Task.checkCancellation()
             asset = try render()
             self.captionFrames = captionFrames()
+            self.wipe = wipe()
             phase = .ready
         } catch is CancellationError {
             return
@@ -52,5 +58,6 @@ final class ComparisonBoardPreview {
     private func clear() {
         asset = nil
         captionFrames = [:]
+        wipe = nil
     }
 }

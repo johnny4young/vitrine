@@ -14,6 +14,8 @@ before/after explanation, review, release note, or visual decision record.
    layout:
    - **Auto** keeps two or three captures in one row and uses a two-by-two grid for four.
    - **Row**, **Column**, and **Grid** force a deterministic arrangement.
+   - **Slider** puts two captures in one frame, split at a divider. It is offered only on
+     a board of exactly two captures, so remove captures from a larger board to use it.
 6. Optionally pick a board size, gap, background, and footer line:
    - **Auto** hugs the cards. **16:10** is 1600 × 1000, **OG** is 1200 × 630, and
      **Square** is 1080 × 1080; cards scale to fit and stay centered. Captions keep a
@@ -33,6 +35,27 @@ background can be tried while the caption is being written.
 
 Every card receives the same image area and preserves its aspect ratio. Labels are
 single-line and bounded so a board cannot grow unpredictably from pasted text.
+
+## Slider
+
+The first capture draws left of the divider and the second to its right, each with its
+caption underneath. Drag on the image, Tab to it with keyboard navigation on and press the
+left or right arrow, or use **Divider** in the inspector; each sets a whole percentage from
+10 to 90, so both captures stay in view. The value lasts as long as the board.
+
+- **Export is a still image.** The divider is drawn at the chosen position, the same place
+  in the preview and in every format. The knob is an editor control, so an export shows
+  only the line and cannot be dragged.
+- **Different sizes.** Both captures use one scale, the largest at which the wider width
+  and the taller height both fit, and share a top-left corner. A line and column common to
+  both land in the same place.
+- **Nothing shows through.** Each capture is clipped to its own side rather than stacked. A
+  transparent or shorter capture leaves the card visible, never the other capture, and a
+  redacted or blurred row stays the finished pixels of its capture. The part of a capture
+  hidden by the divider is not in the file, because every format encodes the one composed
+  image. A row hidden in only one capture still shows on the other's side if that capture
+  has it, as in every other layout.
+- **Gap** does not apply, because the board has one card, so **Divider** takes its row.
 
 ## Session and privacy boundary
 
@@ -56,8 +79,9 @@ editing a board never mutates capture history or the app's saved style.
 ## Output contract
 
 Board composition is deterministic for the same pixels, captions, layout, size, gap,
-background, footer setting, scale, and color profile. The preview draws through the same
-composer as every export, and the caption click targets come from the same metrics. The result uses the shared Vitrine encoders and can be exported as PNG,
+divider position, background, footer setting, scale, and color profile. The preview draws
+through the same composer as every export, and the caption click targets and divider come
+from the same metrics. The result uses the shared Vitrine encoders and can be exported as PNG,
 HEIC, or PDF according to the current Export setting, plus AVIF when the running macOS
 ImageIO stack provides an AVIF writer (Tahoe and newer). PDF contains the finished
 board image on one correctly sized page; it does not recreate each source capture as

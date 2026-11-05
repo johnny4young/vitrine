@@ -16,6 +16,9 @@ nonisolated struct ComparisonBoard: Sendable {
     static let maximumDetailLength = 80
     static let gapRange: ClosedRange<CGFloat> = 0...40
     static let defaultGap: CGFloat = 28
+    /// Keeps both captures in view: a wipe showing only one of them compares nothing.
+    static let dividerRange = 10...90
+    static let defaultDividerPercent = 50
 
     enum Layout: String, CaseIterable, Sendable {
         /// Before/after stays side by side, three items form one row, and four items use
@@ -24,6 +27,14 @@ nonisolated struct ComparisonBoard: Sendable {
         case horizontal
         case vertical
         case grid
+        /// Two captures in one frame, split at a divider. A still image cannot be dragged, so
+        /// its result is the position chosen in the editor.
+        case slider
+
+        /// A wipe compares exactly two captures; any other count draws as `automatic`.
+        func wipes(itemCount: Int) -> Bool {
+            self == .slider && itemCount == 2
+        }
     }
 
     enum Size: String, CaseIterable, Sendable {
@@ -76,6 +87,7 @@ nonisolated struct ComparisonBoard: Sendable {
     let gap: CGFloat
     let background: Background
     let showsFooter: Bool
+    let dividerPercent: Int
 
     init(
         items: [Item],
@@ -83,7 +95,8 @@ nonisolated struct ComparisonBoard: Sendable {
         size: Size = .automatic,
         gap: CGFloat = defaultGap,
         background: Background = .vitrine,
-        showsFooter: Bool = false
+        showsFooter: Bool = false,
+        dividerPercent: Int = defaultDividerPercent
     ) throws {
         guard Self.itemCountRange.contains(items.count) else {
             throw ValidationError.itemCount(items.count)
@@ -119,6 +132,7 @@ nonisolated struct ComparisonBoard: Sendable {
         self.gap = Self.clampedGap(gap)
         self.background = background
         self.showsFooter = showsFooter
+        self.dividerPercent = Self.clampedDivider(dividerPercent)
     }
 
     /// The footer is generated from the count alone: a board keeps no file name or source
@@ -134,6 +148,10 @@ nonisolated struct ComparisonBoard: Sendable {
     static func clampedGap(_ gap: CGFloat) -> CGFloat {
         guard gap.isFinite else { return defaultGap }
         return min(max(gap, gapRange.lowerBound), gapRange.upperBound)
+    }
+
+    static func clampedDivider(_ percent: Int) -> Int {
+        min(max(percent, dividerRange.lowerBound), dividerRange.upperBound)
     }
 
     private static func containsLineBreak(_ value: String) -> Bool {
