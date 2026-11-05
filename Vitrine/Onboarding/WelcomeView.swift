@@ -363,9 +363,12 @@ struct WelcomeView: View {
                     Text("Global hotkey:")
                         .font(.system(size: VitrineTokens.FontSize.body))
                         .foregroundStyle(VitrineTokens.Text.primary)
-                    KeyboardShortcuts.Recorder(for: .quickCapture) { captureShortcut = $0 }
-                        .accessibilityLabel("Global hotkey")
-                        .accessibilityIdentifier("welcome-hotkey-recorder")
+                    KeyboardShortcuts.Recorder(for: .quickCapture) {
+                        captureShortcut = $0
+                        settings.noteRecordedHotkey($0)
+                    }
+                    .accessibilityLabel("Global hotkey")
+                    .accessibilityIdentifier("welcome-hotkey-recorder")
                 }
 
                 Spacer(minLength: 0)

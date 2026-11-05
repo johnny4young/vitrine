@@ -327,7 +327,7 @@ struct EditorInspectorView: View {
             ThemeChipPicker(
                 settings: settings, themes: themes,
                 chipSize: CGSize(width: 52, height: 34), dotSize: 6,
-                topPadding: 2, bottomPadding: 6
+                topPadding: 5, bottomPadding: 6
             )
             .accessibilityIdentifier("style-theme-picker")
         }

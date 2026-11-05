@@ -89,6 +89,9 @@ struct ThemeChip: View {
     var dotSize: CGFloat = 5.5
     let action: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isHovered = false
+
     var body: some View {
         let colors = ThemeChipColors.colors(for: theme)
         Button(action: action) {
@@ -117,6 +120,10 @@ struct ThemeChip: View {
                             .stroke(
                                 isSelected ? VitrineTokens.Line.focusGlow : .clear, lineWidth: 3)
                     )
+                    .modifier(
+                        DecorativeScaleEffect(
+                            isActive: isHovered, scale: DecorativeScaleEffect.hoverScale,
+                            reduceMotion: reduceMotion))
                 Text(verbatim: theme.displayName)
                     .font(.system(size: 10))
                     .foregroundStyle(
@@ -127,6 +134,7 @@ struct ThemeChip: View {
             }
         }
         .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
         .accessibilityLabel(Text(verbatim: theme.displayName))
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }

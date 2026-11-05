@@ -167,8 +167,10 @@ struct HelpView: View {
                 .foregroundStyle(VitrineTokens.Text.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
-                KeyboardShortcuts.Recorder("Global hotkey:", name: .quickCapture)
-                    .accessibilityIdentifier("help-hotkey-recorder")
+                KeyboardShortcuts.Recorder("Global hotkey:", name: .quickCapture) {
+                    AppSettings.shared.noteRecordedHotkey($0)
+                }
+                .accessibilityIdentifier("help-hotkey-recorder")
                 Spacer()
             }
         }

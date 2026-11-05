@@ -53,6 +53,76 @@ struct ChromeContrastTests {
         }
     }
 
+    /// The tool row: the stage at 0.6 over the window, under the hover tint. Variants are
+    /// resolved directly because AppKit normalizes a constructed increased-contrast appearance.
+    @Test(arguments: [ColorScheme.light, .dark], [false, true])
+    func hoveredToolInkMeetsAAOnTheTint(scheme: ColorScheme, highContrast: Bool) throws {
+        let appearance = try #require(NSAppearance(named: scheme == .dark ? .darkAqua : .aqua))
+        appearance.performAsCurrentDrawingAppearance {
+            let row = VitrineTokens.Accent.composite(
+                NSColor(
+                    Brand.Palette.stage.resolved(scheme: scheme, highContrast: highContrast)
+                        .opacity(0.6)),
+                over: NSColor(VitrineTokens.Surface.window))
+            let tinted = VitrineTokens.Accent.composite(
+                NSColor(
+                    VitrineTokens.Chrome.toolHoverFillPalette.resolved(
+                        scheme: scheme, highContrast: highContrast)),
+                over: row)
+            for ink in [Brand.Palette.textPrimary, Brand.Palette.textSecondary] {
+                let ratio = Brand.Contrast.ratio(
+                    ink.resolved(scheme: scheme, highContrast: highContrast),
+                    on: Color(nsColor: tinted))
+                #expect(ratio >= Brand.Contrast.aaNormal, "\(ratio):1 on \(tinted)")
+            }
+        }
+    }
+
+    /// 3:1 is WCAG's floor for non-text indicators, which `aaLarge` shares.
+    @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
+    func selectedSwatchRingReadsOnEverySurfaceItSitsOn(_ name: NSAppearance.Name) throws {
+        let appearance = try #require(NSAppearance(named: name))
+        appearance.performAsCurrentDrawingAppearance {
+            let group = VitrineTokens.Accent.composite(
+                NSColor(VitrineTokens.Chrome.tile), over: NSColor(VitrineTokens.Surface.window))
+            let surfaces = [
+                VitrineTokens.Surface.window, VitrineTokens.Surface.card,
+                VitrineTokens.Surface.inset, Color(nsColor: group),
+            ]
+            for surface in surfaces {
+                let ratio = Brand.Contrast.ratio(
+                    VitrineTokens.Chrome.swatchSelectedBorder, on: surface)
+                #expect(ratio >= Brand.Contrast.aaLarge, "\(ratio):1 in \(name.rawValue)")
+            }
+        }
+    }
+
+    @Test(arguments: [NSAppearance.Name.aqua, .darkAqua])
+    func theCheckerCellsDiffer(_ name: NSAppearance.Name) throws {
+        let appearance = try #require(NSAppearance(named: name))
+        appearance.performAsCurrentDrawingAppearance {
+            let ratio = Brand.Contrast.ratio(
+                VitrineTokens.Chrome.checkerBase, on: VitrineTokens.Chrome.checkerSquare)
+            #expect(ratio > 1.1, "\(ratio):1 in \(name.rawValue)")
+        }
+    }
+
+    /// The palette holds white and near-black. Each must keep an edge on matching chrome,
+    /// and an edge the user asked to strengthen meets the 3:1 non-text floor.
+    @Test(arguments: [ColorScheme.light, .dark], [false, true])
+    func annotationColorDotsKeepAnEdge(scheme: ColorScheme, highContrast: Bool) {
+        let dot = scheme == .light ? Color.white : Color(hex: "#1C1C1E")
+        for edge in [
+            VitrineTokens.Chrome.colorDotEdgePalette, VitrineTokens.Chrome.paletteDotEdgePalette,
+        ] {
+            let drawn = VitrineTokens.Accent.composite(
+                NSColor(edge.resolved(scheme: scheme, highContrast: highContrast)),
+                over: NSColor(dot))
+            let ratio = Brand.Contrast.ratio(Color(nsColor: drawn), on: dot)
+            #expect(ratio >= (highContrast ? Brand.Contrast.aaLarge : 1.5), "\(ratio):1")
+        }
+    }
+
     @Test func anAccentThatAlreadyReadsStaysUnchanged() {
         let accent = NSColor(srgbRed: 0.1, green: 0.1, blue: 0.5, alpha: 1)
         let text = VitrineTokens.Accent.legibleText(accent: accent, on: .white)

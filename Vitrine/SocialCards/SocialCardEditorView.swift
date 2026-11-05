@@ -501,7 +501,7 @@ private struct SocialCardThemePicker: View {
     var themes: CustomThemeStore
 
     var body: some View {
-        ChipScroll(name: "social-card-theme", topPadding: 2, bottomPadding: 6) {
+        ChipScroll(name: "social-card-theme", topPadding: 5, bottomPadding: 6) {
             ForEach(ThemeChipColors.orderedBuiltIns) { chip(for: $0) }
             ForEach(themes.customThemes) { chip(for: $0) }
         }

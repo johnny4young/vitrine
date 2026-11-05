@@ -307,7 +307,8 @@ nonisolated struct ChipScrollExtent: Equatable {
     /// The width of the edge fades, reserved after the last chip so it clears them.
     static let fadeWidth: CGFloat = 26
     /// The strip's normal breathing room at each end.
-    static let edgeInset: CGFloat = 2
+    /// Holds a hovered chip's selected glow: the scroll view clips anything past it.
+    static let edgeInset: CGFloat = 5
 
     var offset: CGFloat = 0
     var visibleWidth: CGFloat = 0

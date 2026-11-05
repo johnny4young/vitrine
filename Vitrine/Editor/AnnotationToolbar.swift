@@ -129,7 +129,7 @@ struct AnnotationToolbar: View {
             } else {
                 HStack(spacing: 2) {
                     ForEach(AnnotationTool.toolbarOrder) { tool in
-                        toolButton(tool)
+                        AnnotationToolButton(tool: tool, activeTool: $activeTool)
                     }
                 }
                 .padding(3)
@@ -262,54 +262,6 @@ struct AnnotationToolbar: View {
         .accessibilityIdentifier("annotation-tool-picker")
     }
 
-    private func toolButton(_ tool: AnnotationTool) -> some View {
-        let isActive = activeTool == tool
-        let button = Button {
-            activeTool = tool
-        } label: {
-            Image(systemName: tool.systemImage)
-                .font(.system(size: 12.5, weight: .medium))
-                .padding(.bottom, 3)
-                .frame(width: 28, height: 25)
-                .foregroundStyle(
-                    isActive ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(isActive ? VitrineTokens.Accent.system : Color.clear)
-                )
-                .overlay(alignment: .bottomTrailing) {
-                    if let shortcut = tool.shortcutCharacter {
-                        Text(verbatim: "⌘\(shortcut)")
-                            .font(.system(size: 7.5, weight: .heavy))
-                            .foregroundStyle(
-                                isActive
-                                    ? VitrineTokens.Accent.systemContrast
-                                    : VitrineTokens.Text.tertiary
-                            )
-                            .padding(.trailing, 1)
-                            .accessibilityHidden(true)
-                    }
-                }
-                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(tool.label)
-        .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
-
-        // ⌘-digit selects the tool (⌘1…⌘9, ⌘0). A Command-modified shortcut fires
-        // reliably on macOS and never hijacks the code editor's typing (a modifier-less
-        // key would). Tools past the digit row have no shortcut and a plain tooltip.
-        return Group {
-            if let shortcut = tool.shortcutCharacter {
-                button
-                    .help(Text("\(Text(tool.helpText)) (⌘\(String(shortcut)))"))
-            } else {
-                button.help(tool.helpText)
-            }
-        }
-    }
-
     private func iconButton(
         _ systemImage: String, help: LocalizedStringKey, identifier: String, enabled: Bool,
         shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void
@@ -330,6 +282,95 @@ struct AnnotationToolbar: View {
         .help(help)
         .accessibilityLabel(help)
         .accessibilityIdentifier(identifier)
+    }
+}
+
+/// One tool in the row: accent fill when selected, a tint under the pointer.
+private struct AnnotationToolButton: View {
+    let tool: AnnotationTool
+    @Binding var activeTool: AnnotationTool
+
+    @State private var isHovered = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        let isActive = activeTool == tool
+        let button = Button {
+            activeTool = tool
+        } label: {
+            Image(systemName: tool.systemImage)
+                .font(.system(size: 12.5, weight: .medium))
+                .padding(.bottom, 3)
+                .frame(width: 28, height: 25)
+                .foregroundStyle(
+                    isActive
+                        ? VitrineTokens.Accent.systemContrast
+                        : (isHovered ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary)
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(
+                            isActive
+                                ? VitrineTokens.Accent.system
+                                : (isHovered ? VitrineTokens.Chrome.toolHoverFill : Color.clear))
+                )
+                .overlay(alignment: .bottomTrailing) {
+                    if let shortcut = tool.shortcutCharacter {
+                        Text(verbatim: "⌘\(shortcut)")
+                            .font(.system(size: 7.5, weight: .heavy))
+                            .foregroundStyle(
+                                isActive
+                                    ? VitrineTokens.Accent.systemContrast
+                                    : (isHovered
+                                        ? VitrineTokens.Text.secondary
+                                        : VitrineTokens.Text.tertiary)
+                            )
+                            .padding(.trailing, 1)
+                            .accessibilityHidden(true)
+                    }
+                }
+                // Outside the tool, because the ring and the selected fill share a color.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .inset(by: -1.5)
+                        .stroke(
+                            isFocused ? VitrineTokens.Line.focusRing : .clear,
+                            lineWidth: Brand.Stroke.focus)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .motionSensitiveAnimation(.easeOut(duration: 0.15), value: isActive)
+                .motionSensitiveAnimation(.easeOut(duration: 0.15), value: isHovered)
+        }
+        .buttonStyle(AnnotationToolPressStyle())
+        .focused($isFocused)
+        .onHover { isHovered = $0 }
+        .accessibilityLabel(tool.label)
+        .accessibilityAddTraits(isActive ? [.isSelected] : [])
+        .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
+
+        // ⌘-digit selects the tool (⌘1…⌘9, ⌘0). A Command-modified shortcut fires
+        // reliably on macOS and never hijacks the code editor's typing (a modifier-less
+        // key would). Tools past the digit row have no shortcut and a plain tooltip.
+        if let shortcut = tool.shortcutCharacter {
+            button
+                .help(Text("\(Text(tool.helpText)) (⌘\(String(shortcut)))"))
+        } else {
+            button.help(tool.helpText)
+        }
+    }
+}
+
+/// Press scales the tool; under Reduce Motion a dim takes its place, so a press still shows.
+private struct AnnotationToolPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed && reduceMotion ? 0.7 : 1)
+            .modifier(
+                DecorativeScaleEffect(
+                    isActive: configuration.isPressed, scale: 0.94, reduceMotion: reduceMotion,
+                    duration: 0.08))
     }
 }
 
@@ -401,7 +442,7 @@ private struct ColorSwatchButton: View {
             Circle()
                 .fill(color)
                 .frame(width: 22, height: 22)
-                .overlay(Circle().strokeBorder(.white.opacity(0.55), lineWidth: 1))
+                .overlay(Circle().strokeBorder(VitrineTokens.Chrome.colorDotEdge, lineWidth: 1))
                 .shadow(color: .black.opacity(0.2), radius: 1, y: 0.5)
         }
         .buttonStyle(.plain)
@@ -422,7 +463,8 @@ private struct ColorSwatchButton: View {
                             .overlay(
                                 Circle().strokeBorder(
                                     swatch.isApproximately(color)
-                                        ? VitrineTokens.Accent.system : .white.opacity(0.25),
+                                        ? VitrineTokens.Accent.system
+                                        : VitrineTokens.Chrome.paletteDotEdge,
                                     lineWidth: swatch.isApproximately(color) ? 2.5 : 1))
                     }
                     .buttonStyle(.plain)

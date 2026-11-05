@@ -205,7 +205,7 @@ enum CLIOutputWriter {
         let dropped = config.counterLegendFit(in: fixedSize).dropped
         if dropped > 0 {
             notices.append(
-                "note: \(output): left out the counter legend; fixed-size output doesn't draw one.")
+                "note: \(output): left out \(dropped) counter legend entries that didn't fit.")
         }
         return notices
     }

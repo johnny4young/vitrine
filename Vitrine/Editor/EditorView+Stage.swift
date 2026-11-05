@@ -471,6 +471,12 @@ extension EditorView {
                             cardGeometry.legendHeight = $0.height
                             cardGeometry.legendDropped = $0.dropped
                         }
+                        // Marks the export's transparent pixels, and only those.
+                        .background {
+                            if case .transparent = settings.style.background {
+                                TransparencyGrid()
+                            }
+                        }
                         .compositingGroup()
                         .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
                         // Expose the canvas text as children: as one aggregate element,
@@ -599,9 +605,11 @@ extension EditorView {
     }
 
     /// The card's ambient drop shadow, tinted from the background's leading
-    /// stop (`drop-shadow(0 24px 48px rgba(g1, 0.28))`).
+    /// stop (`drop-shadow(0 24px 48px rgba(g1, 0.28))`). The export has no such shadow, so
+    /// a transparent capture must not show one around its checker.
     var ambientShadowColor: Color {
-        (glowColors?.0 ?? .black).opacity(0.28)
+        if case .transparent = settings.style.background { return .clear }
+        return (glowColors?.0 ?? .black).opacity(0.28)
     }
 
     /// The focused inspector column with progressive disclosure for advanced
@@ -702,7 +710,7 @@ final class PreviewCardGeometry {
     var size: CGSize = .zero
     /// The part of `size` a legend band takes up below the annotation canvas.
     var legendHeight: CGFloat = 0
-    /// Legend entries a fixed frame leaves out.
+    /// Legend entries a fixed frame had no room for.
     var legendDropped = 0
 
     /// The space normalized annotations are placed in.
@@ -786,7 +794,7 @@ private struct StageStatusCapsule: View {
             if zoom < 100 { line += " · \(zoom)%" }
         }
         if geometry.legendDropped > 0 {
-            line += " · " + String(localized: "No legend at this size")
+            line += " · " + String(localized: "Legend: \(geometry.legendDropped) hidden")
         }
         return line
     }

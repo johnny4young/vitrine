@@ -27,15 +27,20 @@ public struct SnapshotCanvas: View, Equatable {
         if fit.entries.isEmpty && fit.dropped == 0 {
             watermarkedCanvas
         } else if fixedSize != nil {
-            // A fixed frame can't grow, so the legend is reported instead of drawn.
+            // A fixed frame can't grow, so the band covers its bottom edge. The capture
+            // keeps the whole frame, which keeps marks on their content.
             watermarkedCanvas
+                .overlay(alignment: .bottom) {
+                    if !fit.entries.isEmpty { legendBand(fit.entries) }
+                }
+                .clipped()
                 .preference(
                     key: CounterLegendReportKey.self,
                     value: CounterLegendReport(dropped: fit.dropped))
         } else {
             CounterLegendStack {
                 watermarkedCanvas
-                legendBand(fit.entries)
+                legendBand(fit.entries, fillsHeight: true)
                     .background {
                         GeometryReader { proxy in
                             Color.clear.preference(
@@ -48,12 +53,15 @@ public struct SnapshotCanvas: View, Equatable {
         }
     }
 
-    private func legendBand(_ entries: [CounterLegend.Entry]) -> some View {
+    private func legendBand(
+        _ entries: [CounterLegend.Entry], fillsHeight: Bool = false
+    ) -> some View {
         CounterLegendBand(
             entries: entries,
             font: config.counterLegendFont,
             textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme),
-            background: cardBackgroundColor)
+            background: cardBackgroundColor,
+            fillsHeight: fillsHeight)
     }
 
     private var watermarkedCanvas: some View {
