@@ -193,14 +193,13 @@ struct DiffViewOptionsTests {
             config.redactedLineRanges = redacted ? [8...8] : []
             return try render(config)
         }
-        // Fresh values per attempt: the highlight cache would otherwise keep a perturbed frame.
+        // Failure output keeps both renders and a same-value control for diagnosis.
         var hidden = 0
         for attempt in 1...RenderSettling.strictRenderAttempts {
             hidden = try FontLigatureTests.compareRenderedPixels(
                 try folded("alpha\(attempt)", redacted: true),
                 try folded("omega\(attempt)", redacted: true)
             ).differingPixels
-            print("DIAG attempt \(attempt) hidden=\(hidden)")
             if hidden == 0 { break }
             if attempt == 1 {
                 func png(_ image: CGImage) -> String {
