@@ -26,16 +26,30 @@ extension TerminalScreen {
         return (cursorRow, col)
     }
 
+    /// `finalCursor`, unless a program parked it where drawing would grow the capture: more than
+    /// one row past the content, or past both the content's width and 80 columns. `columns`
+    /// can't be the limit, because that same move widens the inferred width.
+    private func drawableCursor(
+        in frame: [[TerminalCell]], lastContentRow: Int
+    ) -> (row: Int, col: Int)? {
+        guard let cursor = finalCursor, cursor.row <= lastContentRow + 1 else { return nil }
+        let contentWidth =
+            frame.map { row in
+                (row.lastIndex { !$0.isBlank } ?? -1) + 1
+            }.max() ?? 0
+        return cursor.col < max(80, contentWidth) ? cursor : nil
+    }
+
     /// The final screen flattened into styled runs: adjacent same-style cells coalesce,
     /// trailing blank cells and trailing blank rows are trimmed, and rows are separated by
     /// a default-styled newline — the same shape ``ANSIParser/parse(_:)`` yields, so
     /// ``ANSIRenderer`` renders a grid and a line capture identically.
     public func runs(cursor style: TerminalCursorStyle = .hidden) -> [ANSIRun] {
         let frame = finalFrame
-        let cursor = style == .hidden ? nil : finalCursor
         // Drop trailing all-blank rows so the image isn't padded with empty lines.
         var lastRow = frame.count - 1
         while lastRow >= 0, !frame[lastRow].contains(where: { !$0.isBlank }) { lastRow -= 1 }
+        let cursor = style == .hidden ? nil : drawableCursor(in: frame, lastContentRow: lastRow)
         if let cursor { lastRow = max(lastRow, cursor.row) }
         guard lastRow >= 0 else { return [] }
 

@@ -42,6 +42,31 @@ struct TerminalCursorTests {
         #expect(text(result) == "ab\n ")
     }
 
+    @Test func aCursorParkedFarBelowTheContentIsNotDrawn() {
+        let parked = TerminalScreen.runs("hello\u{1B}[24;1H", cursor: .block)
+        #expect(text(parked) == "hello")
+        #expect(inverted(parked).isEmpty)
+        #expect(text(TerminalScreen.runs("hello\u{1B}[999;999H", cursor: .block)) == "hello")
+    }
+
+    @Test func aCursorPastTheStandardWidthIsNotDrawn() {
+        // The move itself widens the inferred width, so that can't be the limit.
+        let parked = TerminalScreen.runs("hello\u{1B}[1;500H", cursor: .block)
+        #expect(text(parked) == "hello")
+        #expect(inverted(TerminalScreen.runs("hello\u{1B}[1;80H", cursor: .block)) == " ")
+    }
+
+    @Test func aCursorWithinWideContentIsDrawn() {
+        let wide = String(repeating: "x", count: 120)
+        let result = TerminalScreen.runs("\(wide)\u{1B}[1;100H", cursor: .block)
+        #expect(inverted(result) == "x")
+    }
+
+    @Test func resetsMakeAHiddenCursorVisibleOnTheGrid() {
+        #expect(inverted(runs("abc\u{1B}[?25l\u{1B}c\u{1B}[1;2H", .block)) == "b")
+        #expect(inverted(runs("abc\u{1B}[?25l\u{1B}[!p\u{1B}[1;2H", .block)) == "b")
+    }
+
     @Test func barKeepsTheCellItCovers() {
         let result = runs("abc\u{1B}[1;2H", .bar)
         #expect(text(result) == "a\u{258F}bc")
@@ -81,6 +106,14 @@ struct TerminalCursorTests {
         #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25l spin"))
         #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25l spin \u{1B}[?25h") == false)
         #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25h \u{1B}[?25l"))
+    }
+
+    @Test func lineModeIgnoresPayloadsAndHonorsResets() {
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}]0;\u{1B}[?25l\u{07} x") == false)
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}Ptmux;\u{1B}[?25l\u{1B}\\ x") == false)
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25l \u{1B}c x") == false)
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}[?25l \u{1B}[!p x") == false)
+        #expect(TerminalScreen.leavesCursorHidden("\u{1B}c \u{1B}[?25l x"))
     }
 
     @Test func lineModeReadsACompoundModeAndIgnoresOtherModes() {

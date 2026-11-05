@@ -21,17 +21,32 @@ extension TerminalScreen {
         var hidden = false
         var index = 0
         while index + 1 < scalars.count {
-            guard scalars[index] == "\u{1B}", scalars[index + 1] == "[" else {
+            guard scalars[index] == "\u{1B}" else {
                 index += 1
                 continue
             }
-            let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
-            if params.hasPrefix("?"), finalByte == "h" || finalByte == "l",
-                parseParams(String(params.dropFirst())).contains(25)
-            {
-                hidden = finalByte == "l"
+            let next = scalars[index + 1]
+            // A string body can hold escaped sequences, which don't reach the terminal as such.
+            if next == "]" {
+                index = ANSIParser.scanOSC(scalars, from: index + 2).end
+            } else if ANSIParser.isStringSequenceIntroducer(next) {
+                index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+            } else if next == "c" {
+                hidden = false  // RIS
+                index += 2
+            } else if next == "[" {
+                let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
+                if params == "!", finalByte == "p" {
+                    hidden = false  // DECSTR
+                } else if params.hasPrefix("?"), finalByte == "h" || finalByte == "l",
+                    parseParams(String(params.dropFirst())).contains(25)
+                {
+                    hidden = finalByte == "l"
+                }
+                index = max(end, index + 2)
+            } else {
+                index += 1
             }
-            index = max(end, index + 2)
         }
         return hidden
     }

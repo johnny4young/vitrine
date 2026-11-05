@@ -86,7 +86,8 @@ struct TerminalCursorRenderingTests {
         #expect(config.richClipboardText == capture().richClipboardText)
     }
 
-    @Test(arguments: ["Menlo", "SF Mono", "JetBrains Mono"])
+    /// Roboto Mono has no glyph for the bar, so it comes from a fallback font.
+    @Test(arguments: ["Menlo", "SF Mono", "JetBrains Mono", "Roboto Mono"])
     func aBarOverACellOnlyChangesThatCellsColumn(_ family: String) throws {
         var hidden = capture(code: grid)
         hidden.fontName = family
@@ -135,14 +136,25 @@ struct TerminalCursorRenderingTests {
         }
     }
 
-    /// A redacted cursor row must show the same pixels whatever it held, like any redaction.
-    @Test(arguments: [TerminalCursorStyle.block, .bar])
-    func aCursorOnARedactedRowLeavesNoTraceOfItsContent(_ cursor: TerminalCursorStyle) throws {
-        var first = capture(cursor, code: "safe\nAPI_KEY=abcdef")
-        first.redactedLineRanges = [2...2]
-        var second = first
-        second.code = "safe\nAPI_KEY=XXXXXX"
-        #expect(try png(first) == png(second))
+    /// A mask's length follows its row, so a cursor must change neither it nor reveal a column.
+    @Test(
+        arguments: [TerminalCursorStyle.block, .bar],
+        ["ab", "abcdef", "abcdefghijklmnopqrstuvwxyz"])
+    func aCursorOnARedactedRowLeavesTheMaskAsItWas(
+        _ cursor: TerminalCursorStyle, _ secret: String
+    ) throws {
+        let codes = [
+            "safe\nAPI_KEY=\(secret)",  // line mode: at the end of the row
+            "\u{1B}[2J\u{1B}[1;1Hsafe\u{1B}[2;1HAPI_KEY=\(secret)\u{1B}[2;3H",  // on a cell
+            "\u{1B}[2J\u{1B}[1;1Hsafe\u{1B}[2;1HAPI_KEY=\(secret)\u{1B}[2;70H",  // padded out
+        ]
+        for code in codes {
+            var hidden = capture(.hidden, code: code)
+            hidden.redactedLineRanges = [2...2]
+            var drawn = hidden
+            drawn.terminalCursor = cursor
+            #expect(try png(drawn) == png(hidden))
+        }
     }
 
     @Test func theCacheDoesNotServeAStaleVariant() {

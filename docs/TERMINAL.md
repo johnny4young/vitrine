@@ -71,7 +71,8 @@ for new captures, and a preset carries Raw only when saved from a terminal captu
 text. The default is Hidden, and plain text never includes it. Scrolling output gets the cursor
 where the output ended; a full-screen app still running at the end of the capture gets it at its
 real cell. A bar on a cell with its own background inverts that cell instead, because the cell
-would paint over the bar. There is no cursor to draw when the program hid it (`ESC[?25l`), or when the frame comes
+would paint over the bar. A cursor parked more than one row past the content, or beyond both the content's width and 80
+columns, isn't drawn, so it can't grow the image. There is no cursor to draw when the program hid it (`ESC[?25l`), or when the frame comes
 from a full-screen app that already exited, which is the usual `vgrab htop`. A share link of a
 redacted capture holds only the final screen, so it opens without a cursor.
 
