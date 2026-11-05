@@ -895,24 +895,24 @@
         }
       }
     },
-    "No legend at this size" : {
-      "comment" : "Status capsule: a fixed-size frame leaves out the counter legend.",
+    "Legend: %lld hidden" : {
+      "comment" : "Status capsule: how many legend entries a fixed frame had no room for.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sin leyenda en este tamaño"
+            "value" : "Leyenda: %lld ocultas"
           }
         }
       }
     },
-    "Images exported. Fixed sizes leave out the legend." : {
-      "comment" : "Confirmation after a multi-size export where fixed frames left out the counter legend.",
+    "Images exported. Some legend entries didn't fit." : {
+      "comment" : "Confirmation after a multi-size export where a fixed frame left out legend entries.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Imágenes exportadas. Los tamaños fijos omiten la leyenda."
+            "value" : "Imágenes exportadas. Algunas entradas de la leyenda no cupieron."
           }
         }
       }
