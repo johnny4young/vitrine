@@ -1,35 +1,134 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Choose a destination preset" : {
-      "comment" : "Editor status capsule tooltip: opens the destination menu.",
+    "Use Editor Code" : {
+      "comment" : "Undo action name for the Use editor code button.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elige un destino predefinido"
+            "value" : "Usar código del editor"
           }
         }
       }
     },
-    "Command palette" : {
-      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
+    "Output size %lld by %lld, %@" : {
+      "comment" : "VoiceOver label for the social card's output size capsule.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paleta de comandos"
+            "value" : "Tamaño de salida: %lld por %lld, %@"
           }
         }
       }
     },
-    "Command palette (⌘K)" : {
-      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
+    "The editor has no code to use" : {
+      "comment" : "Message shown when Use editor code finds an empty editor.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paleta de comandos (⌘K)"
+            "value" : "El editor no tiene código para usar"
+          }
+        }
+      }
+    },
+    "Code excerpt" : {
+      "comment" : "Social card preview: dashed placeholder for an empty code slot. Never exported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragmento de código"
+          }
+        }
+      }
+    },
+    "Author · Project" : {
+      "comment" : "Social card preview: dashed placeholder for an empty footer. Never exported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autor · Proyecto"
+          }
+        }
+      }
+    },
+    "Paste a code excerpt…" : {
+      "comment" : "Placeholder of the social card's code field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega un fragmento de código…"
+          }
+        }
+      }
+    },
+    "Use editor code" : {
+      "comment" : "Button that fills the social card from the main editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar el código del editor"
+          }
+        }
+      }
+    },
+    "Copy the code from the frontmost editor window into this card" : {
+      "comment" : "Tooltip of the Use editor code button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el código de la ventana del editor al frente a esta tarjeta"
+          }
+        }
+      }
+    },
+    "Changed" : {
+      "comment" : "Code header chip: the watched file has a saved change waiting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambió"
+          }
+        }
+      }
+    },
+    "Unavailable" : {
+      "comment" : "Code header chip: the watched file cannot be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No disponible"
+          }
+        }
+      }
+    },
+    "Rendered locally · your code never leaves this Mac" : {
+      "comment" : "Fixed footer of the editor inspector stating the privacy contract.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se renderiza localmente · tu código nunca sale de esta Mac"
+          }
+        }
+      }
+    },
+    "Live" : {
+      "comment" : "Code header chip for a file the editor is watching.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En vivo"
           }
         }
       }
@@ -232,90 +331,35 @@
         }
       }
     },
-    "Use Editor Code" : {
-      "comment" : "Undo action name for the Use editor code button.",
+    "Choose a destination preset" : {
+      "comment" : "Editor status capsule tooltip: opens the destination menu.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usar código del editor"
+            "value" : "Elige un destino predefinido"
           }
         }
       }
     },
-    "Output size %lld by %lld, %@" : {
-      "comment" : "VoiceOver label for the social card's output size capsule.",
+    "Command palette" : {
+      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tamaño de salida: %lld por %lld, %@"
+            "value" : "Paleta de comandos"
           }
         }
       }
     },
-    "The editor has no code to use" : {
-      "comment" : "Message shown when Use editor code finds an empty editor.",
+    "Command palette (⌘K)" : {
+      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El editor no tiene código para usar"
-          }
-        }
-      }
-    },
-    "Code excerpt" : {
-      "comment" : "Social card preview: dashed placeholder for an empty code slot. Never exported.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fragmento de código"
-          }
-        }
-      }
-    },
-    "Author · Project" : {
-      "comment" : "Social card preview: dashed placeholder for an empty footer. Never exported.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Autor · Proyecto"
-          }
-        }
-      }
-    },
-    "Paste a code excerpt…" : {
-      "comment" : "Placeholder of the social card's code field.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pega un fragmento de código…"
-          }
-        }
-      }
-    },
-    "Use editor code" : {
-      "comment" : "Button that fills the social card from the main editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usar el código del editor"
-          }
-        }
-      }
-    },
-    "Copy the code from the frontmost editor window into this card" : {
-      "comment" : "Tooltip of the Use editor code button.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copia el código de la ventana del editor al frente a esta tarjeta"
+            "value" : "Paleta de comandos (⌘K)"
           }
         }
       }

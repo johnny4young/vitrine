@@ -23,6 +23,11 @@ can never drift.
 - Edit a comparison board's captions by clicking them on the board.
 - Choose a comparison board's size (Auto, 16:10, OG 1200 × 630, Square), gap, background
   (including transparent), and a generated footer line.
+- Show the current background, theme and font in the inspector's section headers.
+- Show a watched file as a Live chip under the code header, with its name and its
+  reload and stop actions, and add those actions to the command palette.
+- State in the inspector that captures render locally.
+- Scroll an inspector section into view when it opens.
 
 ### Changed
 
