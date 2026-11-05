@@ -1549,6 +1549,31 @@ final class VitrineUITests: XCTestCase {
         let board = try XCTUnwrap(copied, "Comparison board did not copy a PNG")
         XCTAssertGreaterThan(board.pixelsWide, 1_000)
         XCTAssertGreaterThan(board.pixelsHigh, 500)
+
+        // Two captures offer the slider: its divider has a real value and captions still open.
+        element("comparison-board-layout-slider", in: app).click()
+        let divider = element("comparison-board-divider", in: app)
+        assertExists(divider, in: app, timeout: 5)
+        let dividerSlider = element("comparison-board-divider-slider", in: app)
+        assertExists(dividerSlider, in: app)
+        func position() -> String { String(describing: dividerSlider.value) }
+        let centered = position()
+        XCTAssertFalse(element("comparison-board-gap-slider", in: app).exists)
+        divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
+        XCTAssertEqual(position(), centered, "A plain click should not move it")
+        dividerSlider.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).click()
+        XCTAssertNotEqual(position(), centered, "The inspector slider should move the divider")
+
+        assertHittable(
+            "comparison-board-caption-1", in: app, "A slider caption should stay clickable",
+            timeout: 5)
+        element("comparison-board-caption-1", in: app).click()
+        let sliderCaption = element("comparison-board-inline-label-1", in: app)
+        assertExists(sliderCaption, in: app, timeout: 3)
+        let settled = position()
+        divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
+        XCTAssertTrue(sliderCaption.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(position(), settled, "That click only closes the caption")
     }
 
     @MainActor

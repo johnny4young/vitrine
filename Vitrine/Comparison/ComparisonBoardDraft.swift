@@ -30,6 +30,7 @@ final class ComparisonBoardDraft {
         let gap: CGFloat
         let background: ComparisonBoard.Background
         let showsFooter: Bool
+        let dividerPercent: Int
         let itemIDs: [Item.ID]
         let captions: [String]
         let profile: ColorProfile
@@ -41,6 +42,7 @@ final class ComparisonBoardDraft {
     var gap: CGFloat = ComparisonBoard.defaultGap
     var background: ComparisonBoard.Background = .vitrine
     var showsFooter = false
+    var dividerPercent = ComparisonBoard.defaultDividerPercent
     let exportScale: CGFloat
 
     init(
@@ -85,6 +87,7 @@ final class ComparisonBoardDraft {
             gap: gap,
             background: background,
             showsFooter: showsFooter,
+            dividerPercent: dividerPercent,
             itemIDs: items.map(\.id),
             captions: items.flatMap { [$0.label, $0.detail] },
             profile: profile)
@@ -92,6 +95,13 @@ final class ComparisonBoardDraft {
 
     var isValid: Bool {
         (try? board()) != nil
+    }
+
+    /// A draft only ever loses captures and cannot drop below two, so a chosen slider stays valid.
+    var availableLayouts: [ComparisonBoard.Layout] {
+        ComparisonBoard.Layout.allCases.filter {
+            $0 != .slider || $0.wipes(itemCount: items.count)
+        }
     }
 
     func board() throws -> ComparisonBoard {
@@ -106,7 +116,8 @@ final class ComparisonBoardDraft {
             size: size,
             gap: gap,
             background: background,
-            showsFooter: showsFooter)
+            showsFooter: showsFooter,
+            dividerPercent: dividerPercent)
     }
 
     /// The scale exports use. OG is an exact pixel contract, like the OpenGraph export preset.
@@ -130,6 +141,12 @@ final class ComparisonBoardDraft {
             uniqueKeysWithValues: items.enumerated().map { index, item in
                 (item.id, metrics.captionFrame(at: index))
             })
+    }
+
+    var wipe: ComparisonBoardComposer.Wipe? {
+        metrics.wipe(
+            captureSizes: items.map(\.asset.pixelSize),
+            dividerPercent: dividerPercent)
     }
 
     func compose(

@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- Comparison boards get a Slider layout for two captures: one frame split at a divider you
+  drag, or move with the arrow keys when macOS keyboard navigation is on. Exports draw the
+  line at the chosen position.
 - Preview the style presets as thumbnails of the current capture under Presets in the
   inspector, and apply one with a click. They show a preset's style on a short excerpt,
   update once typing settles, and mask redacted or blurred content. An image capture shows
