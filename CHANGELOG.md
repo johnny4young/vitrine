@@ -14,6 +14,11 @@ can never drift.
 
 ### Added
 
+- Check for likely secrets on this Mac before copying, saving, sharing, or exporting. A
+  clean capture is not interrupted; otherwise choose to redact the flagged lines, continue
+  anyway, or cancel. `vitrine render` and `batch` warn on stderr and leave the output
+  unchanged.
+- Draft alternative text from the document's language, line count, filename, and title.
 - Bring the main editor's code into a social card with Use editor code.
 - Show a social card's empty code and footer slots in the preview, and its output size
   under it. Empty slots are never exported.
