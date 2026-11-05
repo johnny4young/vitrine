@@ -122,7 +122,7 @@ extension EditorView {
     func deleteSelection() -> Bool {
         guard let id = selectedAnnotationID, editingAnnotationID == nil else { return false }
         beginAnnotationEdit()
-        settings.style.annotations.removeAll { $0.id == id }
+        settings.style.annotations.removeMark(id)
         selectedAnnotationID = nil
         endAnnotationEdit()
         return true

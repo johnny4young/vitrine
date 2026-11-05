@@ -14,6 +14,7 @@ can never drift.
 
 ### Added
 
+- Deleting a counter renumbers the badges above it, so they stay in order.
 - Show what the next capture will be under the menu bar's capture button: language, line
   count, theme and destination. Language and lines appear only when System Settings always
   allows Vitrine to read the clipboard; otherwise the panel leaves the contents unread.
