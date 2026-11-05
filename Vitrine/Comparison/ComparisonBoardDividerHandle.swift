@@ -8,9 +8,23 @@ struct ComparisonBoardDividerHandle: View {
     /// What the preview image draws, in board points.
     let wipe: ComparisonBoardComposer.Wipe
     let scale: CGFloat
-    let onDrag: () -> Void
+    let isEditingCaption: Bool
+    let onEndEditing: () -> Void
 
     @FocusState private var isFocused: Bool
+    @State private var press = Press()
+
+    /// A press that starts while a caption is open only closes it, even if it becomes a drag.
+    struct Press {
+        private var onlyEndsEditing = false
+
+        mutating func movesDivider(isEditingCaption: Bool) -> Bool {
+            if isEditingCaption { onlyEndsEditing = true }
+            return !onlyEndsEditing
+        }
+
+        mutating func end() { onlyEndsEditing = false }
+    }
 
     var body: some View {
         ZStack {
@@ -23,11 +37,15 @@ struct ComparisonBoardDividerHandle: View {
         .frame(width: wipe.area.width * scale, height: wipe.area.height * scale)
         .contentShape(Rectangle())
         .pointerStyle(.columnResize)
+        .onTapGesture(perform: onEndEditing)
         .gesture(
-            DragGesture(minimumDistance: 0).onChanged { value in
-                onDrag()
-                percent = wipe.percent(atX: wipe.area.minX + value.location.x / scale)
-            }
+            DragGesture(minimumDistance: 3)
+                .onChanged { value in
+                    if isEditingCaption { onEndEditing() }
+                    guard press.movesDivider(isEditingCaption: isEditingCaption) else { return }
+                    percent = wipe.percent(atX: wipe.area.minX + value.location.x / scale)
+                }
+                .onEnded { _ in press.end() }
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Divider position")

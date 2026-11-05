@@ -90,7 +90,8 @@ struct ComparisonBoardPreviewTests {
         enum Failure: Error { case expected }
         let preview = ComparisonBoardPreview()
         let wipe = ComparisonBoardComposer.Wipe(
-            area: CGRect(x: 1, y: 2, width: 3, height: 4), pointsPerPixel: 1, dividerX: 2)
+            area: CGRect(x: 1, y: 2, width: 3, height: 4), pointsPerPixel: 1, sharedWidth: 3,
+            dividerX: 2)
 
         await preview.refresh(
             isValid: true, debounce: .zero, wipe: { wipe }, render: { asset() })

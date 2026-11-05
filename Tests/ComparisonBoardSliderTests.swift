@@ -35,6 +35,54 @@ struct ComparisonBoardSliderTests {
         #expect(right.red <= 3 && right.green <= 3, "right of the line: \(right)")
     }
 
+    /// Every combination draws a hard edge, including an odd frame width and no backdrop.
+    @Test(
+        arguments: ComparisonBoard.Size.allCases, ComparisonBoard.Background.allCases)
+    func dividerIsExactForEverySizeBackgroundAndCapture(
+        _ size: ComparisonBoard.Size, _ background: ComparisonBoard.Background
+    ) throws {
+        var sawOddWidth = false
+        for (first, second) in [
+            (CGSize(width: 800, height: 500), CGSize(width: 800, height: 500)),
+            (CGSize(width: 801, height: 500), CGSize(width: 300, height: 500)),
+            (CGSize(width: 500, height: 300), CGSize(width: 333, height: 700)),
+        ] {
+            let value = try ComparisonBoard(
+                items: [
+                    ComparisonBoard.Item(
+                        asset: RenderedAsset(
+                            cgImage: solid(red, width: Int(first.width), height: Int(first.height)),
+                            profile: .sRGB),
+                        label: "Before"),
+                    ComparisonBoard.Item(
+                        asset: RenderedAsset(
+                            cgImage: solid(
+                                blue, width: Int(second.width), height: Int(second.height)),
+                            profile: .sRGB),
+                        label: "After"),
+                ],
+                layout: .slider, size: size, background: background, dividerPercent: 37)
+            let wipe = try #require(wipe(of: value))
+            sawOddWidth = sawOddWidth || !Int(wipe.area.width).isMultiple(of: 2)
+            let sharedHeight = min(first.height, second.height) * wipe.pointsPerPixel
+
+            for scale in [CGFloat(1), 2] {
+                let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: scale).cgImage)
+                let y = Int((wipe.area.minY + sharedHeight / 2) * scale)
+                let columns = Int(wipe.area.minX * scale)..<Int(wipe.area.maxX * scale)
+                let drawn = try #require(image.whiteRun(row: y, columns: columns))
+                #expect(
+                    drawn == Int((wipe.dividerX - 1) * scale)..<Int((wipe.dividerX + 1) * scale))
+
+                let left = image.pixel(drawn.lowerBound - 1, y)
+                let right = image.pixel(drawn.upperBound, y)
+                #expect(left.green <= 3 && left.blue <= 3, "left of the line: \(left)")
+                #expect(right.red <= 3 && right.green <= 3, "right of the line: \(right)")
+            }
+        }
+        #expect(sawOddWidth, "\(size) should exercise an odd frame width")
+    }
+
     @Test func thePercentMovesTheDrawnLineAcrossTheCaptures() throws {
         func line(_ percent: Int) throws -> (run: Range<Int>, area: CGRect) {
             let value = try board(red, blue, dividerPercent: percent)
@@ -47,6 +95,42 @@ struct ComparisonBoardSliderTests {
         let (high, _) = try line(75)
         let travelled = CGFloat(high.lowerBound - low.lowerBound)
         #expect(abs(travelled - area.width / 2) <= 1)
+    }
+
+    /// A narrow capture must keep its side at every position, in either order.
+    @Test(arguments: [10, 50, 90])
+    func bothCapturesStayVisibleWhenOneIsNarrow(_ percent: Int) throws {
+        let wide = (red, 800)
+        let narrow = (blue, 300)
+        for (first, second) in [(wide, narrow), (narrow, wide)] {
+            let value = try board(
+                solid(first.0, width: first.1, height: 500),
+                solid(second.0, width: second.1, height: 500),
+                dividerPercent: percent)
+            let wipe = try #require(wipe(of: value))
+            let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: 1).cgImage)
+            let y = Int(wipe.area.midY)
+            let leftEdge = Int(wipe.area.minX) + 1
+            let rightOfLine = Int(wipe.dividerX) + 2
+
+            for (x, color) in [(leftEdge, first.0), (rightOfLine, second.0)] {
+                let pixel = image.pixel(x, y)
+                #expect(color == red ? pixel.isRed : pixel.isBlue, "at \(x): \(pixel)")
+            }
+        }
+    }
+
+    /// The whole-point line stays within half a point of the announced percent.
+    @Test func aNarrowCaptureKeepsTheLineWithinHalfAPointOfThePercent() throws {
+        for percent in ComparisonBoard.dividerRange {
+            let value = try board(
+                solid(red, width: 12, height: 500), solid(blue, width: 800, height: 500),
+                dividerPercent: percent)
+            let wipe = try #require(wipe(of: value))
+            let exact = wipe.area.minX + wipe.sharedWidth * CGFloat(percent) / 100
+            #expect(wipe.sharedWidth < 100)
+            #expect(abs(wipe.dividerX - exact) <= 0.5)
+        }
     }
 
     /// Every format encodes the one composed raster, so each shows the line where the
@@ -108,27 +192,95 @@ struct ComparisonBoardSliderTests {
     /// Captures keep their relative size and top-left corner, so what is common lines up.
     @Test func differentSizesShareOneScaleAndTheirTopLeftCorner() throws {
         let value = try board(
-            solid(red, width: 400, height: 300), solid(blue, width: 800, height: 200),
-            dividerPercent: 75)
+            solid(blue, width: 800, height: 200), solid(red, width: 400, height: 300),
+            dividerPercent: 90)
         let wipe = try #require(wipe(of: value))
         let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: 1).cgImage)
         let area = wipe.area
-        let leftWidth = area.width / 2
-        let rightHeight = area.height * 2 / 3
+        let shortHeight = area.height * 2 / 3
+        let line = wipe.dividerX - area.minX
         func color(_ x: CGFloat, _ y: CGFloat) -> Pixel {
             image.pixel(Int(area.minX + x), Int(area.minY + y))
         }
 
-        #expect(color(8, 8).isRed, "the left capture starts at the corner")
-        #expect(color(leftWidth - 4, area.height - 8).isRed, "and keeps its own size")
-        #expect(!color(leftWidth + 4, 8).isRed, "it ends at half the width")
-        #expect(!color(leftWidth + 4, 8).isBlue, "and the other capture does not fill in")
+        #expect(abs(wipe.sharedWidth - area.width / 2) <= 1, "the narrow capture is half as wide")
+        #expect(color(line / 2, 8).isBlue, "the left capture starts at the top")
+        #expect(color(line / 2, shortHeight - 4).isBlue, "and keeps its own height")
+        #expect(!color(line / 2, shortHeight + 4).isBlue, "it ends at two thirds of the height")
+        #expect(!color(line / 2, shortHeight + 4).isRed, "and the other capture does not fill in")
 
-        let onRight = area.width * 0.9
-        #expect(color(onRight, 8).isBlue, "the right capture starts at the same top")
-        #expect(color(onRight, rightHeight - 4).isBlue)
-        #expect(!color(onRight, rightHeight + 4).isBlue, "it ends at two thirds of the height")
-        #expect(!color(onRight, rightHeight + 4).isRed, "and the other capture does not fill in")
+        let onRight = wipe.sharedWidth - 4
+        #expect(color(onRight, 8).isRed, "the right capture starts at the same top")
+        #expect(color(onRight, area.height - 8).isRed)
+        #expect(!color(wipe.sharedWidth + 4, 8).isRed, "it ends at half the width")
+        #expect(!color(wipe.sharedWidth + 4, 8).isBlue, "and the other capture does not fill in")
+    }
+
+    /// Fixed numbers on purpose: the default board's layout is a compatibility contract, and
+    /// the pixel goldens do not cover it. A capture of the image area's aspect fills it exactly.
+    @Test func theDefaultBoardDrawsItsFixedLayout() throws {
+        let value = try ComparisonBoard(
+            items: [
+                ComparisonBoard.Item(
+                    asset: RenderedAsset(
+                        cgImage: solid(red, width: 968, height: 720), profile: .sRGB),
+                    label: "Before"),
+                ComparisonBoard.Item(
+                    asset: RenderedAsset(
+                        cgImage: solid(blue, width: 968, height: 720), profile: .sRGB),
+                    label: "After"),
+            ])
+        let metrics = ComparisonBoardComposer.metrics(for: value)
+        #expect(!metrics.isWipe)
+        #expect(metrics.pointSize == CGSize(width: 1164, height: 568))
+        #expect(metrics.captionFrame(at: 0) == CGRect(x: 66, y: 438, width: 484, height: 64))
+        #expect(metrics.captionFrame(at: 1) == CGRect(x: 614, y: 438, width: 484, height: 64))
+
+        let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: 1).cgImage)
+        #expect(image.width == 1164 && image.height == 568)
+        for (rect, isCapture) in [
+            (CGRect(x: 66, y: 66, width: 484, height: 360), \Pixel.isRed),
+            (CGRect(x: 614, y: 66, width: 484, height: 360), \Pixel.isBlue),
+        ] {
+            let (midX, midY) = (Int(rect.midX), Int(rect.midY))
+            let inside = [
+                (Int(rect.minX) + 1, midY), (Int(rect.maxX) - 2, midY),
+                (midX, Int(rect.minY) + 1), (midX, Int(rect.maxY) - 2),
+            ]
+            let outside = [
+                (Int(rect.minX) - 1, midY), (Int(rect.maxX), midY),
+                (midX, Int(rect.minY) - 1), (midX, Int(rect.maxY)),
+            ]
+            for (x, y) in inside { #expect(image.pixel(x, y)[keyPath: isCapture], "(\(x), \(y))") }
+            for (x, y) in outside {
+                #expect(!image.pixel(x, y)[keyPath: isCapture], "(\(x), \(y))")
+            }
+        }
+    }
+
+    @Test func onlyADividerMoveSkipsTheDebounce() {
+        let preview = ComparisonBoardPreview()
+
+        #expect(preview.debounce(dividerPercent: 50) == ComparisonBoardPreview.debounce)
+        #expect(preview.debounce(dividerPercent: 50) == ComparisonBoardPreview.debounce)
+        #expect(preview.debounce(dividerPercent: 51) == .zero)
+        #expect(preview.debounce(dividerPercent: 51) == ComparisonBoardPreview.debounce)
+    }
+
+    @Test func aPressThatClosesACaptionNeverMovesTheDivider() {
+        var press = ComparisonBoardDividerHandle.Press()
+        let plainDrag = press.movesDivider(isEditingCaption: false)
+        #expect(plainDrag)
+
+        press.end()
+        let closing = press.movesDivider(isEditingCaption: true)
+        let continued = press.movesDivider(isEditingCaption: false)
+        #expect(!closing)
+        #expect(!continued, "the same press keeps going")
+
+        press.end()
+        let next = press.movesDivider(isEditingCaption: false)
+        #expect(next, "the next press drags")
     }
 
     // MARK: - Redaction
@@ -322,8 +474,10 @@ struct ComparisonBoardSliderTests {
         }
 
         /// The columns of a row that read as white.
-        func whiteRun(row: Int, minimum: UInt8 = 250) -> Range<Int>? {
-            let columns = (0..<width).filter {
+        func whiteRun(
+            row: Int, minimum: UInt8 = 250, columns range: Range<Int>? = nil
+        ) -> Range<Int>? {
+            let columns = (range ?? 0..<width).filter {
                 let pixel = pixel($0, row)
                 return pixel.red >= minimum && pixel.green >= minimum && pixel.blue >= minimum
             }

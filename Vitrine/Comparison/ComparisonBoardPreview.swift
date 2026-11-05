@@ -21,8 +21,18 @@ final class ComparisonBoardPreview {
     /// The divider `asset` draws, set with it for the same reason.
     private(set) var wipe: ComparisonBoardComposer.Wipe?
     private(set) var phase: Phase = .rendering
+    @ObservationIgnored private var lastDividerPercent: Int?
 
     static let debounce: Duration = .milliseconds(80)
+
+    /// A held-down drag would keep resetting the debounce, so only a divider move skips it.
+    func debounce(dividerPercent: Int) -> Duration {
+        defer { lastDividerPercent = dividerPercent }
+        guard let lastDividerPercent, lastDividerPercent != dividerPercent else {
+            return Self.debounce
+        }
+        return .zero
+    }
 
     func refresh(
         isValid: Bool,

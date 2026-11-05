@@ -71,6 +71,7 @@ enum ComparisonBoardComposer {
 
         /// Both captures share one scale and their top-left corner, so a line and column common
         /// to both land in the same place. `nil` unless this board is a wipe of two captures.
+        /// The percent runs across the shared width, or a narrow capture's side could be empty.
         func wipe(captureSizes: [CGSize], dividerPercent: Int) -> Wipe? {
             guard isWipe, captureSizes.count == 2 else { return nil }
             let card = cardFrames[0]
@@ -88,21 +89,25 @@ enum ComparisonBoardComposer {
                 y: (card.minY + inset + (limit.height - size.height) / 2).rounded(),
                 width: size.width,
                 height: size.height)
+            let shared = min(
+                max(min(captureSizes[0].width, captureSizes[1].width) * scale, 1), size.width)
             let percent = CGFloat(ComparisonBoard.clampedDivider(dividerPercent))
             return Wipe(
                 area: area,
                 pointsPerPixel: scale,
-                dividerX: (area.minX + area.width * percent / 100).rounded())
+                sharedWidth: shared,
+                dividerX: (area.minX + shared * percent / 100).rounded())
         }
     }
 
-    /// Where a slider board draws, shared by the composer and the divider control. Whole
-    /// points keep the divider on a pixel boundary at every export scale.
+    /// Where a slider board draws, shared by the composer and the divider control. The line
+    /// sits on the whole point nearest the percent, a pixel boundary at every export scale.
     struct Wipe: Equatable {
         static let dividerWidth: CGFloat = 2
 
         let area: CGRect
         let pointsPerPixel: CGFloat
+        let sharedWidth: CGFloat
         let dividerX: CGFloat
 
         /// The one region of `area`, in its own coordinates, where a capture may draw.
@@ -116,7 +121,7 @@ enum ComparisonBoardComposer {
         }
 
         func percent(atX x: CGFloat) -> Int {
-            ComparisonBoard.clampedDivider(Int(((x - area.minX) / area.width * 100).rounded()))
+            ComparisonBoard.clampedDivider(Int(((x - area.minX) / sharedWidth * 100).rounded()))
         }
     }
 

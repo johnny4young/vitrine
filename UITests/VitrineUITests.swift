@@ -1524,15 +1524,15 @@ final class VitrineUITests: XCTestCase {
         XCTAssertGreaterThan(board.pixelsHigh, 500)
 
         // Two captures offer the slider: its divider has a real value and captions still open.
-        app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label == 'Slider' OR title == 'Slider'"))
-            .firstMatch.click()
+        element("comparison-board-layout-slider", in: app).click()
         let divider = element("comparison-board-divider", in: app)
         assertExists(divider, in: app, timeout: 5)
         XCTAssertEqual(divider.value as? String, "50%")
         let dividerSlider = element("comparison-board-divider-slider", in: app)
         assertExists(dividerSlider, in: app)
         XCTAssertFalse(element("comparison-board-gap-slider", in: app).exists)
+        divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
+        XCTAssertEqual(divider.value as? String, "50%", "A plain click should not move it")
         dividerSlider.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).click()
         XCTAssertEqual(
             XCTWaiter.wait(
@@ -1549,8 +1549,10 @@ final class VitrineUITests: XCTestCase {
         element("comparison-board-caption-1", in: app).click()
         let sliderCaption = element("comparison-board-inline-label-1", in: app)
         assertExists(sliderCaption, in: app, timeout: 3)
-        sliderCaption.typeKey(.escape, modifierFlags: [])
+        let settled = divider.value as? String
+        divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
         XCTAssertTrue(sliderCaption.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(divider.value as? String, settled, "That click only closes the caption")
     }
 
     @MainActor

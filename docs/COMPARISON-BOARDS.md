@@ -39,9 +39,12 @@ single-line and bounded so a board cannot grow unpredictably from pasted text.
 ## Slider
 
 The first capture draws left of the divider and the second to its right, each with its
-caption underneath. Drag on the image, Tab to it with keyboard navigation on and press the
-left or right arrow, or use **Divider** in the inspector; each sets a whole percentage from
-10 to 90, so both captures stay in view. The value lasts as long as the board.
+caption underneath. Drag on the image, Tab to it with macOS keyboard navigation on and press
+the left or right arrow, or use **Divider** in the inspector. A click on the image does not
+move the divider. Each sets a whole percentage from 10 to 90 of the width both captures
+share, so each always shows some of itself. The line sits on the nearest whole point, so
+over a very narrow capture a step may not move it and the percentage is accurate to half a
+point. The value lasts as long as the board.
 
 - **Export is a still image.** The divider is drawn at the chosen position, the same place
   in the preview and in every format. The knob is an editor control, so an export shows

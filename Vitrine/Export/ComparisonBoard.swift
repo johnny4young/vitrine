@@ -16,7 +16,7 @@ nonisolated struct ComparisonBoard: Sendable {
     static let maximumDetailLength = 80
     static let gapRange: ClosedRange<CGFloat> = 0...40
     static let defaultGap: CGFloat = 28
-    /// Keeps both captures in view: a wipe showing only one of them compares nothing.
+    /// A share of the width both captures have, so each always shows some of itself.
     static let dividerRange = 10...90
     static let defaultDividerPercent = 50
 

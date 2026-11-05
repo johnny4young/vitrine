@@ -27,8 +27,7 @@ struct ComparisonBoardEditorView: View {
             HStack(spacing: 0) {
                 previewStage
                 inspector
-                    // Holds the five small layout segments in Spanish without overflowing.
-                    .frame(width: 328)
+                    .frame(width: 320)
             }
         }
         .ignoresSafeArea(.container, edges: .top)
@@ -39,8 +38,7 @@ struct ComparisonBoardEditorView: View {
             await preview.refresh(
                 isValid: draft.isValid,
                 keepsLastFrame: editingCaption != nil,
-                // A held-down drag would otherwise reset the debounce until it pauses.
-                debounce: draft.wipe == nil ? ComparisonBoardPreview.debounce : .zero,
+                debounce: preview.debounce(dividerPercent: draft.dividerPercent),
                 captionFrames: { draft.captionFrames },
                 wipe: { draft.wipe },
                 render: { try draft.composePreview(profile: settings.export.colorProfile) })
@@ -158,7 +156,8 @@ struct ComparisonBoardEditorView: View {
         ZStack {
             if let wipe = preview.wipe {
                 ComparisonBoardDividerHandle(
-                    percent: $draft.dividerPercent, wipe: wipe, scale: scale, onDrag: endEditing)
+                    percent: $draft.dividerPercent, wipe: wipe, scale: scale,
+                    isEditingCaption: editingCaption != nil, onEndEditing: endEditing)
             }
             ForEach(Array(draft.items.enumerated()), id: \.element.id) { index, item in
                 if let frame = preview.captionFrames[item.id] {
@@ -223,14 +222,15 @@ struct ComparisonBoardEditorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.lg) {
                 inspectorSection("Layout") {
-                    Picker("Layout", selection: $draft.layout) {
-                        ForEach(draft.availableLayouts, id: \.self) { layout in
-                            Text(layout.title).tag(layout)
+                    // Wraps rather than overflows when five labels outgrow the column.
+                    TokenSegmentedPicker(
+                        options: draft.availableLayouts.map { ($0, Text($0.title)) },
+                        selection: $draft.layout,
+                        optionIdentifiers: draft.availableLayouts.map {
+                            "comparison-board-layout-\($0.rawValue)"
                         }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .controlSize(.small)
+                    )
+                    .accessibilityLabel("Layout")
                     .accessibilityIdentifier("comparison-board-layout-picker")
                 }
 
@@ -242,7 +242,6 @@ struct ComparisonBoardEditorView: View {
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
-                    .controlSize(.small)
                     .accessibilityIdentifier("comparison-board-size-picker")
                 }
 

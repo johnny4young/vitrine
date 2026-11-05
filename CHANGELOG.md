@@ -15,7 +15,8 @@ can never drift.
 ### Added
 
 - Comparison boards get a Slider layout for two captures: one frame split at a divider you
-  drag or move with the arrow keys. Exports draw the line at the chosen position.
+  drag, or move with the arrow keys when macOS keyboard navigation is on. Exports draw the
+  line at the chosen position.
 - Terminal captures get an ANSI palette control, Theme or Raw xterm colors, in the inspector
   and Settings ▸ Style, with `--terminal-palette`. The default is today's rendering.
 - The inspector's Header section lists a terminal capture's filename and title as removable
