@@ -38,7 +38,7 @@ struct HelpView: View {
             title: "help.topic.quick-capture.title",
             body: "help.topic.quick-capture.body",
             identifier: "help-topic-quick-capture",
-            actions: [.newCapture]),
+            actions: [.openEditor]),
         HelpTopic(
             symbol: "macwindow",
             title: "help.topic.editor.title",
@@ -134,7 +134,7 @@ struct HelpView: View {
                         } label: {
                             action.label
                         }
-                        .accessibilityIdentifier(action.identifier)
+                        .accessibilityIdentifier(topic.identifier(for: action))
                     }
                 }
                 .buttonStyle(.bordered)
@@ -210,22 +210,26 @@ struct HelpTopic: Identifiable {
     let title: LocalizedStringResource
     let body: LocalizedStringResource
     let identifier: String
-    /// What the topic's buttons open, leading with the surface its copy names first.
+    /// What the topic's buttons open.
     let actions: [HelpAction]
 
     var id: String { identifier }
+
+    /// Scoped to the topic, since two topics can open the same surface.
+    func identifier(for action: HelpAction) -> String {
+        "\(identifier)-\(action.identifierSuffix)"
+    }
 }
 
-/// Where a Help topic's button goes. Each case names a route the app already has.
+/// Where a Help topic's button goes. Each case only opens a surface: Help never captures,
+/// because a capture can replace the editor's draft and the clipboard.
 enum HelpAction: Hashable {
-    case newCapture
     case openEditor
     case settings(SettingsTab)
 
     /// The menu command this repeats, so the button reads and behaves like the menu item.
     var command: VitrineCommand? {
         switch self {
-        case .newCapture: .newCapture
         case .openEditor: .openEditor
         case .settings: nil
         }
@@ -233,17 +237,15 @@ enum HelpAction: Hashable {
 
     var label: Text {
         switch self {
-        case .newCapture: Text(verbatim: VitrineCommand.newCapture.title)
         case .openEditor: Text(verbatim: VitrineCommand.openEditor.title)
         case .settings(let tab): Text("Open Settings ▸ \(tab.title)")
         }
     }
 
-    var identifier: String {
+    var identifierSuffix: String {
         switch self {
-        case .newCapture: "help-action-new-capture"
-        case .openEditor: "help-action-open-editor"
-        case .settings(let tab): "help-action-settings-\(tab.rawValue)"
+        case .openEditor: "open-editor"
+        case .settings(let tab): "settings-\(tab.rawValue)"
         }
     }
 }
@@ -252,24 +254,21 @@ enum HelpAction: Hashable {
 /// lifecycles. Every target exists in every build: without URL capture, Settings ▸ Input
 /// still opens and says so in its Network use row.
 struct HelpNavigation {
-    let newCapture: () -> Void
     let openEditor: () -> Void
     let showSettings: (SettingsTab) -> Void
 
     func perform(_ action: HelpAction) {
         switch action {
-        case .newCapture: newCapture()
         case .openEditor: openEditor()
         case .settings(let tab): showSettings(tab)
         }
     }
 
     static let live = HelpNavigation(
-        newCapture: { QuickCapture.perform(environment: .shared, feedback: .shared) },
         openEditor: { EditorWindowController.shared.show() },
         showSettings: { SettingsWindowManager.shared.show(tab: $0) })
 
-    static let noOp = HelpNavigation(newCapture: {}, openEditor: {}, showSettings: { _ in })
+    static let noOp = HelpNavigation(openEditor: {}, showSettings: { _ in })
 }
 
 /// Owns and presents the in-app Help window.

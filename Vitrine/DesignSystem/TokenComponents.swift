@@ -337,8 +337,8 @@ nonisolated struct ChipScrollExtent: Equatable {
     }
 }
 
-/// What a chip strip's cue shows. Kept apart from the offset so scrolling redraws the
-/// strip only when an edge changes.
+/// What a chip strip's cue shows. Kept apart from the offset so scrolling does not redraw
+/// the strip on every frame.
 nonisolated struct ChipScrollEdges: Equatable {
     var overflows = false
     var hidesLeading = false
@@ -346,7 +346,7 @@ nonisolated struct ChipScrollEdges: Equatable {
 }
 
 /// A chip strip's scroll state, shared with its chips by identity. The live extent is not
-/// observed, so scrolling redraws nothing until an edge changes.
+/// observed, so a scroll redraws only when an edge changes or `position` hands over to it.
 @Observable
 final class ChipScrollModel {
     var position = ScrollPosition(idType: String.self)
@@ -458,7 +458,11 @@ struct ChipScroll<Content: View>: View {
         }
         .mask(fade)
         .overlay(alignment: .trailing) {
-            if edges.overflows { pageButton }
+            if edges.overflows {
+                pageButton
+                    .padding(.top, topPadding)
+                    .padding(.bottom, bottomPadding)
+            }
         }
         .environment(\.chipScrollModel, model)
     }

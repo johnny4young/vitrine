@@ -386,7 +386,6 @@ struct HelpTopicActionTests {
 
         var navigation: HelpNavigation {
             HelpNavigation(
-                newCapture: { self.routes.append("capture") },
                 openEditor: { self.routes.append("editor") },
                 showSettings: { self.routes.append("settings-\($0.rawValue)") })
         }
@@ -396,7 +395,10 @@ struct HelpTopicActionTests {
 
     @Test func everyTopicOpensSomethingAndIdentifiersAreDistinct() {
         #expect(HelpView.topics.allSatisfy { !$0.actions.isEmpty })
-        #expect(Set(Self.actions.map(\.identifier)).count == Self.actions.count)
+        let identifiers = HelpView.topics.flatMap { topic in
+            topic.actions.map(topic.identifier(for:))
+        }
+        #expect(Set(identifiers).count == identifiers.count)
     }
 
     @Test func commandActionsRepeatARealMenuItem() throws {
@@ -458,10 +460,59 @@ struct HelpTopicActionTests {
 
     @Test func navigationRunsTheRouteEachActionNames() {
         let spy = RouteSpy()
-        for action in [HelpAction.newCapture, .openEditor, .settings(.library)] {
+        for action in [HelpAction.openEditor, .settings(.library)] {
             spy.navigation.perform(action)
         }
-        #expect(spy.routes == ["capture", "editor", "settings-library"])
+        #expect(spy.routes == ["editor", "settings-library"])
+    }
+
+    /// A capture can replace the editor's draft and the clipboard, so Help must not run one.
+    @Test func helpNeverRunsACapture() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Vitrine/Help/HelpView.swift"),
+            encoding: .utf8)
+        #expect(!sourceCodeWithoutLineComments(source).contains("QuickCapture"))
+    }
+
+    /// The copy takes over from the removed button, so it must name the menu's real shortcut.
+    @Test func quickCaptureCopyStatesTheMenuShortcut() throws {
+        let command = VitrineCommand.newCapture
+        let key = try #require(command.keyEquivalent).uppercased()
+        let shift = command.modifiers.contains(.shift) ? "⇧" : ""
+        let commandKey = command.modifiers.contains(.command) ? "⌘" : ""
+        let shortcut = "\(shift)\(commandKey)\(key)"
+        let topic = try #require(
+            HelpView.topics.first { $0.identifier == "help-topic-quick-capture" })
+        for language in ["en", "es"] {
+            let path = try #require(Bundle.main.path(forResource: language, ofType: "lproj"))
+            let bundle = try #require(Bundle(path: path))
+            let body = bundle.localizedString(forKey: topic.body.key, value: nil, table: nil)
+            #expect(body.contains(shortcut), "\(language) copy omits \(shortcut)")
+        }
+    }
+
+    /// AppKit attaches a real sheet only to a window on screen, so this stubs the property.
+    private final class SheetedWindow: NSWindow {
+        var stubbedSheet: NSWindow?
+        override var attachedSheet: NSWindow? { stubbedSheet }
+    }
+
+    @Test func aSheetKeepsThePaneWhereItIs() {
+        let window = SheetedWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 200, height: 200), styleMask: [.titled],
+            backing: .buffered, defer: true)
+        window.isReleasedWhenClosed = false
+        let defaults = freshDefaults()
+
+        SettingsWindowManager.select(.library, unlessSheetOn: window, in: defaults)
+        #expect(defaults.string(forKey: SettingsTab.storageKey) == SettingsTab.library.rawValue)
+
+        window.stubbedSheet = NSWindow()
+        SettingsWindowManager.select(.input, unlessSheetOn: window, in: defaults)
+        #expect(defaults.string(forKey: SettingsTab.storageKey) == SettingsTab.library.rawValue)
     }
 
     @Test func selectingATabWritesWhatTheSettingsWindowReads() {

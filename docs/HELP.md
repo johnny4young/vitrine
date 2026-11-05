@@ -6,7 +6,7 @@ available **offline** with no web dependency. Keep this document and the in-app
 copy in step: when you change one, change the other.
 
 Open Help from the **Help ▸ Vitrine Help** menu (or press `⌘?`). Each topic has a
-button that opens what it describes.
+button that opens what it describes; none of them runs a capture.
 
 ## The global hotkey
 
@@ -18,8 +18,8 @@ The menu-bar action remains available without a shortcut.
 ## Quick capture
 
 Copy code anywhere, choose **New Capture from Clipboard** from Vitrine's
-menu-bar panel (or use your enabled hotkey), and Vitrine renders it with your
-current style. With **Copy to clipboard automatically** on (the default), a
+menu-bar panel, press `⇧⌘S` in Vitrine, or use your enabled hotkey, and Vitrine
+renders it with your current style. With **Copy to clipboard automatically** on (the default), a
 successful copy places the image on your clipboard; paste it into a document,
 chat, or pull request. If copying fails, Vitrine reports the
 failure instead of claiming success.
@@ -53,7 +53,7 @@ for an explicitly requested webpage or remote image, updates, and license
 activation; the App Store build has no network-client entitlement. A requested
 webpage loads on this Mac, but the website still receives a request. See the
 [capability reference](CAPABILITIES.md) and [permissions](PERMISSIONS.md) for
-retention, consent, and channel details. Review network use in **Settings ▸ Input**.
+retention, consent, and channel details. Review web capture's network use in **Settings ▸ Input**.
 
 ## What's New
 

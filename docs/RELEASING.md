@@ -766,8 +766,9 @@ ReleaseNote(
 ```
 
 The window opens each highlight with its bold phrase, so readers can scan the release.
-Keep phrases to a few words and translate both the phrase and the sentence in
-`Localizable.xcstrings`; `HelpTests` fails a newest note that leaves a phrase out.
+Each phrase ends with a period and runs to at most 5 words, in English and Spanish.
+Translate both the phrase and the sentence in `Localizable.xcstrings`, marking new keys
+`"extractionState" : "manual"`. `HelpTests` fails a newest note that breaks these rules.
 
 The `version` string must match the `MARKETING_VERSION` you bump in `project.yml`.
 What's New appears once when the bundled version is newer than the version the user

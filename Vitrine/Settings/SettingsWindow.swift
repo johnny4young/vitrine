@@ -25,8 +25,18 @@ final class SettingsWindowManager {
 
     /// Shows the window on `tab`, moving it there if it is already open on another pane.
     func show(tab: SettingsTab) {
-        tab.select()
+        Self.select(tab, unlessSheetOn: window)
         show()
+    }
+
+    /// Leaves the pane alone under a sheet: moving tears down the view presenting it, and
+    /// with it whatever the sheet holds.
+    static func select(
+        _ tab: SettingsTab, unlessSheetOn window: NSWindow?,
+        in defaults: UserDefaults = AppDefaults.current
+    ) {
+        guard window?.attachedSheet == nil else { return }
+        tab.select(in: defaults)
     }
 
     private func makeWindow() -> NSWindow {
