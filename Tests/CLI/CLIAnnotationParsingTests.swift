@@ -230,6 +230,68 @@ struct CLIAnnotationParsingTests: CLITestSupport {
         }
     }
 
+    @Test func counterLabelBecomesTheCounterText() throws {
+        let options = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--counter", "1",
+            "--counter-label", " the struct ",
+        ])
+        let annotation = try #require(
+            options.makeConfig(code: "let a = 1", language: .swift).annotations.first)
+        #expect(annotation.text == "the struct")
+    }
+
+    @Test func counterLabelRequiresACounterAndVisibleText() {
+        #expect(throws: CLIError.incompatibleOptions("--counter-label requires --counter.")) {
+            try CLIArguments.parse(["render", "in.swift", "-o", "o.png", "--counter-label", "x"])
+        }
+        #expect(throws: CLIError.invalidValue(flag: "--counter-label", value: "  ")) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--counter", "1", "--counter-label", "  ",
+            ])
+        }
+    }
+
+    @Test func counterLabelOverTheLimitIsRejected() throws {
+        let limit = CounterLegend.maxLabelLength
+        let fits = String(repeating: "x", count: limit)
+        let options = try CLIArguments.parse([
+            "render", "in.swift", "-o", "o.png", "--counter", "1", "--counter-label", fits,
+        ])
+        #expect(options.counterLabel == fits)
+        let tooLong = fits + "x"
+        #expect(throws: CLIError.invalidValue(flag: "--counter-label", value: tooLong)) {
+            try CLIArguments.parse([
+                "render", "in.swift", "-o", "o.png", "--counter", "1", "--counter-label", tooLong,
+            ])
+        }
+    }
+
+    @Test func legendNoticesReportMaskingAndDroppedEntriesWithoutTheLabel() {
+        var config = SnapshotConfig()
+        config.code = "let a = hunter2long\nlet b = 1"
+        config.language = .swift
+        config.redactedLineRanges = [1...1]
+        config.annotations = (1...4).map { number in
+            Annotation(
+                kind: .counter, start: .zero, end: .zero,
+                text: number == 1 ? "hunter2long" : "a label long enough to take room",
+                number: number)
+        }
+        #expect(CLIOutputWriter.legendNotices(config, fixedSize: nil, output: "o.png").count == 1)
+
+        let notices = CLIOutputWriter.legendNotices(
+            config, fixedSize: CGSize(width: 800, height: 90), output: "o.png")
+        #expect(notices.count == 2)
+        #expect(notices.allSatisfy { $0.hasPrefix("note: o.png: ") })
+        #expect(!notices.joined().contains("hunter2long"))
+
+        config.annotations = []
+        #expect(
+            CLIOutputWriter.legendNotices(
+                config, fixedSize: CGSize(width: 800, height: 90), output: "o.png"
+            ).isEmpty)
+    }
+
     @Test func counterOptionsBuildTheRenderCoreAnnotation() throws {
         let options = try CLIArguments.parse([
             "render", "snippet.swift", "-o", "o.png", "--counter", "7",

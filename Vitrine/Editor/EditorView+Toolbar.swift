@@ -91,7 +91,9 @@ extension EditorView {
                     onBringToFront: bringSelectionToFront,
                     onSendToBack: sendSelectionToBack,
                     density: density.annotationDensity,
-                    onStyleEditEnded: endAnnotationEdit
+                    onStyleEditEnded: endAnnotationEdit,
+                    legend: annotationLegendEdit,
+                    onLegendSubmitted: { stageFocused = selectedAnnotationID != nil }
                 )
                 .onChange(of: activeTool) { _, newTool in
                     if newTool != .select { selectedAnnotationID = nil }

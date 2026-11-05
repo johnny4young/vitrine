@@ -256,6 +256,8 @@ struct CLIArgumentParser {
             annotations.counter.color = try resolveHexColor(value, flag: token)
         case .counterSize:
             annotations.counter.size = try resolveAnnotationSize(value, flag: token)
+        case .counterLabel:
+            annotations.counterLabel = try resolveCounterLabel(value, flag: token)
         case .arrow:
             annotations.arrows.points.append(try resolveNormalizedSegment(value, flag: token))
         case .arrowColor:

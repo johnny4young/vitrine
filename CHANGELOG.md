@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Type a legend on a selected counter, or pass `--counter-label`, to list it under the
+  capture. Masking is best effort: a label that looks like a secret or matches a redacted
+  line or a value in blurred code is replaced, so check the legend before sharing.
+  Fixed-size output leaves the legend out and says so.
 - Copy the command line that reproduces an editor window's image, from its More menu or
   the command palette. It names what the line can't include, such as annotations or a
   pasted image.

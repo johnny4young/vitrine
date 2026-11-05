@@ -199,6 +199,8 @@ struct CLIOptions: Equatable {
     var counterColor: RGBAColor?
     /// Optional counter size weight in the editor's supported 2...28 range.
     var counterSize: Double?
+    /// Legend text for `counterNumber`; nil lists nothing under the capture.
+    var counterLabel: String?
     /// Straight arrows described by normalized tail/head points and shared editor styling.
     var arrows: [SegmentAnnotation] = []
     /// Straight lines described by normalized endpoints and shared editor styling.
@@ -475,7 +477,7 @@ struct CLIOptions: Equatable {
             let position = counterPosition ?? CGPoint(x: 0.5, y: 0.5)
             config.annotations.append(
                 Annotation(
-                    kind: .counter, start: position, end: position,
+                    kind: .counter, start: position, end: position, text: counterLabel ?? "",
                     color: counterColor ?? Annotation.defaultColor,
                     thickness: counterSize ?? Annotation.defaultThickness,
                     number: counterNumber))
