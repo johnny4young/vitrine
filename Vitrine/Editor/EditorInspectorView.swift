@@ -25,6 +25,10 @@ struct EditorInspectorView: View {
     var entitlements: Entitlements
     var presetThumbnails: PresetThumbnailModel
 
+    /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
+    @AppStorage(PresetThumbnailModel.expandedStorageKey, store: AppDefaults.current)
+    private var showPresets = false
+
     /// Disclosure state for the advanced sections. All start collapsed so the
     /// inspector opens compact; the primary style cluster above them is always
     /// visible. State is per-window and intentionally not persisted — it is view
@@ -50,6 +54,9 @@ struct EditorInspectorView: View {
                 .onChange(of: showOutput) { _, open in
                     reveal("inspector-disclosure-output", when: open, proxy)
                 }
+                .onChange(of: showPresets) { _, open in
+                    reveal("inspector-disclosure-presets", when: open, proxy)
+                }
         }
     }
 
@@ -66,8 +73,6 @@ struct EditorInspectorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 scopeNote
-                PresetThumbnailSection(
-                    settings: settings, themes: themes, presets: presets, model: presetThumbnails)
                 backgroundSection
                 // A beautified image swaps the code-only style controls (theme, fonts)
                 // for the frame picker; everything else (background, canvas, header,
@@ -194,6 +199,12 @@ struct EditorInspectorView: View {
                         outputControls
                     }
                     .id("inspector-disclosure-output")
+
+                    PresetThumbnailSection(
+                        settings: settings, themes: themes, presets: presets,
+                        model: presetThumbnails, isExpanded: $showPresets
+                    )
+                    .id("inspector-disclosure-presets")
                 }
             }
             .padding(.top, 18)

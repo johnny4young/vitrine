@@ -687,8 +687,17 @@ final class VitrineUITests: XCTestCase {
 
         let editor = element("code-editor-text-view", in: app)
         XCTAssertTrue(editor.waitForExistence(timeout: 8))
-        assertExists(element("inspector-preset-thumbnails", in: app), in: app)
+        let disclosure = element("inspector-disclosure-presets", in: app)
+        assertExists(disclosure, in: app)
+        XCTAssertFalse(element("inspector-preset-thumbnails", in: app).exists)
 
+        // The section sits last, so scroll to it before opening it.
+        let inspector = element("editor-inspector", in: app)
+        for _ in 0..<5 where !disclosure.isHittable {
+            inspector.swipeUp()
+        }
+        disclosure.click()
+        assertExists(element("inspector-preset-thumbnails", in: app), in: app, timeout: 3)
         assertHittable(
             "preset-thumbnail-builtin.sunset", in: app, "A preset tile must be reachable")
         element("preset-thumbnail-builtin.sunset", in: app).click()

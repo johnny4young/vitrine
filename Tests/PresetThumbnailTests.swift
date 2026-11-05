@@ -375,14 +375,189 @@ struct PresetThumbnailTests {
     }
 
     @Test func cancellationStopsBeforeTheNextTile() async {
+        var renders = 0
+        let model = PresetThumbnailModel(quietWindow: .zero, frameGap: .zero) { _ in
+            renders += 1
+            withUnsafeCurrentTask { $0?.cancel() }
+            return Self.pixel()
+        }
+        let tiles = tiles
+        let source = PresetThumbnailModel.source(style: SnapshotConfig(), code: "let a = 1")
+        await Task { await model.refresh(source: source, tiles: tiles) }.value
+        #expect(renders == 1)
+        #expect(model.images.count == 1)
+    }
+
+    @Test func aReplacedDocumentRendersNothingUntilItsCodeSettles() {
+        let model = PresetThumbnailModel()
+        #expect(model.settledSource(style: SnapshotConfig(), documentGeneration: 0) == nil)
+
+        model.stagedCode = "old document"
+        model.stagedGeneration = 1
+        #expect(model.settledSource(style: SnapshotConfig(), documentGeneration: 2) == nil)
+        #expect(
+            model.settledSource(style: SnapshotConfig(), documentGeneration: 1)?.code
+                == "old document")
+
+        model.stagedCode = "new document"
+        model.stagedGeneration = 2
+        #expect(
+            model.settledSource(style: SnapshotConfig(), documentGeneration: 2)?.code
+                == "new document")
+    }
+
+    @Test func aStickerMasksAnImageCaptureButNotCode() {
+        let sticker = Annotation(kind: .sticker, start: .zero, end: CGPoint(x: 0.2, y: 0.2))
+        let image = excerpt("") {
+            $0.annotations = [sticker]
+            $0.foregroundImage = ImageReference(fileName: "private.png")
+        }
+        #expect(image.foregroundImage == nil)
+
+        let code = excerpt("let a = 1") { $0.annotations = [sticker] }
+        #expect(code.code == "let a = 1")
+        #expect(code.redactedLineRanges.isEmpty)
+    }
+
+    @Test func tilesKeepTheNewestSavedPresetsAndTheMatchingOne() {
+        func preset(_ name: String, padding: Double) -> StylePreset {
+            StylePreset(
+                id: name, name: name,
+                style: StyleSnapshot(
+                    themeID: Theme.github.id, padding: padding, background: .transparent))
+        }
+        let saved = (1...5).map { preset("saved\($0)", padding: Double($0 * 4)) }
+        let builtIns = StylePreset.builtIns.map(\.id)
+
+        let newest = PresetThumbnailModel.tilePresets(saved: saved, selected: []).map(\.id)
+        #expect(newest == builtIns + ["saved5", "saved4"])
+
+        let matching = PresetThumbnailModel.tilePresets(saved: saved, selected: ["saved1"]).map(
+            \.id)
+        #expect(matching == builtIns + ["saved1", "saved5"])
+
+        let builtInMatch = PresetThumbnailModel.tilePresets(
+            saved: saved, selected: ["builtin.aurora"]
+        ).map(\.id)
+        #expect(builtInMatch == newest)
+
+        #expect(PresetThumbnailModel.tilePresets(saved: [], selected: []).map(\.id) == builtIns)
+    }
+
+    @Test func aRedactionBelowTheExcerptKeepsTheTiles() async {
+        let model = model(RenderLog())
+        let tiles = tiles
+        let code = (1...20).map { "let v\($0) = \($0)" }.joined(separator: "\n")
+        var style = SnapshotConfig()
+        await model.refresh(
+            source: PresetThumbnailModel.source(style: style, code: code), tiles: tiles)
+        style.redactedLineRanges = [15...15]
+        model.quietWindow = .seconds(60)
+        let source = PresetThumbnailModel.source(style: style, code: code)
+        let task = Task { await model.refresh(source: source, tiles: tiles) }
+        for _ in 0..<10 { await Task.yield() }
+        #expect(model.images.count == tiles.count)
+        task.cancel()
+        await task.value
+    }
+
+    /// An editor window that is never ordered front, on the real path: the preview
+    /// synchronizer, the session's model, the section and the real renderer.
+    private struct HostedEditor {
+        let session: EditorSession
+        let hosting: NSViewController
+        let window: NSWindow
+
+        init(expanded: Bool) {
+            AppDefaults.current.set(expanded, forKey: PresetThumbnailModel.expandedStorageKey)
+            let environment = AppEnvironment(defaults: testDefaults())
+            session = EditorSession(
+                identity: EditorWindowIdentity(index: 96), environment: environment,
+                feedback: .noOp, presentation: .noOp)
+            session.settings.documentCode = "let hosted = 1"
+            hosting = EditorWindowController.makeHostingController(
+                environment: environment, session: session)
+            window = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 1_180, height: 680),
+                styleMask: [.titled, .resizable, .fullSizeContentView],
+                backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.contentViewController = hosting
+            hosting.view.layoutSubtreeIfNeeded()
+        }
+
+        /// Awaits, so the main actor runs the view's tasks; a nested run loop would starve them.
+        func wait(seconds: Double, until condition: () -> Bool) async {
+            let deadline = ContinuousClock.now + .seconds(seconds)
+            while !condition(), ContinuousClock.now < deadline {
+                try? await Task.sleep(for: .milliseconds(20))
+                hosting.view.needsLayout = true
+                hosting.view.layoutSubtreeIfNeeded()
+            }
+        }
+
+        func close() {
+            window.contentViewController = nil
+            session.discard()
+            AppDefaults.current.removeObject(forKey: PresetThumbnailModel.expandedStorageKey)
+        }
+    }
+
+    @Test func aHostedOpenSectionRendersTheCodeItIsGiven() async {
+        let editor = HostedEditor(expanded: true)
+        defer { editor.close() }
+        let model = editor.session.presetThumbnails
+        let count = StylePreset.builtIns.count
+        await editor.wait(seconds: 10) { model.images.count == count }
+        #expect(model.images.count == count)
+
+        let first = Array(model.images.values)
+        editor.session.settings.documentCode = "let changed = 2"
+        await editor.wait(seconds: 10) {
+            model.images.count == count && model.images.values.allSatisfy { !first.contains($0) }
+        }
+        #expect(model.stagedCode == "let changed = 2")
+        #expect(model.images.count == count)
+        #expect(model.images.values.allSatisfy { !first.contains($0) })
+    }
+
+    @Test func aHostedClosedSectionRendersNothing() async {
+        let editor = HostedEditor(expanded: false)
+        defer { editor.close() }
+        let model = editor.session.presetThumbnails
+        await editor.wait(seconds: 10) { model.stagedCode == "let hosted = 1" }
+        #expect(model.stagedCode == "let hosted = 1")
+        // Longer than the quiet window, so the section had its chance to render.
+        await editor.wait(seconds: 0.6) { false }
+        #expect(model.images.isEmpty)
+    }
+
+    @Test func aHostedSectionOpenedLaterRendersAndClosingReleases() async {
+        let editor = HostedEditor(expanded: false)
+        defer { editor.close() }
+        let model = editor.session.presetThumbnails
+        await editor.wait(seconds: 10) { model.stagedCode != nil }
+
+        AppDefaults.current.set(true, forKey: PresetThumbnailModel.expandedStorageKey)
+        await editor.wait(seconds: 10) { model.images.count == StylePreset.builtIns.count }
+        #expect(model.images.count == StylePreset.builtIns.count)
+
+        AppDefaults.current.set(false, forKey: PresetThumbnailModel.expandedStorageKey)
+        await editor.wait(seconds: 10) { model.images.isEmpty }
+        #expect(model.images.isEmpty)
+    }
+
+    @Test func aReleaseDropsEveryTileSoTheyRenderAgain() async {
         let log = RenderLog()
         let model = model(log)
         let tiles = tiles
         let source = PresetThumbnailModel.source(style: SnapshotConfig(), code: "let a = 1")
-        let task = Task { await model.refresh(source: source, tiles: tiles) }
-        task.cancel()
-        await task.value
-        #expect(log.configs.isEmpty)
+        await model.refresh(source: source, tiles: tiles)
+        model.releaseImages()
+        #expect(model.images.isEmpty)
+
+        await model.refresh(source: source, tiles: tiles)
+        #expect(log.configs.count == tiles.count * 2)
     }
 
     // MARK: - Boundaries
@@ -390,13 +565,16 @@ struct PresetThumbnailTests {
     @Test func selectionFollowsTheStyleAndIgnoresAnImageBackground() {
         var style = SnapshotConfig()
         StylePreset.aurora.style.apply(to: &style)
-        #expect(PresetThumbnailModel.selection(style: style, tiles: tiles) == ["builtin.aurora"])
+        #expect(
+            PresetThumbnailModel.selection(style: style, presets: StylePreset.builtIns) == [
+                "builtin.aurora"
+            ])
 
         style.padding += 4
-        #expect(PresetThumbnailModel.selection(style: style, tiles: tiles).isEmpty)
+        #expect(PresetThumbnailModel.selection(style: style, presets: StylePreset.builtIns).isEmpty)
 
         style.padding -= 4
         style.background = .image(ImageBackground(reference: ImageReference(fileName: "a.png")))
-        #expect(PresetThumbnailModel.selection(style: style, tiles: tiles).isEmpty)
+        #expect(PresetThumbnailModel.selection(style: style, presets: StylePreset.builtIns).isEmpty)
     }
 }

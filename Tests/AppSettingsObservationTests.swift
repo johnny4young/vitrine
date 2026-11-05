@@ -25,14 +25,31 @@ struct AppSettingsObservationTests {
         AppSettings(defaults: testDefaults())
     }
 
+    @Test func anUnchangedRefreshDoesNotInvalidateTheTiles() async {
+        let model = PresetThumbnailModel(quietWindow: .zero, frameGap: .zero) { _ in nil }
+        let source = PresetThumbnailModel.source(style: SnapshotConfig(), code: "let a = 1")
+        await model.refresh(source: source, tiles: [])
+        let invalidated = InvalidationProbe()
+
+        withObservationTracking {
+            _ = model.images
+        } onChange: {
+            invalidated.mark()
+        }
+
+        await model.refresh(source: source, tiles: [])
+
+        #expect(!invalidated.isMarked)
+    }
+
     @Test func typingDoesNotInvalidateWhatPresetThumbnailsRead() {
         let settings = settings()
         let model = PresetThumbnailModel()
         let invalidated = InvalidationProbe()
 
         withObservationTracking {
-            _ = model.stagedCode
-            _ = settings.style
+            _ = model.settledSource(
+                style: settings.style, documentGeneration: settings.documentGeneration)
         } onChange: {
             invalidated.mark()
         }

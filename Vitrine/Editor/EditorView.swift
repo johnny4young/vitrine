@@ -134,8 +134,6 @@ struct EditorView: View {
     /// is debounced. `nil` until the first sync, which is immediate (no placeholder
     /// flash on open).
     @State var stagedPreviewCode: String?
-    /// This window's preset thumbnails, fed from the same debounced code as the preview.
-    @State var presetThumbnails = PresetThumbnailModel()
 
     /// This editor's own weak `NSWindow` slot, captured via `WindowAccessor`, so actions
     /// like close-after-copy target it directly without making the hosted SwiftUI tree

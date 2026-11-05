@@ -14,10 +14,10 @@ can never drift.
 
 ### Added
 
-- Preview the style presets as thumbnails of the current capture in the inspector, and apply
-  one with a click. They use a short excerpt, update once typing settles, and show redacted
-  or blurred content as masked. An image capture shows the image; an empty document shows
-  the sample.
+- Preview the style presets as thumbnails of the current capture under Presets in the
+  inspector, and apply one with a click. They show a preset's style on a short excerpt,
+  update once typing settles, and mask redacted or blurred content. An image capture shows
+  the image; an empty document shows the sample.
 - Type a legend on a selected counter, or pass `--counter-label`, to list it under the
   capture. Masking is best effort: a label that looks like a secret or matches a redacted
   line or a value in blurred code is replaced, so check the legend before sharing.
