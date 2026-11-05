@@ -21,7 +21,9 @@ struct EditorInspectorView: View {
     @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
     private var showsSafeAreaGuides = false
     var themes: CustomThemeStore
+    var presets: PresetStore
     var entitlements: Entitlements
+    var presetThumbnails: PresetThumbnailModel
 
     /// Disclosure state for the advanced sections. All start collapsed so the
     /// inspector opens compact; the primary style cluster above them is always
@@ -64,6 +66,8 @@ struct EditorInspectorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 scopeNote
+                PresetThumbnailSection(
+                    settings: settings, themes: themes, presets: presets, model: presetThumbnails)
                 backgroundSection
                 // A beautified image swaps the code-only style controls (theme, fonts)
                 // for the frame picker; everything else (background, canvas, header,

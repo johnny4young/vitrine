@@ -680,6 +680,24 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testPresetThumbnailApplies() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.emptyEditor)
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        assertExists(element("inspector-preset-thumbnails", in: app), in: app)
+
+        assertHittable(
+            "preset-thumbnail-builtin.sunset", in: app, "A preset tile must be reachable")
+        element("preset-thumbnail-builtin.sunset", in: app).click()
+        let theme = element("inspector-value-theme", in: app)
+        let applied = NSPredicate(format: "value == %@", "Dracula")
+        wait(for: [expectation(for: applied, evaluatedWith: theme)], timeout: 3)
+    }
+
+    @MainActor
     func testStylePaneShowsDestinationPresetPicker() {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.settings)

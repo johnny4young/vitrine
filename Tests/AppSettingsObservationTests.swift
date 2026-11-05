@@ -25,6 +25,23 @@ struct AppSettingsObservationTests {
         AppSettings(defaults: testDefaults())
     }
 
+    @Test func typingDoesNotInvalidateWhatPresetThumbnailsRead() {
+        let settings = settings()
+        let model = PresetThumbnailModel()
+        let invalidated = InvalidationProbe()
+
+        withObservationTracking {
+            _ = model.stagedCode
+            _ = settings.style
+        } onChange: {
+            invalidated.mark()
+        }
+
+        settings.documentCode = "let typed = 1"
+
+        #expect(!invalidated.isMarked)
+    }
+
     @Test func documentTextDoesNotInvalidateRenderConfigurationObservers() {
         let settings = settings()
         let invalidated = InvalidationProbe()
