@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Preview the style presets as thumbnails of the current capture under Presets in the
+  inspector, and apply one with a click. They show a preset's style on a short excerpt,
+  update once typing settles, and mask redacted or blurred content. An image capture shows
+  the image; an empty document shows the sample.
 - Terminal captures get an ANSI palette control, Theme or Raw xterm colors, in the inspector
   and Settings ▸ Style, with `--terminal-palette`. The default is today's rendering.
 - The inspector's Header section lists a terminal capture's filename and title as removable
