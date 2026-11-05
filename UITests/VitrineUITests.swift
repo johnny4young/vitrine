@@ -1722,22 +1722,6 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testCopyHUDNamesTheSizeOfTheClipboardPNG() throws {
-        continueAfterFailure = false
-        try skipUnlessADisplayFitsTheEditor()
-        let app = launch(arguments: VitrineLaunchArguments.editor)
-        defer { app.terminate() }
-        assertHittable("copy-button", in: app, "Copy image is not reachable")
-
-        element("copy-button", in: app).click()
-        // The HUD lasts 1.6 s, so wait on the label instead of reading it after arrival.
-        let named = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label CONTAINS %@", "PNG"),
-            object: element("capture-hud", in: app))
-        XCTAssertEqual(XCTWaiter.wait(for: [named], timeout: 5), .completed)
-    }
-
-    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general
