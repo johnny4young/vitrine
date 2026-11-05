@@ -460,28 +460,32 @@ extension EditorView {
                 // scales with it — a pointer drag maps straight to normalized
                 // annotation coordinates. Top-aligned, because a legend band extends
                 // the card below that coordinate space.
+                let destination = settings.effectiveFixedSize
                 ZStack(alignment: .top) {
-                    SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
-                        .equatable()
-                        .fixedSize()
-                        .onGeometryChange(for: CGSize.self, of: \.size) {
-                            cardGeometry.size = $0
+                    ThemeFadingCanvas(
+                        canvas: SnapshotCanvas(config: previewConfig, fixedSize: destination)
+                    )
+                    .fixedSize()
+                    .onGeometryChange(for: PreviewCardGeometry.Measurement.self) {
+                        .init(size: $0.size, destination: destination)
+                    } action: {
+                        cardGeometry.record($0)
+                    }
+                    .onPreferenceChange(CounterLegendReportKey.self) {
+                        cardGeometry.legendHeight = $0.height
+                        cardGeometry.legendDropped = $0.dropped
+                    }
+                    // Marks the export's transparent pixels, and only those.
+                    .background {
+                        if case .transparent = settings.style.background {
+                            TransparencyGrid()
                         }
-                        .onPreferenceChange(CounterLegendReportKey.self) {
-                            cardGeometry.legendHeight = $0.height
-                            cardGeometry.legendDropped = $0.dropped
-                        }
-                        // Marks the export's transparent pixels, and only those.
-                        .background {
-                            if case .transparent = settings.style.background {
-                                TransparencyGrid()
-                            }
-                        }
-                        .compositingGroup()
-                        .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
-                        // Expose the canvas text as children: as one aggregate element,
-                        // automated drags on annotation endpoint handles stop landing.
-                        .accessibilityElement(children: .contain)
+                    }
+                    .compositingGroup()
+                    .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
+                    // Expose the canvas text as children: as one aggregate element,
+                    // automated drags on annotation endpoint handles stop landing.
+                    .accessibilityElement(children: .contain)
                     AnnotationEditingOverlay(
                         settings: settings, selection: $selectedAnnotationID,
                         editingAnnotationID: $editingAnnotationID,
@@ -716,6 +720,27 @@ final class PreviewCardGeometry {
     /// Legend entries a fixed frame had no room for.
     var legendDropped = 0
 
+    /// The latest destination change that moved the card.
+    private(set) var morph = StageFitMorph()
+    private var destination: CGSize?
+
+    /// A size and the destination it was measured under, read together so a destination
+    /// that leaves the size alone cannot pass for one still on its way.
+    nonisolated struct Measurement: Equatable, Sendable {
+        let size: CGSize
+        let destination: CGSize?
+    }
+
+    func record(_ measurement: Measurement) {
+        if measurement.destination != destination, measurement.size != size,
+            size.width > 0, size.height > 0
+        {
+            morph = StageFitMorph(generation: morph.generation + 1, previousCard: size)
+        }
+        destination = measurement.destination
+        size = measurement.size
+    }
+
     /// The space normalized annotations are placed in.
     var canvasSize: CGSize {
         CGSize(width: size.width, height: max(size.height - legendHeight, 0))
@@ -732,6 +757,7 @@ private struct PreviewCardStage<Content: View>: View {
     var body: some View {
         let cardSize = geometry.size
         let scale = EditorView.fitScale(card: cardSize, in: stageSize)
+        let morph = geometry.morph
         content(geometry.canvasSize)
             .scaleEffect(scale)
             // `scaleEffect` does not shrink the layout footprint, so without this the
@@ -740,8 +766,19 @@ private struct PreviewCardStage<Content: View>: View {
             // *scaled* size centers the card on its visible bounds and keeps it fully
             // inside the stage at every window size (usability fix).
             .frame(width: cardSize.width * scale, height: cardSize.height * scale)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // A morph animates the frame through its effect, so the fit itself lands at once.
+            .transaction(value: morph.generation) { $0.animation = nil }
             .motionSensitiveAnimation(.easeInOut(duration: 0.25), value: scale)
+            .modifier(
+                StageFitMorphEffect(
+                    morph: morph,
+                    startingScale: morph.startingScale(to: cardSize, in: stageSize))
+            )
+            .motionSensitiveAnimation(
+                .spring(Spring(settlingDuration: 0.24, dampingRatio: 0.85)),
+                value: morph.generation
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -764,9 +801,16 @@ private struct StageStatusCapsule: View {
                 Text(verbatim: line)
                     .font(.system(size: VitrineTokens.FontSize.caption))
                     .monospacedDigit()
+                    .contentTransition(.numericText())
                     .foregroundStyle(VitrineTokens.Text.tertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    // Rolls for a destination change and not for the card growing with typing.
+                    .motionSensitiveAnimation(
+                        .easeOut(duration: 0.24),
+                        value: StageFitReadout(
+                            destination: settings.effectiveFixedSize,
+                            morph: geometry.morph.generation))
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(VitrineTokens.Text.secondary)
@@ -801,6 +845,11 @@ private struct StageStatusCapsule: View {
         }
         return line
     }
+}
+
+private struct StageFitReadout: Equatable {
+    let destination: CGSize?
+    let morph: Int
 }
 
 /// Every destination by its full name. A view of its own so the capsule's size changes

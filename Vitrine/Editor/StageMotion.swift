@@ -1,0 +1,174 @@
+import SwiftUI
+import VitrineDomain
+import VitrineRendering
+
+// MARK: - Theme cross-fade
+
+/// The canvases the stage draws: the live one, and the previous one while a theme change
+/// fades in over it. The fade exists only when the theme is all that differs, so the two
+/// always show the same code. Any other change during a fade ends it at once.
+struct PreviewThemeFade: Equatable {
+    struct Layer: Identifiable, Equatable {
+        let id: Int
+        var canvas: SnapshotCanvas
+    }
+
+    private(set) var live: Layer
+    private(set) var outgoing: Layer?
+
+    init(canvas: SnapshotCanvas) {
+        live = Layer(id: 0, canvas: canvas)
+    }
+
+    var layers: [Layer] { [outgoing, live].compactMap(\.self) }
+
+    func applying(_ canvas: SnapshotCanvas, animated: Bool) -> PreviewThemeFade {
+        guard canvas != live.canvas else { return self }
+        var next = self
+        if outgoing != nil {
+            // A new identity, because the live layer's running fade cannot be stopped
+            // in place and would otherwise show the stage through it.
+            next.outgoing = nil
+            next.live = Layer(id: live.id + 1, canvas: canvas)
+        } else if animated, Self.differsOnlyInTheme(live.canvas, canvas) {
+            next.outgoing = live
+            next.live = Layer(id: live.id + 1, canvas: canvas)
+        } else {
+            next.live.canvas = canvas
+        }
+        return next
+    }
+
+    /// The fade of `layerID` ended. A later change may already own the layers.
+    func finishing(_ layerID: Int) -> PreviewThemeFade {
+        guard live.id == layerID else { return self }
+        var next = self
+        next.outgoing = nil
+        return next
+    }
+
+    private static func differsOnlyInTheme(_ old: SnapshotCanvas, _ new: SnapshotCanvas) -> Bool {
+        guard old.fixedSize == new.fixedSize, old.config.theme.id != new.config.theme.id else {
+            return false
+        }
+        var rethemed = new.config
+        rethemed.theme = old.config.theme
+        return rethemed == old.config
+    }
+}
+
+/// The layers at a point in the fade. Additive blending keeps every pixel the two canvases
+/// share exactly as it is, including a transparent capture's soft edges, which plain
+/// source-over would darken and then release when the old layer goes.
+struct ThemeFadeLayers: View {
+    let fade: PreviewThemeFade
+    /// The live layer's opacity. The outgoing layer takes the remainder.
+    let progress: Double
+
+    var body: some View {
+        let isFading = fade.outgoing != nil
+        ZStack {
+            ForEach(fade.layers) { layer in
+                let isLive = layer.id == fade.live.id
+                layer.canvas
+                    .equatable()
+                    // Flattened first, or the opacity and blend apply to each of its leaves.
+                    .compositingGroup()
+                    .opacity(isFading ? (isLive ? progress : 1 - progress) : 1)
+                    .blendMode(isFading ? .plusLighter : .normal)
+                    .allowsHitTesting(isLive)
+                    .accessibilityHidden(!isLive)
+                    .transition(.identity)
+            }
+        }
+        .compositingGroup()
+    }
+}
+
+/// The stage's canvas. A layer keeps its identity across a fade, so the outgoing canvas is
+/// not evaluated again and the incoming one highlights once.
+struct ThemeFadingCanvas: View {
+    let canvas: SnapshotCanvas
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var fade: PreviewThemeFade
+    @State private var revealedLayer = 0
+
+    init(canvas: SnapshotCanvas) {
+        self.canvas = canvas
+        _fade = State(initialValue: PreviewThemeFade(canvas: canvas))
+    }
+
+    var body: some View {
+        // Derived here too: `onChange` runs after this pass, which must already hold
+        // the old canvas rather than draw the new theme over it.
+        let current = fade.applying(canvas, animated: !reduceMotion)
+        ThemeFadeLayers(fade: current, progress: revealedLayer == current.live.id ? 1 : 0)
+            .onChange(of: canvas) { _, canvas in
+                let previousLive = fade.live.id
+                fade = fade.applying(canvas, animated: !reduceMotion)
+                guard fade.outgoing != nil, fade.live.id != previousLive else { return }
+                let layer = fade.live.id
+                withAnimation(.timingCurve(0.2, 0.8, 0.2, 1, duration: 0.22)) {
+                    revealedLayer = layer
+                } completion: {
+                    fade = fade.finishing(layer)
+                }
+            }
+    }
+}
+
+// MARK: - Stage fit
+
+/// A destination change: the card size the stage was showing before it.
+struct StageFitMorph: Equatable {
+    var generation = 0
+    var previousCard = CGSize.zero
+
+    /// The per-axis scale that puts a card of `card` where the previous card was drawn.
+    func startingScale(to card: CGSize, in stage: CGSize) -> CGSize {
+        let old = Self.visibleSize(of: previousCard, in: stage)
+        let new = Self.visibleSize(of: card, in: stage)
+        guard old.width > 0, old.height > 0, new.width > 0, new.height > 0 else {
+            return CGSize(width: 1, height: 1)
+        }
+        return CGSize(width: old.width / new.width, height: old.height / new.height)
+    }
+
+    private static func visibleSize(of card: CGSize, in stage: CGSize) -> CGSize {
+        let scale = EditorView.fitScale(card: card, in: stage)
+        return CGSize(width: card.width * scale, height: card.height * scale)
+    }
+}
+
+/// Eases the card's frame from the previous destination's rect to the new one. A transform
+/// only, so layout is final from the first frame, and annotations share it with the canvas:
+/// SwiftUI hit-tests through the animated value, so a mark is hit where it is drawn.
+struct StageFitMorphEffect: GeometryEffect {
+    /// Animates up to `generation`, so a morph never needs a second pass to reset itself.
+    var progress: CGFloat
+    let generation: Int
+    let startingScale: CGSize
+
+    init(morph: StageFitMorph, startingScale: CGSize) {
+        progress = CGFloat(morph.generation)
+        generation = morph.generation
+        self.startingScale = startingScale
+    }
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func effectValue(size: CGSize) -> ProjectionTransform {
+        // 1 at the start of the morph, 0 at rest, and below 0 when the spring overshoots.
+        let remaining = min(CGFloat(generation) - progress, 1)
+        let scaleX = 1 + (startingScale.width - 1) * remaining
+        let scaleY = 1 + (startingScale.height - 1) * remaining
+        return ProjectionTransform(
+            CGAffineTransform(translationX: size.width / 2, y: size.height / 2)
+                .scaledBy(x: scaleX, y: scaleY)
+                .translatedBy(x: -size.width / 2, y: -size.height / 2))
+    }
+}

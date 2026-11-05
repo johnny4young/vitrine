@@ -33,6 +33,10 @@ can never drift.
   its width. A failed copy never shows the check.
 - Annotation tools tint under the pointer and scale slightly on press; theme chips lift on
   hover like the swatches. Reduce Motion removes the scaling and every transition.
+- Changing the theme cross-fades the preview, and changing the destination eases the card's
+  frame to the new shape. Reduce Motion lands both at once, and exports are unaffected.
+- Settings ▸ Style ▸ Background leads with the kind picker, so custom gradients, solid
+  colors, images and transparency are one click away.
 - A transparent background now shows a checker behind the editor's preview. The checker
   follows the system appearance there and on comparison boards.
 - General settings report when the global hotkey is also a Vitrine menu command or an
