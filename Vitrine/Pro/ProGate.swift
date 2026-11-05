@@ -160,7 +160,7 @@ struct PaywallSheet: View {
                     Link(destination: checkout) {
                         Text("Get Vitrine PRO").frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .accentProminentButtonStyle()
                     .controlSize(.large)
                     .accessibilityIdentifier("pro-get-license-button")
                 }
@@ -181,6 +181,8 @@ struct PaywallSheet: View {
                     Text("Activate").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
+                // The default action draws filled with a white label.
+                .tint(VitrineTokens.Accent.systemProminentFill)
                 .disabled(
                     activation.isWorking
                         || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty
@@ -231,7 +233,7 @@ struct PaywallSheet: View {
                 } label: {
                     Text("Get Vitrine PRO").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .disabled(working || loadingPrice || displayPrice == nil)
                 .accessibilityIdentifier("pro-buy-button")
                 .keyboardShortcut(.defaultAction)

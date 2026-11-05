@@ -1,6 +1,746 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Changed" : {
+      "comment" : "Code header chip: the watched file has a saved change waiting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambió"
+          }
+        }
+      }
+    },
+    "Unavailable" : {
+      "comment" : "Code header chip: the watched file cannot be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No disponible"
+          }
+        }
+      }
+    },
+    "Rendered locally · your code never leaves this Mac" : {
+      "comment" : "Fixed footer of the editor inspector stating the privacy contract.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se renderiza localmente · tu código nunca sale de esta Mac"
+          }
+        }
+      }
+    },
+    "Live" : {
+      "comment" : "Code header chip for a file the editor is watching.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En vivo"
+          }
+        }
+      }
+    },
+    "Detection is not exhaustive." : {
+      "comment" : "Export pre-flight dialog: the limit of the scan.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La detección no es exhaustiva."
+          }
+        }
+      }
+    },
+    "Full terminal transcript: %@" : {
+      "comment" : "Export pre-flight finding in the raw terminal transcript a share link keeps.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcripción completa de la terminal: %@"
+          }
+        }
+      }
+    },
+    "Redact %lld, copy and save" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then copy and save.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld, copiar y guardar"
+          }
+        }
+      }
+    },
+    "Copy and save anyway" : {
+      "comment" : "Export pre-flight button: copy and save without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar y guardar de todos modos"
+          }
+        }
+      }
+    },
+    "This capture may contain secrets" : {
+      "comment" : "Export pre-flight dialog title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta captura podría contener secretos"
+          }
+        }
+      }
+    },
+    "And %lld more" : {
+      "comment" : "Export pre-flight dialog: findings beyond the listed rows.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Y %lld más"
+          }
+        }
+      }
+    },
+    "Line %lld: %@" : {
+      "comment" : "Export pre-flight finding: a line number and the kind of secret.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea %lld: %@"
+          }
+        }
+      }
+    },
+    "Lines %lld–%lld: %@" : {
+      "comment" : "Export pre-flight finding: a line range and the kind of secret.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas %lld–%lld: %@"
+          }
+        }
+      }
+    },
+    "Header or annotation text, can't be redacted: %@" : {
+      "comment" : "Export pre-flight finding in header, annotation or alternative text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto de encabezado o anotación, no se puede ocultar: %@"
+          }
+        }
+      }
+    },
+    "AWS access key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de acceso de AWS"
+          }
+        }
+      }
+    },
+    "GitHub token" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token de GitHub"
+          }
+        }
+      }
+    },
+    "Slack token" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token de Slack"
+          }
+        }
+      }
+    },
+    "Google API key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de API de Google"
+          }
+        }
+      }
+    },
+    "Stripe key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de Stripe"
+          }
+        }
+      }
+    },
+    "OpenAI key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de OpenAI"
+          }
+        }
+      }
+    },
+    "JSON Web Token" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON Web Token"
+          }
+        }
+      }
+    },
+    "Private key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave privada"
+          }
+        }
+      }
+    },
+    "Bearer token" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token Bearer"
+          }
+        }
+      }
+    },
+    "Password in a URL" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraseña en una URL"
+          }
+        }
+      }
+    },
+    "Possible secret" : {
+      "comment" : "Kind of secret found by the export pre-flight check, when no specific kind applies.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posible secreto"
+          }
+        }
+      }
+    },
+    "Redact %lld and copy" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then copy.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld y copiar"
+          }
+        }
+      }
+    },
+    "Redact %lld and save" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then save.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld y guardar"
+          }
+        }
+      }
+    },
+    "Redact %lld and share" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then share.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld y compartir"
+          }
+        }
+      }
+    },
+    "Redact %lld and export" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld y exportar"
+          }
+        }
+      }
+    },
+    "Copy anyway" : {
+      "comment" : "Export pre-flight button: copy without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar de todos modos"
+          }
+        }
+      }
+    },
+    "Save anyway" : {
+      "comment" : "Export pre-flight button: save without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar de todos modos"
+          }
+        }
+      }
+    },
+    "Share anyway" : {
+      "comment" : "Export pre-flight button: share without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartir de todos modos"
+          }
+        }
+      }
+    },
+    "Export anyway" : {
+      "comment" : "Export pre-flight button: export without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar de todos modos"
+          }
+        }
+      }
+    },
+    "Nothing was exported" : {
+      "comment" : "Quick capture feedback after the export pre-flight check was cancelled.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se exportó nada"
+          }
+        }
+      }
+    },
+    "Draft" : {
+      "comment" : "Button that drafts alternative text from the document's metadata.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redactar"
+          }
+        }
+      }
+    },
+    "%@ code" : {
+      "comment" : "Drafted alternative text: a programming language's code.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código %@"
+          }
+        }
+      }
+    },
+    "Terminal output" : {
+      "comment" : "Drafted alternative text: subject for a terminal capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salida de terminal"
+          }
+        }
+      }
+    },
+    "Diff" : {
+      "comment" : "Drafted alternative text: subject for a diff.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diff"
+          }
+        }
+      }
+    },
+    "continues →" : {
+      "comment" : "Cue drawn on a carousel slide when another slide follows.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "continúa →"
+          }
+        }
+      }
+    },
+    "Export 1 slide" : {
+      "comment" : "Carousel export button once a folder is chosen.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar 1 diapositiva"
+          }
+        }
+      }
+    },
+    "Export %lld slides" : {
+      "comment" : "Carousel export button once a folder is chosen.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar %lld diapositivas"
+          }
+        }
+      }
+    },
+    "Prefer blank-line breaks" : {
+      "comment" : "Carousel sheet switch: move slide boundaries to nearby blank lines.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preferir cortes en líneas en blanco"
+          }
+        }
+      }
+    },
+    "Restart" : {
+      "comment" : "Carousel line numbers: each slide starts again at 1.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reiniciar"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "comment" : "Carousel line numbers: no gutter on the slides.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivados"
+          }
+        }
+      }
+    },
+    "Page badge “2 / 4”" : {
+      "comment" : "Carousel sheet switch: draw the page position on each slide.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indicador de página “2 / 4”"
+          }
+        }
+      }
+    },
+    "“continues →” cue" : {
+      "comment" : "Carousel sheet switch: draw the line range and swipe cue on each slide.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indicador “continúa →”"
+          }
+        }
+      }
+    },
+    "No folder chosen" : {
+      "comment" : "Carousel sheet folder row before a folder is picked.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin carpeta elegida"
+          }
+        }
+      }
+    },
+    "Change…" : {
+      "comment" : "Button: pick a different export folder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar…"
+          }
+        }
+      }
+    },
+    "Existing files are kept" : {
+      "comment" : "Carousel sheet output line: an export never replaces a file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos existentes se conservan"
+          }
+        }
+      }
+    },
+    "%lld by %lld" : {
+      "comment" : "Menu bar capture summary, read aloud: output width by height in pixels.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld by %2$lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld por %2$lld"
+          }
+        }
+      }
+    },
+    "%lld code blocks" : {
+      "comment" : "Menu bar capture summary: the clipboard holds several code blocks.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld code block"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld code blocks"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld bloque de código"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld bloques de código"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Command line" : {
+      "comment" : "Settings section with copyable CLI commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea de comandos"
+          }
+        }
+      }
+    },
+    "Precedence, low to high" : {
+      "comment" : "Settings list of what overrides what in a CLI render.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Precedencia, de menor a mayor"
+          }
+        }
+      }
+    },
+    "Vitrine defaults" : {
+      "comment" : "Lowest precedence step for a CLI render.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valores predeterminados de Vitrine"
+          }
+        }
+      }
+    },
+    "Destination preset (--preset or recipe)" : {
+      "comment" : "Precedence step: the destination preset, from the flag or from a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destino (--preset o receta)"
+          }
+        }
+      }
+    },
+    "Recipe style and output defaults" : {
+      "comment" : "Precedence step: style and output values in a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo y salida de la receta"
+          }
+        }
+      }
+    },
+    "Explicit flags" : {
+      "comment" : "Highest precedence step: CLI flags passed on the command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Opciones explícitas"
+          }
+        }
+      }
+    },
+    "Check a recipe" : {
+      "comment" : "Label above the recipe validate command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisa una receta"
+          }
+        }
+      }
+    },
+    "One file; the recipe decides theme, size and format" : {
+      "comment" : "Label above a CLI command rendering one file with a recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un archivo; la receta decide tema, tamaño y formato"
+          }
+        }
+      }
+    },
+    "Override one value; flags beat the recipe" : {
+      "comment" : "Label above a CLI command overriding a recipe value.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambia un valor; las opciones ganan sobre la receta"
+          }
+        }
+      }
+    },
+    "Several sizes at once, into a folder" : {
+      "comment" : "Label above the multi-size CLI command.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Varios tamaños a la vez, en una carpeta"
+          }
+        }
+      }
+    },
+    "Capture the terminal screen, or open it in the editor" : {
+      "comment" : "Label above the vgrab and vpane commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura la pantalla de la terminal o ábrela en el editor"
+          }
+        }
+      }
+    },
+    "Free to use" : {
+      "comment" : "Badge on a CLI command that needs no PRO license.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gratis"
+          }
+        }
+      }
+    },
+    "Needs Shell integration. vpane also needs tmux, and PRO without -e." : {
+      "comment" : "Prerequisites of the vgrab and vpane commands.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Requiere la integración del shell. vpane también requiere tmux y, sin -e, PRO."
+          }
+        }
+      }
+    },
+    "Open Shell integration" : {
+      "comment" : "Link to the Shell integration row in General settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir integración del shell"
+          }
+        }
+      }
+    },
     "Copied. Run it in your project and replace %@." : {
       "comment" : "Shown after copying a CLI command. The argument is the placeholder input file.",
       "localizations" : {

@@ -94,11 +94,11 @@ struct MultiSizeExportView: View {
             HStack(spacing: 10) {
                 Button("Select all") { selected = Set(ExportPreset.all.map(\.id)) }
                     .buttonStyle(.plain)
-                    .foregroundStyle(VitrineTokens.Accent.system)
+                    .foregroundStyle(VitrineTokens.Accent.systemText)
                     .accessibilityIdentifier("multi-size-select-all")
                 Button("Select none") { selected = [] }
                     .buttonStyle(.plain)
-                    .foregroundStyle(VitrineTokens.Accent.system)
+                    .foregroundStyle(VitrineTokens.Accent.systemText)
                     .accessibilityIdentifier("multi-size-select-none")
             }
             .font(.system(size: VitrineTokens.FontSize.caption))

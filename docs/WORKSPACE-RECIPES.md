@@ -73,7 +73,7 @@ to Vitrine's signature gradient when a style is captured.
 Settings are applied from lowest to highest precedence:
 
 1. Vitrine defaults;
-2. the recipe's destination preset;
+2. the destination preset, from `--preset` or the recipe;
 3. the recipe's style and output defaults;
 4. an explicit `--style-preset`;
 5. explicit CLI flags such as `--theme`, `--padding`, `--format`, or

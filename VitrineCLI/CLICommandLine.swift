@@ -98,37 +98,10 @@ public enum CLICommandLine {
 
         // Recipe inspection is also local metadata work. Keep it outside AppKit and the
         // render entitlement gate so scripts can validate configuration during setup.
-        if rawArguments.first == "recipe" {
-            switch CLIRecipeCommand.invocation(for: Array(rawArguments.dropFirst())) {
-            case .help:
-                print(CLIRecipeCommand.usage)
-                exit(0)
-            case .run(let action, let path, let format):
-                do {
-                    print(
-                        try CLIRecipeCommand.output(action: action, path: path, format: format),
-                        terminator: "")
-                    exit(0)
-                } catch let error as CLIError {
-                    printError("error: " + error.message)
-                    exit(error.exitCode)
-                } catch {
-                    printError("error: \(error)")
-                    exit(1)
-                }
-            case .unknownAction(let action):
-                printError(
-                    "error: unknown recipe action \"\(action)\".\n\n" + CLIRecipeCommand.usage)
-                exit(2)
-            case .unknownFlag(let flag):
-                printError("error: unknown recipe option \"\(flag)\".\n\n" + CLIRecipeCommand.usage)
-                exit(2)
-            case .extraArguments(let extras):
-                printError(
-                    "error: unexpected argument(s) \"\(extras.joined(separator: " "))\" after recipe path.\n\n"
-                        + CLIRecipeCommand.usage)
-                exit(2)
-            }
+        if let outcome = recipeOutcome(for: rawArguments) {
+            print(outcome.output, terminator: "")
+            if let error = outcome.error { printError(error) }
+            exit(outcome.status)
         }
 
         do {
@@ -177,6 +150,44 @@ public enum CLICommandLine {
         } catch {
             printError("error: \(error)")
             exit(1)
+        }
+    }
+
+    struct RecipeOutcome: Equatable {
+        var output = ""
+        var error: String?
+        var status: Int32 = 0
+    }
+
+    /// Runs `vitrine recipe …`, or returns `nil` for any other command. It takes no
+    /// entitlement input, which is what keeps recipe inspection free.
+    static func recipeOutcome(for rawArguments: [String]) -> RecipeOutcome? {
+        guard rawArguments.first == "recipe" else { return nil }
+        let usage = CLIRecipeCommand.usage
+        switch CLIRecipeCommand.invocation(for: Array(rawArguments.dropFirst())) {
+        case .help:
+            return RecipeOutcome(output: usage + "\n")
+        case .run(let action, let path, let format):
+            do {
+                return RecipeOutcome(
+                    output: try CLIRecipeCommand.output(action: action, path: path, format: format))
+            } catch let error as CLIError {
+                return RecipeOutcome(error: "error: " + error.message, status: error.exitCode)
+            } catch {
+                return RecipeOutcome(error: "error: \(error)", status: 1)
+            }
+        case .unknownAction(let action):
+            return RecipeOutcome(
+                error: "error: unknown recipe action \"\(action)\".\n\n" + usage, status: 2)
+        case .unknownFlag(let flag):
+            return RecipeOutcome(
+                error: "error: unknown recipe option \"\(flag)\".\n\n" + usage, status: 2)
+        case .extraArguments(let extras):
+            return RecipeOutcome(
+                error:
+                    "error: unexpected argument(s) \"\(extras.joined(separator: " "))\" after recipe path.\n\n"
+                    + usage,
+                status: 2)
         }
     }
 

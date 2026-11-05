@@ -253,6 +253,7 @@ extension EditorView {
     /// it gets out of the way once its job is done. Users who copy more than
     /// once can keep it open from Settings.
     func copyImage() {
+        guard clearsPreflight(.copy, EditorPresentation.copyPayload(of: settings)) else { return }
         // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
         // render/encode failure — mirroring the menu command and the quick-capture HUD.
         // The HUD shows near the menu bar regardless of `closeAfterCopy`.
@@ -280,6 +281,7 @@ extension EditorView {
     /// toolbar Save button gives the same feedback as the File-menu command.
     /// A cancelled save panel is silent.
     func saveImage() {
+        guard clearsPreflight(.save, EditorPresentation.savePayload(of: settings)) else { return }
         let outcome = ExportManager.saveToFile(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             format: settings.export.format, fixedSize: settings.effectiveFixedSize,
@@ -297,7 +299,7 @@ extension EditorView {
     /// formats stay clearly labeled, one click away.
     var copyOptionsMenu: some View {
         Menu {
-            Button("Export for Documentation") { exportSheet = .documentationExport }
+            Button("Export for Documentation", action: presentDocumentationExport)
                 .disabled(!settings.hasRenderableContent)
                 .accessibilityIdentifier("documentation-action")
 
@@ -404,10 +406,16 @@ extension EditorView {
 
     /// Routes both toolbar densities through one presentation state and one sheet host.
     func presentMultiSizeExport() {
+        if entitlements.isUnlocked(.multiSizeExport),
+            !clearsPreflight(.export, settings.export.textSidecar ? .text : .image)
+        {
+            return
+        }
         exportSheet = .multiSize(isUnlocked: entitlements.isUnlocked(.multiSizeExport))
     }
 
     func presentCarouselExport() {
+        if entitlements.isUnlocked(.carouselExport), !clearsPreflight(.export, .image) { return }
         exportSheet = .carousel(isUnlocked: entitlements.isUnlocked(.carouselExport))
     }
 
@@ -554,6 +562,7 @@ extension EditorView {
     // MARK: - Export/share actions
 
     func share() {
+        guard clearsPreflight(.share, .image) else { return }
         do {
             let image = try ExportManager.renderNSImageChecked(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
@@ -567,6 +576,7 @@ extension EditorView {
     /// Copies the rendered image to the clipboard as a `data:image/png;base64,…`
     /// URI string, honoring the active preset's framing.
     func copyDataURI() {
+        guard clearsPreflight(.copy, .image) else { return }
         session.feedback(
             ExportFeedback.copyOutcome(
                 RichPasteboard.copyDataURIOutcome(
@@ -580,6 +590,7 @@ extension EditorView {
     /// Copies a self-contained Markdown image embed followed by the visible,
     /// redaction-safe source in a language-tagged code fence.
     func copyMarkdown() {
+        guard clearsPreflight(.copy, .text) else { return }
         session.feedback(
             ExportFeedback.copyOutcome(
                 RichPasteboard.copyMarkdownOutcome(
@@ -593,6 +604,7 @@ extension EditorView {
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
     /// and the selected font.
     func copyHighlightedCode() {
+        guard clearsPreflight(.copy, .text) else { return }
         session.feedback(
             ExportFeedback.sourceCopyOutcome(
                 RichPasteboard.copyHighlightedCode(
@@ -604,6 +616,7 @@ extension EditorView {
     /// link carries redaction-safe text and no local file references; an image background
     /// degrades to the default gradient.
     func copyShareLink() {
+        guard clearsPreflight(.copy, .transcript) else { return }
         do {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
             let copied = ClipboardWriter.copy(

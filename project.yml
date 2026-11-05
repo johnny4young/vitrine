@@ -153,6 +153,8 @@ targets:
       - path: Vitrine/CLI/ShellInit.swift
       # The editor copies the line this file builds; the CLI tests parse it for real.
       - path: Vitrine/CLI/CLIReproductionCommand.swift
+      # The recipes card shows these lines; the CLI tests pin them to the real gate.
+      - path: Vitrine/CLI/CLICookbookEntry.swift
     dependencies:
       - target: VitrineDomain
       - target: VitrineRendering

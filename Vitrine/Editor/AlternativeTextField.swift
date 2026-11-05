@@ -23,16 +23,30 @@ struct AlternativeTextField: View {
             )
             .lineLimit(2...4)
             .accessibilityIdentifier("alternative-text-field")
-            Text(
-                draft.rejected
-                    ? String(localized: "Alternative text must contain at most 1024 characters.")
-                    : String(
-                        localized:
-                            "Describes this image in Markdown and HTML; not drawn on the image.")
-            )
-            .font(.caption)
-            .foregroundStyle(draft.rejected ? .red : .secondary)
-            .accessibilityIdentifier("alternative-text-feedback")
+            HStack(alignment: .firstTextBaseline) {
+                Text(
+                    draft.rejected
+                        ? String(
+                            localized: "Alternative text must contain at most 1024 characters.")
+                        : String(
+                            localized:
+                                "Describes this image in Markdown and HTML; not drawn on the image."
+                        )
+                )
+                .font(.caption)
+                .foregroundStyle(draft.rejected ? .red : .secondary)
+                .accessibilityIdentifier("alternative-text-feedback")
+                Spacer(minLength: 0)
+                // Only an empty field offers a draft, so typed text is never replaced.
+                if draft.input.isEmpty, !settings.style.usesImageContent {
+                    Button("Draft") {
+                        settings.style.altText = AlternativeTextDrafter.draft(for: settings.config)
+                    }
+                    .controlSize(.small)
+                    .disabled(settings.documentIsEmpty)
+                    .accessibilityIdentifier("alternative-text-draft-button")
+                }
+            }
         }
         .onAppear { draft.restore(settings.style.altText) }
         .onChange(of: settings.style.altText) { _, value in draft.synchronize(value) }
@@ -75,5 +89,36 @@ struct AlternativeTextDraft {
 
     mutating func contentChanged(_ value: SnapshotAltText?) {
         if rejected || (try? SnapshotAltText.normalized(input)) == nil { restore(value) }
+    }
+}
+
+/// Describes a document from its own metadata, without reading the source's words or
+/// calling any service. An image's pixels say nothing here, so it gets no draft.
+enum AlternativeTextDrafter {
+    static func draft(for config: SnapshotConfig) -> SnapshotAltText? {
+        guard !config.usesImageContent, !config.code.isEmpty else { return nil }
+        var rows = config.sidecarText.components(separatedBy: "\n")
+        if rows.count > 1, rows.last?.isEmpty == true { rows.removeLast() }
+        let summary =
+            "\(subject(for: config.language)), " + String(localized: "\(rows.count) lines")
+        // Header text travels further once it is in a description, so flagged text stays out.
+        let safe = { (text: String?) in
+            text.flatMap { SecretScanner.scan($0).isEmpty ? $0 : nil }
+        }
+        var detailed = summary
+        if let filename = safe(config.metadata.filename) { detailed += ", \(filename)" }
+        if let title = safe(config.metadata.title) { detailed += ": \(title)" }
+        // Long header text must not cost the description itself.
+        return (try? SnapshotAltText.normalized(detailed))
+            ?? (try? SnapshotAltText.normalized(summary))
+    }
+
+    private static func subject(for language: Language) -> String {
+        switch language {
+        case .terminal: String(localized: "Terminal output")
+        case .diff: String(localized: "Diff")
+        case .plaintext: String(localized: "Plain text")
+        default: String(localized: "\(language.displayName) code")
+        }
     }
 }
