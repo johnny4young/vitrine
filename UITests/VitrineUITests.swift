@@ -208,10 +208,10 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("terminal-context-command", in: app), in: app)
         assertExists(element("terminal-prompt-picker", in: app), in: app)
 
-        let hideArguments = element("terminal-hide-arguments-button", in: app)
-        assertExists(hideArguments, in: app)
-        hideArguments.click()
-        XCTAssertTrue(hideArguments.waitForNonExistence(timeout: 3))
+        let removeArguments = element("terminal-remove-arguments-button", in: app)
+        assertExists(removeArguments, in: app)
+        removeArguments.click()
+        XCTAssertTrue(removeArguments.waitForNonExistence(timeout: 3))
     }
 
     @MainActor
@@ -979,6 +979,7 @@ final class VitrineUITests: XCTestCase {
         let lines = element("style-subtab-lines", in: app)
         let background = element("style-subtab-background", in: app)
         assertExists(appearance, in: app, timeout: 3)
+        assertExists(element("settings-terminal-palette-picker", in: app), in: app)
         lines.click()
         XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(appearance.isSelected)

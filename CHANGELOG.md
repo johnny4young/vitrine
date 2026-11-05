@@ -14,10 +14,11 @@ can never drift.
 
 ### Added
 
-- Terminal captures get an ANSI palette control, Theme or Raw xterm colors, with
-  `--terminal-palette`. The default is today's rendering.
+- Terminal captures get an ANSI palette control, Theme or Raw xterm colors, in the inspector
+  and Settings ▸ Style, with `--terminal-palette`. The default is today's rendering.
 - The inspector's Header section lists a terminal capture's filename and title as removable
-  chips, with a prompt picker and Hide arguments. They edit those two fields only.
+  chips, with a prompt picker and an undoable Remove arguments. Text they remove also leaves
+  the alternative text and window title.
 - Type a legend on a selected counter, or pass `--counter-label`, to list it under the
   capture. Masking is best effort: a label that looks like a secret or matches a redacted
   line or a value in blurred code is replaced, so check the legend before sharing.

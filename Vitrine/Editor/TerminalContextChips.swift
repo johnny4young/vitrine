@@ -2,10 +2,11 @@ import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
-/// The header's project, branch and command as removable chips. They edit only the header's
-/// filename and title, read nothing else, and add nothing the header doesn't already draw.
+/// The header's project, branch and command as removable chips. They read only the header's
+/// filename and title, and rewrite those plus any copy in the alt text and window title.
 struct TerminalContextChips: View {
     @Bindable var settings: AppSettings
+    @Environment(\.undoManager) private var undoManager
 
     private var context: TerminalHeaderContext {
         TerminalHeaderContext(
@@ -18,22 +19,32 @@ struct TerminalContextChips: View {
             FlowLayout {
                 ForEach(Array(context.labels.enumerated()), id: \.offset) { index, label in
                     chip(label, identifier: "terminal-context-label-\(index)") {
-                        update { $0.labels.remove(at: index) }
+                        update(undoName: String(localized: "Remove Header Item")) {
+                            $0.labels.remove(at: index)
+                        }
                     }
                 }
                 if let command = context.command {
                     chip(command, identifier: "terminal-context-command") {
-                        update { $0.command = nil }
+                        update(undoName: String(localized: "Remove Header Item")) {
+                            $0.removeTitle()
+                        }
                     }
                 }
             }
         }
-        if context.command != nil {
+        if context.titleText != nil {
             InspectorRow(label: Text("Prompt")) {
                 TokenSegmentedPicker(
                     options: [
-                        (TerminalHeaderContext.Prompt.dollar, Text(verbatim: "$")),
-                        (TerminalHeaderContext.Prompt.chevron, Text(verbatim: "›")),
+                        (
+                            TerminalHeaderContext.Prompt.dollar,
+                            Text(verbatim: "$").accessibilityLabel(Text("Dollar sign"))
+                        ),
+                        (
+                            TerminalHeaderContext.Prompt.chevron,
+                            Text(verbatim: "›").accessibilityLabel(Text("Chevron"))
+                        ),
                         (TerminalHeaderContext.Prompt.none, Text("None")),
                     ],
                     selection: Binding(
@@ -44,21 +55,38 @@ struct TerminalContextChips: View {
                 .accessibilityIdentifier("terminal-prompt-picker")
             }
         }
-        if context.canHideArguments {
-            Button("Hide arguments") { update { $0.hideArguments() } }
-                .help("Keep only the command's name. Type it in Title to bring the rest back.")
-                .accessibilityIdentifier("terminal-hide-arguments-button")
+        if context.canRemoveArguments {
+            Button("Remove arguments") {
+                update(undoName: String(localized: "Remove Arguments")) { $0.removeArguments() }
+            }
+            .help("Keep only the command's name.")
+            .accessibilityIdentifier("terminal-remove-arguments-button")
         }
     }
 
-    /// Writes both fields at once, so one edit is one render.
-    private func update(_ change: (inout TerminalHeaderContext) -> Void) {
-        var context = context
-        change(&context)
-        var metadata = settings.style.metadata
-        metadata.filename = context.filename
-        metadata.title = context.title
-        settings.style.metadata = metadata
+    private func update(undoName: String? = nil, _ change: (inout TerminalHeaderContext) -> Void) {
+        var edited = context
+        change(&edited)
+        Self.apply(edited, to: settings, undoName: undoName, undoManager: undoManager)
+    }
+
+    /// One write, so one edit is one render. Undo holds the old text in memory only.
+    static func apply(
+        _ edited: TerminalHeaderContext, to settings: AppSettings, undoName: String?,
+        undoManager: UndoManager?
+    ) {
+        var style = settings.style
+        let (metadata, altText, windowTitle) = (style.metadata, style.altText, style.windowTitle)
+        style.applyTerminalHeader(edited)
+        if let undoName {
+            undoManager?.registerUndo(withTarget: settings) { settings in
+                settings.style.metadata = metadata
+                settings.style.altText = altText
+                settings.style.windowTitle = windowTitle
+            }
+            undoManager?.setActionName(undoName)
+        }
+        settings.style = style
     }
 
     private func chip(
@@ -75,8 +103,10 @@ struct TerminalContextChips: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 8, weight: .semibold))
                     .foregroundStyle(VitrineTokens.Text.tertiary)
-                    .frame(width: 14, height: 14)
+                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
+                    // A 24 pt target that lays out, and looks, like the 14 pt glyph box.
+                    .padding(-5)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(Text("Remove \(text)"))

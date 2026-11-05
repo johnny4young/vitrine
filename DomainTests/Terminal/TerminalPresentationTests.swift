@@ -28,7 +28,7 @@ struct TerminalHeaderContextTests {
         #expect(context.command == nil)
         #expect(context.filename == nil)
         #expect(context.title == nil)
-        #expect(context.canHideArguments == false)
+        #expect(context.canRemoveArguments == false)
     }
 
     @Test func removingEveryChipClearsTheFields() {
@@ -36,42 +36,81 @@ struct TerminalHeaderContextTests {
         context.labels.remove(at: 1)
         #expect(context.filename == "project")
         context.labels.remove(at: 0)
-        context.command = nil
+        context.removeTitle()
         #expect(context.filename == nil)
         #expect(context.title == nil)
     }
 
-    @Test func changingThePromptKeepsTheCommand() {
+    @Test func changingThePromptKeepsTheText() {
         var context = TerminalHeaderContext(filename: nil, title: "$ htop")
         context.prompt = .chevron
         #expect(context.title == "› htop")
         context.prompt = .none
         #expect(context.title == "htop")
+        #expect(context.command == nil)
+        context.prompt = .dollar
+        #expect(context.command == "htop")
+    }
+
+    @Test(arguments: ["Aurora gradient", "user@host:~$ deploy --token abc", "$htop"])
+    func aTitleWithoutAPromptGlyphIsNotACommand(_ title: String) {
+        var context = TerminalHeaderContext(filename: nil, title: title)
+        #expect(context.command == nil)
+        #expect(context.canRemoveArguments == false)
+        context.removeArguments()
+        #expect(context.title == title)
     }
 
     @Test(arguments: [
         ("$ git commit -m 'token abc'", "$ git"),
         ("$ TOKEN=abc123 npm test --ci", "$ npm"),
+        (#"$ API_KEY="abc def" npm test"#, "$ npm"),
+        ("$ PASSWORD='correct horse' ./deploy.sh", "$ deploy.sh"),
+        (#"$ TOKEN=abc\ def FOO=1 make all"#, "$ make"),
         ("$ /Users/someone/bin/tool --flag", "$ tool"),
+        ("$ ~/bin/tool", "$ tool"),
         ("$ 'my-tool' secret", "$ my-tool"),
         ("› ./run.sh arg", "› run.sh"),
-        ("deploy prod", "deploy"),
+        ("$ make; rm -rf build", "$ make"),
+        ("$ cat secret.txt | grep key", "$ cat"),
     ])
-    func hidingArgumentsKeepsOnlyTheCommandsName(_ title: String, _ expected: String) {
+    func removingArgumentsKeepsOnlyTheCommandsName(_ title: String, _ expected: String) {
         var context = TerminalHeaderContext(filename: nil, title: title)
-        #expect(context.canHideArguments)
-        context.hideArguments()
+        #expect(context.canRemoveArguments)
+        context.removeArguments()
         #expect(context.title == expected)
-        #expect(context.canHideArguments == false)
+        #expect(context.canRemoveArguments == false)
     }
 
-    @Test func aCommandOfOnlyAssignmentsHasNothingLeftToShow() {
-        var context = TerminalHeaderContext(filename: nil, title: "$ TOKEN=abc123")
-        context.hideArguments()
+    /// Nothing here is safely a command's name, and each would otherwise leak a part of it.
+    @Test(arguments: [
+        "$ postgres://me:pw@db",
+        "$ https://me:pw@db.example.com/tool --flag",
+        "$ user@host:~$ deploy --token abc",
+        "$ TOKEN=abc123",
+        "$ FOO=1; BAR=2 cmd",
+        #"$ "FOO=bar" cmd"#,
+        "$ $(cat secret) arg",
+        "$ `cat secret` arg",
+        #"$ "$(cat secret)" arg"#,
+        "$ $TOKEN arg",
+        "$ -t abc",
+        "$ 'my tool' secret",
+        #"$ my\ tool secret"#,
+        #"$ API_KEY="abc def npm test"#,
+        "$ PASSWORD='unterminated horse",
+        #"$ trailing\"#,
+        "$ .. arg",
+        "$ / arg",
+        "$ > out.txt",
+    ])
+    func aFirstWordThatIsNoCommandNameLeavesNothing(_ title: String) {
+        var context = TerminalHeaderContext(filename: nil, title: title)
+        context.removeArguments()
         #expect(context.title == nil)
     }
 
-    @Test func aBareCommandHasNoArgumentsToHide() {
-        #expect(TerminalHeaderContext(filename: nil, title: "$ htop").canHideArguments == false)
+    @Test func aBareCommandHasNoArgumentsToRemove() {
+        #expect(TerminalHeaderContext(filename: nil, title: "$ htop").canRemoveArguments == false)
     }
 }

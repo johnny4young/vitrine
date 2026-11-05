@@ -1,6 +1,83 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Remove arguments" : {
+      "comment" : "Button that keeps only the command's name in a terminal header",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar argumentos"
+          }
+        }
+      }
+    },
+    "Remove Arguments" : {
+      "comment" : "Undo action name for removing a terminal command's arguments",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar argumentos"
+          }
+        }
+      }
+    },
+    "Remove Header Item" : {
+      "comment" : "Undo action name for removing a terminal context chip",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar elemento del encabezado"
+          }
+        }
+      }
+    },
+    "Keep only the command's name." : {
+      "comment" : "Tooltip of the Remove arguments button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deja solo el nombre del comando."
+          }
+        }
+      }
+    },
+    "Raw uses the standard xterm colors, lifted only where they would vanish." : {
+      "comment" : "Tooltip of the terminal palette control",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estándar usa los colores de xterm y los ajusta solo donde desaparecerían."
+          }
+        }
+      }
+    },
+    "Dollar sign" : {
+      "comment" : "Spoken label of the $ prompt option",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signo de dólar"
+          }
+        }
+      }
+    },
+    "Chevron" : {
+      "comment" : "Spoken label of the › prompt option",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ángulo"
+          }
+        }
+      }
+    },
     "ANSI palette" : {
       "comment" : "Inspector row that picks the colors of a terminal capture",
       "localizations" : {
@@ -23,17 +100,6 @@
         }
       }
     },
-    "Raw uses the standard xterm colors, whatever the theme." : {
-      "comment" : "Tooltip of the terminal palette control",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Estándar usa los colores de xterm, sea cual sea el tema."
-          }
-        }
-      }
-    },
     "Terminal" : {
       "comment" : "Inspector section for terminal capture controls",
       "localizations" : {
@@ -52,28 +118,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Indicador"
-          }
-        }
-      }
-    },
-    "Hide arguments" : {
-      "comment" : "Button that keeps only the command's name in a terminal header",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ocultar argumentos"
-          }
-        }
-      }
-    },
-    "Keep only the command's name. Type it in Title to bring the rest back." : {
-      "comment" : "Tooltip of the Hide arguments button",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deja solo el nombre del comando. Escríbelo en Título para recuperar el resto."
           }
         }
       }

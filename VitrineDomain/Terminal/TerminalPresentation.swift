@@ -22,16 +22,20 @@ public struct TerminalHeaderContext: Equatable, Sendable {
 
     public var labels: [String]
     public var prompt: Prompt
-    public var command: String?
+    /// The title without its prompt glyph.
+    public private(set) var titleText: String?
+
+    /// Only text behind a prompt glyph is a command: a plain title is just a title.
+    public var command: String? { prompt == .none ? nil : titleText }
 
     public init(filename: String?, title: String?) {
         labels = filename?.components(separatedBy: Self.separator) ?? []
         prompt = .none
-        command = title
+        titleText = title
         for glyph in Prompt.allCases where glyph != .none {
             if let title, title.hasPrefix("\(glyph.rawValue) ") {
                 prompt = glyph
-                command = String(title.dropFirst(glyph.rawValue.count + 1))
+                titleText = String(title.dropFirst(glyph.rawValue.count + 1))
                 break
             }
         }
@@ -42,23 +46,81 @@ public struct TerminalHeaderContext: Equatable, Sendable {
     }
 
     public var title: String? {
-        command.map { prompt == .none ? $0 : "\(prompt.rawValue) \($0)" }
+        titleText.map { prompt == .none ? $0 : "\(prompt.rawValue) \($0)" }
     }
 
-    public var canHideArguments: Bool {
-        command.map { Self.withoutArguments($0) != $0 } ?? false
+    public var canRemoveArguments: Bool {
+        command.map { Self.commandName(in: $0) != $0 } ?? false
     }
 
-    public mutating func hideArguments() {
-        command = command.flatMap(Self.withoutArguments)
+    public mutating func removeArguments() {
+        guard let command else { return }
+        titleText = Self.commandName(in: command)
     }
 
-    /// The command's own name. A leading `VAR=value` can hold a token and a command's
-    /// directory can name a user, so neither survives.
-    private static func withoutArguments(_ command: String) -> String? {
-        let words = command.split(whereSeparator: \.isWhitespace)
-        guard let word = words.first(where: { !$0.contains("=") }) else { return nil }
-        let name = word.trimmingCharacters(in: CharacterSet(charactersIn: "'\""))
-        return name.split(whereSeparator: { $0 == "/" || $0 == "\\" }).last.map(String.init)
+    public mutating func removeTitle() {
+        titleText = nil
+    }
+
+    /// The command's own name, read the way a shell would, or `nil` when the first word
+    /// isn't plausibly one. Assignments can hold a token and a directory can name a user.
+    private static func commandName(in command: String) -> String? {
+        let words = shellWords(command)
+        guard let word = words.first(where: { $0.raw.prefixMatch(of: /[A-Za-z_]\w*=/) == nil }),
+            word.value.wholeMatch(of: /[A-Za-z0-9._+~\/-]+/) != nil,
+            let name = word.value.split(separator: "/").last,
+            name.wholeMatch(of: /[A-Za-z0-9_.][A-Za-z0-9._+~-]*/) != nil,
+            name.contains(where: { $0.isLetter || $0.isNumber })
+        else { return nil }
+        return String(name)
+    }
+
+    /// The words of the first simple command, honoring quotes and backslashes. An unclosed
+    /// quote yields none: where its words end can't be known.
+    private static func shellWords(_ text: String) -> [(raw: String, value: String)] {
+        var words: [(raw: String, value: String)] = []
+        var raw = ""
+        var value = ""
+        var quote: Character?
+        let characters = Array(text)
+        var index = 0
+        scan: while index < characters.count {
+            let character = characters[index]
+            let next = index + 1 < characters.count ? characters[index + 1] : nil
+            index += 1
+            switch (quote, character) {
+            case ("'", "'"), ("\"", "\""):
+                quote = nil
+                raw.append(character)
+            case ("'", _):
+                raw.append(character)
+                value.append(character)
+            case (_, "\\"):
+                guard let next else { return [] }
+                raw += [character, next]
+                value.append(next)
+                index += 1
+            case ("\"", _):
+                raw.append(character)
+                value.append(character)
+            case (nil, "'"), (nil, "\""):
+                quote = character
+                raw.append(character)
+            case (nil, ";"), (nil, "|"), (nil, "&"), (nil, "<"), (nil, ">"), (nil, "`"):
+                break scan
+            case (nil, "$") where next == "(":
+                break scan
+            case (nil, _) where character.isWhitespace:
+                if !raw.isEmpty { words.append((raw, value)) }
+                raw = ""
+                value = ""
+            default:
+                raw.append(character)
+                value.append(character)
+            }
+        }
+        if quote != nil { return [] }
+        if !raw.isEmpty { words.append((raw, value)) }
+        return words
     }
 }

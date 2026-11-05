@@ -268,7 +268,8 @@ nonisolated enum CLIArgumentSchema {
             .terminalPalette, ["--terminal-palette"], .value("theme|raw"),
             synopsis: "--terminal-palette <theme|raw>",
             description:
-                "Color terminal output with the theme's palette or the standard xterm colors."),
+                "Color terminal output with the theme's palette or legible xterm colors. Only affects --language terminal."
+        ),
         definition(
             .wrapColumns, ["--wrap-columns", "--wrap"], .value("n"), synopsis: "--wrap-columns <n>",
             description: "Soft-wrap long code lines at n columns (40-200)."),

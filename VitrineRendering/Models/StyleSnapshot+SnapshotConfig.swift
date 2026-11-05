@@ -16,7 +16,8 @@ extension StyleSnapshot {
             shadowRadius: config.shadowRadius,
             showLineNumbers: config.showLineNumbers,
             wrapColumns: config.wrapColumns,
-            terminalPalette: config.terminalPalette,
+            // A non-terminal document doesn't show this, so its preset must not carry it.
+            terminalPalette: config.language == .terminal ? config.terminalPalette : nil,
             background: config.background
         )
     }

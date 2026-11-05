@@ -380,7 +380,7 @@ struct EditorInspectorView: View {
                     ],
                     selection: $settings.style.terminalPalette
                 )
-                .help("Raw uses the standard xterm colors, whatever the theme.")
+                .help("Raw uses the standard xterm colors, lifted only where they would vanish.")
                 .accessibilityLabel("ANSI palette")
                 .accessibilityIdentifier("terminal-palette-picker")
             }

@@ -22,6 +22,11 @@ struct CLITerminalPaletteTests {
         #expect(options.makeConfig(code: "x", language: .terminal).terminalPalette == .raw)
     }
 
+    @Test func theFlagSaysWhereItApplies() throws {
+        let option = try #require(CLIArgumentSchema.options.first { $0.id == .terminalPalette })
+        #expect(option.description.contains("Only affects --language terminal"))
+    }
+
     @Test func aBareRenderKeepsTheDefault() throws {
         let options = try CLIArguments.parse(["render", "in.log", "--out", "o.png"])
         #expect(options.makeConfig(code: "x", language: .terminal).terminalPalette == .theme)
