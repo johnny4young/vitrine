@@ -1,4 +1,5 @@
 import Foundation
+import VitrineDomain
 import VitrineRendering
 import os
 
@@ -58,6 +59,12 @@ enum Notifier {
         var category: Category
         var message: String
         var actions: [RecoveryAction]
+        var detail: Detail? = nil
+
+        /// What VoiceOver reads for this feedback.
+        var spokenMessage: String {
+            detail.map { "\(message), \($0.spokenText)" } ?? message
+        }
 
         /// An SF Symbol matching the category, for the HUD and menu surfaces.
         var systemImageName: String {
@@ -66,6 +73,19 @@ enum Notifier {
             case .info: "rectangle.stack.badge.plus"
             case .failure: "exclamationmark.triangle.fill"
             }
+        }
+    }
+
+    /// A measured fact under the message, with a form VoiceOver reads without symbols.
+    struct Detail: Equatable {
+        var text: String
+        var spokenText: String
+
+        /// The exact size of the PNG on the clipboard, so it carries no estimate mark.
+        static func copiedPNG(bytes: Int) -> Detail {
+            let format = ExportFormat.png.displayName
+            let size = Int64(bytes).formatted(.byteCount(style: .file))
+            return Detail(text: "\(format) · \(size)", spokenText: "\(format), \(size)")
         }
     }
 
@@ -83,10 +103,12 @@ enum Notifier {
     /// the produced image so a success message can name the destination precisely
     /// ("copied", "saved", or both) rather than guessing. They default to a
     /// copy-only success so existing call sites and tests keep their meaning.
+    /// `copiedPNGBytes` shows only for a copy alone: a saved file may be another format.
     static func feedback(
         for outcome: QuickCapture.Outcome,
         copiedToClipboard: Bool = true,
-        savedToFile: Bool = false
+        savedToFile: Bool = false,
+        copiedPNGBytes: Int? = nil
     ) -> CaptureFeedback {
         switch outcome {
         case .copied, .rendered:
@@ -95,7 +117,9 @@ enum Notifier {
             return CaptureFeedback(
                 category: copiedToClipboard || savedToFile ? .success : .info,
                 message: successMessage(copied: copiedToClipboard, saved: savedToFile),
-                actions: [])
+                actions: [],
+                detail: copiedToClipboard && !savedToFile
+                    ? copiedPNGBytes.map(Detail.copiedPNG(bytes:)) : nil)
         case .renderFailed(let error):
             return renderFailure(error)
         case .url:
@@ -133,8 +157,8 @@ enum Notifier {
     /// gets explicit, transient feedback consistent with the rest of the app's
     /// microinteractions, without a Notification Center banner. Pure data, so the
     /// message is unit-testable; the presentation is wired up by the caller.
-    static func confirmation(_ message: String) -> CaptureFeedback {
-        CaptureFeedback(category: .success, message: message, actions: [])
+    static func confirmation(_ message: String, detail: Detail? = nil) -> CaptureFeedback {
+        CaptureFeedback(category: .success, message: message, actions: [], detail: detail)
     }
 
     /// A standalone failure notice for a discrete action that could not complete — e.g.

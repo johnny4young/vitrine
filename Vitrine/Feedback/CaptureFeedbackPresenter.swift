@@ -41,7 +41,8 @@ final class CaptureFeedbackPresenter {
         let feedback = Notifier.feedback(
             for: result.outcome,
             copiedToClipboard: result.copiedToClipboard,
-            savedToFile: result.savedToFile)
+            savedToFile: result.savedToFile,
+            copiedPNGBytes: result.copiedPNGBytes)
 
         lastFeedback = feedback
         display(feedback) { [weak self] action in

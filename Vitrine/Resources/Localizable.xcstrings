@@ -427,6 +427,113 @@
         }
       }
     },
+    "Hidden in the export" : {
+      "comment" : "Shown beside a counter's legend text when it matches hidden text and is replaced in the export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oculto en la exportación"
+          }
+        }
+      }
+    },
+    "Legend: %lld hidden" : {
+      "comment" : "Status capsule: how many legend entries a fixed frame had no room for.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda: %lld ocultas"
+          }
+        }
+      }
+    },
+    "Images exported. Some legend entries didn't fit." : {
+      "comment" : "Confirmation after a multi-size export where a fixed frame left out legend entries.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imágenes exportadas. Algunas entradas de la leyenda no cupieron."
+          }
+        }
+      }
+    },
+    "Legend" : {
+      "comment" : "Placeholder of the field where the user types a counter's legend text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda"
+          }
+        }
+      }
+    },
+    "Counter legend text" : {
+      "comment" : "Accessibility label of the field where the user types a counter's legend text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto de la leyenda del contador"
+          }
+        }
+      }
+    },
+    "Clipboard holds %@" : {
+      "comment" : "Empty editor: what the clipboard holds. The argument is a measurement such as 14 lines of Swift.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El portapapeles tiene %@"
+          }
+        }
+      }
+    },
+    "%lld lines of %@" : {
+      "comment" : "Empty editor: how much the clipboard holds and its language, as in 14 lines of Swift.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line of %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines of %@"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld línea de %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld líneas de %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Changed" : {
       "comment" : "Code header chip: the watched file has a saved change waiting.",
       "localizations" : {
@@ -1306,61 +1413,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "receta fuera de su carpeta"
-          }
-        }
-      }
-    },
-    "Hidden in the export" : {
-      "comment" : "Shown beside a counter's legend text when it matches hidden text and is replaced in the export.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oculto en la exportación"
-          }
-        }
-      }
-    },
-    "Legend: %lld hidden" : {
-      "comment" : "Status capsule: how many legend entries a fixed frame had no room for.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leyenda: %lld ocultas"
-          }
-        }
-      }
-    },
-    "Images exported. Some legend entries didn't fit." : {
-      "comment" : "Confirmation after a multi-size export where a fixed frame left out legend entries.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imágenes exportadas. Algunas entradas de la leyenda no cupieron."
-          }
-        }
-      }
-    },
-    "Legend" : {
-      "comment" : "Placeholder of the field where the user types a counter's legend text.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leyenda"
-          }
-        }
-      }
-    },
-    "Counter legend text" : {
-      "comment" : "Accessibility label of the field where the user types a counter's legend text.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Texto de la leyenda del contador"
           }
         }
       }

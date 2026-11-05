@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- The empty editor says what the clipboard holds, such as "14 lines of Swift", counting
+  the lines a paste would produce, when System Settings always allows Vitrine to read the
+  clipboard. Otherwise it stays silent and the contents stay unread.
+- The capture HUD shows the size of the PNG it put on the clipboard.
 - Comparison boards get a Slider layout for two captures: one frame split at a divider you
   drag, or move with the arrow keys when macOS keyboard navigation is on. Exports draw the
   line at the chosen position.
