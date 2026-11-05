@@ -10,22 +10,24 @@ private final class FakeMeasure {
     var requested: [String] = []
     var failing: Set<String> = []
     var isHeld = false
-    private var held: CheckedContinuation<Void, Never>?
+    // Several runs can be waiting at once, and each must be released.
+    private var held: [CheckedContinuation<Void, Never>] = []
 
     func callAsFunction(_ preset: ExportPreset, _: PresetSizeEstimator.Input) async -> Int? {
         requested.append(preset.id)
-        if isHeld { await withCheckedContinuation { held = $0 } }
+        if isHeld { await withCheckedContinuation { held.append($0) } }
         return failing.contains(preset.id) ? nil : 100
     }
 
     func release() {
         isHeld = false
-        held?.resume()
-        held = nil
+        let waiting = held
+        held = []
+        for continuation in waiting { continuation.resume() }
     }
 }
 
-@Suite("Export size estimates")
+@Suite("Export size estimates", .timeLimit(.minutes(1)))
 @MainActor
 struct ExportSizeEstimateTests {
     private func config(code: String = "let answer = 42") -> SnapshotConfig {
