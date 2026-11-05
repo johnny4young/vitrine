@@ -14,6 +14,12 @@ can never drift.
 
 ### Added
 
+- The editor's Copy button turns into a check after a successful copy, without changing
+  its width. A failed copy never shows the check.
+- Annotation tools tint under the pointer and scale slightly on press; theme chips lift on
+  hover like the swatches. Reduce Motion removes the scaling and every transition.
+- A transparent background now shows a checker behind the editor's preview. The checker
+  follows the system appearance there and on comparison boards.
 - General settings report when the global hotkey is also a Vitrine menu command or an
   enabled macOS shortcut, with a Change… action that starts recording. macOS does not
   reveal other apps' hotkeys, so clashes with them are not reported. A macOS shortcut kept

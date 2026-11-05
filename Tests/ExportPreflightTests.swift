@@ -322,17 +322,19 @@ struct ExportPreflightGateTests {
         let document = settings("let a = \"\(token)\"")
         document.export.textSidecar = true
         document.outputBehavior.closeAfterCopy = false
-        let responder = EditorCommandResponder(
-            settings: document, feedback: .noOp, presentation: spy.presentation)
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 61),
+            environment: AppEnvironment(defaults: testDefaults()),
+            feedback: .noOp, presentation: spy.presentation, settings: document)
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
 
-        responder.copyImage(from: document, editorWindow: nil, pasteboard: pasteboard)
+        session.copyImage(closing: nil, pasteboard: pasteboard)
         #expect(spy.calls == [.copy])
         #expect(pasteboard.pasteboardItems?.isEmpty ?? true)
 
         spy.answer = .redact
-        responder.copyImage(from: document, editorWindow: nil, pasteboard: pasteboard)
+        session.copyImage(closing: nil, pasteboard: pasteboard)
         let text = try #require(pasteboard.string(forType: .string))
         #expect(text.contains(SnapshotConfig.redactedLinePlaceholder))
         #expect(!text.contains(token))

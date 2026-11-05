@@ -6,7 +6,7 @@ import Testing
 
 @Suite("Reduced motion control geometry")
 struct DecorativeScaleEffectTests {
-    @Test(arguments: [false, true], [CGFloat(0.98), 1.08])
+    @Test(arguments: [false, true], [CGFloat(0.94), 0.98, 1.06])
     func reducedMotionKeepsPressAndHoverGeometryStable(active: Bool, scale: CGFloat) throws {
         let normal = try pixelWidth(active: active, scale: scale, reduceMotion: false)
         let reduced = try pixelWidth(active: active, scale: scale, reduceMotion: true)

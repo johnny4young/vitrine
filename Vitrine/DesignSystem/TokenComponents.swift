@@ -320,8 +320,9 @@ struct ChipScroll<Content: View>: View {
     /// two can never drift apart and re-clip the last chip.
     private static var fadeWidth: CGFloat { 26 }
 
-    /// The strip's normal breathing room at each end.
-    private static var edgeInset: CGFloat { 2 }
+    /// The strip's normal breathing room at each end, which also holds a hovered chip's
+    /// selected glow: the scroll view clips anything past it.
+    private static var edgeInset: CGFloat { 5 }
 
     @State private var contentWidth: CGFloat = 0
     @State private var viewportWidth: CGFloat = 0
