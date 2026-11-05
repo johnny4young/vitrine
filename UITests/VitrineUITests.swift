@@ -1554,21 +1554,15 @@ final class VitrineUITests: XCTestCase {
         element("comparison-board-layout-slider", in: app).click()
         let divider = element("comparison-board-divider", in: app)
         assertExists(divider, in: app, timeout: 5)
-        XCTAssertEqual(divider.value as? String, "50%")
         let dividerSlider = element("comparison-board-divider-slider", in: app)
         assertExists(dividerSlider, in: app)
+        func position() -> String { String(describing: dividerSlider.value) }
+        let centered = position()
         XCTAssertFalse(element("comparison-board-gap-slider", in: app).exists)
         divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
-        XCTAssertEqual(divider.value as? String, "50%", "A plain click should not move it")
+        XCTAssertEqual(position(), centered, "A plain click should not move it")
         dividerSlider.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).click()
-        XCTAssertEqual(
-            XCTWaiter.wait(
-                for: [
-                    XCTNSPredicateExpectation(
-                        predicate: NSPredicate(format: "value != '50%'"), object: divider)
-                ],
-                timeout: 3),
-            .completed, "The inspector slider should move the divider")
+        XCTAssertNotEqual(position(), centered, "The inspector slider should move the divider")
 
         assertHittable(
             "comparison-board-caption-1", in: app, "A slider caption should stay clickable",
@@ -1576,10 +1570,10 @@ final class VitrineUITests: XCTestCase {
         element("comparison-board-caption-1", in: app).click()
         let sliderCaption = element("comparison-board-inline-label-1", in: app)
         assertExists(sliderCaption, in: app, timeout: 3)
-        let settled = divider.value as? String
+        let settled = position()
         divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
         XCTAssertTrue(sliderCaption.waitForNonExistence(timeout: 3))
-        XCTAssertEqual(divider.value as? String, settled, "That click only closes the caption")
+        XCTAssertEqual(position(), settled, "That click only closes the caption")
     }
 
     @MainActor

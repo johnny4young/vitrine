@@ -21,7 +21,7 @@ struct ComparisonBoardSliderTests {
     @Test(arguments: [CGFloat(1), 2, 3])
     func dividerFillsExactPixelsAtEveryScale(_ scale: CGFloat) throws {
         let value = try board(red, blue, dividerPercent: 37)
-        let wipe = try #require(wipe(of: value))
+        let wipe = try #require(boardWipe(of: value))
         let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: scale).cgImage)
         let y = Int(wipe.area.midY * scale)
 
@@ -62,7 +62,7 @@ struct ComparisonBoardSliderTests {
                         label: "After"),
                 ],
                 layout: .slider, size: size, background: background, dividerPercent: 37)
-            let wipe = try #require(wipe(of: value))
+            let wipe = try #require(boardWipe(of: value))
             sawOddWidth = sawOddWidth || !Int(wipe.area.width).isMultiple(of: 2)
             let sharedHeight = min(first.height, second.height) * wipe.pointsPerPixel
 
@@ -86,7 +86,7 @@ struct ComparisonBoardSliderTests {
     @Test func thePercentMovesTheDrawnLineAcrossTheCaptures() throws {
         func line(_ percent: Int) throws -> (run: Range<Int>, area: CGRect) {
             let value = try board(red, blue, dividerPercent: percent)
-            let area = try #require(wipe(of: value)).area
+            let area = try #require(boardWipe(of: value)).area
             let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: 1).cgImage)
             return (try #require(image.whiteRun(row: Int(area.midY))), area)
         }
@@ -107,7 +107,7 @@ struct ComparisonBoardSliderTests {
                 solid(first.0, width: first.1, height: 500),
                 solid(second.0, width: second.1, height: 500),
                 dividerPercent: percent)
-            let wipe = try #require(wipe(of: value))
+            let wipe = try #require(boardWipe(of: value))
             let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: 1).cgImage)
             let y = Int(wipe.area.midY)
             let leftEdge = Int(wipe.area.minX) + 1
@@ -126,7 +126,7 @@ struct ComparisonBoardSliderTests {
             let value = try board(
                 solid(red, width: 12, height: 500), solid(blue, width: 800, height: 500),
                 dividerPercent: percent)
-            let wipe = try #require(wipe(of: value))
+            let wipe = try #require(boardWipe(of: value))
             let exact = wipe.area.minX + wipe.sharedWidth * CGFloat(percent) / 100
             #expect(wipe.sharedWidth < 100)
             #expect(abs(wipe.dividerX - exact) <= 0.5)
@@ -180,7 +180,7 @@ struct ComparisonBoardSliderTests {
         #expect(try board(red, blue, dividerPercent: 400).dividerPercent == range.upperBound)
 
         for percent in ComparisonBoard.dividerRange {
-            let wipe = try #require(wipe(of: try board(red, blue, dividerPercent: percent)))
+            let wipe = try #require(boardWipe(of: try board(red, blue, dividerPercent: percent)))
             #expect(wipe.percent(atX: wipe.dividerX) == percent)
             #expect(wipe.percent(atX: -10_000) == ComparisonBoard.dividerRange.lowerBound)
             #expect(wipe.percent(atX: 10_000) == ComparisonBoard.dividerRange.upperBound)
@@ -194,7 +194,7 @@ struct ComparisonBoardSliderTests {
         let value = try board(
             solid(blue, width: 800, height: 200), solid(red, width: 400, height: 300),
             dividerPercent: 90)
-        let wipe = try #require(wipe(of: value))
+        let wipe = try #require(boardWipe(of: value))
         let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: 1).cgImage)
         let area = wipe.area
         let shortHeight = area.height * 2 / 3
@@ -290,7 +290,7 @@ struct ComparisonBoardSliderTests {
     func nothingShowsThroughFromTheOtherCapture(_ percent: Int) throws {
         for (first, second) in [(clear, blue), (magenta, clear)] {
             let value = try board(solid(first), solid(second), dividerPercent: percent)
-            let wipe = try #require(wipe(of: value))
+            let wipe = try #require(boardWipe(of: value))
             let image = Bitmap(try ComparisonBoardComposer.compose(value, scale: 2).cgImage)
             let columns = 0..<image.width
             let split = Int(wipe.dividerX) * 2
@@ -420,7 +420,7 @@ struct ComparisonBoardSliderTests {
     func fixedSizesRenderAtTheirExactDimensions(_ size: ComparisonBoard.Size) throws {
         let canvas = try #require(size.fixedPointSize)
         let value = try board(red, blue, size: size, showsFooter: true)
-        let wipe = try #require(wipe(of: value))
+        let wipe = try #require(boardWipe(of: value))
         let metrics = ComparisonBoardComposer.metrics(for: value)
 
         #expect(try ComparisonBoardComposer.compose(value, scale: 1).pixelSize == canvas)
@@ -521,7 +521,7 @@ struct ComparisonBoardSliderTests {
         return try #require(context.makeImage())
     }
 
-    private func wipe(of board: ComparisonBoard) -> ComparisonBoardComposer.Wipe? {
+    private func boardWipe(of board: ComparisonBoard) -> ComparisonBoardComposer.Wipe? {
         ComparisonBoardComposer.metrics(for: board).wipe(
             captureSizes: board.items.map(\.asset.pixelSize),
             dividerPercent: board.dividerPercent)
