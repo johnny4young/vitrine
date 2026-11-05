@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- Copy the command line that reproduces an editor window's image, from its More menu or
+  the command palette. It names what the line can't include, such as annotations or a
+  pasted image.
 - See five copyable recipe commands with their free or PRO access, and the order in which
   defaults, recipes and flags override each other.
 - Deleting a counter renumbers the badges above it, so they stay in order.
