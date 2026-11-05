@@ -2041,9 +2041,20 @@ final class VitrineUITests: XCTestCase {
             .coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).click()
         assertExists(element("settings-input-pane", in: app), in: app, timeout: 5)
 
-        // That raised Settings over Help.
-        app.menuBars.firstMatch.menuBarItems["Help"].click()
-        chooseMenuItem("Vitrine Help", in: app)
+        // That raised Settings over Help, so click a corner of Help that it doesn't cover.
+        // This window shows no menu bar of its own to reopen Help from.
+        let help = element("help-view", in: app)
+        let settings = app.windows.firstMatch.frame
+        let corner = [
+            CGVector(dx: 0.02, dy: 0.02), CGVector(dx: 0.98, dy: 0.02),
+            CGVector(dx: 0.02, dy: 0.98), CGVector(dx: 0.98, dy: 0.98),
+        ].first { offset in
+            !settings.contains(
+                CGPoint(
+                    x: help.frame.minX + help.frame.width * offset.dx,
+                    y: help.frame.minY + help.frame.height * offset.dy))
+        }
+        help.coordinate(withNormalizedOffset: try XCTUnwrap(corner)).click()
         clickHelpAction("help-topic-hotkey-settings-general", in: app)
 
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 5)
