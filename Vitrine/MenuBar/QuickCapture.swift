@@ -24,6 +24,7 @@ enum QuickCapture {
         case renderFailed(RenderBudgetError)  // rejected or failed before producing an image
         case url(String)  // a URL was detected and URL capture is enabled by the user
         case empty  // clipboard had no usable text
+        case cancelled  // the pre-flight check was declined; nothing left the app
         // Several Markdown code blocks were detected; the combined source is loaded
         // into the editor for the user to choose how to frame it. The
         // associated count is the number of blocks, for the feedback message.
@@ -63,6 +64,7 @@ enum QuickCapture {
         destinationPreset: ExportPreset? = nil,
         clipboard: () -> String? = { NSPasteboard.general.string(forType: .string) },
         historyConsent: RecentsStore.ConsentResolver? = nil,
+        preflight: ExportPreflightPrompt.Resolver? = nil,
         urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
     ) -> Result {
         guard let text = clipboard(),
@@ -116,6 +118,25 @@ enum QuickCapture {
         // Apply the PRO brand-kit watermark on the export path only: the multi-block
         // branch above returns first, so the editor document is never watermarked.
         config.watermark = settings.exportWatermark
+
+        // Asked before the clipboard or a file changes. With both outputs off nothing
+        // leaves the app, and history keeps its own consent below.
+        let behavior = settings.outputBehavior
+        if let preflight, behavior.autoCopy || behavior.alsoSaveToFile {
+            let report = ExportPreflight(config, payload: .text)
+            if !report.isClean {
+                let action: ExportPreflight.Action =
+                    behavior.autoCopy ? (behavior.alsoSaveToFile ? .copyAndSave : .copy) : .save
+                switch preflight(report, action) {
+                case .cancel:
+                    return .nonProducing(.cancelled)
+                case .redact:
+                    config.redactedLineRanges = report.redactions(adding: config.redactedLineRanges)
+                case .proceed:
+                    break
+                }
+            }
+        }
 
         // Honor the active destination preset's framing (size/scale) so quick
         // capture produces the same image the editor would. Render once and
@@ -374,11 +395,18 @@ enum QuickCapture {
             return
         }
 
+        let focus = PromptFocus(returningTo: AppActivation.frontmostOtherApplication())
         let result = capture(
             settings: settings,
             recents: recents,
             destinationPreset: destinationPreset,
-            historyConsent: HistoryConsentPrompt.resolve)
+            historyConsent: { decision in
+                focus.asking { HistoryConsentPrompt.resolve(decision) }
+            },
+            preflight: { report, action in
+                focus.asking { ExportPreflightPrompt.resolve(report, action: action) }
+            })
+        focus.finish()
         switch result.outcome {
         case .deferredToEditor:
             if let document = result.editorDocument {

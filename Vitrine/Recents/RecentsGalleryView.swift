@@ -87,7 +87,7 @@ struct RecentsGalleryView: View {
         }
         .frame(minWidth: 560, minHeight: 420)
         .background(Brand.Palette.stage.color)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityContainerIdentifier("recents-gallery")
     }
 
@@ -228,7 +228,7 @@ struct RecentsGalleryView: View {
                 createComparisonBoard()
             }
             .disabled(!comparisonSelection.canCreateBoard)
-            .buttonStyle(.borderedProminent)
+            .accentProminentButtonStyle()
             .accessibilityIdentifier("recents-create-comparison-button")
         } else {
             Button {
@@ -575,8 +575,8 @@ private struct RecentsCard: View {
                 .overlay(Circle().strokeBorder(Brand.Palette.border.color))
                 .contentShape(Circle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .customLabelMenu(cornerRadius: 15)
+        .fixedSize()
         .help("Copy, re-render, pin, or remove this recent capture")
         .accessibilityLabel("Capture actions")
         .accessibilityIdentifier("recents-preset-picker")

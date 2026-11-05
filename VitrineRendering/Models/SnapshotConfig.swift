@@ -48,6 +48,11 @@ public struct SnapshotConfig: Equatable {
     /// Off by default so the signature look is unchanged.
     public var showLineNumbers: Bool = false
 
+    /// The number drawn on the first gutter row, so a slice of a longer document keeps its
+    /// numbering. Invocation-only: set per carousel slide and never persisted, and 1
+    /// leaves every other render unchanged.
+    public var firstLineNumber: Int = 1
+
     /// Selected 1-based, inclusive line ranges to highlight, e.g. `[3...3, 7...9]`.
     /// Empty by default (no highlight). Kept normalized (sorted, merged)
     /// by the settings control via `LineHighlight`, but the renderer tolerates any
@@ -101,6 +106,10 @@ public struct SnapshotConfig: Equatable {
     /// fed to the golden suite, exactly like `annotations` leaves the default path
     /// untouched.
     public var watermark: Watermark?
+
+    /// Where this image sits in a multi-slide export. Derived per slide at the export
+    /// seam and never persisted, so `nil` keeps every other render unchanged.
+    public var slideCue: SlideCue?
 
     /// The "beautify any image" content: when set, the canvas renders this image —
     /// wrapped in `imageFrame` — as the card body instead of code, on the same
@@ -250,6 +259,25 @@ public struct SnapshotConfig: Equatable {
                 : Self.redactedLinePlaceholder
         }
         return lines.joined(separator: "\n")
+    }
+}
+
+/// The position cues drawn on one slide of a multi-slide export. Labels are resolved
+/// strings, so the render path stays independent of the app's locale.
+public struct SlideCue: Equatable {
+    /// The canvas-corner badge, e.g. `2 / 4`.
+    public var pageLabel: String?
+    /// The document lines on this slide, e.g. `9–16`, at the foot of the card.
+    public var rangeLabel: String?
+    /// The swipe cue at the card's trailing foot, e.g. `continues →`.
+    public var continuationLabel: String?
+
+    public init(
+        pageLabel: String? = nil, rangeLabel: String? = nil, continuationLabel: String? = nil
+    ) {
+        self.pageLabel = pageLabel
+        self.rangeLabel = rangeLabel
+        self.continuationLabel = continuationLabel
     }
 }
 

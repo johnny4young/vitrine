@@ -17,8 +17,16 @@ private enum EditorToolbarDensity: Equatable {
     }
 
     var usesCompactCopyButton: Bool { self != .full }
+    var foldsPinAndDefault: Bool { self != .full }
     var collapsesSecondaryActions: Bool { self == .compact }
-    var spacing: CGFloat { self == .compact ? 10 : 14 }
+    var spacing: CGFloat {
+        switch self {
+        case .full: 14
+        // The default 1180 pt window must still fit the whole tool row.
+        case .condensed: 12
+        case .compact: 10
+        }
+    }
 }
 
 /// The editor's glass toolbar and the export/copy actions behind it.
@@ -91,12 +99,8 @@ extension EditorView {
 
                 Spacer(minLength: 8)
 
-                if density.collapsesSecondaryActions {
-                    copyOptionsMenu
-                    savePresetButton
-                    editorActionsMenu
-                } else {
-                    copyOptionsMenu
+                copyOptionsMenu
+                if !density.collapsesSecondaryActions {
                     iconButton(
                         .saveImage, "save-button", help: "Render and save the image as a file",
                         systemImage: "square.and.arrow.down",
@@ -104,13 +108,22 @@ extension EditorView {
                     iconButton(
                         .shareImage, "share-button", help: "Share the rendered image",
                         systemImage: "square.and.arrow.up", action: share)
+                }
+                if !density.foldsPinAndDefault {
                     pinSnapshotButton
+                }
+                if !density.collapsesSecondaryActions {
                     multiSizeExportButton
                     carouselExportButton
-                    savePresetButton
+                }
+                savePresetButton
+                if density.foldsPinAndDefault {
+                    editorActionsMenu(foldsExports: density.collapsesSecondaryActions)
+                } else {
                     makeDefaultButton
                 }
 
+                commandPaletteButton
                 copyImageCTA(compact: density.usesCompactCopyButton)
             }
         }
@@ -161,24 +174,26 @@ extension EditorView {
         }
     }
 
-    /// Compact-window access to the secondary actions that do not need to remain
-    /// individually visible. The primary copy action and the annotation controls stay
-    /// directly reachable while this menu prevents title-bar clipping.
-    var editorActionsMenu: some View {
+    /// Narrower windows reach secondary actions through this menu, which keeps the primary
+    /// copy action and the annotation controls from clipping out of the title bar. Compact
+    /// windows fold the save, share and batch exports into it as well.
+    func editorActionsMenu(foldsExports: Bool) -> some View {
         Menu {
-            Button(action: saveImage) {
-                Label(VitrineCommand.saveImage.title, systemImage: "square.and.arrow.down")
-            }
-            .disabled(!settings.hasRenderableContent)
-            .accessibilityIdentifier("save-button")
+            if foldsExports {
+                Button(action: saveImage) {
+                    Label(VitrineCommand.saveImage.title, systemImage: "square.and.arrow.down")
+                }
+                .disabled(!settings.hasRenderableContent)
+                .accessibilityIdentifier("save-button")
 
-            Button(action: share) {
-                Label(VitrineCommand.shareImage.title, systemImage: "square.and.arrow.up")
-            }
-            .disabled(!settings.hasRenderableContent)
-            .accessibilityIdentifier("share-button")
+                Button(action: share) {
+                    Label(VitrineCommand.shareImage.title, systemImage: "square.and.arrow.up")
+                }
+                .disabled(!settings.hasRenderableContent)
+                .accessibilityIdentifier("share-button")
 
-            Divider()
+                Divider()
+            }
 
             Button(action: pinSnapshot) {
                 Label("Pin snapshot", systemImage: "pin")
@@ -186,27 +201,29 @@ extension EditorView {
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("pin-snapshot-button")
 
-            Button(action: presentMultiSizeExport) {
-                Label(
-                    entitlements.isUnlocked(.multiSizeExport)
-                        ? "Export sizes" : "Export sizes — Requires PRO",
-                    systemImage: "square.grid.2x2")
-            }
-            .disabled(!settings.hasRenderableContent)
-            .accessibilityIdentifier("export-sizes-button")
+            if foldsExports {
+                Button(action: presentMultiSizeExport) {
+                    Label(
+                        entitlements.isUnlocked(.multiSizeExport)
+                            ? "Export sizes" : "Export sizes — Requires PRO",
+                        systemImage: "square.grid.2x2")
+                }
+                .disabled(!settings.hasRenderableContent)
+                .accessibilityIdentifier("export-sizes-button")
 
-            Button(action: presentCarouselExport) {
-                Label(
-                    entitlements.isUnlocked(.carouselExport)
-                        ? "Export carousel" : "Export carousel — Requires PRO",
-                    systemImage: "rectangle.stack")
+                Button(action: presentCarouselExport) {
+                    Label(
+                        entitlements.isUnlocked(.carouselExport)
+                            ? "Export carousel" : "Export carousel — Requires PRO",
+                        systemImage: "rectangle.stack")
+                }
+                .disabled(
+                    !settings.hasRenderableContent || settings.style.usesImageContent
+                        || !Self.carouselAccepts(settings.style)
+                )
+                .help(carouselHelp)
+                .accessibilityIdentifier("export-carousel-button")
             }
-            .disabled(
-                !settings.hasRenderableContent || settings.style.usesImageContent
-                    || !Self.carouselAccepts(settings.style)
-            )
-            .help(carouselHelp)
-            .accessibilityIdentifier("export-carousel-button")
 
             Divider()
 
@@ -217,18 +234,9 @@ extension EditorView {
             }
             .accessibilityIdentifier("make-default-button")
         } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(VitrineTokens.Text.secondary)
-                .frame(width: 30, height: 30)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            GlassIconMenuLabel(systemImage: "ellipsis.circle")
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .customLabelMenu()
         .fixedSize()
         .help("More editor actions")
         .accessibilityLabel("More editor actions")
@@ -239,6 +247,7 @@ extension EditorView {
     /// it gets out of the way once its job is done. Users who copy more than
     /// once can keep it open from Settings.
     func copyImage() {
+        guard clearsPreflight(.copy, EditorPresentation.copyPayload(of: settings)) else { return }
         // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
         // render/encode failure — mirroring the menu command and the quick-capture HUD.
         // The HUD shows near the menu bar regardless of `closeAfterCopy`.
@@ -266,6 +275,7 @@ extension EditorView {
     /// toolbar Save button gives the same feedback as the File-menu command.
     /// A cancelled save panel is silent.
     func saveImage() {
+        guard clearsPreflight(.save, EditorPresentation.savePayload(of: settings)) else { return }
         let outcome = ExportManager.saveToFile(
             settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
             format: settings.export.format, fixedSize: settings.effectiveFixedSize,
@@ -283,7 +293,7 @@ extension EditorView {
     /// formats stay clearly labeled, one click away.
     var copyOptionsMenu: some View {
         Menu {
-            Button("Export for Documentation") { exportSheet = .documentationExport }
+            Button("Export for Documentation", action: presentDocumentationExport)
                 .disabled(!settings.hasRenderableContent)
                 .accessibilityIdentifier("documentation-action")
 
@@ -325,18 +335,9 @@ extension EditorView {
             }
             .accessibilityIdentifier("copy-data-uri-button")
         } label: {
-            Image(systemName: "doc.on.doc")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(VitrineTokens.Text.secondary)
-                .frame(width: 30, height: 30)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            GlassIconMenuLabel(systemImage: "doc.on.doc")
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .customLabelMenu()
         .fixedSize()
         .help("Copy the code or image in alternate formats")
         .accessibilityLabel("More copy options")
@@ -399,10 +400,16 @@ extension EditorView {
 
     /// Routes both toolbar densities through one presentation state and one sheet host.
     func presentMultiSizeExport() {
+        if entitlements.isUnlocked(.multiSizeExport),
+            !clearsPreflight(.export, settings.export.textSidecar ? .text : .image)
+        {
+            return
+        }
         exportSheet = .multiSize(isUnlocked: entitlements.isUnlocked(.multiSizeExport))
     }
 
     func presentCarouselExport() {
+        if entitlements.isUnlocked(.carouselExport), !clearsPreflight(.export, .image) { return }
         exportSheet = .carousel(isUnlocked: entitlements.isUnlocked(.carouselExport))
     }
 
@@ -469,18 +476,9 @@ extension EditorView {
             }
             .accessibilityIdentifier("editor-save-style-preset-button")
         } label: {
-            Image(systemName: "paintpalette")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(VitrineTokens.Text.secondary)
-                .frame(width: 30, height: 30)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            GlassIconMenuLabel(systemImage: "paintpalette")
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .customLabelMenu()
         .fixedSize()
         .help("Style presets — apply a saved or built-in look, or save the current style.")
         .accessibilityLabel("Style presets")
@@ -500,6 +498,15 @@ extension EditorView {
         )
         .accessibilityLabel(VitrineCommand.makeDefault.accessibilityLabel)
         .accessibilityIdentifier("make-default-button")
+    }
+
+    /// The mouse route to the ⌘K palette, which the zero-size button in `editorLayout`
+    /// keeps reachable by keyboard from anywhere in the editor.
+    var commandPaletteButton: some View {
+        GlassIconButton(systemImage: "command") { showCommandPalette = true }
+            .help("Command palette (⌘K)")
+            .accessibilityLabel("Command palette")
+            .accessibilityIdentifier("command-palette-button")
     }
 
     /// One bordered toolbar icon button mirroring a `VitrineCommand`: same
@@ -547,6 +554,7 @@ extension EditorView {
     // MARK: - Export/share actions
 
     func share() {
+        guard clearsPreflight(.share, .image) else { return }
         do {
             let image = try ExportManager.renderNSImageChecked(
                 settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
@@ -560,6 +568,7 @@ extension EditorView {
     /// Copies the rendered image to the clipboard as a `data:image/png;base64,…`
     /// URI string, honoring the active preset's framing.
     func copyDataURI() {
+        guard clearsPreflight(.copy, .image) else { return }
         session.feedback(
             ExportFeedback.copyOutcome(
                 RichPasteboard.copyDataURIOutcome(
@@ -573,6 +582,7 @@ extension EditorView {
     /// Copies a self-contained Markdown image embed followed by the visible,
     /// redaction-safe source in a language-tagged code fence.
     func copyMarkdown() {
+        guard clearsPreflight(.copy, .text) else { return }
         session.feedback(
             ExportFeedback.copyOutcome(
                 RichPasteboard.copyMarkdownOutcome(
@@ -586,6 +596,7 @@ extension EditorView {
     /// Copies the highlighted code as styled RTF/HTML, preserving the syntax colors
     /// and the selected font.
     func copyHighlightedCode() {
+        guard clearsPreflight(.copy, .text) else { return }
         session.feedback(
             ExportFeedback.sourceCopyOutcome(
                 RichPasteboard.copyHighlightedCode(
@@ -597,6 +608,7 @@ extension EditorView {
     /// link carries redaction-safe text and no local file references; an image background
     /// degrades to the default gradient.
     func copyShareLink() {
+        guard clearsPreflight(.copy, .transcript) else { return }
         do {
             let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: settings.config))
             let copied = ClipboardWriter.copy(

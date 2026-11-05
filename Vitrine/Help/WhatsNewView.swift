@@ -51,7 +51,7 @@ struct WhatsNewView: View {
         .frame(width: 520)
         .frame(minHeight: 420)
         .background(VitrineTokens.Surface.window)
-        .tint(VitrineTokens.Accent.system)
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityContainerIdentifier("whats-new-view")
     }
 
@@ -126,7 +126,7 @@ struct WhatsNewView: View {
             .accessibilityIdentifier("whats-new-help-button")
             Spacer()
             Button("Continue") { finish() }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .keyboardShortcut(.defaultAction)
                 .help("Dismiss and continue")
                 .accessibilityIdentifier("whats-new-continue-button")

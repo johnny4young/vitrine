@@ -242,7 +242,8 @@ struct DiffViewOptionsTests {
         config.highlightedLineRanges = [4...4]
         let slide = CarouselPaginator.slides(for: config.code, maxLinesPerSlide: 4)[1]
 
-        let slideConfig = ExportManager.carouselSlideConfig(config, slide: slide)
+        let slideConfig = CarouselPaginator.slideConfig(
+            config, slide: slide, at: 1, of: 2, cues: .none)
         #expect(slideConfig.code == slide.text)
         #expect(!slideConfig.showDiffStats)
         #expect(slideConfig.diffContextLines == nil)

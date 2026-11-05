@@ -57,6 +57,7 @@ import VitrineRendering
         /// `--demo-large-document` preloads a source just above the interactive-highlighting ceiling;
         /// `--demo-html-format` preloads compact markup for the Format Code smoke test;
         /// `--demo-sql-format` does the same for a compact query;
+        /// `--demo-secret` preloads a synthetic token for the export pre-flight smoke test;
         /// `--brand-accent` (Debug) keeps the brand accent whatever the macOS accent is;
         /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
         /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
@@ -130,6 +131,12 @@ import VitrineRendering
                 demo.code =
                     "SELECT u.id,u.email,COUNT(o.id) AS orders FROM users u LEFT JOIN orders o ON o.user_id=u.id WHERE u.active=TRUE GROUP BY u.id,u.email ORDER BY orders DESC;"
                 demo.language = .sql
+                settings.config = demo
+            }
+            if arguments.contains("--demo-secret") {
+                var demo = settings.config
+                demo.code = "let token = \"gh" + "p_" + String(repeating: "x", count: 36) + "\""
+                demo.language = .swift
                 settings.config = demo
             }
             if arguments.contains("--demo-recent") {

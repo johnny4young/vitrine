@@ -27,7 +27,9 @@ public struct SnapshotCanvas: View, Equatable {
         // `WatermarkOverlay` is a no-op when `config.watermark` is nil — it returns the
         // content unchanged — so the default render and every golden stay byte-for-byte
         // identical; only an explicitly resolved watermark adds the corner mark.
-        canvasContent.modifier(WatermarkOverlay(watermark: config.watermark))
+        canvasContent
+            .modifier(SlidePageBadgeOverlay(cue: config.slideCue, watermark: config.watermark))
+            .modifier(WatermarkOverlay(watermark: config.watermark))
     }
 
     /// The canvas itself, before any watermark. The default (no annotations) path is
@@ -258,10 +260,22 @@ public struct SnapshotCanvas: View, Equatable {
                     textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
             }
             codeBody(diff: diff)
+            if let cue = config.slideCue, cue.rangeLabel != nil || cue.continuationLabel != nil {
+                slideCueFooter(cue)
+            }
         }
-        .padding(.horizontal, 26)
-        .padding(.vertical, 22)
+        .padding(.horizontal, Self.cardHorizontalInset)
+        .padding(.vertical, Self.cardVerticalInset)
         .frame(minWidth: 360, alignment: .leading)
+        // Pinned here so the card keeps hugging its code: a Spacer in the footer row
+        // would stretch a fixed-size card to the whole slide.
+        .overlay(alignment: .bottomTrailing) {
+            if let continuation = config.slideCue?.continuationLabel {
+                slideCueLabel(continuation)
+                    .padding(.trailing, Self.cardHorizontalInset)
+                    .padding(.bottom, Self.cardVerticalInset)
+            }
+        }
         .background(cardBackgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous))
         .overlay(
@@ -271,6 +285,32 @@ public struct SnapshotCanvas: View, Equatable {
         // The elevated recipe, applied as a unit; only the radius is overridden
         // by the per-config "drop shadow" toggle (0 when off).
         .brandShadow(cardShadow)
+    }
+
+    private static let cardHorizontalInset: CGFloat = 26
+    private static let cardVerticalInset: CGFloat = 22
+
+    /// Reserves the row's height and both labels' width; the continuation itself is drawn
+    /// by the card's trailing overlay.
+    private func slideCueFooter(_ cue: SlideCue) -> some View {
+        HStack(spacing: 24) {
+            if let range = cue.rangeLabel { slideCueLabel(range) }
+            if let continuation = cue.continuationLabel { slideCueLabel(continuation).hidden() }
+        }
+    }
+
+    private func slideCueLabel(_ text: String) -> some View {
+        Text(verbatim: text)
+            .font(
+                Font(
+                    CodeFont.resolved(
+                        family: config.fontName, size: config.fontSize * 0.8, ligatures: false))
+            )
+            .foregroundStyle(
+                HighlightManager.shared.gutterForegroundColor(for: config.theme).opacity(0.6)
+            )
+            .lineLimit(1)
+            .fixedSize()
     }
 
     /// The code body, soft-wrapped to `wrapWidth` when the user enabled line wrapping
@@ -302,6 +342,7 @@ public struct SnapshotCanvas: View, Equatable {
                     diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
                 },
                 showLineNumbers: config.showLineNumbers,
+                firstLineNumber: config.firstLineNumber,
                 highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
                 redactedRanges: LineHighlight.normalize(config.redactedLineRanges),
                 font: codeFont,

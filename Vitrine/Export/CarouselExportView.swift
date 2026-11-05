@@ -2,11 +2,24 @@ import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
-/// The carousel export sheet: choose the lines-per-slide, see how many
-/// slides the snippet splits into, pick a folder, and write `carousel-01.png` … in one
-/// action. Splitting lives in `CarouselPaginator`; rendering in
-/// `ExportManager.exportCarousel` — this view only collects the two choices.
+/// The carousel export sheet: choose how the snippet splits and what each slide says
+/// about its place, see the outcome, and write `carousel-01.png` … in one action.
+/// Splitting and per-slide configs live in `CarouselPaginator`; rendering in
+/// `ExportManager.exportCarousel` — this view only collects the choices.
 struct CarouselExportView: View {
+    /// Everything that changes the rendered slides, so the size estimate follows it.
+    private struct Choices: Equatable {
+        var linesPerSlide = CarouselPaginator.defaultLinesPerSlide
+        var prefersBlankLineBreaks = true
+        var cues: CarouselPaginator.Cues
+    }
+
+    /// What the planned file names depend on.
+    private struct OutputPlan: Equatable {
+        var folder: URL?
+        var slideCount: Int
+    }
+
     /// The user's current snapshot (style + any brand watermark); each slide replaces
     /// only its `code` with that page's lines.
     let baseConfig: SnapshotConfig
@@ -16,7 +29,17 @@ struct CarouselExportView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    @State private var linesPerSlide = CarouselPaginator.defaultLinesPerSlide
+    @State private var choices: Choices
+
+    /// The folder chosen in this sheet. Without one, confirming asks for it, because
+    /// the sandbox grants no folder until the user picks it.
+    @State private var folder: URL?
+
+    /// The encoded size of a sampled slide, scaled by the live slide count.
+    @State private var bytesPerSlide: Int?
+
+    /// Held in state so slides written during the export don't rename the line under it.
+    @State private var plannedFilenames: [String] = []
 
     /// A short result line shown only when some slides failed to write.
     @State private var failureNote: String?
@@ -24,10 +47,37 @@ struct CarouselExportView: View {
     /// Live "completed/total" while the batch runs; `nil` when idle.
     @State private var progress: (completed: Int, total: Int)?
 
+    init(
+        baseConfig: SnapshotConfig, profile: ColorProfile, feedback: FeedbackDisplay,
+        presentation: BatchExportPresentation
+    ) {
+        self.baseConfig = baseConfig
+        self.profile = profile
+        self.feedback = feedback
+        self.presentation = presentation
+        _choices = State(
+            initialValue: Choices(
+                cues: CarouselPaginator.Cues(
+                    lineNumbers: baseConfig.showLineNumbers ? .continuing : .off,
+                    showsPageBadge: true,
+                    showsContinuation: true,
+                    continuationLabel: String(
+                        localized: "continues →",
+                        comment: "Cue drawn on a carousel slide when another slide follows."))))
+    }
+
     private var isExporting: Bool { progress != nil }
 
     private var pages: [CarouselPaginator.Slide] {
-        CarouselPaginator.slides(for: baseConfig.code, maxLinesPerSlide: linesPerSlide)
+        CarouselPaginator.slides(
+            for: baseConfig.code, maxLinesPerSlide: choices.linesPerSlide,
+            preferBlankLineBreaks: choices.prefersBlankLineBreaks)
+    }
+
+    private var confirmTitle: LocalizedStringKey {
+        guard folder != nil else { return "Export…" }
+        let count = pages.count
+        return count == 1 ? "Export 1 slide" : "Export \(count) slides"
     }
 
     var body: some View {
@@ -42,44 +92,189 @@ struct CarouselExportView: View {
             cancelIdentifier: "carousel-cancel",
             cancelDisabled: isExporting,
             onCancel: { dismiss() },
-            confirmTitle: "Export…",
+            confirmTitle: confirmTitle,
             confirmIdentifier: "carousel-export-confirm",
             confirmDisabled: pages.isEmpty || isExporting,
             onConfirm: exportSlides,
             content: {
-                HStack(spacing: 10) {
-                    Stepper(value: $linesPerSlide, in: CarouselPaginator.linesPerSlideRange) {
-                        Text("Lines per slide: \(linesPerSlide)")
-                            .font(.system(size: VitrineTokens.FontSize.body))
-                    }
-                    .accessibilityIdentifier("carousel-lines-stepper")
-                    Spacer(minLength: 0)
-                    // The live outcome, so the choice is informed before any file exists.
-                    Text("\(pages.count) slides")
-                        .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
-                        .foregroundStyle(VitrineTokens.Text.secondary)
-                        .monospacedDigit()
-                        .accessibilityIdentifier("carousel-slide-count")
+                VStack(alignment: .leading, spacing: 12) {
+                    splitControls
+                    Divider()
+                    slideControls
+                    Divider()
+                    outputControls
                 }
+                .toggleStyle(.switch)
+                .font(.system(size: VitrineTokens.FontSize.body))
+                .disabled(isExporting)
             }
         )
         .interactiveDismissDisabled(isExporting)
+        .task(id: choices) { await refreshSizeEstimate() }
+        .task(id: OutputPlan(folder: folder, slideCount: pages.count)) {
+            refreshPlannedFilenames()
+        }
+    }
+
+    private var splitControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Stepper(value: $choices.linesPerSlide, in: CarouselPaginator.linesPerSlideRange) {
+                    Text("Lines per slide: \(choices.linesPerSlide)")
+                }
+                .accessibilityIdentifier("carousel-lines-stepper")
+                Spacer(minLength: 0)
+                // The live outcome, so the choice is informed before any file exists.
+                Text("\(pages.count) slides")
+                    .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+                    .monospacedDigit()
+                    .accessibilityIdentifier("carousel-slide-count")
+            }
+            switchRow(
+                "Prefer blank-line breaks", isOn: $choices.prefersBlankLineBreaks,
+                identifier: "carousel-prefer-blank-lines")
+        }
+    }
+
+    private var slideControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Segments share one width, so a long label can outgrow the row.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) {
+                    Text("Line numbers")
+                        .fixedSize()
+                    Spacer(minLength: 0)
+                    lineNumbersPicker
+                }
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Line numbers")
+                    lineNumbersPicker
+                }
+            }
+            switchRow(
+                "Page badge “2 / 4”", isOn: $choices.cues.showsPageBadge,
+                identifier: "carousel-page-badge")
+            switchRow(
+                "“continues →” cue", isOn: $choices.cues.showsContinuation,
+                identifier: "carousel-continuation-cue")
+        }
+    }
+
+    private var lineNumbersPicker: some View {
+        Picker(
+            "Line numbers",
+            selection: Binding(
+                get: { choices.cues.lineNumbers ?? .off },
+                set: { choices.cues.lineNumbers = $0 })
+        ) {
+            Text("Continue").tag(CarouselPaginator.Cues.LineNumbers.continuing)
+            Text("Restart").tag(CarouselPaginator.Cues.LineNumbers.restarting)
+            Text("Off").tag(CarouselPaginator.Cues.LineNumbers.off)
+        }
+        .pickerStyle(.segmented)
+        .controlSize(.small)
+        .labelsHidden()
+        .fixedSize()
+        .accessibilityIdentifier("carousel-line-numbers")
+    }
+
+    private var outputControls: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                folderLabel
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .accessibilityIdentifier("carousel-folder-path")
+                Spacer(minLength: 0)
+                Button(folder == nil ? "Choose…" : "Change…", action: chooseFolder)
+                    .controlSize(.small)
+                    .accessibilityIdentifier("carousel-folder-change")
+            }
+            Text(verbatim: outputLine)
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .monospacedDigit()
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("carousel-output-summary")
+        }
+    }
+
+    private func switchRow(
+        _ title: LocalizedStringKey, isOn: Binding<Bool>, identifier: String
+    ) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+            Spacer(minLength: 0)
+            Toggle(title, isOn: isOn)
+                .controlSize(.small)
+                .labelsHidden()
+                .accessibilityIdentifier(identifier)
+        }
+    }
+
+    @ViewBuilder
+    private var folderLabel: some View {
+        if let folder {
+            let home = getpwuid(getuid()).map { String(cString: $0.pointee.pw_dir) }
+            Text(verbatim: CarouselPaginator.displayPath(folder, home: home))
+                .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                .foregroundStyle(VitrineTokens.Text.secondary)
+                .help(folder.path)
+        } else {
+            Text("No folder chosen")
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+        }
+    }
+
+    private var outputLine: String {
+        let count = pages.count
+        guard count > 0 else { return "" }
+        let filenames =
+            plannedFilenames.count == count
+            ? plannedFilenames : CarouselPaginator.plannedFilenames(slideCount: count, in: nil)
+        let summary = CarouselPaginator.outputSummary(
+            filenames: filenames, estimatedBytes: bytesPerSlide.map { $0 * count })
+        return summary + " · " + String(localized: "Existing files are kept")
+    }
+
+    /// Waits out a stepper run before rendering, since the sample renders on the main actor.
+    private func refreshSizeEstimate() async {
+        try? await Task.sleep(for: .milliseconds(300))
+        guard !Task.isCancelled else { return }
+        let estimate = await ExportManager.estimatedCarouselSlideBytes(
+            baseConfig, slides: pages, cues: choices.cues, profile: profile)
+        guard !Task.isCancelled else { return }
+        bytesPerSlide = estimate
+    }
+
+    private func refreshPlannedFilenames() {
+        plannedFilenames = CarouselPaginator.plannedFilenames(
+            slideCount: pages.count, in: folder)
+    }
+
+    private func chooseFolder() {
+        if let chosen = presentation.chooseDirectory(message: folderPrompt) {
+            folder = chosen
+        }
+    }
+
+    private var folderPrompt: String {
+        String(localized: "Choose a folder for the carousel slides.")
     }
 
     private func exportSlides() {
         let pages = pages
         guard !pages.isEmpty else { return }
-
-        guard
-            let directory = presentation.chooseDirectory(
-                message: String(localized: "Choose a folder for the carousel slides."))
+        guard let directory = folder ?? presentation.chooseDirectory(message: folderPrompt)
         else { return }
 
         failureNote = nil
         progress = (0, pages.count)
         Task {
             let result = await ExportManager.exportCarousel(
-                baseConfig, slides: pages, to: directory, profile: profile,
+                baseConfig, slides: pages, cues: choices.cues, to: directory, profile: profile,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil
             let completion = BatchExportCompletion(
@@ -93,6 +288,7 @@ struct CarouselExportView: View {
                 dismiss()
             } else {
                 failureNote = completion.failureNote
+                refreshPlannedFilenames()
             }
         }
     }

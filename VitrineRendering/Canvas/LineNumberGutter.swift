@@ -51,6 +51,8 @@ struct CodeLinesView: View {
     var displayRows: [DiffDisplayRow]?
     /// Whether to draw the leading line-number gutter.
     let showLineNumbers: Bool
+    /// The number drawn on the first row. Highlight and redaction ranges stay row-based.
+    var firstLineNumber = 1
     /// Normalized 1-based inclusive ranges to highlight.
     let highlightedRanges: [ClosedRange<Int>]
     /// Normalized 1-based inclusive ranges to redact: the code on these lines is blurred
@@ -77,7 +79,7 @@ struct CodeLinesView: View {
     var diffDecorations: Bool = false
 
     var body: some View {
-        let metrics = GutterMetrics(font: font, lineCount: rows.count)
+        let metrics = GutterMetrics(font: font, lineCount: rows.count + firstLineNumber - 1)
         VStack(alignment: .leading, spacing: lineSpacing) {
             let shown = displayRows ?? rows.indices.map { .line($0 + 1) }
             ForEach(Array(shown.enumerated()), id: \.offset) { _, shownRow in
@@ -121,7 +123,7 @@ struct CodeLinesView: View {
                 // Verbatim: a line number is a locale-neutral numeral, not catalog
                 // copy — and this also keeps Xcode's extractor from emitting a bare
                 // "%@" key into the String Catalog.
-                Text(verbatim: "\(lineNumber)")
+                Text(verbatim: "\(lineNumber + firstLineNumber - 1)")
                     .font(Font(font))
                     .monospacedDigit()
                     .foregroundStyle(textColor.opacity(isHighlighted ? 0.85 : 0.4))

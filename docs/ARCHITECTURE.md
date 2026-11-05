@@ -550,7 +550,8 @@ Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation
 loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
 same deterministic `SecretScanner` as the editor and merges detected rows with any
 manual `--redact-lines` ranges. Redacted rows are replaced with `[redacted]` before
-copyable sidecars are written. The scanner is a conservative line-based heuristic,
+copyable sidecars are written. Without the flag, `ExportPreflight` reports the same
+matches: the CLI warns on stderr and the app's export actions ask first. The scanner is a conservative line-based heuristic,
 not a guarantee that all credentials are detected. Provider patterns run independently
 of generic assignment parsing; the latter excludes constructor calls, a type name
 directly followed by `(` such as `passwordField = NSSecureTextField()`, only when no

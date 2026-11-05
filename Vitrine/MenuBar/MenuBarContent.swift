@@ -45,8 +45,8 @@ struct MenuBarContent: View {
         .padding(14)
         .frame(width: 340)
         // Controls follow the user's macOS accent; `Color.accentColor` is the app's
-        // brand asset in this repo, so force the AppKit system token.
-        .tint(VitrineTokens.Accent.system)
+        // brand asset in this repo, so use the token that reads the system accent.
+        .tint(VitrineTokens.Accent.systemText)
         .accessibilityContainerIdentifier("menubar-panel")
         .onExitCommand {
             dismiss()
@@ -185,7 +185,7 @@ struct MenuBarContent: View {
                 } label: {
                     Text("View All →")
                         .font(.system(size: VitrineTokens.FontSize.caption))
-                        .foregroundStyle(VitrineTokens.Accent.system)
+                        .foregroundStyle(VitrineTokens.Accent.systemText)
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("menu-recents-gallery")
@@ -231,7 +231,7 @@ struct MenuBarContent: View {
                 dismiss()
             } label: {
                 Text("Turn on Save capture history in Settings ▸ Export.")
-                    .foregroundStyle(VitrineTokens.Accent.system)
+                    .foregroundStyle(VitrineTokens.Accent.systemText)
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("menu-history-off-settings")
@@ -266,7 +266,7 @@ struct MenuBarContent: View {
                 } label: {
                     Label("Surprise Me", systemImage: "dice")
                         .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
-                        .foregroundStyle(VitrineTokens.Accent.system)
+                        .foregroundStyle(VitrineTokens.Accent.systemText)
                 }
                 .buttonStyle(.plain)
                 .help("Apply the next curated style without changing your code")

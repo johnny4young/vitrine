@@ -121,6 +121,25 @@ final class VitrineUITests: XCTestCase {
         }
     #endif
 
+    /// One more toolbar control past the condensed width silently collapses the tool row
+    /// into a menu at the size new windows open at.
+    @MainActor
+    func testDefaultWindowKeepsTheWholeToolRow() throws {
+        continueAfterFailure = false
+        try XCTSkipUnless(
+            NSScreen.screens.contains {
+                $0.visibleFrame.width >= 1180 && $0.visibleFrame.height >= 680
+            },
+            "No display fits the default editor window")
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor,
+            environment: ["VITRINE_UI_TEST_EDITOR_VIEWPORT": "1180x680"])
+        defer { app.terminate() }
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        assertHittable("annotation-tool-arrow", in: app, "The tool row must fit the default window")
+        XCTAssertFalse(element("annotation-tool-picker", in: app).exists)
+    }
+
     /// The unlocked value and paywall routing are unit-tested (`EntitlementsTests`,
     /// `EditorExportSheetTests`); this proves the locked toolbar at both widths.
     @MainActor
@@ -189,6 +208,33 @@ final class VitrineUITests: XCTestCase {
             "editor-style-preset-picker", in: app, "Style preset picker is not reachable")
         assertHittable("editor-inspector", in: app, "Inspector is not reachable")
         assertHittable("copy-button", in: app, "Export toolbar copy action is not reachable")
+        assertHittable(
+            "editor-status-capsule", in: app, "The destination menu must be reachable")
+        hittableElement("editor-status-capsule", in: app).click()
+        chooseMenuItem("Docs / Blog", in: app)
+        XCTAssertTrue(
+            app.menuButtons.matching(
+                NSPredicate(
+                    format: "identifier == %@ AND value BEGINSWITH %@", "editor-status-capsule",
+                    "Docs / Blog")
+            ).firstMatch.waitForExistence(timeout: 3),
+            "Choosing a destination must apply it")
+        hittableElement("editor-status-capsule", in: app).click()
+        chooseMenuItem("Custom", in: app)
+        assertHittable(
+            "command-palette-button", in: app, "The command palette button must be reachable")
+        element("command-palette-button", in: app).click()
+        assertExists(element("command-palette-field", in: app), in: app, timeout: 3)
+        // The field takes focus when opened by mouse, so Escape reaches the palette.
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("command-palette", in: app).waitForNonExistence(timeout: 3))
+        for readout in [
+            "inspector-value-background", "inspector-value-theme", "inspector-value-typography",
+        ] {
+            assertExists(element(readout, in: app), in: app)
+            XCTAssertNotEqual(element(readout, in: app).value as? String, "", readout)
+        }
+        assertExists(element("inspector-privacy-footer", in: app), in: app)
 
         // Advanced controls start behind the collapsed Output disclosure.
         element("inspector-disclosure-output", in: app).click()
@@ -208,6 +254,8 @@ final class VitrineUITests: XCTestCase {
         assertToolbarActionsReachable(
             ["save-button", "share-button", "make-default-button"],
             from: "editor-actions-menu", in: app)
+        // The default window folds these into More, and an open menu swallows the next click.
+        app.typeKey(.escape, modifierFlags: [])
 
         let original = try XCTUnwrap(editor.codeTextView.value as? String)
         let replacement = "struct CurrentPreview {\n    let answer = 42\n}"
@@ -766,6 +814,36 @@ final class VitrineUITests: XCTestCase {
             "Free Brand Kit placement should expose a reachable preview drag handle")
     }
 
+    @MainActor
+    func testCarouselSheetShowsSplitCueAndOutputControls() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-carousel-export"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+
+        assertExists(element("carousel-export-sheet", in: app), in: app, timeout: 8)
+        for identifier in [
+            "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
+            "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
+            "carousel-output-summary",
+        ] {
+            assertExists(element(identifier, in: app), in: app, timeout: 3)
+        }
+        let summary = element("carousel-output-summary", in: app)
+        XCTAssertTrue(
+            (summary.value as? String ?? summary.label).hasPrefix("carousel-01.png"),
+            "The sheet must name the files it will write")
+        let badge = element("carousel-page-badge", in: app)
+        badge.click()
+        let switchedOff = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == 0"), object: badge)
+        XCTAssertEqual(XCTWaiter.wait(for: [switchedOff], timeout: 3), .completed)
+        element("carousel-cancel", in: app).click()
+        XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
+    }
+
     /// One license round trip: activation dismisses the paywall and unlocks Brand Kit,
     /// then deactivation relocks it in the same running app without a network. The
     /// partial-activation failure is unit-tested in `EntitlementsTests`.
@@ -900,6 +978,18 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("web-snapshot-window", in: app), in: app, timeout: 8)
+        let requiresDirect =
+            ProcessInfo.processInfo.environment["VITRINE_REQUIRE_DIRECT_WEB_SESSION"] == "1"
+        if !requiresDirect {
+            // Without network access the window opens on HTML and explains why.
+            assertExists(element("web-snapshot-html-editor", in: app), in: app, timeout: 3)
+            assertExists(element("web-snapshot-url-badge", in: app), in: app, timeout: 3)
+            hittableElement("web-snapshot-url-why-button", in: app).click()
+            assertExists(
+                element("web-snapshot-url-unavailable-note", in: app), in: app, timeout: 3)
+            app.typeKey(.escape, modifierFlags: [])
+            hittableElement("web-snapshot-mode-url", in: app).click()
+        }
         let urlField = app.textFields["web-snapshot-url-field"]
         assertExists(urlField, in: app, timeout: 3)
         urlField.click()
@@ -907,22 +997,20 @@ final class VitrineUITests: XCTestCase {
         // sign-in window, so it needs neither a website nor credentials.
         urlField.typeText("https://example.com")
 
-        let unavailable = element("web-snapshot-url-unavailable-note", in: app)
         let hint = element("web-snapshot-sign-in-hint", in: app)
         let signIn = element("web-snapshot-sign-in-button", in: app)
-        let requiresDirect =
-            ProcessInfo.processInfo.environment["VITRINE_REQUIRE_DIRECT_WEB_SESSION"] == "1"
         if !requiresDirect {
             // The ordinary UI suite uses App Store-compatible entitlements. It must
             // not offer sign-in merely because the Debug binary was compiled with
             // VITRINE_DIRECT_DOWNLOAD; runtime capability is the signed entitlement.
-            assertExists(unavailable, in: app, timeout: 3)
             XCTAssertFalse(hint.exists)
             XCTAssertFalse(signIn.exists)
             return
         }
 
-        XCTAssertFalse(unavailable.exists, "The signed Direct lane lost network capability")
+        XCTAssertFalse(
+            element("web-snapshot-url-badge", in: app).exists,
+            "The signed Direct lane lost network capability")
         assertExists(hint, in: app, timeout: 3)
         XCTAssertFalse(signIn.exists, "The default-off session must not offer sign-in")
 
@@ -1076,6 +1164,8 @@ final class VitrineUITests: XCTestCase {
         assertExists(window, in: app, timeout: 8)
         assertExists(element("social-card-inspector", in: app), in: app, timeout: 3)
         assertExists(element("social-card-preview-stage", in: app), in: app, timeout: 3)
+        assertExists(element("social-card-size-capsule", in: app), in: app, timeout: 3)
+        assertExists(app.buttons["social-card-use-editor-code"], in: app, timeout: 3)
 
         let copyButton = app.buttons["social-card-copy-button"]
         let saveButton = app.buttons["social-card-save-button"]
@@ -1300,6 +1390,77 @@ final class VitrineUITests: XCTestCase {
         firstLabel.typeText("Original")
         XCTAssertEqual(firstLabel.value as? String, "Original")
 
+        // The caption on the board and the inspector row edit the same string.
+        assertHittable(
+            "comparison-board-caption-0", in: app,
+            "The rendered caption should be clickable once the preview draws")
+        element("comparison-board-caption-0", in: app).click()
+        let inlineLabel = element("comparison-board-inline-label-0", in: app)
+        assertExists(inlineLabel, in: app, timeout: 3)
+        assertExists(element("comparison-board-inline-detail-0", in: app), in: app)
+        inlineLabel.click()
+        inlineLabel.typeKey("a", modifierFlags: .command)
+        inlineLabel.typeText("On the board")
+        assertValue("On the board", of: firstLabel)
+        inlineLabel.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(inlineLabel.waitForNonExistence(timeout: 3))
+
+        // Moving directly to another caption keeps each capture's text.
+        let secondLabel = element("comparison-board-label-1", in: app)
+        let secondValue = try XCTUnwrap(secondLabel.value as? String)
+        element("comparison-board-caption-0", in: app).click()
+        assertExists(inlineLabel, in: app, timeout: 3)
+        inlineLabel.click()
+        inlineLabel.typeKey("a", modifierFlags: .command)
+        inlineLabel.typeText("First caption")
+        assertValue("First caption", of: firstLabel)
+        element("comparison-board-caption-1", in: app).click()
+        let secondInline = element("comparison-board-inline-label-1", in: app)
+        assertExists(secondInline, in: app, timeout: 3)
+        XCTAssertTrue(inlineLabel.waitForNonExistence(timeout: 3))
+        assertValue("First caption", of: firstLabel)
+        assertValue(secondValue, of: secondLabel)
+
+        secondInline.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(secondInline.waitForNonExistence(timeout: 3), "Escape closes the field")
+
+        element("comparison-board-caption-0", in: app).click()
+        assertExists(inlineLabel, in: app, timeout: 3)
+        element("comparison-board-preview-stage", in: app)
+            .coordinate(withNormalizedOffset: CGVector(dx: 0.02, dy: 0.04)).click()
+        XCTAssertTrue(inlineLabel.waitForNonExistence(timeout: 3), "A stage click closes the field")
+
+        element("comparison-board-caption-0", in: app).click()
+        assertExists(inlineLabel, in: app, timeout: 3)
+        secondLabel.click()
+        XCTAssertTrue(
+            inlineLabel.waitForNonExistence(timeout: 3), "An inspector field takes over the edit")
+
+        for control in [
+            "comparison-board-summary", "comparison-board-size-picker",
+            "comparison-board-gap-slider", "comparison-board-footer-toggle",
+            "comparison-board-background-vitrine", "comparison-board-background-card",
+            "comparison-board-background-aurora", "comparison-board-background-transparent",
+        ] {
+            assertExists(element(control, in: app), in: app)
+        }
+        element("comparison-board-background-aurora", in: app).click()
+        XCTAssertTrue(
+            element("comparison-board-background-aurora", in: app)
+                .wait(for: \.isSelected, toEqual: true, timeout: 3),
+            "The chosen board background should read as selected")
+        let footer = element("comparison-board-footer-toggle", in: app)
+        footer.click()
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [
+                    XCTNSPredicateExpectation(
+                        predicate: NSPredicate(format: "value == 1 OR value == '1'"),
+                        object: footer)
+                ],
+                timeout: 3),
+            .completed, "The footer switch should turn on")
+
         element("comparison-board-copy-button", in: app).click()
         let copyDeadline = Date().addingTimeInterval(6)
         var copied: NSBitmapImageRep?
@@ -1313,6 +1474,18 @@ final class VitrineUITests: XCTestCase {
         let board = try XCTUnwrap(copied, "Comparison board did not copy a PNG")
         XCTAssertGreaterThan(board.pixelsWide, 1_000)
         XCTAssertGreaterThan(board.pixelsHigh, 500)
+    }
+
+    @MainActor
+    private func assertValue(_ value: String, of field: XCUIElement) {
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [
+                    XCTNSPredicateExpectation(
+                        predicate: NSPredicate(format: "value == %@", value), object: field)
+                ],
+                timeout: 3),
+            .completed, "Expected \(value.debugDescription): \(field.debugDescription)")
     }
 
     @MainActor
@@ -1659,6 +1832,54 @@ final class VitrineUITests: XCTestCase {
         let recents = RecentsRobot(testCase: self, app: app)
         assertExists(recents.gallery, in: app, timeout: 5)
         XCTAssertEqual(recents.cards.count, 0)
+    }
+
+    @MainActor
+    func testExportPreflightAsksBeforeCopyingAndCanCancelOrRedact() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: ["--demo-secret", "--open-editor"])
+        defer { app.terminate() }
+        assertExists(element("code-editor-text-view", in: app), in: app, timeout: 8)
+        assertHittable("copy-button", in: app, "Copy image is not reachable")
+
+        element("copy-button", in: app).click()
+        let redact = element("export-preflight-redact", in: app)
+        assertExists(redact, in: app, timeout: 5)
+        assertExists(element("export-preflight-anyway", in: app), in: app)
+        assertExists(element("export-preflight-cancel", in: app), in: app)
+
+        app.typeKey(.escape, modifierFlags: [])
+        assertExists(element("code-editor-text-view", in: app), in: app, timeout: 3)
+        XCTAssertTrue(redact.waitForNonExistence(timeout: 3), "Cancel must dismiss the check")
+
+        element("copy-button", in: app).click()
+        assertExists(redact, in: app, timeout: 5)
+        redact.click()
+        XCTAssertTrue(redact.waitForNonExistence(timeout: 5), "Redact must dismiss the check")
+    }
+
+    @MainActor
+    func testAlternativeTextDraftFillsAnEmptyFieldOnly() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("inspector-disclosure-output", in: app), in: app, timeout: 8)
+        element("inspector-disclosure-output", in: app).click()
+
+        let draft = element("alternative-text-draft-button", in: app)
+        assertExists(draft, in: app, timeout: 3)
+        draft.click()
+        let field = element("alternative-text-field", in: app)
+        let filled = NSPredicate { _, _ in !((field.value as? String) ?? "").isEmpty }
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [XCTNSPredicateExpectation(predicate: filled, object: nil)], timeout: 3),
+            .completed)
+        XCTAssertTrue(
+            draft.waitForNonExistence(timeout: 3),
+            "A filled field must not offer to replace its text")
     }
 
     // MARK: - Localization smoke

@@ -73,7 +73,7 @@ struct CaptureHUDView: View {
                     HStack(spacing: Brand.Spacing.xs) {
                         ForEach(feedback.actions, id: \.self) { action in
                             Button(action.title) { onAction(action) }
-                                .buttonStyle(.borderedProminent)
+                                .accentProminentButtonStyle()
                                 .controlSize(.small)
                                 .accessibilityIdentifier(
                                     "capture-hud-action-\(action.accessibilityToken)")

@@ -171,7 +171,7 @@ struct CustomThemeEditor: View {
                 Button("Save") {
                     onSave(draft.name, draft.palette())
                 }
-                .buttonStyle(.borderedProminent)
+                .accentProminentButtonStyle()
                 .keyboardShortcut(.defaultAction)
                 .accessibilityIdentifier("save-custom-theme-button")
             }

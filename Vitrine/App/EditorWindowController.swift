@@ -262,6 +262,16 @@ final class EditorWindowController: NSObject {
         return session
     }
 
+    /// The document of the frontmost open editor, for surfaces that borrow its code. With
+    /// every editor closed it is the primary draft, then the app-wide working document.
+    var frontmostDocument: AppSettings {
+        let frontmost = NSApp.orderedWindows.lazy.compactMap { window in
+            self.windows.first { $0.value === window }?.key
+        }.first
+        return sessions[frontmost ?? EditorWindowIdentity.primary.index]?.settings
+            ?? environment.appSettings
+    }
+
     /// Shows (creating if needed) and focuses the window for `identity`.
     private func showWindow(for identity: EditorWindowIdentity) {
         let window = windows[identity.index] ?? makeWindow(for: identity)

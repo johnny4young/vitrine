@@ -124,16 +124,20 @@ struct EditorWindowStateTests {
         // actually asserts the omission instead of comparing two type defaults.
         config.watermark = Watermark(text: "@vitrine")
         config.terminalColumns = 100
+        config.firstLineNumber = 9
+        config.slideCue = SlideCue(pageLabel: "2 / 4")
         return config
     }
 
-    /// `original` with the two fields the bridge deliberately does not carry reset to the
+    /// `original` with the fields the bridge deliberately does not carry reset to the
     /// values a restored window will actually show. If the bridge ever starts or stops
     /// carrying one, the whole-config comparisons below fail instead of quietly agreeing.
     private func expectedAfterRestore(_ original: SnapshotConfig) -> SnapshotConfig {
         var expected = original
         expected.watermark = nil  // Brand Kit owns its own persistence
         expected.terminalColumns = nil  // measured from the capture, not restored state
+        expected.firstLineNumber = 1  // derived per carousel slide at export
+        expected.slideCue = nil  // derived per carousel slide at export
         return expected
     }
 
@@ -201,7 +205,7 @@ struct EditorWindowStateTests {
     /// This guards *name* coverage, not values: every stored property must be exercised by
     /// `richConfig()` or excused here with the reason it is not restorable document state.
     @Test func everySnapshotConfigFieldIsExercisedOrExcused() {
-        // Empty on purpose: every field is exercised by richConfig(), including the two the
+        // Empty on purpose: every field is exercised by richConfig(), including those the
         // bridge drops, whose omission `expectedAfterRestore` asserts. An entry here is the
         // escape hatch for a future field that cannot be given a non-default value.
         let excused: [String: String] = [:]
