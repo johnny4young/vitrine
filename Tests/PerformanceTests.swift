@@ -654,7 +654,8 @@ struct PerformanceTests {
     @Test func carouselTileAtTheLongLineLimitMeetsBudget() {
         // Tokens, not one word: highlighting is most of what a long line costs.
         let line = String(
-            repeating: "let a = foo(1); ", count: CarouselFilmstripModel.maximumSlideBytes / 16 - 1)
+            repeating: "let a = foo(1); ",
+            count: CarouselPaginator.Slide.maximumPreviewBytes / 16 - 1)
         carouselTile(code: { "\(line)// \($0)" }, label: "carousel-tile-long-line")
     }
 

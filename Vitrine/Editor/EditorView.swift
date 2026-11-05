@@ -290,9 +290,11 @@ struct EditorView: View {
                     showCommandPalette = true
                 }
                 #if DEBUG
-                    // Same gates as the toolbar button: without PRO this opens the paywall.
+                    // Same gates as the toolbar button: a refused capture opens the rule with
+                    // PRO, and otherwise stays shut. Without PRO an accepted one gets the paywall.
                     if Self.carouselHookOpens(
                         settings.style, hasRenderableContent: settings.hasRenderableContent,
+                        isUnlocked: entitlements.isUnlocked(.carouselExport),
                         arguments: ProcessInfo.processInfo.arguments)
                     {
                         presentCarouselExport()
@@ -303,10 +305,12 @@ struct EditorView: View {
 
     #if DEBUG
         static func carouselHookOpens(
-            _ style: SnapshotConfig, hasRenderableContent: Bool, arguments: [String]
+            _ style: SnapshotConfig, hasRenderableContent: Bool, isUnlocked: Bool,
+            arguments: [String]
         ) -> Bool {
-            arguments.contains("--open-carousel-export") && hasRenderableContent
-                && !style.usesImageContent && carouselAccepts(style)
+            arguments.contains("--open-carousel-export")
+                && carouselCanOpen(
+                    style, hasRenderableContent: hasRenderableContent, isUnlocked: isUnlocked)
         }
     #endif
 

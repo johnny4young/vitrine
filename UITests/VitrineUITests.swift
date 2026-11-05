@@ -899,7 +899,6 @@ final class VitrineUITests: XCTestCase {
             "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
             "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
             "carousel-output-summary", "carousel-filmstrip", "carousel-slide-tile-0",
-            "carousel-slide-size",
         ] {
             assertExists(element(identifier, in: app), in: app, timeout: 3)
         }
@@ -912,6 +911,22 @@ final class VitrineUITests: XCTestCase {
         let switchedOff = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "value == 0"), object: badge)
         XCTAssertEqual(XCTWaiter.wait(for: [switchedOff], timeout: 3), .completed)
+        element("carousel-cancel", in: app).click()
+        XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testCarouselSheetStatesTheRuleOnARefusedCapture() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.terminalEditor + ["--open-carousel-export"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+
+        assertExists(element("carousel-rule", in: app), in: app, timeout: 8)
+        XCTAssertFalse(element("carousel-export-confirm", in: app).exists)
+        XCTAssertFalse(element("carousel-filmstrip", in: app).exists)
         element("carousel-cancel", in: app).click()
         XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
     }

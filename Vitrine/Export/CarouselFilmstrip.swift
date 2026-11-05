@@ -24,9 +24,6 @@ final class CarouselFilmstripModel {
         height: 86 * ExportManager.carouselSlideSize.height / ExportManager.carouselSlideSize.width)
     /// Lazy tiles leave the visible set on their own schedule; this holds regardless.
     static let maximumLiveTiles = 12
-    /// Thirty ordinary lines stay well under this. A longer slide holds some enormous line,
-    /// whose highlighting would hold the main actor past several frames.
-    static let maximumSlideBytes = 8 * 1_024
 
     var visible: Set<Int> = []
     /// The tile the arrow keys are on.
@@ -56,10 +53,6 @@ final class CarouselFilmstripModel {
             fixedSize: ExportManager.carouselSlideSize, profile: profile)
     }
 
-    static func canPreview(_ slide: CarouselPaginator.Slide) -> Bool {
-        slide.text.utf8.count <= maximumSlideBytes
-    }
-
     func moveCurrent(by step: Int, count: Int) {
         current = min(max(current + step, 0), max(count - 1, 0))
     }
@@ -84,7 +77,7 @@ final class CarouselFilmstripModel {
         try? await Task.sleep(for: quietWindow)
         for index in live where rendered[index] == nil {
             guard !Task.isCancelled, let tile = wanted[index] else { return }
-            if Self.canPreview(input.slides[index]) {
+            if input.slides[index].canPreview {
                 images[index] = render(tile.config, tile.profile)
             }
             rendered[index] = tile
@@ -99,6 +92,8 @@ struct CarouselFilmstrip: View {
     let input: CarouselFilmstripModel.Input
     let hasShortTail: Bool
     let model: CarouselFilmstripModel
+    /// Follows the system's keyboard navigation, and a click never takes focus.
+    var focusInteractions: FocusInteractions = .activate
 
     @FocusState private var isFocused: Bool
 
@@ -128,7 +123,7 @@ struct CarouselFilmstrip: View {
             }
             // Room below the tiles for a scroller that takes space, under a mouse.
             .frame(height: CarouselFilmstripModel.tileSize.height + 40)
-            .focusable(interactions: .activate)
+            .focusable(interactions: focusInteractions)
             .focused($isFocused)
             .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
                 model.moveCurrent(by: press.key == .leftArrow ? -1 : 1, count: count)
@@ -174,9 +169,10 @@ private struct CarouselSlideTile: View {
                 .overlay {
                     if let image = model.images[index] {
                         Image(decorative: image, scale: 2).resizable()
-                    } else if !CarouselFilmstripModel.canPreview(slide) {
+                    } else if !slide.canPreview {
                         Image(systemName: "text.alignleft")
                             .foregroundStyle(VitrineTokens.Text.tertiary)
+                            .help(noPreviewNote)
                     }
                 }
                 .overlay(alignment: .bottomTrailing) {
@@ -199,10 +195,24 @@ private struct CarouselSlideTile: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            Text("Slide \(index + 1) of \(count), lines \(slide.lineRange)")
+            slide.lineCount == 1
+                ? Text("Slide \(index + 1) of \(count), line \(slide.lineRange)")
+                : Text("Slide \(index + 1) of \(count), lines \(slide.lineRange)")
         )
-        .accessibilityValue(isShort ? Text("short") : Text(verbatim: ""))
+        .accessibilityValue(Text(verbatim: accessibilityNotes))
+        .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
         .accessibilityIdentifier("carousel-slide-tile-\(index)")
+    }
+
+    private var noPreviewNote: String {
+        String(localized: "No preview: this slide is too long to draw here")
+    }
+
+    private var accessibilityNotes: String {
+        var notes: [String] = []
+        if isShort { notes.append(String(localized: "short")) }
+        if !slide.canPreview { notes.append(noPreviewNote) }
+        return notes.joined(separator: ", ")
     }
 
     private func pill(_ label: Text) -> some View {

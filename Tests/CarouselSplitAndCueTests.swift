@@ -206,9 +206,12 @@ struct CarouselSplitAndCueTests {
         /// Mirrors the toolbar: the dev hook must never reach a document the button refuses.
         @Test func carouselHookHonorsTheToolbarGate() {
             let arguments = ["--open-carousel-export"]
-            func opens(_ style: SnapshotConfig, hasContent: Bool = true, args: [String]) -> Bool {
+            func opens(
+                _ style: SnapshotConfig, hasContent: Bool = true, unlocked: Bool = false,
+                args: [String]
+            ) -> Bool {
                 EditorView.carouselHookOpens(
-                    style, hasRenderableContent: hasContent, arguments: args)
+                    style, hasRenderableContent: hasContent, isUnlocked: unlocked, arguments: args)
             }
             var style = SnapshotConfig()
             #expect(opens(style, args: arguments))
@@ -216,9 +219,11 @@ struct CarouselSplitAndCueTests {
             #expect(!opens(style, hasContent: false, args: arguments))
             style.annotations = [Annotation(kind: .blur, start: .zero, end: CGPoint(x: 1, y: 1))]
             #expect(!opens(style, args: arguments))
+            #expect(opens(style, unlocked: true, args: arguments))
             style.annotations = []
             style.language = .terminal
             #expect(!opens(style, args: arguments))
+            #expect(opens(style, unlocked: true, args: arguments))
             style.language = .swift
             style.foregroundImage = ImageReference(fileName: "image.png")
             #expect(!opens(style, args: arguments))

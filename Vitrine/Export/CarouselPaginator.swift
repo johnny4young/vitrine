@@ -50,10 +50,17 @@ enum CarouselPaginator {
             lineCount > 1 ? "\(firstLine)–\(firstLine + lineCount - 1)" : "\(firstLine)"
         }
 
+        /// Split as `slides` splits: `"\r\n"` is one `Character`, so a `Character` split sees
+        /// a CRLF slide as a single line.
         fileprivate var visibleLineCount: Int {
-            text.split(separator: "\n", omittingEmptySubsequences: false)
-                .count { !$0.allSatisfy(\.isWhitespace) }
+            text.components(separatedBy: "\n").count { !$0.allSatisfy(\.isWhitespace) }
         }
+
+        /// Thirty 80-column lines stay well under this. Highlighting a slide past it would hold
+        /// the main actor for several frames, so it isn't rendered until the export asks.
+        static let maximumPreviewBytes = 8 * 1_024
+
+        var canPreview: Bool { text.utf8.count <= Self.maximumPreviewBytes }
 
         /// Document line ranges clipped to this slide and renumbered from 1.
         func localRanges(_ ranges: [ClosedRange<Int>]) -> [ClosedRange<Int>] {
@@ -79,6 +86,12 @@ enum CarouselPaginator {
             self.code = code
             slides = split.slides(of: code)
             hasShortTail = CarouselPaginator.hasShortTail(slides)
+        }
+
+        /// Empty until the split of `code` has finished: another document's slides with this
+        /// document's marks could put a redaction on the wrong row.
+        func slides(for code: String) -> [Slide] {
+            self.code == code ? slides : []
         }
     }
 
@@ -214,12 +227,15 @@ enum CarouselPaginator {
         return config
     }
 
-    /// `4:5 · 1080 × 1350`, read off the frame the export renders.
+    /// `1080 × 1350`, read off the frame the export renders.
     static func slideSizeLabel(_ size: CGSize) -> String {
-        func divisor(_ a: Int, _ b: Int) -> Int { b == 0 ? a : divisor(b, a % b) }
-        let (width, height) = (Int(size.width), Int(size.height))
-        let shared = max(1, divisor(width, height))
-        return "\(width / shared):\(height / shared) · \(width) × \(height)"
+        "\(Int(size.width)) × \(Int(size.height))"
+    }
+
+    /// The text a capture may split: none for one the carousel refuses, so nothing of it can
+    /// reach a tile, an estimate or a file.
+    static func splittableCode(of config: SnapshotConfig) -> String {
+        EditorView.carouselAccepts(config) ? config.code : ""
     }
 
     /// Two-digit numbering keeps the files sorted everywhere.

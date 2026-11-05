@@ -64,17 +64,27 @@ struct CarouselFilmstripTests {
         #expect(outcome.hasShortTail)
     }
 
+    @Test func aThinTailIsShortInACRLFDocumentToo() {
+        let lines =
+            (1...8).map { "let value\($0) = \($0)" } + ["last"] + Array(repeating: "", count: 6)
+        let split = CarouselSplit(linesPerSlide: 8, prefersBlankLineBreaks: false)
+        let outcome = split.outcome(lines.joined(separator: "\r\n"))
+        #expect(outcome.slides.count == 2)
+        #expect(outcome.hasShortTail)
+        #expect(
+            !split.outcome(document(lines: 16).replacingOccurrences(of: "\n", with: "\r\n"))
+                .hasShortTail)
+    }
+
     @Test func aLoneSlideIsNeverShort() {
         #expect(!CarouselPaginator.hasShortTail(CarouselSplit().slides(of: "only")))
     }
 
     // MARK: - Slide size
 
-    @Test func theSizeLabelReducesTheRatio() {
+    @Test func theSizeLabelStatesThePixels() {
         #expect(
-            CarouselPaginator.slideSizeLabel(CGSize(width: 1920, height: 1080))
-                == "16:9 · 1920 × 1080")
-        #expect(CarouselPaginator.slideSizeLabel(.zero) == "0:0 · 0 × 0")
+            CarouselPaginator.slideSizeLabel(CGSize(width: 1920, height: 1080)) == "1920 × 1080")
     }
 
     // MARK: - Tiles
@@ -233,23 +243,70 @@ struct CarouselFilmstripTests {
         let log = RenderLog()
         let model = model(log)
         var base = SnapshotConfig()
-        base.code = String(repeating: "x", count: CarouselFilmstripModel.maximumSlideBytes + 1)
+        base.code = String(repeating: "x", count: CarouselPaginator.Slide.maximumPreviewBytes + 1)
         model.visible = [0]
         await model.refresh(input(base))
         #expect(log.configs.isEmpty)
         #expect(model.images.isEmpty)
     }
 
+    @Test func theEstimateSamplesTheFirstSlideItCanRender() async {
+        let long = CarouselPaginator.Slide(
+            text: String(repeating: "x", count: CarouselPaginator.Slide.maximumPreviewBytes + 1),
+            firstLine: 1, lineCount: 1)
+        let short = CarouselPaginator.Slide(text: "let a = 1", firstLine: 2, lineCount: 1)
+        let estimate = await ExportManager.estimatedCarouselSlideBytes(
+            SnapshotConfig(), slides: [long, short], cues: .none)
+        #expect(estimate != nil)
+    }
+
     @Test func theEstimateSkipsASlideTheFilmstripWouldNotRender() async {
         let slide = CarouselPaginator.Slide(
-            text: String(repeating: "x", count: CarouselFilmstripModel.maximumSlideBytes + 1),
+            text: String(repeating: "x", count: CarouselPaginator.Slide.maximumPreviewBytes + 1),
             firstLine: 1, lineCount: 1)
         let estimate = await ExportManager.estimatedCarouselSlideBytes(
             SnapshotConfig(), slides: [slide], cues: .none)
         #expect(estimate == nil)
     }
 
+    // MARK: - Live reload
+
+    @Test func slidesOfAnOlderDocumentNeverMeetTheNewMarks() async {
+        let old = "let a = 1\nlet secret = \"hunter2\"\nlet b = 2\nlet c = 3\nlet d = 4"
+        let new = "// header\n" + old
+        let outcome = CarouselPaginator.Outcome(split: CarouselSplit(linesPerSlide: 4), code: old)
+
+        // The reload hides the secret on its new row, while the split still holds the old text.
+        var base = SnapshotConfig()
+        base.code = new
+        base.redactedLineRanges = [3...3]
+        let log = RenderLog()
+        let model = model(log)
+        model.visible = [0, 1]
+        await model.refresh(
+            CarouselFilmstripModel.Input(
+                base: base, slides: outcome.slides(for: base.code), cues: .none, profile: .sRGB))
+        #expect(log.configs.isEmpty)
+
+        let settled = CarouselPaginator.Outcome(split: outcome.split, code: new)
+        await model.refresh(
+            CarouselFilmstripModel.Input(
+                base: base, slides: settled.slides(for: base.code), cues: .none, profile: .sRGB))
+        #expect(log.configs.first?.redactedLineRanges == [3...3])
+    }
+
     // MARK: - The rule
+
+    @Test func aRefusedCaptureHasNothingToSplit() {
+        var style = SnapshotConfig()
+        style.code = "let a = 1"
+        #expect(CarouselPaginator.splittableCode(of: style) == style.code)
+        style.language = .terminal
+        #expect(CarouselPaginator.splittableCode(of: style).isEmpty)
+        style.language = .swift
+        style.annotations = [Annotation(kind: .blur, start: .zero, end: CGPoint(x: 1, y: 1))]
+        #expect(CarouselPaginator.splittableCode(of: style).isEmpty)
+    }
 
     @Test func theRuleNamesTerminalAndBlurCaptures() {
         var style = SnapshotConfig()
@@ -285,37 +342,43 @@ struct CarouselFilmstripTests {
     private struct Strip: View {
         let input: CarouselFilmstripModel.Input
         let model: CarouselFilmstripModel
+        var interactions: FocusInteractions
         var body: some View {
-            CarouselFilmstrip(input: input, hasShortTail: false, model: model)
+            CarouselFilmstrip(
+                input: input, hasShortTail: false, model: model, focusInteractions: interactions)
         }
     }
 
-    @Test func theKeyboardReachesTheStripAsOneStopAndItsArrowsMoveThroughTiles() async throws {
+    private func hostStrip(
+        _ model: CarouselFilmstripModel, interactions: FocusInteractions, above: NSButton
+    ) -> NSWindow {
         var base = SnapshotConfig()
         base.code = document(lines: 40)
-        let model = CarouselFilmstripModel(quietWindow: .seconds(30))
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 300, height: 260), styleMask: [.titled],
             backing: .buffered, defer: false)
-        let before = NSButton(title: "Before", target: nil, action: nil)
-        before.frame = NSRect(x: 0, y: 200, width: 300, height: 40)
-        let hosting = NSHostingView(rootView: Strip(input: input(base), model: model))
+        above.frame = NSRect(x: 0, y: 200, width: 300, height: 40)
+        let hosting = NSHostingView(
+            rootView: Strip(input: input(base), model: model, interactions: interactions))
         hosting.frame = NSRect(x: 0, y: 0, width: 300, height: 190)
         let container = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 260))
-        container.addSubview(before)
+        container.addSubview(above)
         container.addSubview(hosting)
         window.contentView = container
         window.orderFrontRegardless()
+        return window
+    }
+
+    /// `.edit` is always in the key loop, so this runs with keyboard navigation on or off.
+    @Test func theArrowKeysMoveThroughTilesAndScrollThemIn() async throws {
+        let model = CarouselFilmstripModel(quietWindow: .seconds(30))
+        let before = NSButton(title: "Before", target: nil, action: nil)
+        let window = hostStrip(model, interactions: .edit, above: before)
         defer { window.orderOut(nil) }
         #expect(window.makeFirstResponder(before))
         try await Task.sleep(for: .milliseconds(200))
-
         window.selectNextKeyView(nil)
         try await Task.sleep(for: .milliseconds(200))
-        guard NSApp.isFullKeyboardAccessEnabled else {
-            #expect(window.firstResponder === before)
-            return
-        }
         #expect(window.firstResponder !== before)
 
         let arrow = String(UnicodeScalar(NSRightArrowFunctionKey)!)
@@ -334,6 +397,20 @@ struct CarouselFilmstripTests {
         #expect(model.current == 6)
         try await Task.sleep(for: .milliseconds(300))
         #expect(model.visible.contains(6), "The tile the keys reached must have scrolled in")
+    }
+
+    /// Like native controls, the shipped strip joins the key loop only with navigation on.
+    @Test func theStripFollowsTheSystemsKeyboardNavigation() async throws {
+        let before = NSButton(title: "Before", target: nil, action: nil)
+        let window = hostStrip(
+            CarouselFilmstripModel(quietWindow: .seconds(30)), interactions: .activate,
+            above: before)
+        defer { window.orderOut(nil) }
+        #expect(window.makeFirstResponder(before))
+        try await Task.sleep(for: .milliseconds(200))
+        window.selectNextKeyView(nil)
+        try await Task.sleep(for: .milliseconds(200))
+        #expect((window.firstResponder !== before) == NSApp.isFullKeyboardAccessEnabled)
     }
 
     @Test func theCurrentTileStaysInBounds() {

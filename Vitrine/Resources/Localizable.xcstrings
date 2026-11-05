@@ -1,13 +1,24 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Slide size" : {
-      "comment" : "Row in the carousel export sheet showing the slide's aspect ratio and pixels.",
+    "Slide %lld of %lld, line %@" : {
+      "comment" : "Accessibility label of a one-line slide tile in the carousel filmstrip.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tamaño de diapositiva"
+            "value" : "Diapositiva %1$lld de %2$lld, línea %3$@"
+          }
+        }
+      }
+    },
+    "No preview: this slide is too long to draw here" : {
+      "comment" : "Tooltip and accessibility value of a carousel slide tile that isn't rendered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin vista previa: esta diapositiva es demasiado larga para dibujarla aquí"
           }
         }
       }

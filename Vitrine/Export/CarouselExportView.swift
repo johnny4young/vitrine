@@ -75,12 +75,11 @@ struct CarouselExportView: View {
 
     private var rule: LocalizedStringKey? { EditorView.carouselRule(for: baseConfig) }
 
-    private var pages: [CarouselPaginator.Slide] { outcome?.slides ?? [] }
-
-    /// A refused capture has nothing to split, so nothing of it can reach a tile.
     private var request: SplitRequest {
-        SplitRequest(split: split, code: rule == nil ? baseConfig.code : "")
+        SplitRequest(split: split, code: CarouselPaginator.splittableCode(of: baseConfig))
     }
+
+    private var pages: [CarouselPaginator.Slide] { outcome?.slides(for: request.code) ?? [] }
 
     private var filmstripInput: CarouselFilmstripModel.Input {
         CarouselFilmstripModel.Input(
@@ -96,7 +95,8 @@ struct CarouselExportView: View {
     var body: some View {
         ExportSheetScaffold(
             title: "Export carousel",
-            subtitle: "Split the snippet into numbered 4:5 slides for a carousel post.",
+            subtitle: rule == nil
+                ? "Split the snippet into numbered 4:5 slides for a carousel post." : nil,
             width: 440,
             rootIdentifier: "carousel-export-sheet",
             failureNote: failureNote,
@@ -107,6 +107,7 @@ struct CarouselExportView: View {
             onCancel: { dismiss() },
             confirmTitle: confirmTitle,
             confirmIdentifier: "carousel-export-confirm",
+            showsConfirm: rule == nil,
             confirmDisabled: pages.isEmpty || isExporting,
             onConfirm: exportSlides,
             content: {
@@ -160,14 +161,6 @@ struct CarouselExportView: View {
             CarouselFilmstrip(
                 input: filmstripInput, hasShortTail: outcome?.hasShortTail ?? false,
                 model: filmstrip)
-            HStack(spacing: 10) {
-                Text("Slide size")
-                Spacer(minLength: 0)
-                Text(verbatim: CarouselPaginator.slideSizeLabel(ExportManager.carouselSlideSize))
-                    .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
-                    .foregroundStyle(VitrineTokens.Text.secondary)
-                    .accessibilityIdentifier("carousel-slide-size")
-            }
             switchRow(
                 "Prefer blank-line breaks", isOn: $split.prefersBlankLineBreaks,
                 identifier: "carousel-prefer-blank-lines")
@@ -274,7 +267,8 @@ struct CarouselExportView: View {
             ? plannedFilenames : CarouselPaginator.plannedFilenames(slideCount: count, in: nil)
         let summary = CarouselPaginator.outputSummary(
             filenames: filenames, estimatedBytes: bytesPerSlide.map { $0 * count })
-        return summary + " · " + String(localized: "Existing files are kept")
+        let size = CarouselPaginator.slideSizeLabel(ExportManager.carouselSlideSize)
+        return summary + " · " + size + " · " + String(localized: "Existing files are kept")
     }
 
     private func refreshSplit() async {
@@ -311,6 +305,7 @@ struct CarouselExportView: View {
     }
 
     private func exportSlides() {
+        guard rule == nil else { return }
         // A click can land before the split catches up with the last stepper tick.
         let pages = request.split.slides(of: request.code)
         guard !pages.isEmpty else { return }
