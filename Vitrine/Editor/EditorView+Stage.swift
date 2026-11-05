@@ -22,7 +22,10 @@ extension EditorView {
                 // The line count + format action are code-only; a beautified image hides them.
                 if !settings.style.usesImageContent {
                     CodeLineCountLabel(settings: settings)
-                    livingSnapshotMenu
+                        .lineLimit(1)
+                    if !session.livingSnapshot.isActive {
+                        livingSnapshotMenu
+                    }
                     formatButton
                 }
             }
@@ -33,6 +36,12 @@ extension EditorView {
                 imagePanel
             } else {
                 VStack(spacing: 0) {
+                    if session.livingSnapshot.isActive {
+                        livingSnapshotMenu
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, VitrineTokens.Spacing.xs)
+                    }
                     livingSnapshotNotice
                     LargeDocumentHighlightNotice(settings: settings)
                     CodeDocumentEditor(
@@ -70,9 +79,9 @@ extension EditorView {
         .accessibilityContainerIdentifier("editor-drop-target")
     }
 
-    /// Compact access to the explicit, session-only file connection. The menu stays in
-    /// the code header so a live source is visible without crowding the primary export
-    /// toolbar, and it remains available from an empty editor as the entry point.
+    /// Compact access to the explicit, session-only file connection: an icon in the code
+    /// header as the entry point, then a chip on its own row, because the header has no
+    /// room for a file name beside the line count and the format action.
     var livingSnapshotMenu: some View {
         Menu {
             if session.livingSnapshot.isActive {
@@ -93,17 +102,69 @@ extension EditorView {
                 }
             }
         } label: {
-            Image(systemName: livingSnapshotSystemImage)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(livingSnapshotColor)
-                .frame(width: 22, height: 22)
-                .contentShape(Rectangle())
+            if session.livingSnapshot.isActive {
+                livingSnapshotChip
+            } else {
+                livingSnapshotStatusIcon
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
         }
-        .customLabelMenu(cornerRadius: 4)
-        .fixedSize()
+        .customLabelMenu(cornerRadius: session.livingSnapshot.isActive ? 13 : 4)
+        // Only the chip gives up width, for its file name.
+        .fixedSize(horizontal: !session.livingSnapshot.isActive, vertical: true)
         .help(livingSnapshotHelp)
         .accessibilityLabel("Live file")
+        .accessibilityValue(session.livingSnapshot.isActive ? livingSnapshotAccessibilityValue : "")
         .accessibilityIdentifier("living-snapshot-menu")
+    }
+
+    /// The watched file as a first-class source: its state in both symbol and word, then
+    /// the name, which gives way first in the narrow code header.
+    private var livingSnapshotChip: some View {
+        HStack(spacing: 5) {
+            if session.livingSnapshot.status == .watching {
+                Circle()
+                    .fill(livingSnapshotColor)
+                    .frame(width: 7, height: 7)
+            } else {
+                livingSnapshotStatusIcon
+            }
+            Text(verbatim: livingSnapshotStatusTitle)
+                .fixedSize()
+            Text(verbatim: session.livingSnapshot.displayName)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .bold))
+        }
+        .font(.system(size: VitrineTokens.FontSize.caption, weight: .medium))
+        .foregroundStyle(VitrineTokens.Text.secondary)
+        .padding(.horizontal, 8)
+        .frame(height: 26)
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+        )
+        .contentShape(Capsule(style: .continuous))
+    }
+
+    private var livingSnapshotStatusIcon: some View {
+        Image(systemName: livingSnapshotSystemImage)
+            .foregroundStyle(livingSnapshotColor)
+    }
+
+    private var livingSnapshotStatusTitle: String {
+        switch session.livingSnapshot.status {
+        case .inactive, .watching: String(localized: "Live")
+        case .changeAvailable: String(localized: "Changed")
+        case .unavailable: String(localized: "Unavailable")
+        }
+    }
+
+    private var livingSnapshotAccessibilityValue: String {
+        "\(livingSnapshotStatusTitle), \(session.livingSnapshot.displayName)"
     }
 
     @ViewBuilder var livingSnapshotNotice: some View {
@@ -165,7 +226,7 @@ extension EditorView {
 
     var livingSnapshotColor: Color {
         switch session.livingSnapshot.status {
-        case .watching: VitrineTokens.Accent.system
+        case .watching: .green
         case .changeAvailable, .unavailable: .orange
         case .inactive: VitrineTokens.Text.tertiary
         }

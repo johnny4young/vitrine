@@ -169,17 +169,15 @@ extension ExportManager {
     static let carouselMinimumFontSize: Double = 22
 
     /// Renders one slide per page into `directory` as `carousel-01.png` … — the
-    /// carousel export. Each slide is `baseConfig` with only its `code`
-    /// replaced by that page's lines, rendered at the fixed 4:5 slide frame through
-    /// the standard pipeline. Highlighted and redacted lines follow their lines onto
-    /// the slide; positional annotations are dropped because they are placed against
-    /// the whole canvas. Pipelined like `exportPresetSizes`:
+    /// carousel export. Each slide is `CarouselPaginator.slideConfig` rendered at the
+    /// fixed 4:5 slide frame through the standard pipeline. Pipelined like `exportPresetSizes`:
     /// render on the main actor, PNG-encode + write off it, results drain in
     /// completion order with count-based progress. Two-digit numbering keeps the
     /// files sorted everywhere; only counts are logged.
     @discardableResult
     static func exportCarousel(
-        _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide], to directory: URL,
+        _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
+        cues: CarouselPaginator.Cues = .none, to directory: URL,
         profile: ColorProfile = .sRGB,
         onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil,
         writeFile: @escaping @Sendable (Data, URL) throws -> Void = {
@@ -193,7 +191,7 @@ extension ExportManager {
         let outputs: [BatchOutputFiles.Item]
         do {
             outputs = try BatchOutputFiles.plan(
-                filenames: slides.indices.map { String(format: "carousel-%02d.png", $0 + 1) },
+                filenames: slides.indices.map(CarouselPaginator.outputFilename(forSlideAt:)),
                 in: directory)
         } catch {
             onProgress?(total, total)
@@ -201,17 +199,13 @@ extension ExportManager {
         }
         var completed = 0
         await withTaskGroup(of: BatchItemOutcome.self) { group in
-            for (slide, output) in zip(slides, outputs) {
+            for (index, output) in outputs.enumerated() {
                 guard !Task.isCancelled else {
                     group.addTask { .failed }
                     continue
                 }
-                var config = baseConfig
-                config.clearContentMarks()
-                config.code = slide.text
-                config.highlightedLineRanges = slide.localRanges(baseConfig.highlightedLineRanges)
-                config.redactedLineRanges = slide.localRanges(baseConfig.redactedLineRanges)
-                config.fontSize = max(config.fontSize, carouselMinimumFontSize)
+                let config = CarouselPaginator.slideConfig(
+                    baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues)
                 let raster: CGImage?
                 do throws(RenderBudgetError) {
                     raster = try renderCGImageChecked(
@@ -249,6 +243,27 @@ extension ExportManager {
         )
         return BatchExportResult(
             written: written, failed: failed, firstRenderFailure: firstRenderFailure)
+    }
+
+    /// The encoded size of the first slide, the sample behind the sheet's size estimate.
+    /// Renders on the main actor like the export itself and writes nothing.
+    static func estimatedCarouselSlideBytes(
+        _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
+        cues: CarouselPaginator.Cues, profile: ColorProfile = .sRGB
+    ) async -> Int? {
+        guard let first = slides.first else { return nil }
+        let config = CarouselPaginator.slideConfig(
+            baseConfig, slide: first, at: 0, of: slides.count, cues: cues)
+        guard
+            let raster = try? renderCGImageChecked(
+                config, scale: 1, fixedSize: carouselSlideSize, profile: profile)
+        else { return nil }
+        return await encodedPNGByteCount(raster)
+    }
+
+    @concurrent nonisolated private static func encodedPNGByteCount(_ image: CGImage) async -> Int?
+    {
+        rasterData(from: image, format: .png)?.count
     }
 
     /// One finished raster in an image-set export, named without its extension.

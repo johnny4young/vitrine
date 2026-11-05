@@ -71,7 +71,7 @@ struct WebCaptureConsentRow: View {
                 settings.webCapture.consentGiven = false
             }
             .buttonStyle(.plain)
-            .foregroundStyle(VitrineTokens.Accent.system)
+            .foregroundStyle(VitrineTokens.Accent.systemText)
             .accessibilityIdentifier("web-capture-revoke-consent-button")
         } else {
             Text("Not used yet")

@@ -112,6 +112,9 @@ enum Notifier {
                 category: .failure,
                 message: String(localized: "Clipboard is empty — copy some code first"),
                 actions: [.openEditor])
+        case .cancelled:
+            return CaptureFeedback(
+                category: .info, message: String(localized: "Nothing was exported"), actions: [])
         case .deferredToEditor(let blocks):
             // A count-aware, localized message: the catalog carries singular and
             // plural variants per locale, and the number is formatted for the

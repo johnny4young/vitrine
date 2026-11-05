@@ -1,35 +1,134 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Choose a destination preset" : {
-      "comment" : "Editor status capsule tooltip: opens the destination menu.",
+    "Use Editor Code" : {
+      "comment" : "Undo action name for the Use editor code button.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Elige un destino predefinido"
+            "value" : "Usar código del editor"
           }
         }
       }
     },
-    "Command palette" : {
-      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
+    "Output size %lld by %lld, %@" : {
+      "comment" : "VoiceOver label for the social card's output size capsule.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paleta de comandos"
+            "value" : "Tamaño de salida: %lld por %lld, %@"
           }
         }
       }
     },
-    "Command palette (⌘K)" : {
-      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
+    "The editor has no code to use" : {
+      "comment" : "Message shown when Use editor code finds an empty editor.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paleta de comandos (⌘K)"
+            "value" : "El editor no tiene código para usar"
+          }
+        }
+      }
+    },
+    "Code excerpt" : {
+      "comment" : "Social card preview: dashed placeholder for an empty code slot. Never exported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragmento de código"
+          }
+        }
+      }
+    },
+    "Author · Project" : {
+      "comment" : "Social card preview: dashed placeholder for an empty footer. Never exported.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autor · Proyecto"
+          }
+        }
+      }
+    },
+    "Paste a code excerpt…" : {
+      "comment" : "Placeholder of the social card's code field.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pega un fragmento de código…"
+          }
+        }
+      }
+    },
+    "Use editor code" : {
+      "comment" : "Button that fills the social card from the main editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar el código del editor"
+          }
+        }
+      }
+    },
+    "Copy the code from the frontmost editor window into this card" : {
+      "comment" : "Tooltip of the Use editor code button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el código de la ventana del editor al frente a esta tarjeta"
+          }
+        }
+      }
+    },
+    "Changed" : {
+      "comment" : "Code header chip: the watched file has a saved change waiting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambió"
+          }
+        }
+      }
+    },
+    "Unavailable" : {
+      "comment" : "Code header chip: the watched file cannot be read.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No disponible"
+          }
+        }
+      }
+    },
+    "Rendered locally · your code never leaves this Mac" : {
+      "comment" : "Fixed footer of the editor inspector stating the privacy contract.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se renderiza localmente · tu código nunca sale de esta Mac"
+          }
+        }
+      }
+    },
+    "Live" : {
+      "comment" : "Code header chip for a file the editor is watching.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En vivo"
           }
         }
       }
@@ -133,6 +232,402 @@
         }
       }
     },
+    "Choose a destination preset" : {
+      "comment" : "Editor status capsule tooltip: opens the destination menu.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un destino predefinido"
+          }
+        }
+      }
+    },
+    "Command palette" : {
+      "comment" : "Accessibility label of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos"
+          }
+        }
+      }
+    },
+    "Command palette (⌘K)" : {
+      "comment" : "Tooltip of the editor toolbar button that opens the command palette.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta de comandos (⌘K)"
+          }
+        }
+      }
+    },
+    "Detection is not exhaustive." : {
+      "comment" : "Export pre-flight dialog: the limit of the scan.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La detección no es exhaustiva."
+          }
+        }
+      }
+    },
+    "Full terminal transcript: %@" : {
+      "comment" : "Export pre-flight finding in the raw terminal transcript a share link keeps.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transcripción completa de la terminal: %@"
+          }
+        }
+      }
+    },
+    "Redact %lld, copy and save" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then copy and save.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld, copiar y guardar"
+          }
+        }
+      }
+    },
+    "Copy and save anyway" : {
+      "comment" : "Export pre-flight button: copy and save without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar y guardar de todos modos"
+          }
+        }
+      }
+    },
+    "This capture may contain secrets" : {
+      "comment" : "Export pre-flight dialog title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta captura podría contener secretos"
+          }
+        }
+      }
+    },
+    "And %lld more" : {
+      "comment" : "Export pre-flight dialog: findings beyond the listed rows.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Y %lld más"
+          }
+        }
+      }
+    },
+    "Line %lld: %@" : {
+      "comment" : "Export pre-flight finding: a line number and the kind of secret.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea %lld: %@"
+          }
+        }
+      }
+    },
+    "Lines %lld–%lld: %@" : {
+      "comment" : "Export pre-flight finding: a line range and the kind of secret.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas %lld–%lld: %@"
+          }
+        }
+      }
+    },
+    "Header or annotation text, can't be redacted: %@" : {
+      "comment" : "Export pre-flight finding in header, annotation or alternative text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto de encabezado o anotación, no se puede ocultar: %@"
+          }
+        }
+      }
+    },
+    "AWS access key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de acceso de AWS"
+          }
+        }
+      }
+    },
+    "GitHub token" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token de GitHub"
+          }
+        }
+      }
+    },
+    "Slack token" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token de Slack"
+          }
+        }
+      }
+    },
+    "Google API key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de API de Google"
+          }
+        }
+      }
+    },
+    "Stripe key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de Stripe"
+          }
+        }
+      }
+    },
+    "OpenAI key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave de OpenAI"
+          }
+        }
+      }
+    },
+    "JSON Web Token" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JSON Web Token"
+          }
+        }
+      }
+    },
+    "Private key" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clave privada"
+          }
+        }
+      }
+    },
+    "Bearer token" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token Bearer"
+          }
+        }
+      }
+    },
+    "Password in a URL" : {
+      "comment" : "Kind of secret found by the export pre-flight check.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraseña en una URL"
+          }
+        }
+      }
+    },
+    "Possible secret" : {
+      "comment" : "Kind of secret found by the export pre-flight check, when no specific kind applies.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posible secreto"
+          }
+        }
+      }
+    },
+    "Redact %lld and copy" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then copy.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld y copiar"
+          }
+        }
+      }
+    },
+    "Redact %lld and save" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then save.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld y guardar"
+          }
+        }
+      }
+    },
+    "Redact %lld and share" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then share.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld y compartir"
+          }
+        }
+      }
+    },
+    "Redact %lld and export" : {
+      "comment" : "Export pre-flight button: redact the flagged lines, then export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar %lld y exportar"
+          }
+        }
+      }
+    },
+    "Copy anyway" : {
+      "comment" : "Export pre-flight button: copy without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiar de todos modos"
+          }
+        }
+      }
+    },
+    "Save anyway" : {
+      "comment" : "Export pre-flight button: save without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar de todos modos"
+          }
+        }
+      }
+    },
+    "Share anyway" : {
+      "comment" : "Export pre-flight button: share without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compartir de todos modos"
+          }
+        }
+      }
+    },
+    "Export anyway" : {
+      "comment" : "Export pre-flight button: export without redacting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar de todos modos"
+          }
+        }
+      }
+    },
+    "Nothing was exported" : {
+      "comment" : "Quick capture feedback after the export pre-flight check was cancelled.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se exportó nada"
+          }
+        }
+      }
+    },
+    "Draft" : {
+      "comment" : "Button that drafts alternative text from the document's metadata.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Redactar"
+          }
+        }
+      }
+    },
+    "%@ code" : {
+      "comment" : "Drafted alternative text: a programming language's code.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código %@"
+          }
+        }
+      }
+    },
+    "Terminal output" : {
+      "comment" : "Drafted alternative text: subject for a terminal capture.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salida de terminal"
+          }
+        }
+      }
+    },
+    "Diff" : {
+      "comment" : "Drafted alternative text: subject for a diff.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diff"
+          }
+        }
+      }
+    },
     "URL needs the Direct download build" : {
       "comment" : "Web Snapshot source note in a build without URL capture.",
       "localizations" : {
@@ -232,90 +727,123 @@
         }
       }
     },
-    "Use Editor Code" : {
-      "comment" : "Undo action name for the Use editor code button.",
+    "continues →" : {
+      "comment" : "Cue drawn on a carousel slide when another slide follows.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usar código del editor"
+            "value" : "continúa →"
           }
         }
       }
     },
-    "Output size %lld by %lld, %@" : {
-      "comment" : "VoiceOver label for the social card's output size capsule.",
+    "Export 1 slide" : {
+      "comment" : "Carousel export button once a folder is chosen.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tamaño de salida: %lld por %lld, %@"
+            "value" : "Exportar 1 diapositiva"
           }
         }
       }
     },
-    "The editor has no code to use" : {
-      "comment" : "Message shown when Use editor code finds an empty editor.",
+    "Export %lld slides" : {
+      "comment" : "Carousel export button once a folder is chosen.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El editor no tiene código para usar"
+            "value" : "Exportar %lld diapositivas"
           }
         }
       }
     },
-    "Code excerpt" : {
-      "comment" : "Social card preview: dashed placeholder for an empty code slot. Never exported.",
+    "Prefer blank-line breaks" : {
+      "comment" : "Carousel sheet switch: move slide boundaries to nearby blank lines.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fragmento de código"
+            "value" : "Preferir cortes en líneas en blanco"
           }
         }
       }
     },
-    "Author · Project" : {
-      "comment" : "Social card preview: dashed placeholder for an empty footer. Never exported.",
+    "Restart" : {
+      "comment" : "Carousel line numbers: each slide starts again at 1.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Autor · Proyecto"
+            "value" : "Reiniciar"
           }
         }
       }
     },
-    "Paste a code excerpt…" : {
-      "comment" : "Placeholder of the social card's code field.",
+    "Off" : {
+      "comment" : "Carousel line numbers: no gutter on the slides.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pega un fragmento de código…"
+            "value" : "Desactivados"
           }
         }
       }
     },
-    "Use editor code" : {
-      "comment" : "Button that fills the social card from the main editor.",
+    "Page badge “2 / 4”" : {
+      "comment" : "Carousel sheet switch: draw the page position on each slide.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usar el código del editor"
+            "value" : "Indicador de página “2 / 4”"
           }
         }
       }
     },
-    "Copy the code from the frontmost editor window into this card" : {
-      "comment" : "Tooltip of the Use editor code button.",
+    "“continues →” cue" : {
+      "comment" : "Carousel sheet switch: draw the line range and swipe cue on each slide.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia el código de la ventana del editor al frente a esta tarjeta"
+            "value" : "Indicador “continúa →”"
+          }
+        }
+      }
+    },
+    "No folder chosen" : {
+      "comment" : "Carousel sheet folder row before a folder is picked.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin carpeta elegida"
+          }
+        }
+      }
+    },
+    "Change…" : {
+      "comment" : "Button: pick a different export folder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar…"
+          }
+        }
+      }
+    },
+    "Existing files are kept" : {
+      "comment" : "Carousel sheet output line: an export never replaces a file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los archivos existentes se conservan"
           }
         }
       }
