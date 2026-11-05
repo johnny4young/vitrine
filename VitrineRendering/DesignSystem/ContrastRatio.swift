@@ -34,5 +34,17 @@ extension Brand {
             let b = linear(Double(srgb.blueComponent))
             return 0.2126 * r + 0.7152 * g + 0.0722 * b
         }
+
+        /// `top` flattened over `bottom` in sRGB, the opaque color a ratio can be measured from.
+        public nonisolated static func composite(_ top: NSColor, over bottom: NSColor) -> NSColor {
+            guard let top = top.usingColorSpace(.sRGB), let bottom = bottom.usingColorSpace(.sRGB)
+            else { return bottom }
+            let alpha = top.alphaComponent
+            return NSColor(
+                srgbRed: top.redComponent * alpha + bottom.redComponent * (1 - alpha),
+                green: top.greenComponent * alpha + bottom.greenComponent * (1 - alpha),
+                blue: top.blueComponent * alpha + bottom.blueComponent * (1 - alpha),
+                alpha: 1)
+        }
     }
 }

@@ -22,6 +22,7 @@ struct EditorInspectorView: View {
     private var showsSafeAreaGuides = false
     var themes: CustomThemeStore
     var entitlements: Entitlements
+    var legibility: LegibilityModel
 
     /// Disclosure state for the advanced sections. All start collapsed so the
     /// inspector opens compact; the primary style cluster above them is always
@@ -328,7 +329,8 @@ struct EditorInspectorView: View {
     private var themeSection: some View {
         InspectorSection(
             title: Text("Theme"),
-            value: (settings.style.theme.displayName, "inspector-value-theme")
+            value: (settings.style.theme.displayName, "inspector-value-theme"),
+            accessory: { LegibilityBadge(settings: settings, model: legibility) }
         ) {
             ThemeChipPicker(
                 settings: settings, themes: themes,
@@ -337,6 +339,7 @@ struct EditorInspectorView: View {
             )
             .accessibilityIdentifier("style-theme-picker")
         }
+        .background { LegibilityMeter(settings: settings, model: legibility) }
     }
 
     private var typographySection: some View {

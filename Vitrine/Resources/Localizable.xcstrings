@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Low code contrast" : {
+      "comment" : "Editor inspector: warning that a capture's code text is hard to read on its surface.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraste bajo en el código"
+          }
+        }
+      }
+    },
+    "%lld%% of the text" : {
+      "comment" : "Legibility details: how much of the capture's text is drawn in this color.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %% del texto"
+          }
+        }
+      }
+    },
+    "Use %@" : {
+      "comment" : "Legibility details: switch to the named theme, which measured readable.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar %@"
+          }
+        }
+      }
+    },
     "Conflict: %@ is also a macOS shortcut" : {
       "comment" : "Settings notice under the global hotkey recorder. %@ is the shortcut, such as ⇧⌘3.",
       "localizations" : {

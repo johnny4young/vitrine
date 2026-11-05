@@ -148,14 +148,7 @@ enum VitrineTokens {
 
         /// The opaque sRGB result of drawing translucent `top` over `bottom`.
         nonisolated static func composite(_ top: NSColor, over bottom: NSColor) -> NSColor {
-            guard let top = top.usingColorSpace(.sRGB), let bottom = bottom.usingColorSpace(.sRGB)
-            else { return bottom }
-            let alpha = top.alphaComponent
-            return NSColor(
-                srgbRed: top.redComponent * alpha + bottom.redComponent * (1 - alpha),
-                green: top.greenComponent * alpha + bottom.greenComponent * (1 - alpha),
-                blue: top.blueComponent * alpha + bottom.blueComponent * (1 - alpha),
-                alpha: 1)
+            Brand.Contrast.composite(top, over: bottom)
         }
 
         /// `--accent-secondary` — the gradient's far stop (re-exported).
