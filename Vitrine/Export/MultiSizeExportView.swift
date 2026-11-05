@@ -143,7 +143,16 @@ struct MultiSizeExportView: View {
                 expected: total,
                 renderFailure: result.firstRenderFailure)
             if completion.isComplete {
-                feedback(Notifier.confirmation(String(localized: "Images exported")))
+                let droppedLegend = presets.contains { preset in
+                    var config = baseConfig
+                    preset.apply(to: &config)
+                    return config.counterLegendFit(in: preset.sizing.fixedSize).dropped > 0
+                }
+                feedback(
+                    Notifier.confirmation(
+                        droppedLegend
+                            ? String(localized: "Images exported. Some legend entries didn't fit.")
+                            : String(localized: "Images exported")))
                 presentation.reveal(directory)
                 dismiss()
             } else {

@@ -8,6 +8,64 @@ enum AnnotationToolbarDensity: Equatable {
     case compact
 }
 
+/// The legend label of the selected counter, as the toolbar edits it.
+struct AnnotationLegendEdit {
+    let id: UUID
+    let text: Binding<String>
+    let isMasked: Bool
+}
+
+/// Types the legend label. An edit stays open until the field gives up focus, so typing is
+/// one undo step.
+private struct CounterLegendField: View {
+    let legend: AnnotationLegendEdit
+    let onEditEnded: () -> Void
+    let onSubmitted: () -> Void
+
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            TextField(
+                "Counter legend text", text: legend.text,
+                prompt: Text("Legend").foregroundStyle(VitrineTokens.Text.tertiary)
+            )
+            .textFieldStyle(.plain)
+            .labelsHidden()
+            .focused($isFocused)
+            .onSubmit(submit)
+            .onExitCommand(perform: submit)
+            .accessibilityIdentifier("annotation-legend-field")
+            if legend.isMasked {
+                Image(systemName: "eye.slash")
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .help("Hidden in the export")
+                    .accessibilityLabel("Hidden in the export")
+                    .accessibilityIdentifier("annotation-legend-masked")
+            }
+        }
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .foregroundStyle(VitrineTokens.Text.primary)
+        .padding(.horizontal, 8)
+        .frame(width: 150, height: 25)
+        .background(Capsule().fill(VitrineTokens.Surface.stage.opacity(0.6)))
+        .overlay(
+            Capsule().strokeBorder(
+                isFocused ? VitrineTokens.Line.focusRing : VitrineTokens.Line.border,
+                lineWidth: isFocused ? Brand.Stroke.focus : Brand.Stroke.hairline)
+        )
+        .onChange(of: isFocused) { _, focused in
+            if !focused { onEditEnded() }
+        }
+        .onDisappear(perform: onEditEnded)
+    }
+
+    private func submit() {
+        isFocused = false
+        onSubmitted()
+    }
+}
+
 /// The annotation tool palette in the editor's title bar, modeled on
 /// CleanShot: a row of tools (the active one highlighted), then the active tool's
 /// options — a color swatch that opens a palette, and a size slider. Picking a tool
@@ -40,6 +98,9 @@ struct AnnotationToolbar: View {
     var density: AnnotationToolbarDensity = .full
     /// Closes a selected mark's color or size edit as one undo step.
     var onStyleEditEnded: () -> Void = {}
+    var legend: AnnotationLegendEdit?
+    /// Return or Escape in the legend field hands the keyboard back to the selected mark.
+    var onLegendSubmitted: () -> Void = {}
 
     var body: some View {
         HStack(spacing: 8) {
@@ -68,7 +129,7 @@ struct AnnotationToolbar: View {
             } else {
                 HStack(spacing: 2) {
                     ForEach(AnnotationTool.toolbarOrder) { tool in
-                        toolButton(tool)
+                        AnnotationToolButton(tool: tool, activeTool: $activeTool)
                     }
                 }
                 .padding(3)
@@ -99,6 +160,12 @@ struct AnnotationToolbar: View {
                     .accessibilityIdentifier("annotation-thickness-slider")
                 }
                 .help("Stroke and badge size")
+            }
+            if let legend {
+                CounterLegendField(
+                    legend: legend, onEditEnded: onStyleEditEnded, onSubmitted: onLegendSubmitted
+                )
+                .id(legend.id)
             }
         }
         // The toolbar lives in the title bar, which macOS treats as a window-drag
@@ -195,54 +262,6 @@ struct AnnotationToolbar: View {
         .accessibilityIdentifier("annotation-tool-picker")
     }
 
-    private func toolButton(_ tool: AnnotationTool) -> some View {
-        let isActive = activeTool == tool
-        let button = Button {
-            activeTool = tool
-        } label: {
-            Image(systemName: tool.systemImage)
-                .font(.system(size: 12.5, weight: .medium))
-                .padding(.bottom, 3)
-                .frame(width: 28, height: 25)
-                .foregroundStyle(
-                    isActive ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: 7, style: .continuous)
-                        .fill(isActive ? VitrineTokens.Accent.system : Color.clear)
-                )
-                .overlay(alignment: .bottomTrailing) {
-                    if let shortcut = tool.shortcutCharacter {
-                        Text(verbatim: "⌘\(shortcut)")
-                            .font(.system(size: 7.5, weight: .heavy))
-                            .foregroundStyle(
-                                isActive
-                                    ? VitrineTokens.Accent.systemContrast
-                                    : VitrineTokens.Text.tertiary
-                            )
-                            .padding(.trailing, 1)
-                            .accessibilityHidden(true)
-                    }
-                }
-                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(tool.label)
-        .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
-
-        // ⌘-digit selects the tool (⌘1…⌘9, ⌘0). A Command-modified shortcut fires
-        // reliably on macOS and never hijacks the code editor's typing (a modifier-less
-        // key would). Tools past the digit row have no shortcut and a plain tooltip.
-        return Group {
-            if let shortcut = tool.shortcutCharacter {
-                button
-                    .help(Text("\(Text(tool.helpText)) (⌘\(String(shortcut)))"))
-            } else {
-                button.help(tool.helpText)
-            }
-        }
-    }
-
     private func iconButton(
         _ systemImage: String, help: LocalizedStringKey, identifier: String, enabled: Bool,
         shortcut: KeyboardShortcut? = nil, action: @escaping () -> Void
@@ -263,6 +282,95 @@ struct AnnotationToolbar: View {
         .help(help)
         .accessibilityLabel(help)
         .accessibilityIdentifier(identifier)
+    }
+}
+
+/// One tool in the row: accent fill when selected, a tint under the pointer.
+private struct AnnotationToolButton: View {
+    let tool: AnnotationTool
+    @Binding var activeTool: AnnotationTool
+
+    @State private var isHovered = false
+    @FocusState private var isFocused: Bool
+
+    var body: some View {
+        let isActive = activeTool == tool
+        let button = Button {
+            activeTool = tool
+        } label: {
+            Image(systemName: tool.systemImage)
+                .font(.system(size: 12.5, weight: .medium))
+                .padding(.bottom, 3)
+                .frame(width: 28, height: 25)
+                .foregroundStyle(
+                    isActive
+                        ? VitrineTokens.Accent.systemContrast
+                        : (isHovered ? VitrineTokens.Text.primary : VitrineTokens.Text.secondary)
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(
+                            isActive
+                                ? VitrineTokens.Accent.system
+                                : (isHovered ? VitrineTokens.Chrome.toolHoverFill : Color.clear))
+                )
+                .overlay(alignment: .bottomTrailing) {
+                    if let shortcut = tool.shortcutCharacter {
+                        Text(verbatim: "⌘\(shortcut)")
+                            .font(.system(size: 7.5, weight: .heavy))
+                            .foregroundStyle(
+                                isActive
+                                    ? VitrineTokens.Accent.systemContrast
+                                    : (isHovered
+                                        ? VitrineTokens.Text.secondary
+                                        : VitrineTokens.Text.tertiary)
+                            )
+                            .padding(.trailing, 1)
+                            .accessibilityHidden(true)
+                    }
+                }
+                // Outside the tool, because the ring and the selected fill share a color.
+                .overlay(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .inset(by: -1.5)
+                        .stroke(
+                            isFocused ? VitrineTokens.Line.focusRing : .clear,
+                            lineWidth: Brand.Stroke.focus)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .motionSensitiveAnimation(.easeOut(duration: 0.15), value: isActive)
+                .motionSensitiveAnimation(.easeOut(duration: 0.15), value: isHovered)
+        }
+        .buttonStyle(AnnotationToolPressStyle())
+        .focused($isFocused)
+        .onHover { isHovered = $0 }
+        .accessibilityLabel(tool.label)
+        .accessibilityAddTraits(isActive ? [.isSelected] : [])
+        .accessibilityIdentifier("annotation-tool-\(tool.rawValue)")
+
+        // ⌘-digit selects the tool (⌘1…⌘9, ⌘0). A Command-modified shortcut fires
+        // reliably on macOS and never hijacks the code editor's typing (a modifier-less
+        // key would). Tools past the digit row have no shortcut and a plain tooltip.
+        if let shortcut = tool.shortcutCharacter {
+            button
+                .help(Text("\(Text(tool.helpText)) (⌘\(String(shortcut)))"))
+        } else {
+            button.help(tool.helpText)
+        }
+    }
+}
+
+/// Press scales the tool; under Reduce Motion a dim takes its place, so a press still shows.
+private struct AnnotationToolPressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed && reduceMotion ? 0.7 : 1)
+            .modifier(
+                DecorativeScaleEffect(
+                    isActive: configuration.isPressed, scale: 0.94, reduceMotion: reduceMotion,
+                    duration: 0.08))
     }
 }
 
@@ -334,7 +442,7 @@ private struct ColorSwatchButton: View {
             Circle()
                 .fill(color)
                 .frame(width: 22, height: 22)
-                .overlay(Circle().strokeBorder(.white.opacity(0.55), lineWidth: 1))
+                .overlay(Circle().strokeBorder(VitrineTokens.Chrome.colorDotEdge, lineWidth: 1))
                 .shadow(color: .black.opacity(0.2), radius: 1, y: 0.5)
         }
         .buttonStyle(.plain)
@@ -355,7 +463,8 @@ private struct ColorSwatchButton: View {
                             .overlay(
                                 Circle().strokeBorder(
                                     swatch.isApproximately(color)
-                                        ? VitrineTokens.Accent.system : .white.opacity(0.25),
+                                        ? VitrineTokens.Accent.system
+                                        : VitrineTokens.Chrome.paletteDotEdge,
                                     lineWidth: swatch.isApproximately(color) ? 2.5 : 1))
                     }
                     .buttonStyle(.plain)

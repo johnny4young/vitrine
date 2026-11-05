@@ -298,7 +298,8 @@ public enum RichPasteboard {
             family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
         if config.language == .terminal {
             return ANSIRenderer.attributedString(
-                config.code, font: font, palette: .forTheme(config.theme),
+                config.code, font: font,
+                palette: .resolved(for: config.theme, mode: config.terminalPalette),
                 columns: config.terminalColumns, redacting: config.redactedLineRanges)
         }
         return HighlightManager.shared.attributedString(

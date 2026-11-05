@@ -237,20 +237,10 @@ struct PaywallSheet: View {
                 .disabled(working || loadingPrice || displayPrice == nil)
                 .accessibilityIdentifier("pro-buy-button")
                 .keyboardShortcut(.defaultAction)
-                Button {
-                    Task {
-                        working = true
-                        storeNotice = nil
-                        if !(await entitlements.restorePurchases()) {
-                            storeNotice = String(localized: "No previous purchase was found.")
-                        }
-                        working = false
-                    }
-                } label: {
-                    Text("Restore Purchases")
-                }
+                RestorePurchasesButton(
+                    entitlements: entitlements, isWorking: $working, notice: $storeNotice
+                )
                 .buttonStyle(.link)
-                .disabled(working)
                 .accessibilityIdentifier("pro-restore-button")
                 if purchaseFailed {
                     Text("The purchase didn't complete. Please try again.")
@@ -269,6 +259,30 @@ struct PaywallSheet: View {
         #endif
     }
 }
+
+#if !VITRINE_DIRECT_DOWNLOAD
+    /// Restore Purchases (an App Store requirement). The caller owns the state, which the
+    /// paywall shares with buying, and shows the notice; style and identifier are its too.
+    struct RestorePurchasesButton: View {
+        let entitlements: Entitlements
+        @Binding var isWorking: Bool
+        @Binding var notice: String?
+
+        var body: some View {
+            Button("Restore Purchases") {
+                Task {
+                    isWorking = true
+                    notice = nil
+                    if !(await entitlements.restorePurchases()) {
+                        notice = String(localized: "No previous purchase was found.")
+                    }
+                    isWorking = false
+                }
+            }
+            .disabled(isWorking)
+        }
+    }
+#endif
 
 #if VITRINE_DIRECT_DOWNLOAD
     /// A token can survive a failed persistence rollback, so that attempt's own result keeps the

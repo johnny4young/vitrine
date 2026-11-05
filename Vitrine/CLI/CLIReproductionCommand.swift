@@ -218,6 +218,10 @@ struct CLIReproductionCommand {
         toggle("--focus-lines", "--no-focus-lines", style.focusHighlightedLines, false)
         toggle("--diff-bands", "--no-diff-bands", style.diffDecorations, false)
         label("--terminal-width", style.terminalColumns.map(String.init), nil)
+        if style.language == .terminal {
+            label(
+                "--terminal-palette", style.terminalPalette.rawValue, base.terminalPalette.rawValue)
+        }
         return flags
     }
 

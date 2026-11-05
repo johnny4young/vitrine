@@ -144,34 +144,35 @@ struct EditorCopyCommandTests {
         return settings
     }
 
+    private func makeSession(_ settings: AppSettings) -> EditorSession {
+        EditorSession(
+            identity: EditorWindowIdentity(index: 61),
+            environment: AppEnvironment(defaults: testDefaults()),
+            feedback: .noOp, presentation: .noOp, settings: settings)
+    }
+
     @Test func copyClosesTheEditorWhenThePreferenceIsOn() async throws {
-        let settings = makeSettings(closeAfterCopy: true)
-        let responder = EditorCommandResponder(
-            settings: settings, feedback: .noOp, presentation: .noOp)
+        let session = makeSession(makeSettings(closeAfterCopy: true))
         let window = CloseRecordingWindow(
             contentRect: NSRect(x: 0, y: 0, width: 10, height: 10), styleMask: [.titled],
             backing: .buffered, defer: true)
         window.isReleasedWhenClosed = false
 
         let close = try #require(
-            responder.copyImage(
-                from: settings, editorWindow: window, pasteboard: NSPasteboard.withUniqueName()))
+            session.copyImage(closing: window, pasteboard: NSPasteboard.withUniqueName()))
         await close.value
 
         #expect(window.didClose)
     }
 
     @Test func copyKeepsTheEditorWhenThePreferenceIsOff() {
-        let settings = makeSettings(closeAfterCopy: false)
-        let responder = EditorCommandResponder(
-            settings: settings, feedback: .noOp, presentation: .noOp)
+        let session = makeSession(makeSettings(closeAfterCopy: false))
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 10, height: 10), styleMask: [.titled],
             backing: .buffered, defer: true)
 
         #expect(
-            responder.copyImage(
-                from: settings, editorWindow: window, pasteboard: NSPasteboard.withUniqueName())
+            session.copyImage(closing: window, pasteboard: NSPasteboard.withUniqueName())
                 == nil)
     }
 
@@ -181,13 +182,14 @@ struct EditorCopyCommandTests {
     func anEditorSessionCopiesWithTheAppWideBehavior(conceal: Bool, close: Bool) async {
         let environment = AppEnvironment(
             defaults: testDefaults(), entitlements: Entitlements(provider: FreeProvider()))
-        let session = environment.makeEditorSessionSettings()
-        defer { session.discardEphemeralStore() }
-        session.config.code = "let x = 1"
+        let settings = environment.makeEditorSessionSettings()
+        defer { settings.discardEphemeralStore() }
+        settings.config.code = "let x = 1"
         environment.appSettings.outputBehavior.concealClipboard = conceal
         environment.appSettings.outputBehavior.closeAfterCopy = close
-        let responder = EditorCommandResponder(
-            settings: environment.appSettings, feedback: .noOp, presentation: .noOp)
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 61), environment: environment,
+            feedback: .noOp, presentation: .noOp, settings: settings)
         let window = CloseRecordingWindow(
             contentRect: NSRect(x: 0, y: 0, width: 10, height: 10), styleMask: [.titled],
             backing: .buffered, defer: true)
@@ -195,8 +197,7 @@ struct EditorCopyCommandTests {
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
 
-        let closeTask = responder.copyImage(
-            from: session, editorWindow: window, pasteboard: pasteboard)
+        let closeTask = session.copyImage(closing: window, pasteboard: pasteboard)
         await closeTask?.value
 
         #expect(pasteboard.types?.contains(ClipboardWriter.concealedType) == conceal)

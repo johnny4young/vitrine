@@ -1,6 +1,487 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Divider" : {
+      "comment" : "Comparison board inspector row: where the divider splits two captures, in percent",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divisor"
+          }
+        }
+      }
+    },
+    "Slider" : {
+      "comment" : "Comparison board layout: two captures in one frame, split at a divider",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cortina"
+          }
+        }
+      }
+    },
+    "Divider position" : {
+      "comment" : "Comparison board: where the divider splits two captures, as a percentage",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posición del divisor"
+          }
+        }
+      }
+    },
+    "Drag, or use the arrow keys, to move the divider" : {
+      "comment" : "VoiceOver hint on the comparison board's divider",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra o usa las flechas para mover el divisor"
+          }
+        }
+      }
+    },
+    "Conflict: %@ is also a macOS shortcut" : {
+      "comment" : "Settings notice under the global hotkey recorder. %@ is the shortcut, such as ⇧⌘3.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conflicto: %@ también es un atajo de macOS"
+          }
+        }
+      }
+    },
+    "Conflict: %@ is also the menu command “%@”" : {
+      "comment" : "Settings notice under the global hotkey recorder. The first value is the shortcut, the second the Vitrine menu command that uses it.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conflicto: %1$@ también es el comando de menú “%2$@”"
+          }
+        }
+      }
+    },
+    "Preset actions" : {
+      "comment" : "Library pane menu that holds the actions on style presets.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acciones del ajuste preestablecido"
+          }
+        }
+      }
+    },
+    "Rename…" : {
+      "comment" : "Menu item that asks for a new name.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar nombre…"
+          }
+        }
+      }
+    },
+    "Delete…" : {
+      "comment" : "Menu item that asks for confirmation before deleting.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eliminar…"
+          }
+        }
+      }
+    },
+    "Export Saved Presets…" : {
+      "comment" : "Library pane menu item. Exports every saved preset to one file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar ajustes guardados…"
+          }
+        }
+      }
+    },
+    "Default style" : {
+      "comment" : "Library pane row label for saving the default style as a preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo predeterminado"
+          }
+        }
+      }
+    },
+    "Save as Preset…" : {
+      "comment" : "Library pane button that saves the default style as a preset.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar como ajuste…"
+          }
+        }
+      }
+    },
+    "Your logo, handle and QR chip on captures and carousel slides." : {
+      "comment" : "Locked Brand Kit pane: what the kit covers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu logo, usuario y chip QR en capturas y diapositivas de carrusel."
+          }
+        }
+      }
+    },
+    "@yourhandle · your-project" : {
+      "comment" : "Sample mark text in the locked Brand Kit preview.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "@tuusuario · tu-proyecto"
+          }
+        }
+      }
+    },
+    "Sample capture with a Brand Kit mark" : {
+      "comment" : "Accessibility label of the locked Brand Kit preview image.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Captura de ejemplo con una marca de Brand Kit"
+          }
+        }
+      }
+    },
+    "Open Settings ▸ %@" : {
+      "comment" : "A Help button that opens one Settings pane. The argument is the pane's sidebar title.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir Ajustes ▸ %@"
+          }
+        }
+      }
+    },
+    "Show more" : {
+      "comment" : "Button that pages a horizontally scrolling chip row forward.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver más"
+          }
+        }
+      }
+    },
+    "Back to start" : {
+      "comment" : "Button that returns a horizontally scrolling chip row to its start.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver al inicio"
+          }
+        }
+      }
+    },
+    "Private history." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historial privado."
+          }
+        }
+      }
+    },
+    "No default hotkey." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin atajo predeterminado."
+          }
+        }
+      }
+    },
+    "Ready for your docs." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo para tu documentación."
+          }
+        }
+      }
+    },
+    "Safer command line." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea de comandos más segura."
+          }
+        }
+      }
+    },
+    "Services menu fixed." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Menú Servicios corregido."
+          }
+        }
+      }
+    },
+    "Truer terminal captures." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Capturas de terminal más fieles."
+          }
+        }
+      }
+    },
+    "Now in Spanish." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora en español."
+          }
+        }
+      }
+    },
+    "Same macOS support." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mismo soporte de macOS."
+          }
+        }
+      }
+    },
+    "Remove arguments" : {
+      "comment" : "Button that keeps only the command's name in a terminal header",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar argumentos"
+          }
+        }
+      }
+    },
+    "Remove Arguments" : {
+      "comment" : "Undo action name for removing a terminal command's arguments",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar argumentos"
+          }
+        }
+      }
+    },
+    "Remove Header Item" : {
+      "comment" : "Undo action name for removing a terminal context chip",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar elemento del encabezado"
+          }
+        }
+      }
+    },
+    "Keep only the command's name." : {
+      "comment" : "Tooltip of the Remove arguments button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deja solo el nombre del comando."
+          }
+        }
+      }
+    },
+    "Raw uses the standard xterm colors, lifted only where they would vanish." : {
+      "comment" : "Tooltip of the terminal palette control",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estándar usa los colores de xterm y los ajusta solo donde desaparecerían."
+          }
+        }
+      }
+    },
+    "Dollar sign" : {
+      "comment" : "Spoken label of the $ prompt option",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signo de dólar"
+          }
+        }
+      }
+    },
+    "Chevron" : {
+      "comment" : "Spoken label of the › prompt option",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ángulo"
+          }
+        }
+      }
+    },
+    "ANSI palette" : {
+      "comment" : "Inspector row that picks the colors of a terminal capture",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paleta ANSI"
+          }
+        }
+      }
+    },
+    "Raw" : {
+      "comment" : "Terminal palette option: the standard xterm colors",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estándar"
+          }
+        }
+      }
+    },
+    "Terminal" : {
+      "comment" : "Inspector section for terminal capture controls",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminal"
+          }
+        }
+      }
+    },
+    "Prompt" : {
+      "comment" : "Inspector row that picks the glyph before a terminal command",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indicador"
+          }
+        }
+      }
+    },
+    "Remove %@" : {
+      "comment" : "Accessibility label of a terminal context chip's remove button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar %@"
+          }
+        }
+      }
+    },
+    "Hidden in the export" : {
+      "comment" : "Shown beside a counter's legend text when it matches hidden text and is replaced in the export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oculto en la exportación"
+          }
+        }
+      }
+    },
+    "Legend: %lld hidden" : {
+      "comment" : "Status capsule: how many legend entries a fixed frame had no room for.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda: %lld ocultas"
+          }
+        }
+      }
+    },
+    "Images exported. Some legend entries didn't fit." : {
+      "comment" : "Confirmation after a multi-size export where a fixed frame left out legend entries.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imágenes exportadas. Algunas entradas de la leyenda no cupieron."
+          }
+        }
+      }
+    },
+    "Legend" : {
+      "comment" : "Placeholder of the field where the user types a counter's legend text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda"
+          }
+        }
+      }
+    },
+    "Counter legend text" : {
+      "comment" : "Accessibility label of the field where the user types a counter's legend text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto de la leyenda del contador"
+          }
+        }
+      }
+    },
     "Clipboard holds %@" : {
       "comment" : "Empty editor: what the clipboard holds. The argument is a measurement such as 14 lines of Swift.",
       "localizations" : {
@@ -1805,22 +2286,6 @@
       "localizations" : {
         "en" : { "stringUnit" : { "state" : "translated", "value" : "The selected font has no ligatures; choose Fira Code or JetBrains Mono." } },
         "es" : { "stringUnit" : { "state" : "translated", "value" : "La fuente elegida no tiene ligaduras; elige Fira Code o JetBrains Mono." } }
-      }
-    },
-    "Save the default style, then export or import as JSON" : {
-      "comment" : "Library pane caption for the style preset actions.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save the default style, then export or import as JSON" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guarda el estilo predeterminado y luego expórtalo o impórtalo como JSON" } }
-      }
-    },
-    "Save Default Style…" : {
-      "comment" : "Library pane button that saves the default style as a preset.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Save Default Style…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Guardar estilo predeterminado…" } }
       }
     },
     "Save the default style as a new named preset you can reuse." : {
@@ -6068,23 +6533,6 @@
         }
       }
     },
-    "Apply a saved style in one click" : {
-      "comment" : "Library pane: preset row caption.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apply a saved style in one click"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aplica un estilo guardado con un clic"
-          }
-        }
-      }
-    },
     "Attributes" : {
       "comment" : "Custom theme editor color label: attributes.",
       "extractionState" : "stale",
@@ -7813,13 +8261,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Code rendering stays on your Mac and needs no account, Screen Recording, or Accessibility-control permission. The direct-download build uses the network only for requested web content, updates, or license activation; the App Store build has no network-client entitlement."
+            "value" : "Code rendering stays on your Mac and needs no account, Screen Recording, or Accessibility-control permission. The direct-download build uses the network only for requested web content, updates, or license activation; the App Store build has no network-client entitlement. Review web capture's network use in Settings ▸ Input."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El código se procesa en tu Mac sin cuenta ni permisos de grabación de pantalla o control de Accesibilidad. La versión de descarga directa usa la red solo para contenido web solicitado, actualizaciones o activación; la de App Store no tiene permiso de cliente de red."
+            "value" : "El código se procesa en tu Mac sin cuenta ni permisos de grabación de pantalla o control de Accesibilidad. La versión de descarga directa usa la red solo para contenido web solicitado, actualizaciones o activación; la de App Store no tiene permiso de cliente de red. Revisa el uso de red de la captura web en Ajustes ▸ Entrada."
           }
         }
       }
@@ -7849,13 +8297,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copy code anywhere, choose New Capture from Clipboard from the menu bar (or use your enabled hotkey), and Vitrine renders it with your current style. With Copy to clipboard automatically on (the default), a successful copy places the image on your clipboard; a failed copy reports an error."
+            "value" : "Copy code anywhere, choose New Capture from Clipboard from the menu bar, press ⇧⌘S in Vitrine, or use your enabled hotkey, and Vitrine renders it with your current style. With Copy to clipboard automatically on (the default), a successful copy places the image on your clipboard; a failed copy reports an error."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Copia código en cualquier parte y elige Nueva captura desde el portapapeles en la barra de menús (o usa tu atajo activado). Vitrine lo procesa con tu estilo actual. Con Copiar al portapapeles automáticamente activado (el valor predeterminado), si la copia funciona, la imagen queda en el portapapeles; si falla, se informa el error."
+            "value" : "Copia código en cualquier parte y elige Nueva captura desde el portapapeles en la barra de menús, presiona ⇧⌘S en Vitrine o usa tu atajo activado. Vitrine lo procesa con tu estilo actual. Con Copiar al portapapeles automáticamente activado (el valor predeterminado), si la copia funciona, la imagen queda en el portapapeles; si falla, se informa el error."
           }
         }
       }
@@ -9525,17 +9973,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Seleccionar todo"
-          }
-        }
-      }
-    },
-    "Selected preset" : {
-      "comment" : "Labeled row for the selected preset's actions.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajuste preestablecido seleccionado"
           }
         }
       }
@@ -13602,7 +14039,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Administrar"
+            "value" : "Gestionar"
           }
         }
       }

@@ -27,6 +27,7 @@ struct CLIArgumentParser {
     var cornerRadius: Double?
     var shadowRadius: Double?
     var terminalColumns: Int?
+    var terminalPalette: TerminalPaletteMode?
     var wrapColumns: Int?
     var formatCode = false
     var explicitFormat: ExportFormat?
@@ -196,6 +197,8 @@ struct CLIArgumentParser {
             shadowRadius = try resolveShadowRadius(value, flag: token)
         case .terminalWidth:
             terminalColumns = try resolveColumns(value, flag: token)
+        case .terminalPalette:
+            terminalPalette = try resolveTerminalPalette(value, flag: token)
         case .wrapColumns:
             wrapColumns = try resolveWrapColumns(value, flag: token)
         case .formatCode:
@@ -256,6 +259,8 @@ struct CLIArgumentParser {
             annotations.counter.color = try resolveHexColor(value, flag: token)
         case .counterSize:
             annotations.counter.size = try resolveAnnotationSize(value, flag: token)
+        case .counterLabel:
+            annotations.counterLabel = try resolveCounterLabel(value, flag: token)
         case .arrow:
             annotations.arrows.points.append(try resolveNormalizedSegment(value, flag: token))
         case .arrowColor:

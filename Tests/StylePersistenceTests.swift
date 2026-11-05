@@ -38,6 +38,7 @@ struct StyleCodecCompletenessTests {
         config.showShadow = false
         config.showLineNumbers = true
         config.wrapColumns = 72
+        config.terminalPalette = .raw
         config.highlightedLineRanges = [1...1, 3...5]
         config.focusHighlightedLines = true
         config.diffDecorations = true
@@ -181,6 +182,10 @@ struct StyleCodecCompletenessTests {
     /// the inspector's `@AppStorage` and was missing from the list, surviving every reset.
     @Test func resetListCoversTheSafeAreaGuidesPreference() {
         #expect(SettingsCodec.Keys.all.contains(SafeAreaGuide.storageKey))
+    }
+
+    @Test func resetListCoversThePresetThumbnailsDisclosure() {
+        #expect(SettingsCodec.Keys.all.contains(PresetThumbnailModel.expandedStorageKey))
     }
 }
 

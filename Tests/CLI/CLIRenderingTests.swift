@@ -168,6 +168,27 @@ struct CLIRenderingTests: CLITestSupport {
         #expect(counterImage.height == plainImage.height)
     }
 
+    @Test func counterLabelExtendsTheCanvasDownwardOnly() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let input = try writeInput(named: "Sample.swift", in: directory)
+        let plainOutput = directory.appendingPathComponent("plain.png").path
+        let labeledOutput = directory.appendingPathComponent("labeled.png").path
+        let counter = ["--counter", "1", "--counter-x", "0.8", "--counter-y", "0.2"]
+        try CLIRenderer.run(
+            CLIArguments.parse(["render", input, "--out", plainOutput, "--scale", "1"] + counter))
+        try CLIRenderer.run(
+            CLIArguments.parse(
+                ["render", input, "--out", labeledOutput, "--scale", "1"] + counter
+                    + ["--counter-label", "the struct"]))
+
+        let plain = try decodePNG(at: plainOutput)
+        let labeled = try decodePNG(at: labeledOutput)
+        #expect(labeled.width == plain.width)
+        #expect(labeled.height > plain.height)
+    }
+
     @Test func arrowChangesPixelsWithoutChangingCanvasSize() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
