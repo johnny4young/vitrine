@@ -1,6 +1,58 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Clipboard holds %@" : {
+      "comment" : "Empty editor: what the clipboard holds. The argument is a measurement such as 14 lines of Swift.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El portapapeles tiene %@"
+          }
+        }
+      }
+    },
+    "%lld lines of %@" : {
+      "comment" : "Empty editor: how much the clipboard holds and its language, as in 14 lines of Swift.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line of %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines of %@"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld línea de %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld líneas de %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "Changed" : {
       "comment" : "Code header chip: the watched file has a saved change waiting.",
       "localizations" : {

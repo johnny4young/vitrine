@@ -668,9 +668,15 @@ extension EditorView {
         let intake = beginPastedDocument(text)
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
-        settings.documentCode =
-            environment.appSettings.reindentOnPaste
-            ? CodeFormatter.tidy(intake.code, language: intake.language) : intake.code
+        settings.documentCode = Self.pastedCode(
+            intake, reindents: environment.appSettings.reindentOnPaste)
+    }
+
+    /// The document text that Paste Code produces.
+    static func pastedCode(
+        _ intake: LanguageDetector.Interpretation, reindents: Bool
+    ) -> String {
+        reindents ? CodeFormatter.tidy(intake.code, language: intake.language) : intake.code
     }
 
     /// Pasting a whole document is a new capture: it stops the live file, drops marks
@@ -828,7 +834,12 @@ private struct CodeDocumentEditor: View {
                         "Paste code or terminal output, or open a live file to turn it into a beautiful image.",
                     actionTitle: "Paste Code",
                     action: pasteFromClipboard,
-                    compact: true
+                    compact: true,
+                    // A new identity measures again when the preference changes.
+                    footer: {
+                        EmptyStageClipboardLine(reindentsOnPaste: reindentOnPaste)
+                            .id(reindentOnPaste)
+                    }
                 )
             }
         }

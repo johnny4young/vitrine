@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- The empty editor says what the clipboard holds, such as "14 lines of Swift", counting
+  the lines a paste would produce, when System Settings always allows Vitrine to read the
+  clipboard. Otherwise it stays silent and the contents stay unread.
+- The capture HUD shows the size of the PNG it put on the clipboard.
 - Copy the command line that reproduces an editor window's image, from its More menu or
   the command palette. It names what the line can't include, such as annotations or a
   pasted image.

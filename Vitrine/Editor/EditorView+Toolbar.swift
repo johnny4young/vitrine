@@ -257,8 +257,11 @@ extension EditorView {
         // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
         // render/encode failure — mirroring the menu command and the quick-capture HUD.
         // The HUD shows near the menu bar regardless of `closeAfterCopy`.
-        let outcome = RenderedImageCopy.copy(settings.exportConfig, settings: settings)
-        session.feedback(ExportFeedback.copyOutcome(outcome))
+        var pngBytes: Int?
+        let outcome = RenderedImageCopy.copy(settings.exportConfig, settings: settings) {
+            pngBytes = $0
+        }
+        session.feedback(ExportFeedback.copyOutcome(outcome, pngBytes: pngBytes))
         // Close *this* window — captured via `WindowAccessor`, so it never depends on
         // `keyWindow` being right — deferred past the button's action, and `close()`
         // (not `performClose`) so it is unconditional.
