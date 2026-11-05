@@ -115,7 +115,9 @@ struct WebCaptureControls: View {
         }
         if showsURLCaptureOptions, collapsesAdvanced {
             InspectorDisclosure(
-                label: Text("Capture options"), identifier: "web-advanced-disclosure",
+                label: Text("Capture options"),
+                summary: WebCaptureSummary.line(for: settings.webCapture),
+                identifier: "web-advanced-disclosure",
                 isExpanded: $showAdvanced
             ) {
                 captureModeRow
@@ -124,6 +126,14 @@ struct WebCaptureControls: View {
                 loggedInSessionRow
                 savedSitesRow
                 loopbackCaptureRow
+                Button("Open Settings ▸ Input") {
+                    AppDefaults.current.set(
+                        SettingsTab.input.rawValue, forKey: SettingsTab.storageKey)
+                    SettingsWindowManager.shared.show()
+                }
+                .buttonStyle(.link)
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .accessibilityIdentifier("web-capture-defaults-link")
             }
         } else if showsURLCaptureOptions {
             captureModeRow
@@ -142,7 +152,8 @@ struct WebCaptureControls: View {
             label: Text("Allow localhost capture"),
             caption: Text(
                 "Capture development servers on this Mac through localhost, 127.0.0.1, or ::1. Local-network and .local addresses stay blocked."
-            )
+            ),
+            captionInPopover: collapsesAdvanced
         ) {
             Toggle(
                 "Allow localhost capture", isOn: $settings.webCapture.allowsLoopbackCapture
@@ -303,7 +314,10 @@ struct WebCaptureControls: View {
     }
 
     private var captureModeRow: some View {
-        TokenRow(label: Text("Capture"), caption: Text(captureFooter)) {
+        TokenRow(
+            label: Text("Capture"), caption: Text(captureFooter),
+            captionInPopover: collapsesAdvanced
+        ) {
             TokenSegmentedPicker(
                 options: [
                     (WebSnapshotConfig.CaptureMode.visibleViewport, Text("Visible")),
@@ -317,7 +331,10 @@ struct WebCaptureControls: View {
     }
 
     private var waitRow: some View {
-        TokenRow(label: Text("Wait until"), caption: Text(waitFooter)) {
+        TokenRow(
+            label: Text("Wait until"), caption: Text(waitFooter),
+            captionInPopover: collapsesAdvanced
+        ) {
             TokenSegmentedPicker(
                 options: [
                     (WebSnapshotConfig.WaitStrategy.Kind.domContentLoaded, Text("Loaded")),
@@ -356,6 +373,15 @@ struct WebCaptureControls: View {
         }
     }
 
+    /// The size a fixed viewport captures. The custom chip's size is in the rows below it.
+    private func viewportSizeLabel(for kind: WebSnapshotConfig.ViewportPreset.Kind) -> String? {
+        guard kind != .custom else { return nil }
+        let size = WebSnapshotConfig.ViewportPreset.resolve(
+            kind: kind, customWidth: 0, customHeight: 0
+        ).size
+        return "\(Int(size.width)) × \(Int(size.height))"
+    }
+
     /// A selectable chip for one viewport kind in the multi-capture set.
     /// Toggling adds/removes the kind in `settings.webCapture.viewports`; the last selected
     /// kind cannot be removed, so a capture always has at least one size.
@@ -364,28 +390,36 @@ struct WebCaptureControls: View {
         return Button {
             toggleViewport(kind)
         } label: {
-            viewportSegmentLabel(for: kind)
-                .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
-                // Match the segmented control's segments: keep each chip's label on one
-                // line at its natural width, so a narrow trailing column never breaks
-                // "Desktop" into "De / skt / op". The chips hug their content and the
-                // TokenRow label (maxWidth: .infinity) yields the space they need.
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(
-                    isOn ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
-                )
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(Capsule().fill(isOn ? VitrineTokens.Accent.system : Color.clear))
-                .overlay(
-                    Capsule().strokeBorder(
-                        isOn ? Color.clear : VitrineTokens.Line.border, lineWidth: 1)
-                )
-                .contentShape(Capsule())
+            VStack(spacing: 1) {
+                viewportSegmentLabel(for: kind)
+                    .font(.system(size: VitrineTokens.FontSize.subhead, weight: .medium))
+                if let size = viewportSizeLabel(for: kind) {
+                    Text(verbatim: size)
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .monospacedDigit()
+                }
+            }
+            // Match the segmented control's segments: keep each chip's label on one
+            // line at its natural width, so a narrow trailing column never breaks
+            // "Desktop" into "De / skt / op". The chips hug their content and the
+            // TokenRow label (maxWidth: .infinity) yields the space they need.
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(
+                isOn ? VitrineTokens.Accent.systemContrast : VitrineTokens.Text.secondary
+            )
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Capsule().fill(isOn ? VitrineTokens.Accent.system : Color.clear))
+            .overlay(
+                Capsule().strokeBorder(
+                    isOn ? Color.clear : VitrineTokens.Line.border, lineWidth: 1)
+            )
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(viewportSegmentLabel(for: kind))
+        .accessibilityValue(viewportSizeLabel(for: kind) ?? "")
         .accessibilityAddTraits(isOn ? [.isSelected] : [])
         .accessibilityIdentifier("web-viewport-chip-\(kind.rawValue)")
     }
@@ -457,4 +491,27 @@ struct WebCaptureControls: View {
     }
 
     private var waitSecondsRange: ClosedRange<Int> { WebDefaults.waitSecondsRange }
+}
+
+/// The capture options as one line, for the collapsed disclosure.
+enum WebCaptureSummary {
+    static func line(for capture: WebCaptureSettings) -> String {
+        [
+            capture.captureMode == .fullPage
+                ? String(localized: "Full page") : String(localized: "Visible"),
+            waitLabel(capture.waitKind),
+            capture.usesLoggedInSession
+                ? String(localized: "session") : String(localized: "no session"),
+            capture.allowsLoopbackCapture
+                ? String(localized: "localhost") : String(localized: "no localhost"),
+        ].joined(separator: " · ")
+    }
+
+    private static func waitLabel(_ kind: WebSnapshotConfig.WaitStrategy.Kind) -> String {
+        switch kind {
+        case .domContentLoaded: String(localized: "Loaded")
+        case .networkQuiet: String(localized: "Idle")
+        case .fixedDelay: String(localized: "Delay")
+        }
+    }
 }

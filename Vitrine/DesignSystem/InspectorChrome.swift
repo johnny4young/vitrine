@@ -61,11 +61,32 @@ struct FlowLayout: Layout {
 /// column itself is the surface).
 struct InspectorSection<Content: View>: View {
     let title: Text
+    /// The section's current value and its identifier, readable without scanning the
+    /// section's controls.
+    var value: (text: String, identifier: String)? = nil
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
-            TokenGroupLabel(title: title)
+            HStack(spacing: VitrineTokens.Spacing.xs) {
+                TokenGroupLabel(title: title)
+                    .fixedSize()
+                Spacer(minLength: 0)
+                if let value {
+                    Text(verbatim: value.text)
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .monospacedDigit()
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .help(Text(verbatim: value.text))
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(title)
+            .accessibilityValue(value?.text ?? "")
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier(value?.identifier ?? "")
             content
         }
     }
@@ -94,6 +115,8 @@ struct InspectorDisclosure<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let label: Text
+    /// A summary of what the disclosure holds, readable while it is collapsed.
+    var summary: String? = nil
     let identifier: String
     @Binding var isExpanded: Bool
     @ViewBuilder var content: Content
@@ -102,27 +125,11 @@ struct InspectorDisclosure<Content: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             Divider()
                 .overlay(VitrineTokens.Line.separator)
-            Button {
-                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) {
-                    isExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(VitrineTokens.Text.secondary)
-                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    label
-                        .font(.system(size: VitrineTokens.FontSize.body, weight: .semibold))
-                        .foregroundStyle(VitrineTokens.Text.primary)
-                    Spacer(minLength: 0)
-                }
-                .padding(.vertical, VitrineTokens.Spacing.xs)
-                .contentShape(Rectangle())
+            if let summary {
+                header.accessibilityHint(Text(verbatim: summary))
+            } else {
+                header
             }
-            .buttonStyle(.plain)
-            .accessibilityValue(isExpanded ? Text("Expanded") : Text("Collapsed"))
-            .accessibilityIdentifier(identifier)
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: 11) {
@@ -131,5 +138,38 @@ struct InspectorDisclosure<Content: View>: View {
                 .padding(.bottom, VitrineTokens.Spacing.sm)
             }
         }
+    }
+
+    private var header: some View {
+        Button {
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) {
+                isExpanded.toggle()
+            }
+        } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                label
+                    .font(.system(size: VitrineTokens.FontSize.body, weight: .semibold))
+                    .foregroundStyle(VitrineTokens.Text.primary)
+                    .fixedSize()
+                Spacer(minLength: 0)
+                if let summary {
+                    Text(verbatim: summary)
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(Text(verbatim: summary))
+                }
+            }
+            .padding(.vertical, VitrineTokens.Spacing.xs)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(isExpanded ? Text("Expanded") : Text("Collapsed"))
+        .accessibilityIdentifier(identifier)
     }
 }

@@ -4,7 +4,7 @@ import VitrineDomain
 /// SwiftUI presentation for `AnnotationTool` (its label and keyboard shortcut), kept in
 /// the UI layer so the `AnnotationTool` model itself stays UI-free (VitrineCore
 /// prerequisite). The model owns the tool's identity, kind, `systemImage` name, and
-/// behavior flags; this adapter supplies only the `LocalizedStringKey`/`KeyEquivalent`
+/// behavior flags; this adapter supplies only the `LocalizedStringKey` and shortcut digit
 /// the toolbar needs.
 extension AnnotationTool {
     var localizedTitle: String {
@@ -47,18 +47,16 @@ extension AnnotationTool {
             ? "Blur is visual only. Use Redact secrets to remove source text from exports." : label
     }
 
-    /// The shortcut digit that selects this tool, used with ⌘ (⌘1…⌘9, then ⌘0).
-    /// A Command-modified shortcut is the reliable, non-hijacking choice on macOS: a
-    /// modifier-less key would either not fire or steal the code editor's typing, so the
-    /// tools take the digit row under ⌘. `nil` once the digit row is exhausted — a tool
-    /// added past ten stays click-selected rather than borrowing a letter that could
-    /// shadow an editing shortcut.
-    var keyEquivalent: KeyEquivalent? {
-        shortcutCharacter.map { KeyEquivalent($0) }
-    }
+    /// Display order for the toolbar and the main menu: by shortcut, so ⌘0 follows ⌘9.
+    static let toolbarOrder: [AnnotationTool] =
+        allCases.filter { $0.shortcutCharacter != nil && $0.shortcutCharacter != "0" }
+        + allCases.filter { $0.shortcutCharacter == "0" }
+        + allCases.filter { $0.shortcutCharacter == nil }
 
-    /// The platform-neutral shortcut representation shared by SwiftUI toolbar
-    /// labels and the AppKit main menu that owns global command routing.
+    /// The shortcut digit that selects this tool, used with ⌘ (⌘1…⌘9, then ⌘0), shared
+    /// by the toolbar labels and the AppKit main menu that owns command routing. A
+    /// Command-modified shortcut never steals the code editor's typing, so a tool added
+    /// past ten stays click-selected rather than borrowing a letter.
     var shortcutCharacter: Character? {
         switch self {
         case .select: "1"

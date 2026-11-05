@@ -22,12 +22,9 @@ enum DestinationChips {
 struct DestinationSegmentedPicker: View {
     @Bindable var settings: AppSettings
 
-    /// Sentinel tag for the "Custom" segment (no preset). Not a valid preset id.
-    private static let customTag = ""
-
     var body: some View {
         TokenSegmentedPicker(
-            options: options, selection: selectionBinding,
+            options: options, selection: settings.destinationSelection,
             optionIdentifiers: ["settings-destination-custom"]
                 + DestinationChips.all.map { "settings-destination-\($0.id)" }
         )
@@ -36,22 +33,9 @@ struct DestinationSegmentedPicker: View {
         .accessibilityIdentifier("destination-preset-picker")
     }
 
-    private var options: [(String, Text)] {
-        [(Self.customTag, Text("Custom"))]
+    private var options: [(String?, Text)] {
+        [(nil, Text("Custom"))]
             + DestinationChips.all.map { ($0.id, Text(verbatim: $0.label)) }
-    }
-
-    private var selectionBinding: Binding<String> {
-        Binding(
-            get: { settings.selectedPresetID ?? Self.customTag },
-            set: { id in
-                if let preset = ExportPreset.preset(withID: id) {
-                    settings.selectPreset(preset)
-                } else {
-                    settings.clearPreset()
-                }
-            }
-        )
     }
 }
 

@@ -16,6 +16,7 @@ struct SocialCardEditorView: View {
     let environment: AppEnvironment
     let feedback: FeedbackDisplay
     let presentation: SocialCardPresentation
+    var editorDocument: (() -> AppSettings)? = nil
 
     var settings: AppSettings { environment.appSettings }
     var themes: CustomThemeStore { environment.customThemes }
@@ -31,7 +32,8 @@ struct SocialCardEditorView: View {
                     settings: settings,
                     themes: themes,
                     brandKit: brandKit,
-                    entitlements: entitlements
+                    entitlements: entitlements,
+                    useEditorCode: { useEditorCode(undoManager: $0) }
                 )
                 .frame(width: 320)
             }
@@ -157,6 +159,26 @@ struct SocialCardEditorView: View {
         }
     }
 
+    /// Copies the editor's code and language into the card. Read at click time, because
+    /// this window cannot observe which editor is frontmost. Uses the sidecar text because
+    /// the card has no redaction of its own and draws no ANSI colors.
+    func useEditorCode(undoManager: UndoManager? = nil) {
+        let editor = (editorDocument?() ?? settings).config
+        let excerpt = SocialCardModel.truncatedExcerpt(editor.sidecarText)
+        guard !excerpt.isEmpty else {
+            feedback(Notifier.confirmation(String(localized: "The editor has no code to use")))
+            return
+        }
+        let previous = settings.socialCard
+        undoManager?.registerUndo(withTarget: settings) { settings in
+            settings.socialCard.codeExcerpt = previous.codeExcerpt
+            settings.socialCard.language = previous.language
+        }
+        undoManager?.setActionName(String(localized: "Use Editor Code"))
+        settings.socialCard.codeExcerpt = excerpt
+        settings.socialCard.language = editor.language == .terminal ? .plaintext : editor.language
+    }
+
     /// The export scale: the user's chosen resolution multiplier, applied to the
     /// fixed 1200×630 card (so 2× yields a crisp 2400×1260).
     private var exportScale: CGFloat { CGFloat(settings.export.scale) }
@@ -170,38 +192,69 @@ struct SocialCardEditorView: View {
         GeometryReader { proxy in
             let scale = fitScale(in: proxy.size)
             ZStack {
-                SocialCardCanvas(model: card)
-                    .fixedSize()
-                    .compositingGroup()
-                    .shadow(color: .black.opacity(0.28), radius: 24, x: 0, y: 18)
-                    .overlay {
-                        if !card.isRenderable { emptyPrompt }
-                    }
-                    .scaleEffect(scale)
-                    // `scaleEffect` does not shrink the layout footprint, so pin it to the
-                    // scaled size — otherwise the full-size 1200×630 card stays full-width
-                    // in layout and its centered overflow is clipped to one side, leaving
-                    // the card off-center in the stage (the editor's fix). Kept on the card
-                    // (with its empty-state overlay) so the overlay scales and stays put.
-                    .frame(
-                        width: SocialCardModel.defaultSize.width * scale,
-                        height: SocialCardModel.defaultSize.height * scale
-                    )
-                    .motionSensitiveAnimation(.easeInOut(duration: 0.2), value: scale)
+                SocialCardCanvas(
+                    model: card,
+                    // Only a card with content shows its remaining slots: an empty card
+                    // has its own prompt.
+                    emptySlotLabels: card.isRenderable
+                        ? (
+                            String(localized: "Code excerpt"),
+                            String(localized: "Author · Project")
+                        ) : nil
+                )
+                .fixedSize()
+                .compositingGroup()
+                .shadow(color: .black.opacity(0.28), radius: 24, x: 0, y: 18)
+                .overlay {
+                    if !card.isRenderable { emptyPrompt }
+                }
+                .scaleEffect(scale)
+                // `scaleEffect` does not shrink the layout footprint, so pin it to the
+                // scaled size — otherwise the full-size 1200×630 card stays full-width
+                // in layout and its centered overflow is clipped to one side, leaving
+                // the card off-center in the stage (the editor's fix). Kept on the card
+                // (with its empty-state overlay) so the overlay scales and stays put.
+                .frame(
+                    width: SocialCardModel.defaultSize.width * scale,
+                    height: SocialCardModel.defaultSize.height * scale
+                )
+                .motionSensitiveAnimation(.easeInOut(duration: 0.2), value: scale)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .clipped()
         .background(VitrineTokens.Surface.stage)
+        .overlay(alignment: .bottom) { sizeCapsule }
         .layoutPriority(2)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("social-card-preview-stage")
     }
 
-    /// The scale that keeps the 1200×630 card fully visible with a 72 pt margin,
-    /// never upscaling past its natural size.
+    /// The output size and format, in the editor status capsule's style.
+    private var sizeCapsule: some View {
+        let width = Int(SocialCardModel.defaultSize.width)
+        let height = Int(SocialCardModel.defaultSize.height)
+        let format = settings.export.format
+        // A PDF is vector, so it has no pixel multiplier to report.
+        let output =
+            format == .pdf ? format.displayName : "\(format.displayName) \(settings.export.scale)×"
+        return Text(verbatim: "OG · \(width) × \(height) · \(output)")
+            .font(.system(size: VitrineTokens.FontSize.caption))
+            .monospacedDigit()
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+            .padding(.vertical, 4)
+            .padding(.horizontal, VitrineTokens.Spacing.sm)
+            .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
+            .padding(.bottom, 14)
+            .accessibilityLabel(Text("Output size \(width) by \(height), \(output)"))
+            .accessibilityIdentifier("social-card-size-capsule")
+    }
+
+    /// The scale that keeps the 1200×630 card fully visible with a 72 pt margin, plus
+    /// room for the size capsule below it, never upscaling past its natural size.
     private func fitScale(in stage: CGSize) -> CGFloat {
         let size = SocialCardModel.defaultSize
-        return min(1, (stage.width - 72) / size.width, (stage.height - 72) / size.height)
+        return min(1, (stage.width - 72) / size.width, (stage.height - 88) / size.height)
     }
 
     private var emptyPrompt: some View {
@@ -225,6 +278,8 @@ private struct SocialCardInspector: View {
     let themes: CustomThemeStore
     let brandKit: BrandKitStore
     let entitlements: Entitlements
+    let useEditorCode: (UndoManager?) -> Void
+    @Environment(\.undoManager) private var undoManager
     @State private var showTypography = false
     @State private var showBackground = false
 
@@ -287,9 +342,13 @@ private struct SocialCardInspector: View {
     private var codeSection: some View {
         section("Code") {
             InspectorCodeField(
-                text: $settings.socialCard.codeExcerpt, placeholder: "let value = 42", height: 96
+                text: $settings.socialCard.codeExcerpt,
+                placeholder: String(localized: "Paste a code excerpt…"), height: 96
             )
             .accessibilityIdentifier("social-card-excerpt-editor")
+            Button("Use editor code") { useEditorCode(undoManager) }
+                .help("Copy the code from the frontmost editor window into this card")
+                .accessibilityIdentifier("social-card-use-editor-code")
             row("Language") {
                 Picker("Language", selection: $settings.socialCard.language) {
                     ForEach(Language.allCases) { language in

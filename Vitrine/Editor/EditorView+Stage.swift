@@ -22,7 +22,10 @@ extension EditorView {
                 // The line count + format action are code-only; a beautified image hides them.
                 if !settings.style.usesImageContent {
                     CodeLineCountLabel(settings: settings)
-                    livingSnapshotMenu
+                        .lineLimit(1)
+                    if !session.livingSnapshot.isActive {
+                        livingSnapshotMenu
+                    }
                     formatButton
                 }
             }
@@ -33,6 +36,12 @@ extension EditorView {
                 imagePanel
             } else {
                 VStack(spacing: 0) {
+                    if session.livingSnapshot.isActive {
+                        livingSnapshotMenu
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, VitrineTokens.Spacing.xs)
+                    }
                     livingSnapshotNotice
                     LargeDocumentHighlightNotice(settings: settings)
                     CodeDocumentEditor(
@@ -70,9 +79,9 @@ extension EditorView {
         .accessibilityContainerIdentifier("editor-drop-target")
     }
 
-    /// Compact access to the explicit, session-only file connection. The menu stays in
-    /// the code header so a live source is visible without crowding the primary export
-    /// toolbar, and it remains available from an empty editor as the entry point.
+    /// Compact access to the explicit, session-only file connection: an icon in the code
+    /// header as the entry point, then a chip on its own row, because the header has no
+    /// room for a file name beside the line count and the format action.
     var livingSnapshotMenu: some View {
         Menu {
             if session.livingSnapshot.isActive {
@@ -93,18 +102,69 @@ extension EditorView {
                 }
             }
         } label: {
-            Image(systemName: livingSnapshotSystemImage)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(livingSnapshotColor)
-                .frame(width: 22, height: 22)
-                .contentShape(Rectangle())
+            if session.livingSnapshot.isActive {
+                livingSnapshotChip
+            } else {
+                livingSnapshotStatusIcon
+                    .font(.system(size: 11, weight: .semibold))
+                    .frame(width: 22, height: 22)
+                    .contentShape(Rectangle())
+            }
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
+        .customLabelMenu(cornerRadius: session.livingSnapshot.isActive ? 13 : 4)
+        // Only the chip gives up width, for its file name.
+        .fixedSize(horizontal: !session.livingSnapshot.isActive, vertical: true)
         .help(livingSnapshotHelp)
         .accessibilityLabel("Live file")
+        .accessibilityValue(session.livingSnapshot.isActive ? livingSnapshotAccessibilityValue : "")
         .accessibilityIdentifier("living-snapshot-menu")
+    }
+
+    /// The watched file as a first-class source: its state in both symbol and word, then
+    /// the name, which gives way first in the narrow code header.
+    private var livingSnapshotChip: some View {
+        HStack(spacing: 5) {
+            if session.livingSnapshot.status == .watching {
+                Circle()
+                    .fill(livingSnapshotColor)
+                    .frame(width: 7, height: 7)
+            } else {
+                livingSnapshotStatusIcon
+            }
+            Text(verbatim: livingSnapshotStatusTitle)
+                .fixedSize()
+            Text(verbatim: session.livingSnapshot.displayName)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 8, weight: .bold))
+        }
+        .font(.system(size: VitrineTokens.FontSize.caption, weight: .medium))
+        .foregroundStyle(VitrineTokens.Text.secondary)
+        .padding(.horizontal, 8)
+        .frame(height: 26)
+        .overlay(
+            Capsule(style: .continuous)
+                .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+        )
+        .contentShape(Capsule(style: .continuous))
+    }
+
+    private var livingSnapshotStatusIcon: some View {
+        Image(systemName: livingSnapshotSystemImage)
+            .foregroundStyle(livingSnapshotColor)
+    }
+
+    private var livingSnapshotStatusTitle: String {
+        switch session.livingSnapshot.status {
+        case .inactive, .watching: String(localized: "Live")
+        case .changeAvailable: String(localized: "Changed")
+        case .unavailable: String(localized: "Unavailable")
+        }
+    }
+
+    private var livingSnapshotAccessibilityValue: String {
+        "\(livingSnapshotStatusTitle), \(session.livingSnapshot.displayName)"
     }
 
     @ViewBuilder var livingSnapshotNotice: some View {
@@ -166,7 +226,7 @@ extension EditorView {
 
     var livingSnapshotColor: Color {
         switch session.livingSnapshot.status {
-        case .watching: VitrineTokens.Accent.system
+        case .watching: .green
         case .changeAvailable, .unavailable: .orange
         case .inactive: VitrineTokens.Text.tertiary
         }
@@ -661,7 +721,7 @@ private struct PreviewCardStage<Content: View>: View {
 }
 
 /// The floating status capsule: destination · output size · format and resolution ·
-/// zoom (only when scaled down). Locale-neutral data line.
+/// zoom (only when scaled down), and the one-click route to change the destination.
 ///
 /// A view of its own so the card's measured size is read here, not in the editor's body.
 /// See ``PreviewCardGeometry``.
@@ -671,14 +731,33 @@ private struct StageStatusCapsule: View {
     let stageSize: CGSize
 
     var body: some View {
-        Text(verbatim: line)
-            .font(.system(size: VitrineTokens.FontSize.caption))
-            .foregroundStyle(VitrineTokens.Text.tertiary)
+        let line = line
+        Menu {
+            DestinationMenuOptions(settings: settings)
+        } label: {
+            HStack(spacing: 7) {
+                Text(verbatim: line)
+                    .font(.system(size: VitrineTokens.FontSize.caption))
+                    .monospacedDigit()
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+            }
             .padding(.vertical, 4)
             .padding(.horizontal, VitrineTokens.Spacing.sm)
             .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
-            .padding(.bottom, 14)
-            .accessibilityIdentifier("editor-status-capsule")
+            .contentShape(Capsule(style: .continuous))
+        }
+        .customLabelMenu(cornerRadius: 14)
+        .frame(maxWidth: stageSize.width > 24 ? stageSize.width - 24 : nil)
+        .help("Choose a destination preset")
+        .accessibilityLabel("Destination")
+        .accessibilityValue(Text(verbatim: line))
+        .accessibilityIdentifier("editor-status-capsule")
+        .padding(.bottom, 14)
     }
 
     private var line: String {
@@ -693,6 +772,23 @@ private struct StageStatusCapsule: View {
             if zoom < 100 { line += " · \(zoom)%" }
         }
         return line
+    }
+}
+
+/// Every destination by its full name. A view of its own so the capsule's size changes
+/// do not rebuild the options.
+private struct DestinationMenuOptions: View {
+    let settings: AppSettings
+
+    var body: some View {
+        Picker("Destination", selection: settings.destinationSelection) {
+            Text("Custom").tag(String?.none)
+            ForEach(ExportPreset.all) { preset in
+                Text(verbatim: preset.displayName).tag(String?.some(preset.id))
+            }
+        }
+        .pickerStyle(.inline)
+        .labelsHidden()
     }
 }
 

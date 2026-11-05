@@ -575,8 +575,8 @@ private struct RecentsCard: View {
                 .overlay(Circle().strokeBorder(Brand.Palette.border.color))
                 .contentShape(Circle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .customLabelMenu(cornerRadius: 15)
+        .fixedSize()
         .help("Copy, re-render, pin, or remove this recent capture")
         .accessibilityLabel("Capture actions")
         .accessibilityIdentifier("recents-preset-picker")

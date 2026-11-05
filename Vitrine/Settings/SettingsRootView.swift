@@ -14,7 +14,7 @@ struct SettingsRootView: View {
 
     /// The selected pane, remembered across openings like the classic window.
     /// Persisted through `AppDefaults` so the UI tests' isolated suite applies.
-    @AppStorage("settings.selectedTab", store: AppDefaults.current)
+    @AppStorage(SettingsTab.storageKey, store: AppDefaults.current)
     private var selectedTab: SettingsTab = .general
 
     var body: some View {
@@ -107,6 +107,10 @@ struct SettingsRootView: View {
 
 /// The settings panes, in their stable order.
 enum SettingsTab: String, CaseIterable, Identifiable {
+    /// Undotted: `@AppStorage` observes through KVO, which reads dots as a key path, so a
+    /// write from outside the window would not move a pane that is already open.
+    static let storageKey = "settingsSelectedTab"
+
     // Order = sidebar order: app → look → branding → library → input → export → about.
     // `input` precedes `output` so the pipeline reads top-to-bottom (you set how content
     // comes in, then how the image leaves). `output`'s raw value stays "output" so its

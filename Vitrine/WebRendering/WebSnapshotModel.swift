@@ -15,11 +15,17 @@ import VitrineRendering
 final class WebSnapshotModel {
     let viewportRenderer: WebSnapshotViewportRenderer
 
-    init(viewportRenderer: WebSnapshotViewportRenderer = .live) {
+    init(
+        viewportRenderer: WebSnapshotViewportRenderer = .live,
+        urlCaptureEnabled: Bool = NetworkCapability.isURLCaptureEnabled
+    ) {
         self.viewportRenderer = viewportRenderer
+        // Open on the source that works: a URL capture can only fail in a build without
+        // network access.
+        self.mode = urlCaptureEnabled ? .url : .html
     }
 
-    var mode: WebInputMode = .url
+    var mode: WebInputMode
     var urlText: String = ""
     var htmlText: String = ""
 

@@ -10,7 +10,7 @@ import VitrineRendering
 /// toggle labels reflect the current state ("Hide line numbers" when they're on).
 extension EditorView {
     var commandPaletteCommands: [EditorCommand] {
-        themeCommands + toggleCommands + styleCommands + exportCommands
+        themeCommands + toggleCommands + styleCommands + liveFileCommands + exportCommands
     }
 
     /// One "Apply <theme>" command per built-in and custom theme, tagged with its
@@ -86,6 +86,39 @@ extension EditorView {
     }
 
     /// The export/copy actions the toolbar also offers, reachable by name.
+    /// The live chip's menu actions, so they have a keyboard route.
+    private var liveFileCommands: [EditorCommand] {
+        let group = String(localized: "Live file")
+        let live = session.livingSnapshot
+        return PaletteLiveFileAction.available(
+            isActive: live.isActive, usesImageContent: settings.style.usesImageContent
+        ).map { action in
+            switch action {
+            case .open:
+                EditorCommand(
+                    id: "live.open", title: String(localized: "Open Live File…"), group: group,
+                    symbol: "doc.badge.plus"
+                ) { openLivingSnapshotFile() }
+            case .reload:
+                EditorCommand(
+                    id: "live.reload", title: String(localized: "Reload from File"), group: group,
+                    symbol: "arrow.clockwise"
+                ) { live.reloadFromDisk() }
+            case .openDifferent:
+                EditorCommand(
+                    id: "live.openDifferent",
+                    title: String(localized: "Open Different Live File…"), group: group,
+                    symbol: "doc"
+                ) { openLivingSnapshotFile() }
+            case .stop:
+                EditorCommand(
+                    id: "live.stop", title: String(localized: "Stop Watching"), group: group,
+                    symbol: "xmark.circle"
+                ) { live.stop() }
+            }
+        }
+    }
+
     var exportCommands: [EditorCommand] {
         exportCommands(
             for: PaletteExport.available(
@@ -151,5 +184,18 @@ enum PaletteExport: CaseIterable {
     static func available(hasRenderableContent: Bool, usesImageContent: Bool) -> [PaletteExport] {
         guard hasRenderableContent else { return [] }
         return usesImageContent ? [.copy, .save, .documentation] : allCases
+    }
+}
+
+/// The palette's live-file rows, matching the chip's menu. An image has no live source.
+enum PaletteLiveFileAction: Equatable {
+    case open
+    case reload
+    case openDifferent
+    case stop
+
+    static func available(isActive: Bool, usesImageContent: Bool) -> [PaletteLiveFileAction] {
+        guard !usesImageContent else { return [] }
+        return isActive ? [.reload, .openDifferent, .stop] : [.open]
     }
 }
