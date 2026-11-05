@@ -23,6 +23,40 @@ public struct SnapshotCanvas: View, Equatable {
     }
 
     public var body: some View {
+        let fit = config.counterLegendFit(in: fixedSize)
+        if fit.entries.isEmpty && fit.dropped == 0 {
+            watermarkedCanvas
+        } else if fixedSize != nil {
+            // A fixed frame can't grow, so the legend is reported instead of drawn.
+            watermarkedCanvas
+                .preference(
+                    key: CounterLegendReportKey.self,
+                    value: CounterLegendReport(dropped: fit.dropped))
+        } else {
+            CounterLegendStack {
+                watermarkedCanvas
+                legendBand(fit.entries)
+                    .background {
+                        GeometryReader { proxy in
+                            Color.clear.preference(
+                                key: CounterLegendReportKey.self,
+                                value: CounterLegendReport(height: proxy.size.height))
+                        }
+                    }
+            }
+            .fixedSize()
+        }
+    }
+
+    private func legendBand(_ entries: [CounterLegend.Entry]) -> some View {
+        CounterLegendBand(
+            entries: entries,
+            font: config.counterLegendFont,
+            textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme),
+            background: cardBackgroundColor)
+    }
+
+    private var watermarkedCanvas: some View {
         // The optional brand watermark composites onto the finished canvas.
         // `WatermarkOverlay` is a no-op when `config.watermark` is nil — it returns the
         // content unchanged — so the default render and every golden stay byte-for-byte

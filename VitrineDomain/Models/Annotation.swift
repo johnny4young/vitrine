@@ -80,7 +80,8 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
     /// Normalized `0...1` second point — the arrow/line head or the box's opposite
     /// corner. Unused by `.text` and `.counter`.
     public var end: CGPoint
-    /// The callout text: the label for `.text`, the emoji glyph for `.sticker`.
+    /// The callout text: the label for `.text`, the emoji glyph for `.sticker`, the
+    /// legend label for `.counter`.
     public var text: String
     /// The mark's color (stroke / fill / badge). Blur boxes ignore it.
     public var color: RGBAColor
@@ -166,11 +167,14 @@ extension Annotation {
     public static let duplicateOffset: Double = 16
 
     /// Returns a fresh copy offset from the original. A counter receives the next
-    /// number supplied by the owning collection.
+    /// number supplied by the owning collection and no label: it marks something else.
     public func duplicated(in canvasSize: CGSize, counterNumber: Int) -> Annotation {
         var copy = self
         copy.id = UUID()
-        if kind == .counter { copy.number = counterNumber }
+        if kind == .counter {
+            copy.number = counterNumber
+            copy.text = ""
+        }
 
         let offset = CGSize(width: Self.duplicateOffset, height: Self.duplicateOffset)
         copy.nudge(by: offset, in: canvasSize)

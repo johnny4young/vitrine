@@ -64,6 +64,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case counterY
     case counterColor
     case counterSize
+    case counterLabel
     case arrow
     case arrowColor
     case arrowSize
@@ -372,6 +373,9 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .counterSize, ["--counter-size"], .value("2...28"), synopsis: "--counter-size <2...28>",
             description: "Counter size weight; requires --counter."),
+        definition(
+            .counterLabel, ["--counter-label"], .value("text"), synopsis: "--counter-label <text>",
+            description: "Counter legend text, listed under the capture; requires --counter."),
         definition(
             .arrow, ["--arrow"], .value("x1,y1,x2,y2"), synopsis: "--arrow <x1,y1,x2,y2>",
             description: "Add a repeatable arrow from normalized tail to head."),

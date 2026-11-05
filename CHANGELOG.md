@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Type a legend on a selected counter, or pass `--counter-label`, to list it under the
+  capture. Masking is best effort: a label that looks like a secret or matches a redacted
+  line or a value in blurred code is replaced, so check the legend before sharing.
+  Fixed-size output leaves the legend out and says so.
 - Bring the main editor's code into a social card with Use editor code.
 - Show a social card's empty code and footer slots in the preview, and its output size
   under it. Empty slots are never exported.

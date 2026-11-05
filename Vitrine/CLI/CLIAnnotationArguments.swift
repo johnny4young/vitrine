@@ -34,6 +34,7 @@ struct CLIAnnotationArguments {
     var calloutText: String?
     var callout = PositionedStyle()
     var counterNumber: Int?
+    var counterLabel: String?
     var counter = PositionedStyle()
     var arrows = GeometryGroup()
     var lines = GeometryGroup()
@@ -63,6 +64,9 @@ struct CLIAnnotationArguments {
         if counterNumber == nil, counter.isRequested {
             throw CLIError.incompatibleOptions(
                 "--counter-x, --counter-y, --counter-color, and --counter-size require --counter.")
+        }
+        if counterNumber == nil, counterLabel != nil {
+            throw CLIError.incompatibleOptions("--counter-label requires --counter.")
         }
         if counter.hasPartialPosition {
             throw CLIError.incompatibleOptions(
