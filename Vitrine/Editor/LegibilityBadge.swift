@@ -6,8 +6,26 @@ import VitrineRendering
 /// debounced code here, so only those two views depend on it, never on the live document.
 @Observable
 final class LegibilityModel {
+    /// Themes the user asked not to hear about. Shared by the session's windows, never saved.
+    @Observable
+    final class Dismissals {
+        static let session = Dismissals()
+        var themeIDs: Set<String> = []
+    }
+
     var stagedCode: String?
     var report: ThemeLegibility?
+    let dismissals: Dismissals
+
+    init(dismissals: Dismissals = .session) {
+        self.dismissals = dismissals
+    }
+
+    /// The report to warn about for `themeID`, if any.
+    func warning(themeID: String) -> ThemeLegibility? {
+        guard let report, report.isWeak, !dismissals.themeIDs.contains(themeID) else { return nil }
+        return report
+    }
 }
 
 /// Measures the capture's text from the preview's debounced code, so typing doesn't reach it.
@@ -50,12 +68,13 @@ struct LegibilityBadge: View {
     let settings: AppSettings
     let model: LegibilityModel
 
+    @Environment(\.undoManager) private var undoManager
     @State private var betterTheme: Theme?
     @State private var isShowingDetails = false
 
     var body: some View {
-        if let report = model.report, report.isWeak {
-            let ratio = Self.ratioText(report.lowInks.first?.ratio ?? report.threshold)
+        if let report = model.warning(themeID: settings.style.theme.id) {
+            let ratio = Self.ratioText(report.lowInks.first?.ratio ?? ThemeLegibility.threshold)
             Button {
                 isShowingDetails = true
             } label: {
@@ -105,11 +124,16 @@ struct LegibilityBadge: View {
             }
             if let betterTheme {
                 Button("Use \(betterTheme.displayName)") {
-                    settings.style.theme = betterTheme
+                    Self.applyFix(betterTheme, to: settings, undoManager: undoManager)
                     isShowingDetails = false
                 }
                 .accessibilityIdentifier("theme-legibility-fix-button")
             }
+            Button("Don't warn for this theme") {
+                model.dismissals.themeIDs.insert(settings.style.theme.id)
+                isShowingDetails = false
+            }
+            .accessibilityIdentifier("theme-legibility-dismiss-button")
         }
         .padding(VitrineTokens.Spacing.sm)
         .frame(width: 240, alignment: .leading)
@@ -117,7 +141,18 @@ struct LegibilityBadge: View {
         .accessibilityIdentifier("theme-legibility-details")
     }
 
-    private static func ratioText(_ ratio: Double) -> String {
-        String(format: "%.1f : 1", ratio)
+    /// Undo holds the previous theme in memory only.
+    static func applyFix(_ theme: Theme, to settings: AppSettings, undoManager: UndoManager?) {
+        let previous = settings.style.theme
+        undoManager?.registerUndo(withTarget: settings) { settings in
+            settings.style.theme = previous
+        }
+        undoManager?.setActionName(String(localized: "Change Theme"))
+        settings.style.theme = theme
+    }
+
+    /// Rounded down, so text under a threshold can't read as meeting it.
+    static func ratioText(_ ratio: Double) -> String {
+        String(format: "%.1f : 1", (ratio * 10).rounded(.down) / 10)
     }
 }

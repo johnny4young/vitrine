@@ -115,17 +115,37 @@ struct ThemeLegibilityTests {
         #expect(heavy.isWeak)
     }
 
-    @Test func largeTextUsesTheLargeThreshold() throws {
-        // #949494 on white measures about 3.03:1: under AA at 14 pt, over it from 18 pt.
+    /// About 40% of the glyphs are comments, under 3:1 and over 2:1, as in many real files.
+    @Test func aCommentHeavyFileStaysQuietOnTheThemesDimComments() throws {
+        let code = """
+            // Loads the settings from disk.
+            func load() -> Settings { read() ?? .standard }
+
+            // Writes the settings back to disk.
+            func save(_ settings: Settings) { write(settings) }
+            """
+        let report = try #require(measure(config(code, theme: .oneDark, language: .swift)))
+        let comments = try #require(report.lowInks.first)
+        #expect(comments.ratio > ThemeLegibility.illegibleRatio)
+        #expect(comments.ratio < ThemeLegibility.faintRatio)
+        #expect(comments.share > 0.25 && comments.share < 0.5)
+        #expect(!report.isWeak)
+    }
+
+    @Test func theLargestFontSizeUsesTheSameThreshold() throws {
         let theme = try theme(background: "#FFFFFF", foreground: "#949494")
         var document = config("let x = 1", theme: theme)
-        let normal = try #require(measure(document))
-        #expect(normal.isWeak)
+        document.fontSize = SettingsDefaults.fontSizeRange.upperBound
+        #expect(try #require(measure(document)).isWeak)
+    }
 
-        document.fontSize = 18
-        let large = try #require(measure(document))
-        #expect(!large.isWeak)
-        #expect(large.lowInks.isEmpty)
+    /// Xcode Dark paints added lines white on #BAEEBA, so the card's ratio would be false.
+    @Test func aThemesPaintedDiffRowIsMeasuredOnItsOwnBackground() throws {
+        let code = "+ an added line\n+ another added line"
+        let report = try #require(measure(config(code, theme: .xcodeDark, language: .diff)))
+        let added = try #require(report.lowInks.first)
+        #expect(added.ratio < 2)
+        #expect(report.isWeak)
     }
 
     // MARK: The surface
@@ -205,15 +225,16 @@ struct ThemeLegibilityTests {
         #expect(abs(try #require(report.inks.first).ratio - 1) < 0.01)
     }
 
-    @Test func aHalfTranslucentCardIsMeasuredOverTheBlend() throws {
-        // Black at 50.2% over white is #7F7F7F, which white text reads at 4.00:1.
+    /// A custom palette's runs paint its background too, so 50% black lands on white twice,
+    /// giving #404040, which white text reads at 10.4:1.
+    @Test func aHalfTranslucentCardIsMeasuredOverWhatIsPainted() throws {
         let theme = try theme(background: "#00000080", foreground: "#FFFFFF")
         var document = config(
             "let x = 1", theme: theme,
             background: .solid(RGBAColor(red: 1, green: 1, blue: 1, opacity: 1)))
         document.showShadow = false
         let report = try #require(measure(document))
-        #expect(abs(try #require(report.inks.first).ratio - 4.0) < 0.02)
+        #expect(abs(try #require(report.inks.first).ratio - 10.4) < 0.2)
     }
 
     /// None of these say what's under the text: a gradient and an image vary, the others have
@@ -250,23 +271,31 @@ struct ThemeLegibilityTests {
         #expect(measure(document) == nil)
     }
 
-    /// A band changes what the text sits on, so #767676, just over AA on white, drops under it.
+    /// A band changes what the text sits on, so GitHub's dark ink on it reads lower.
     @Test func aHighlightedRowIsMeasuredOnItsBand() throws {
-        let theme = try theme(background: "#FFFFFF", foreground: "#767676")
-        var document = config("let x = 1", theme: theme)
-        #expect(try #require(measure(document)).lowInks.isEmpty)
-
+        var document = config("let x = 1", theme: .github)
+        let plain = try #require(measure(document)?.inks.first)
         document.highlightedLineRanges = [1...1]
-        #expect(try #require(measure(document)).lowInks.count == 1)
+        let banded = try #require(measure(document)?.inks.first)
+        #expect(banded.ratio < plain.ratio)
     }
 
     @Test func aDiffRowIsMeasuredOnItsBand() throws {
-        let theme = try theme(background: "#FFFFFF", foreground: "#767676")
-        var document = config("+ added", theme: theme)
-        #expect(try #require(measure(document)).lowInks.isEmpty)
-
+        var document = config("+ added", theme: .github)
+        let plain = try #require(measure(document)?.inks.first)
         document.diffDecorations = true
-        #expect(try #require(measure(document)).lowInks.count == 1)
+        let banded = try #require(measure(document)?.inks.first)
+        #expect(banded.ratio < plain.ratio)
+    }
+
+    /// A custom palette paints each run, which covers the band under its text.
+    @Test func aCustomThemesRunBackgroundCoversTheBand() throws {
+        let theme = try theme(background: "#FFFFFF", foreground: "#767676")
+        var document = config("let x = 1", theme: theme)
+        let plain = try #require(measure(document)?.inks.first)
+        document.highlightedLineRanges = [1...1]
+        let banded = try #require(measure(document)?.inks.first)
+        #expect(abs(banded.ratio - plain.ratio) < 0.01)
     }
 
     @Test func redactedRowsAreNotMeasured() throws {
@@ -298,22 +327,28 @@ struct ThemeLegibilityTests {
 
         let oversized = String(repeating: "x", count: ThemeLegibility.maximumTerminalBytes + 1)
         #expect(measure(config(oversized, theme: .oneDark, language: .terminal)) == nil)
+
+        let autoDetected = String(
+            repeating: "x", count: ThemeLegibility.maximumAutoDetectedBytes + 1)
+        #expect(measure(config(autoDetected, theme: .oneDark)) == nil)
     }
 
     // MARK: Terminal
 
-    @Test func terminalTextMeasuresItsOwnColorsAndSkipsRunsWithTheirOwnBackground() throws {
+    @Test func terminalTextIsMeasuredOnItsOwnBackground() throws {
         // Black on the dark terminal fill is unreadable; on an explicit white block it isn't.
         let onCard = try #require(
             measure(config("\u{1B}[30mhidden text\u{1B}[0m", theme: .oneDark, language: .terminal)))
         #expect(onCard.isWeak)
 
         let onBlock = try #require(
-            measure(
-                config(
-                    "\u{1B}[30;47mblock\u{1B}[0m plain text", theme: .oneDark, language: .terminal))
-        )
+            measure(config("\u{1B}[30;47mblock\u{1B}[0m", theme: .oneDark, language: .terminal)))
         #expect(!onBlock.isWeak)
+
+        // White on an explicit white block is unreadable, whatever the card.
+        let whiteOnWhite = try #require(
+            measure(config("\u{1B}[97;107mblock\u{1B}[0m", theme: .oneDark, language: .terminal)))
+        #expect(whiteOnWhite.isWeak)
     }
 
     @Test func aTerminalIsMeasuredInThePaletteItRendersWith() throws {
@@ -341,13 +376,12 @@ struct ThemeLegibilityTests {
         #expect(changes { $0.highlightedLineRanges = [1...1] })
         #expect(changes { $0.focusHighlightedLines = true })
         #expect(changes { $0.diffDecorations = true })
-        #expect(changes { $0.fontSize = 18 })
     }
 
     @Test func aStyleTickThatCannotChangeTheResultKeepsTheInput() throws {
         let base = config("let x = 1", theme: .github, language: .swift)
         var ticked = base
-        ticked.fontSize = 15
+        ticked.fontSize = SettingsDefaults.fontSizeRange.upperBound
         ticked.padding = 40
         ticked.cornerRadius = 4
         ticked.fontName = "Menlo"
@@ -386,6 +420,48 @@ struct ThemeLegibilityTests {
 
         let already = config("// only a comment", theme: .githubDark, language: .swift)
         #expect(ThemeLegibility.betterTheme(for: already) == nil)
+    }
+
+    @Test func aFixThatFailsItsOwnCheckIsNotOffered() throws {
+        // A candidate that doesn't read on this text: its own measurement is weak.
+        let code = "// only a comment in this capture"
+        let light = config(code, theme: .oneLight, language: .swift)
+        var candidate = light
+        candidate.theme = .github
+        #expect(try #require(measure(candidate)).isWeak)
+        #expect(ThemeLegibility.betterTheme(for: light) == nil)
+    }
+
+    @Test func theFixCanBeUndone() {
+        let settings = AppSettings(defaults: testDefaults())
+        let undoManager = UndoManager()
+        undoManager.groupsByEvent = false
+        settings.style.theme = .oneDark
+        undoManager.beginUndoGrouping()
+        LegibilityBadge.applyFix(.githubDark, to: settings, undoManager: undoManager)
+        undoManager.endUndoGrouping()
+        #expect(settings.style.theme == .githubDark)
+        #expect(undoManager.canUndo)
+
+        undoManager.undo()
+        #expect(settings.style.theme == .oneDark)
+    }
+
+    @Test func dismissingAThemeQuietsOnlyThatTheme() throws {
+        let weak = try #require(
+            measure(config("// only a comment", theme: .oneDark, language: .swift)))
+        let model = LegibilityModel(dismissals: .init())
+        model.report = weak
+        #expect(model.warning(themeID: Theme.oneDark.id) == weak)
+
+        model.dismissals.themeIDs.insert(Theme.oneDark.id)
+        #expect(model.warning(themeID: Theme.oneDark.id) == nil)
+        #expect(model.warning(themeID: Theme.dracula.id) == weak)
+    }
+
+    @Test(arguments: [(4.49, "4.4 : 1"), (2.316, "2.3 : 1"), (4.5, "4.5 : 1"), (21.0, "21.0 : 1")])
+    func theShownRatioRoundsDown(_ ratio: Double, _ text: String) {
+        #expect(LegibilityBadge.ratioText(ratio) == text)
     }
 
     @Test func measuringChangesNothingInTheRenderedImage() throws {

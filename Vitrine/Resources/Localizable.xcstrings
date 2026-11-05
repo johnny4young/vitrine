@@ -1,6 +1,28 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Don't warn for this theme" : {
+      "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No advertir con este tema"
+          }
+        }
+      }
+    },
+    "Change Theme" : {
+      "comment" : "Undo action name for switching to the theme the legibility warning offered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar tema"
+          }
+        }
+      }
+    },
     "Low code contrast" : {
       "comment" : "Editor inspector: warning that a capture's code text is hard to read on its surface.",
       "localizations" : {

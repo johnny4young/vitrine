@@ -15,8 +15,8 @@ can never drift.
 ### Added
 
 - Warn in the inspector's Theme header when a capture's code text has low measured contrast
-  on the surface it's drawn on. The warning lists the ratios and offers a stock theme only when
-  it measures better. Nothing changes unless you press that button.
+  on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
+  stock theme only when it measures better, and can be dismissed for a theme until you quit.
 - Terminal captures get an ANSI palette control, Theme or Raw xterm colors, in the inspector
   and Settings ▸ Style, with `--terminal-palette`. The default is today's rendering.
 - The inspector's Header section lists a terminal capture's filename and title as removable

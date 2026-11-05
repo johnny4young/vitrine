@@ -18,8 +18,14 @@ public struct ThemeLegibility: Equatable {
     }
 
     /// Everything a measurement reads, so nothing else can leave it stale, and a slider tick
-    /// that can't change the result doesn't measure again.
+    /// that can't change the result doesn't measure again. The font only finds the preview's
+    /// cached tokens, since it can't change a color, so it never counts as a change.
     public struct Input: Equatable {
+        private struct CacheKeyFont: Equatable {
+            let font: NSFont
+            static func == (_: Self, _: Self) -> Bool { true }
+        }
+
         let code: String
         let language: Language
         let theme: Theme
@@ -31,7 +37,8 @@ public struct ThemeLegibility: Equatable {
         let diffDecorations: Bool
         let usesLineRows: Bool
         let usesImageContent: Bool
-        let isLargeText: Bool
+        private let cacheKeyFont: CacheKeyFont
+        var font: NSFont { cacheKeyFont.font }
         /// `nil` and `false` under an opaque card, which hides both.
         let backdrop: VitrineDomain.BackgroundStyle?
         let showsShadow: Bool
@@ -48,7 +55,10 @@ public struct ThemeLegibility: Equatable {
             diffDecorations = config.diffDecorations
             usesLineRows = config.usesLineRows
             usesImageContent = config.usesImageContent
-            isLargeText = config.fontSize >= ThemeLegibility.largeTextSize
+            cacheKeyFont = CacheKeyFont(
+                font: CodeFont.resolved(
+                    family: config.fontName, size: config.fontSize, ligatures: config.fontLigatures)
+            )
             let card = ThemeLegibility.cardColor(
                 theme: config.theme, language: config.language, palette: config.terminalPalette)
             let isOpaque = (card?.alphaComponent ?? 0) >= 1
@@ -60,18 +70,18 @@ public struct ThemeLegibility: Equatable {
     static let illegibleRatio = 2.0
     static let illegibleShare = 0.05
     static let faintRatio = 3.0
-    static let faintShare = 0.25
+    static let faintShare = 0.5
     static let majorityShare = 0.5
-    static let largeTextSize = 18.0
+    public static let threshold = Brand.Contrast.aaNormal
     static let maximumTerminalBytes = 64 * 1024
+    /// Plaintext runs Highlight.js's auto-detection, which takes seconds on a large document.
+    static let maximumAutoDetectedBytes = 8 * 1024
 
     /// Every measured color, lowest contrast first.
     public let inks: [Ink]
-    /// The AA threshold for this capture's font size.
-    public let threshold: Double
 
     /// The colors under the AA threshold.
-    public var lowInks: [Ink] { inks.filter { $0.ratio < threshold } }
+    public var lowInks: [Ink] { inks.filter { $0.ratio < Self.threshold } }
 
     /// Whether enough of the text is hard to read. A few comments under AA stay quiet: most
     /// stock themes dim them on purpose.
@@ -80,15 +90,19 @@ public struct ThemeLegibility: Equatable {
             inks.filter { $0.ratio < limit }.reduce(0) { $0 + $1.share }
         }
         return share(under: Self.illegibleRatio) >= Self.illegibleShare
-            || share(under: min(Self.faintRatio, threshold)) >= Self.faintShare
-            || share(under: threshold) > Self.majorityShare
+            || share(under: Self.faintRatio) >= Self.faintShare
+            || share(under: Self.threshold) > Self.majorityShare
     }
 
     /// Measures the input's text, or `nil` when it can't honestly report: an image capture, no
-    /// measurable text, an oversized terminal, or a surface it doesn't know exactly.
+    /// measurable text, a terminal or auto-detected document too large to read cheaply, or a
+    /// surface it doesn't know exactly.
     public static func measure(_ input: Input) -> ThemeLegibility? {
         guard !input.usesImageContent else { return nil }
         if input.language == .terminal, input.code.utf8.count > maximumTerminalBytes { return nil }
+        if input.language == .plaintext, input.code.utf8.count > maximumAutoDetectedBytes {
+            return nil
+        }
         guard
             let card = cardColor(
                 theme: input.theme, language: input.language, palette: input.terminalPalette),
@@ -100,7 +114,8 @@ public struct ThemeLegibility: Equatable {
         guard total > 0 else { return nil }
 
         let inks = counts.map { key, entry in
-            let below = entry.band.map { Brand.Contrast.composite($0, over: surface) } ?? surface
+            var below = entry.band.map { Brand.Contrast.composite($0, over: surface) } ?? surface
+            if let own = entry.runBackground { below = Brand.Contrast.composite(own, over: below) }
             let ratio = Brand.Contrast.ratio(
                 Color(nsColor: Brand.Contrast.composite(entry.color, over: below)),
                 on: Color(nsColor: below))
@@ -108,8 +123,7 @@ public struct ThemeLegibility: Equatable {
                 id: key, hex: entry.hex, ratio: ratio, share: Double(entry.count) / Double(total))
         }
         return ThemeLegibility(
-            inks: inks.sorted { ($0.ratio, $0.id) < ($1.ratio, $1.id) },
-            threshold: input.isLargeText ? Brand.Contrast.aaLarge : Brand.Contrast.aaNormal)
+            inks: inks.sorted { ($0.ratio, $0.id) < ($1.ratio, $1.id) })
     }
 
     /// A stock theme to offer instead, only when the same measurement says it reads.
@@ -143,28 +157,26 @@ public struct ThemeLegibility: Equatable {
     }
 
     private static func text(of input: Input) -> NSAttributedString {
-        // Only the colors matter here, so a font change doesn't measure again.
-        let font = CodeFont.resolved(
-            family: SettingsDefaults.fontName, size: SettingsDefaults.fontSize, ligatures: false)
-        return input.language == .terminal
+        input.language == .terminal
             ? ANSIRenderer.attributedString(
-                input.code, font: font,
+                input.code, font: input.font,
                 palette: .resolved(for: input.theme, mode: input.terminalPalette),
                 columns: input.terminalColumns)
             : HighlightManager.shared.attributedString(
-                for: input.code, language: input.language, theme: input.theme, font: font)
+                for: input.code, language: input.language, theme: input.theme, font: input.font)
     }
 
     private struct Count {
         let color: NSColor
         let hex: String
         let band: NSColor?
+        let runBackground: NSColor?
         var count: Int
     }
 
-    /// Non-whitespace glyphs per color and surface, skipping what can't be read as text on the
-    /// card: redacted rows, rows dimmed by focus, terminal runs with their own background, and
-    /// runs with no color of their own, which take theirs from the environment.
+    /// Non-whitespace glyphs per color and surface, skipping redacted rows, rows dimmed by focus,
+    /// and runs with no color of their own, which take theirs from the environment. A theme or a
+    /// terminal can paint a run's own background, which is then what its text sits on.
     private static func glyphCounts(
         in text: NSAttributedString, input: Input
     ) -> [String: Count] {
@@ -194,16 +206,21 @@ public struct ThemeLegibility: Equatable {
                 text.enumerateAttributes(
                     in: NSRange(location: location, length: end - location)
                 ) { attributes, run, _ in
-                    guard input.language != .terminal || attributes[.backgroundColor] == nil,
-                        let color = attributes[.foregroundColor] as? NSColor,
+                    guard let color = attributes[.foregroundColor] as? NSColor,
                         let hex = hex(of: color)
                     else { return }
+                    let runBackground = attributes[.backgroundColor] as? NSColor
                     let glyphs = (run.location..<(run.location + run.length))
                         .filter { string.character(at: $0) > 0x20 }.count
                     guard glyphs > 0 else { return }
-                    let key = "\(hex)/\(surface.flatMap(Self.hex(of:)) ?? "")"
-                    counts[key, default: Count(color: color, hex: hex, band: surface, count: 0)]
-                        .count += glyphs
+                    let key = [color, surface, runBackground]
+                        .map { $0.flatMap(Self.hex(of:)) ?? "" }.joined(separator: "/")
+                    counts[
+                        key,
+                        default: Count(
+                            color: color, hex: hex, band: surface, runBackground: runBackground,
+                            count: 0)
+                    ].count += glyphs
                 }
             }
             line += 1

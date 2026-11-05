@@ -685,8 +685,6 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
     }
 
-    /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and
-    /// never switch tools, while ⌘2 (Arrow) still selects its tool with code focused.
     /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.
     @MainActor
     func testLegibilityBadgeWarnsAndItsFixSwitchesTheTheme() throws {
@@ -706,10 +704,13 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("theme-legibility-details", in: app), in: app, timeout: 3)
         let fix = element("theme-legibility-fix-button", in: app)
         assertExists(fix, in: app, timeout: 3)
+        assertExists(element("theme-legibility-dismiss-button", in: app), in: app)
         fix.click()
         XCTAssertTrue(badge.waitForNonExistence(timeout: 5))
     }
 
+    /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and
+    /// never switch tools, while ⌘2 (Arrow) still selects its tool with code focused.
     @MainActor
     func testAnnotationShortcutsDoNotHijackCodeTyping() throws {
         continueAfterFailure = false
