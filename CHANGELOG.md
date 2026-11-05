@@ -14,6 +14,13 @@ can never drift.
 
 ### Added
 
+- The editor's Copy button turns into a check after a successful copy, without changing
+  its width. A failed copy never shows the check.
+- Annotation tools tint under the pointer and scale slightly on press; theme chips lift on
+  hover like the swatches. Reduce Motion removes the scaling and every transition.
+- A transparent background now shows a checker behind the editor's preview. The checker
+  follows the system appearance there and on comparison boards.
+
 - Type a legend on a selected counter, or pass `--counter-label`, to list it under the
   capture. Masking is best effort: a label that looks like a secret or matches a redacted
   line or a value in blurred code is replaced, so check the legend before sharing.

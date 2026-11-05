@@ -28,6 +28,7 @@ final class EditorSession {
     let presentation: EditorPresentation
     /// The window's Format Code work, retained so a large format is not cancelled early.
     let codeFormat: CodeFormatOperation
+    let copyConfirmation = CopyConfirmation()
     /// The association whose recipe styled the loaded file, for Copy Command to reference.
     var appliedRecipeID: UUID?
 

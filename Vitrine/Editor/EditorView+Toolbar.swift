@@ -156,11 +156,7 @@ extension EditorView {
     /// to the Copy Image command's shortcut so the menu and CTA stay in lockstep.
     @ViewBuilder func copyImageCTA(compact: Bool) -> some View {
         let button = GradientCTAButton {
-            Image(systemName: VitrineCommand.copyImage.systemImageName)
-                .font(.system(size: 12, weight: .semibold))
-            if !compact {
-                Text("Copy image")
-            }
+            CopyImageCTALabel(confirmation: session.copyConfirmation, compact: compact)
         } action: {
             copyImage()
         }
@@ -261,6 +257,7 @@ extension EditorView {
         // The HUD shows near the menu bar regardless of `closeAfterCopy`.
         let outcome = RenderedImageCopy.copy(settings.exportConfig, settings: settings)
         session.feedback(ExportFeedback.copyOutcome(outcome))
+        session.copyConfirmation.record(outcome)
         // Close *this* window — captured via `WindowAccessor`, so it never depends on
         // `keyWindow` being right — deferred past the button's action, and `close()`
         // (not `performClose`) so it is unconditional.

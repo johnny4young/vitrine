@@ -560,6 +560,9 @@ extension EditorView {
         GeometryReader { proxy in
             ZStack {
                 VitrineTokens.Surface.stage
+                if case .transparent = settings.style.background {
+                    TransparencyGrid()
+                }
                 if let glow = glowColors {
                     RadialGradient(
                         colors: [glow.0.opacity(0.22), .clear],
