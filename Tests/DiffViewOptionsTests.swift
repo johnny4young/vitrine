@@ -211,12 +211,13 @@ struct DiffViewOptionsTests {
                 print("DIAG PNGO \(png(try folded("omega1", redacted: true)))")
                 let same = try FontLigatureTests.compareRenderedPixels(
                     try folded("alpha1", redacted: true), try folded("alpha1", redacted: true))
-                print("DIAG same-secret differing=\(same.differingPixels) max=\(same.maxChannelDelta)")
+                print("DIAG same-secret \(same.differingPixels) max=\(same.maxChannelDelta)")
                 var plain = diffConfig()
                 plain.code = Self.patch.replacingOccurrences(of: "-four", with: "-alpha1")
                 plain.diffContextLines = 0
                 print("DIAG PNGP \(png(try render(plain)))")
-                print("DIAG fonts \(CodeFont.resolved(family: "JetBrains Mono", size: 14, ligatures: false))")
+                let font = CodeFont.resolved(family: "JetBrains Mono", size: 14, ligatures: false)
+                print("DIAG fonts \(font)")
             }
             RenderSettling.settleFontCaches()
         }
