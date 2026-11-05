@@ -555,8 +555,7 @@ extension EditorView {
             PreviewCodeSynchronizer(settings: settings) { code in
                 stagedPreviewCode = code
                 legibility.stagedCode = code
-                session.presetThumbnails.stagedCode = code
-                session.presetThumbnails.stagedGeneration = settings.documentGeneration
+                session.presetThumbnails.stage(code, generation: settings.documentGeneration)
             }
         }
     }
@@ -950,8 +949,7 @@ private struct CodeDocumentEditor: View {
             reindentOnPaste: reindentOnPaste,
             onReplaceAllPaste: beginPastedDocument,
             onUserEdit: leaveAnnotationContext,
-            slideDividers: carouselSplit.dividers,
-            slideDividerRevision: carouselSplit.dividerRevision
+            slideDividers: carouselSplit.dividerLayout
         )
         .background {
             SlideDividerRefresher(
@@ -984,7 +982,7 @@ private struct CodeDocumentEditor: View {
 
 /// Childless, and it reads the document only while dividers are on and only once settled, so
 /// a keystroke never re-evaluates it.
-private struct SlideDividerRefresher: View {
+struct SlideDividerRefresher: View {
     let settings: AppSettings
     let model: CarouselSplitModel
     let thumbnails: PresetThumbnailModel
@@ -993,15 +991,19 @@ private struct SlideDividerRefresher: View {
     private struct Input: Equatable {
         let code: String?
         let split: CarouselSplit
+        /// Text that settles back to what it was still needs its split, or a divider an edit
+        /// removed stays gone after that edit is undone.
+        let handoffs: Int
     }
 
     var body: some View {
+        let handoffs = model.showsDividers ? thumbnails.stagedHandoffs : 0
         let code = model.dividerSource(
             style: settings.style, isUnlocked: entitlements.isUnlocked(.carouselExport),
             thumbnails: thumbnails, documentGeneration: settings.documentGeneration)
         Color.clear
             .frame(width: 0, height: 0)
-            .task(id: Input(code: code, split: model.split)) {
+            .task(id: Input(code: code, split: model.split, handoffs: handoffs)) {
                 await model.refreshDividers(code: code)
             }
             .accessibilityHidden(true)

@@ -229,6 +229,17 @@
         }
       }
     },
+    "slide %lld · line %@" : {
+      "comment" : "Label on the boundary of a one-line slide drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · línea %2$@"
+          }
+        }
+      }
+    },
     "Slide %lld of %lld, line %@" : {
       "comment" : "Accessibility label of a one-line slide tile in the carousel filmstrip.",
       "localizations" : {

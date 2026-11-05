@@ -8,10 +8,9 @@ import VitrineRendering
 final class CarouselSplitModel {
     var split = CarouselSplit()
     var showsDividers = false
-    private(set) var dividers: [SlideDivider] = []
-    /// Moves with every settled split, even an equal one: the text view's copy has been
-    /// shifted by edits since, and an edit undone can leave it out of step with `dividers`.
-    private(set) var dividerRevision = 0
+    /// The revision moves with every settled split, even an equal one: the text view's copy
+    /// has been shifted by edits since, and an edit undone can leave it missing a divider.
+    private(set) var dividerLayout = SlideDividerLayout()
 
     /// The settled text dividers follow, or `nil` when the editor must show none: turned off,
     /// no longer unlocked, a capture the carousel refuses, or text from a replaced document.
@@ -27,16 +26,15 @@ final class CarouselSplitModel {
 
     func refreshDividers(code: String?) async {
         guard let code else {
-            if !dividers.isEmpty {
-                dividers = []
-                dividerRevision += 1
+            if !dividerLayout.dividers.isEmpty {
+                dividerLayout = SlideDividerLayout(revision: dividerLayout.revision + 1)
             }
             return
         }
         let dividers = await split.dividers(in: code)
         guard !Task.isCancelled else { return }
-        self.dividers = dividers
-        dividerRevision += 1
+        dividerLayout = SlideDividerLayout(
+            revision: dividerLayout.revision + 1, source: code, dividers: dividers)
     }
 }
 

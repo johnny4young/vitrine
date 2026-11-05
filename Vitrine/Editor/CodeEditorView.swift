@@ -22,8 +22,7 @@ struct CodeEditorView: NSViewRepresentable {
     }
     /// Called on each user edit, so a draw tool or selected mark stops owning ⌘Z.
     var onUserEdit: () -> Void = {}
-    var slideDividers: [SlideDivider] = []
-    var slideDividerRevision = 0
+    var slideDividers = SlideDividerLayout()
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -102,9 +101,9 @@ struct CodeEditorView: NSViewRepresentable {
             // Theme/language/font changed: recolor now (text edits are debounced).
             coordinator.applyHighlight(to: textView)
         }
-        if coordinator.appliedDividerRevision != slideDividerRevision {
-            coordinator.appliedDividerRevision = slideDividerRevision
-            (textView as? CodeTextView)?.slideDividers = slideDividers
+        if coordinator.appliedDividerRevision != slideDividers.revision {
+            coordinator.appliedDividerRevision = slideDividers.revision
+            (textView as? CodeTextView)?.install(slideDividers)
         }
     }
 
@@ -368,6 +367,13 @@ final class CodeTextView: NSTextView {
     var slideDividerColor: NSColor = .tertiaryLabelColor
     private var dividersByOffset: [Int: SlideDivider] = [:]
 
+    /// A split that finished after further typing is older than the shifted copy, so the copy
+    /// stays and the settle that typing already scheduled replaces it.
+    func install(_ layout: SlideDividerLayout) {
+        if let source = layout.source, source != string { return }
+        slideDividers = layout.dividers
+    }
+
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
         guard !dividersByOffset.isEmpty else { return }
@@ -382,20 +388,24 @@ final class CodeTextView: NSTextView {
         else { return }
         let top = textContainerOrigin.y
         let start = content.documentRange.location
+        var found: [(divider: SlideDivider, y: CGFloat)] = []
         manager.enumerateTextLayoutFragments(from: viewport.location) { fragment in
             let location = fragment.rangeInElement.location
             guard location.compare(viewport.endLocation) == .orderedAscending else { return false }
             if let divider = dividersByOffset[content.offset(from: start, to: location)] {
-                drawSlideDivider(divider, atY: (fragment.layoutFragmentFrame.minY + top).rounded())
+                found.append((divider, (fragment.layoutFragmentFrame.minY + top).rounded()))
             }
             return true
         }
+        // Outside the enumeration, so labels aren't measured while it walks the layout.
+        for item in found { drawSlideDivider(item.divider, atY: item.y) }
     }
 
     private func drawSlideDivider(_ divider: SlideDivider, atY y: CGFloat) {
         let label = NSAttributedString(
-            string: String(
-                localized: "slide \(divider.slideNumber) · lines \(divider.lineRange)"),
+            string: divider.isSingleLine
+                ? String(localized: "slide \(divider.slideNumber) · line \(divider.lineRange)")
+                : String(localized: "slide \(divider.slideNumber) · lines \(divider.lineRange)"),
             attributes: [
                 .font: NSFont.monospacedSystemFont(ofSize: 9, weight: .medium),
                 .foregroundColor: slideDividerColor.withAlphaComponent(0.75),

@@ -31,6 +31,7 @@ nonisolated struct SlideDivider: Equatable, Sendable {
     var offset: Int
     var slideNumber: Int
     var lineRange: String
+    var isSingleLine = false
 
     /// Where this divider belongs after an edit, until the settled split replaces it. `nil`
     /// when the edit removed its position. Text typed at a slide's start stays on its line.
@@ -45,6 +46,14 @@ nonisolated struct SlideDivider: Equatable, Sendable {
         }
         return moved
     }
+}
+
+/// One settled split for the editor, and the text its offsets are true for. A `nil` source
+/// means no dividers, whatever the text.
+nonisolated struct SlideDividerLayout: Equatable, Sendable {
+    var revision = 0
+    var source: String?
+    var dividers: [SlideDivider] = []
 }
 
 /// Splits a long snippet into the pages of a carousel export: N slides
@@ -141,7 +150,8 @@ enum CarouselPaginator {
             guard let (index, slide) = next, slide.firstLine == line else { continue }
             dividers.append(
                 SlideDivider(
-                    offset: offset + 1, slideNumber: index + 2, lineRange: slide.lineRange))
+                    offset: offset + 1, slideNumber: index + 2, lineRange: slide.lineRange,
+                    isSingleLine: slide.lineCount == 1))
             next = pending.next()
         }
         return dividers

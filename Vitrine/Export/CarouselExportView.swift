@@ -77,7 +77,8 @@ struct CarouselExportView: View {
     private var rule: LocalizedStringKey? { EditorView.carouselRule(for: baseConfig) }
 
     private var request: SplitRequest {
-        SplitRequest(split: splitModel.split, code: CarouselPaginator.splittableCode(of: baseConfig))
+        SplitRequest(
+            split: splitModel.split, code: CarouselPaginator.splittableCode(of: baseConfig))
     }
 
     private var pages: [CarouselPaginator.Slide] { outcome?.slides(for: request.code) ?? [] }
