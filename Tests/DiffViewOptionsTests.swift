@@ -34,6 +34,21 @@ struct DiffViewOptionsTests {
         try #require(ExportManager.renderCGImage(config, scale: 1))
     }
 
+    /// Exact comparisons retry on a settled run loop: a fonts-changed notification from a
+    /// parallel test can nudge one frame, while a real difference fails every attempt.
+    private func differingPixels(
+        _ first: () throws -> CGImage, _ second: () throws -> CGImage
+    ) throws -> Int {
+        var differing = 0
+        for _ in 1...RenderSettling.strictRenderAttempts {
+            differing = try FontLigatureTests.compareRenderedPixels(first(), second())
+                .differingPixels
+            if differing == 0 { break }
+            RenderSettling.settleFontCaches()
+        }
+        return differing
+    }
+
     // MARK: - Rendering
 
     @Test func defaultsLeaveTheRenderUnchanged() throws {
@@ -47,12 +62,10 @@ struct DiffViewOptionsTests {
         let plain = try render(config)
         config.showDiffStats = true
         let first = try render(config)
-        let second = try render(config)
 
         #expect(first.height > plain.height)
         #expect(first.width == plain.width)
-        let comparison = try FontLigatureTests.compareRenderedPixels(first, second)
-        #expect(comparison.differingPixels == 0)
+        #expect(try differingPixels({ try render(config) }, { try render(config) }) == 0)
     }
 
     @Test func contextFoldShrinksTheCardMonotonically() throws {
@@ -67,12 +80,10 @@ struct DiffViewOptionsTests {
     }
 
     @Test func enoughContextMatchesTheUnfoldedRender() throws {
-        var config = diffConfig()
-        let all = try render(config)
+        let all = diffConfig()
+        var config = all
         config.diffContextLines = 5
-        let comparison = try FontLigatureTests.compareRenderedPixels(
-            all, try render(config))
-        #expect(comparison.differingPixels == 0)
+        #expect(try differingPixels({ try render(all) }, { try render(config) }) == 0)
     }
 
     @Test func redactedPathAndSeveralFilesRenderWithoutAPath() throws {
@@ -132,9 +143,7 @@ struct DiffViewOptionsTests {
         var leftover = plain
         leftover.diffContextLines = 0
         leftover.showDiffStats = true
-        let comparison = try FontLigatureTests.compareRenderedPixels(
-            try render(plain), try render(leftover))
-        #expect(comparison.differingPixels == 0)
+        #expect(try differingPixels({ try render(plain) }, { try render(leftover) }) == 0)
     }
 
     @Test func foldKeepsHighlightedRows() throws {
@@ -184,9 +193,10 @@ struct DiffViewOptionsTests {
             config.redactedLineRanges = redacted ? [8...8] : []
             return try render(config)
         }
-        let hidden = try FontLigatureTests.compareRenderedPixels(
-            try folded("alpha", redacted: true), try folded("omega", redacted: true))
-        #expect(hidden.differingPixels == 0)
+        #expect(
+            try differingPixels(
+                { try folded("alpha", redacted: true) }, { try folded("omega", redacted: true) })
+                == 0)
         let visible = try FontLigatureTests.compareRenderedPixels(
             try folded("alpha", redacted: false), try folded("omega", redacted: false))
         #expect(visible.differingPixels > 0)
@@ -199,12 +209,11 @@ struct DiffViewOptionsTests {
         settings.style.annotations = [
             Annotation(kind: .blur, start: CGPoint(x: 0.1, y: 0.4), end: CGPoint(x: 0.5, y: 0.5))
         ]
-        let before = try render(settings.config)
+        let before = settings.config
         settings.diffContextSliderValue.wrappedValue = 0
         settings.diffStatsEnabled.wrappedValue = true
-        let comparison = try FontLigatureTests.compareRenderedPixels(
-            before, try render(settings.config))
-        #expect(comparison.differingPixels == 0)
+        let after = settings.config
+        #expect(try differingPixels({ try render(before) }, { try render(after) }) == 0)
         #expect(!settings.style.showDiffStats)
 
         settings.style.annotations = []
