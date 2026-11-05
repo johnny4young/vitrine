@@ -144,7 +144,7 @@ struct AnnotationEditingOverlay: View {
 
     private func delete(_ id: UUID) {
         onBeginEdit()
-        settings.style.annotations.removeAll { $0.id == id }
+        settings.style.annotations.removeMark(id)
         if selection == id { selection = nil }
         if editingAnnotationID == id { editingAnnotationID = nil }
         onEndEdit()
