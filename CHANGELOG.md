@@ -14,6 +14,11 @@ can never drift.
 
 ### Added
 
+- General settings report when the global hotkey is also a Vitrine menu command or an
+  enabled macOS shortcut, with a Change… action that starts recording. macOS does not
+  reveal other apps' hotkeys, so clashes with them are not reported. A macOS shortcut kept
+  with the recorder's Use Anyway is not reported again.
+- The locked Brand Kit pane previews a sample mark drawn by the real renderer.
 - See five copyable recipe commands with their free or PRO access, and the order in which
   defaults, recipes and flags override each other.
 - Deleting a counter renumbers the badges above it, so they stay in order.
@@ -46,6 +51,8 @@ can never drift.
 
 ### Changed
 
+- Gather the Library's preset actions in one menu beside the preset picker. Export is
+  labeled Export Saved Presets… because it writes every saved preset to one file.
 - Move Pin snapshot and Make This Window the Default into the toolbar's More menu until
   the window is wide enough for every action.
 - Open Web Snapshot on HTML in builds without URL capture, with the reason one click

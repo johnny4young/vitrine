@@ -6,6 +6,7 @@ import VitrineRendering
 
     import AppKit
     import CryptoKit
+    import KeyboardShortcuts
 
     /// Handles explicit development and UI-automation launch arguments.
     ///
@@ -67,6 +68,7 @@ import VitrineRendering
         /// New through its real version gate; `--skip-onboarding` just marks the
         /// quick-start as seen; `--open-second-editor` drives the multi-window UI smoke; `--demo-brand-kit-free`
         /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests;
+        /// `--demo-hotkey-conflict` stores a menu-taken hotkey, in an isolated suite only;
         /// `--web-snapshot-ui-test-renderer` keeps that strict UI journey deterministic
         /// when XCTest cannot launch WebKit's out-of-process renderer;
         /// the `--memory-*` hooks run bounded lifecycle evidence journeys and terminate
@@ -231,6 +233,13 @@ import VitrineRendering
                 }
                 EditorWindowController.shared.show()
                 didOpenWindow = true
+            }
+            // The recorder refuses a menu shortcut, so only an older stored one can clash.
+            if arguments.contains("--demo-hotkey-conflict"),
+                ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"]?.isEmpty == false
+            {
+                KeyboardShortcuts.setShortcut(
+                    .init(.s, modifiers: [.command, .shift]), for: .quickCapture)
             }
             if arguments.contains("--open-settings") {
                 SettingsWindowManager.shared.show()

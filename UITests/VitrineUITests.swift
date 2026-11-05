@@ -104,6 +104,8 @@ final class VitrineUITests: XCTestCase {
             defer { app.terminate() }
             assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
             element("settings-nav-brandKit", in: app).click()
+            assertHittable(
+                "brand-kit-restore-button", in: app, "The locked pane should offer Restore")
             app.buttons["Unlock Vitrine PRO"].click()
             assertExists(element("pro-price-unavailable", in: app), in: app, timeout: 5)
             XCTAssertFalse(element("pro-buy-button", in: app).isEnabled)
@@ -706,8 +708,12 @@ final class VitrineUITests: XCTestCase {
         presetName.typeKey("a", modifierFlags: .command)
         presetName.typeText("Deletion example")
         app.windows.firstMatch.sheets.buttons["Save"].click()
-        element("apply-style-preset-button", in: app).click()
-        element("delete-style-preset-button", in: app).click()
+        let presetActions = element("style-preset-actions-menu", in: app)
+        presetActions.click()
+        chooseMenuItem("Apply", in: app)
+        // Delete… disappears as it presents the dialog, so click its center.
+        presetActions.click()
+        chooseMenuItem("Delete…", in: app, clickingCenter: true)
         let presetSheet = app.windows.firstMatch.sheets.firstMatch
         XCTAssertTrue(presetSheet.waitForExistence(timeout: 3))
         XCTAssertTrue(
@@ -720,12 +726,18 @@ final class VitrineUITests: XCTestCase {
         app.typeKey(.return, modifierFlags: [])
         let presetPicker = element("style-preset-picker", in: app)
         XCTAssertEqual(presetPicker.value as? String, "Deletion example")
-        element("delete-style-preset-button", in: app).click()
+        presetActions.click()
+        chooseMenuItem("Delete…", in: app, clickingCenter: true)
         app.typeKey(.escape, modifierFlags: [])
         XCTAssertEqual(presetPicker.value as? String, "Deletion example")
-        element("delete-style-preset-button", in: app).click()
+        presetActions.click()
+        chooseMenuItem("Delete…", in: app, clickingCenter: true)
         app.windows.firstMatch.sheets.buttons["Delete Preset"].click()
-        XCTAssertFalse(element("delete-style-preset-button", in: app).isEnabled)
+        // With nothing selected the menu still opens, its preset actions disabled.
+        presetActions.click()
+        XCTAssertTrue(app.menuItems["Delete…"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.menuItems["Delete…"].isEnabled)
+        app.typeKey(.escape, modifierFlags: [])
         presetPicker.click()
         XCTAssertTrue(presetPicker.menuItems.firstMatch.waitForExistence(timeout: 3))
         XCTAssertFalse(presetPicker.menuItems["Deletion example"].exists)
@@ -874,6 +886,9 @@ final class VitrineUITests: XCTestCase {
         let brandKitPane = element("settings-brandkit-pane", in: app)
         assertExists(brandKitPane, in: app, timeout: 3)
         assertExists(element("settings-brand-kit-upsell", in: app), in: app, timeout: 3)
+        assertExists(element("brand-kit-locked-preview", in: app), in: app, timeout: 3)
+        assertHittable(
+            "brand-kit-unlock-button", in: app, "The locked pane should offer the unlock")
         XCTAssertTrue(
             element("settings-brand-kit-controls", in: app).waitForNonExistence(timeout: 2),
             "Deactivation must re-lock Brand Kit in the same running app")
