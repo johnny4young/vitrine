@@ -339,6 +339,8 @@ final class StatusItemController: NSObject, NSPopoverDelegate {
     }
 
     func popoverDidShow(_ notification: Notification) {
+        // A panel closed during its show animation must not leave observers or a watcher behind.
+        guard popover?.isShown == true else { return }
         installDismissalObservers()
         panelState.startWatchingClipboard()
     }

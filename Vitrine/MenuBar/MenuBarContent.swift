@@ -151,23 +151,27 @@ struct MenuBarContent: View {
     }
 
     /// What the capture button will produce, updated live as the theme or clipboard changes.
-    @ViewBuilder private var captureSummary: some View {
-        if let line = MenuBarCaptureSummary.line(
+    /// The row is always laid out because AppKit sizes the popover only when it opens.
+    private var captureSummary: some View {
+        let summary = MenuBarCaptureSummary.make(
             content: panelState.clipboard,
             themeName: settings.config.theme.displayName,
             destination: settings.selectedPreset,
             capturesURLs: settings.treatURLsAsScreenshot && NetworkCapability.isURLCaptureEnabled)
-        {
-            Text(verbatim: line)
-                .font(.system(size: VitrineTokens.FontSize.caption))
-                .foregroundStyle(VitrineTokens.Text.tertiary)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity)
-                .padding(.top, -4)
-                .help(line)
-                .accessibilityIdentifier("menu-capture-summary")
+        return ViewThatFits(in: .horizontal) {
+            Text(verbatim: summary?.line ?? " ")
+            Text(verbatim: summary?.lineWithoutTheme ?? " ")
         }
+        .font(.system(size: VitrineTokens.FontSize.caption))
+        .foregroundStyle(VitrineTokens.Text.tertiary)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity)
+        .padding(.top, -4)
+        .help(summary?.line ?? "")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: summary?.accessibilityLabel ?? ""))
+        .accessibilityHidden(summary == nil)
+        .accessibilityIdentifier("menu-capture-summary")
     }
 
     /// The last capture outcome plus any inline recovery actions.

@@ -1503,6 +1503,26 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMenuBarSummarizesACopiedImage() throws {
+        continueAfterFailure = false
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setData(Data([0x89, 0x50, 0x4E, 0x47]), forType: .png))
+
+        let app = launch(arguments: VitrineLaunchArguments.menuBar)
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        openMenuBarPanel(in: app)
+
+        // Types alone identify an image, so this holds under any pasteboard access behavior.
+        let summary = element("menu-capture-summary", in: app)
+        XCTAssertTrue(summary.waitForExistence(timeout: 3), "A copied image should be summarized")
+        XCTAssertEqual(summary.label, "Image")
+    }
+
+    @MainActor
     func testMenuBarRendersClipboardWithDestinationPreset() throws {
         continueAfterFailure = false
         let pasteboard = NSPasteboard.general
@@ -1518,10 +1538,6 @@ final class VitrineUITests: XCTestCase {
         // Preserve an end-to-end check through the painted status item. Opening the
         // panel after launch also keeps the XCTest automation handshake ahead of AppKit.
         openMenuBarPanel(in: app)
-
-        XCTAssertTrue(
-            element("menu-capture-summary", in: app).waitForExistence(timeout: 3),
-            "Text on the clipboard should show the capture summary under the capture button")
 
         assertHittable(
             "menu-capture-preset-picker", in: app,

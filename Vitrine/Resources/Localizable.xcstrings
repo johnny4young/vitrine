@@ -7789,6 +7789,23 @@
         }
       }
     },
+    "%lld by %lld" : {
+      "comment" : "Menu bar capture summary, read aloud: output width by height in pixels.",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld by %2$lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld por %2$lld"
+          }
+        }
+      }
+    },
     "%lld code blocks" : {
       "comment" : "Menu bar capture summary: the clipboard holds several code blocks.",
       "localizations" : {

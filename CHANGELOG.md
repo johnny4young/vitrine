@@ -16,7 +16,7 @@ can never drift.
 
 - Show what the next capture will be under the menu bar's capture button: language, line
   count, theme and destination. Language and lines appear only when System Settings always
-  allows Vitrine to read the clipboard; opening the panel never raises the paste alert.
+  allows Vitrine to read the clipboard; otherwise the panel leaves the contents unread.
 - Bring the main editor's code into a social card with Use editor code.
 - Show a social card's empty code and footer slots in the preview, and its output size
   under it. Empty slots are never exported.
