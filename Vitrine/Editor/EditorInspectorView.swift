@@ -37,6 +37,30 @@ struct EditorInspectorView: View {
     @State private var secretScan: SecretScanReport?
 
     var body: some View {
+        ScrollViewReader { proxy in
+            inspectorScrollView
+                .onChange(of: showLines) { _, open in
+                    reveal("inspector-disclosure-lines", when: open, proxy)
+                }
+                .onChange(of: showHeader) { _, open in
+                    reveal("inspector-disclosure-header", when: open, proxy)
+                }
+                .onChange(of: showOutput) { _, open in
+                    reveal("inspector-disclosure-output", when: open, proxy)
+                }
+        }
+    }
+
+    /// A section opened at the bottom edge would otherwise expand out of view.
+    private func reveal(_ section: String, when isExpanded: Bool, _ proxy: ScrollViewProxy) {
+        guard isExpanded else { return }
+        Task {
+            await Task.yield()
+            proxy.scrollTo(section, anchor: .top)
+        }
+    }
+
+    private var inspectorScrollView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 scopeNote
@@ -147,6 +171,7 @@ struct EditorInspectorView: View {
                                     .accessibilityIdentifier("secret-scan-summary")
                             }
                         }
+                        .id("inspector-disclosure-lines")
                     }
 
                     InspectorDisclosure(
@@ -155,6 +180,7 @@ struct EditorInspectorView: View {
                     ) {
                         MetadataFields(settings: settings)
                     }
+                    .id("inspector-disclosure-header")
 
                     InspectorDisclosure(
                         label: Text("Output"), identifier: "inspector-disclosure-output",
@@ -163,6 +189,7 @@ struct EditorInspectorView: View {
                         AlternativeTextField(settings: settings)
                         outputControls
                     }
+                    .id("inspector-disclosure-output")
                 }
             }
             .padding(.top, 18)

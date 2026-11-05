@@ -27,6 +27,7 @@ can never drift.
 - Show a watched file as a Live chip under the code header, with its name and its
   reload and stop actions, and add those actions to the command palette.
 - State in the inspector that captures render locally.
+- Scroll an inspector section into view when it opens.
 
 ### Changed
 
