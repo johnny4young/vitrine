@@ -68,8 +68,10 @@ struct CanvasDock: View {
     let entitlements: Entitlements
     let legibility: LegibilityModel
     let presetThumbnails: PresetThumbnailModel
+    let presentFramePaywall: () -> Void
 
     @State private var openPane: InspectorPane?
+    @State private var lastClose: DockPopoverClose?
 
     var body: some View {
         let style = settings.style
@@ -78,12 +80,27 @@ struct CanvasDock: View {
                 CanvasDockButton(
                     title: pane.dockTitle, value: pane.dockValue(in: style),
                     identifier: "canvas-dock-\(pane.rawValue)"
-                ) { openPane = pane }
-                .popover(isPresented: isOpen(pane), arrowEdge: .top) {
-                    EditorInspectorView(
-                        settings: settings, themes: themes, presets: presets,
-                        entitlements: entitlements, legibility: legibility,
-                        presetThumbnails: presetThumbnails, pane: pane)
+                ) {
+                    openPane = DockPopoverClose.pane(
+                        afterPressing: pane, open: openPane, lastClose: lastClose,
+                        now: ProcessInfo.processInfo.systemUptime)
+                }
+                .background {
+                    DockPopoverAnchor(isPresented: openPane == pane) {
+                        lastClose = DockPopoverClose(
+                            pane: pane, uptime: ProcessInfo.processInfo.systemUptime)
+                        if openPane == pane { openPane = nil }
+                    } content: { undoManager in
+                        EditorInspectorView(
+                            settings: settings, themes: themes, presets: presets,
+                            entitlements: entitlements, legibility: legibility,
+                            presetThumbnails: presetThumbnails, pane: pane,
+                            presentFramePaywall: {
+                                openPane = nil
+                                presentFramePaywall()
+                            },
+                            windowUndoManager: undoManager)
+                    }
                 }
             }
         }
@@ -93,6 +110,8 @@ struct CanvasDock: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
         }
+        // Four capped values and the longest Spanish titles stay under 840 pt, inside the
+        // stage of the narrowest (940 pt) window.
         .fixedSize()
         .padding(.bottom, VitrineTokens.Spacing.sm)
         .accessibilityElement(children: .contain)
@@ -111,11 +130,78 @@ struct CanvasDock: View {
             }
         #endif
     }
+}
 
-    private func isOpen(_ pane: InspectorPane) -> Binding<Bool> {
-        Binding(
-            get: { openPane == pane },
-            set: { if !$0, openPane == pane { openPane = nil } })
+/// When a dock popover last closed. A click on its own button closes it on mouse down,
+/// before the button's action runs, so that action must not reopen it.
+struct DockPopoverClose: Equatable {
+    let pane: InspectorPane
+    let uptime: TimeInterval
+
+    static func pane(
+        afterPressing pane: InspectorPane, open: InspectorPane?, lastClose: DockPopoverClose?,
+        now: TimeInterval
+    ) -> InspectorPane? {
+        if open == pane { return nil }
+        if let lastClose, lastClose.pane == pane, now - lastClose.uptime < 0.5 { return nil }
+        return pane
+    }
+}
+
+/// An AppKit popover, because SwiftUI's is transient and closed whenever its color well,
+/// open panel or paywall took focus. Semitransient closes only for clicks in the editor
+/// window, Escape, or an explicit close.
+private struct DockPopoverAnchor<Content: View>: NSViewRepresentable {
+    let isPresented: Bool
+    let onClose: () -> Void
+    @ViewBuilder let content: (UndoManager?) -> Content
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> NSView { NSView() }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        let coordinator = context.coordinator
+        coordinator.onClose = onClose
+        coordinator.isPresented = isPresented
+        guard isPresented else { return coordinator.close() }
+        guard coordinator.popover == nil else { return }
+        // On the next turn, once the anchor is laid out in its window.
+        Task { [weak view, content] in
+            guard let view, let window = view.window, coordinator.isPresented,
+                coordinator.popover == nil
+            else { return }
+            let hosting = NSHostingController(
+                rootView: content(window.undoManager).onExitCommand { coordinator.close() })
+            hosting.sizingOptions = .preferredContentSize
+            let popover = NSPopover()
+            popover.behavior = .semitransient
+            popover.contentViewController = hosting
+            popover.delegate = coordinator
+            coordinator.popover = popover
+            popover.show(relativeTo: view.bounds, of: view, preferredEdge: .maxY)
+            // Keyboard focus follows, so Tab reaches the section and Escape closes it.
+            hosting.view.window?.makeKey()
+        }
+    }
+
+    static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
+        coordinator.onClose = nil
+        coordinator.isPresented = false
+        coordinator.close()
+    }
+
+    final class Coordinator: NSObject, NSPopoverDelegate {
+        var popover: NSPopover?
+        var onClose: (() -> Void)?
+        var isPresented = false
+
+        func close() { popover?.close() }
+
+        func popoverDidClose(_ notification: Notification) {
+            popover = nil
+            onClose?()
+        }
     }
 }
 
@@ -142,7 +228,7 @@ private struct CanvasDockButton: View {
                     .foregroundStyle(VitrineTokens.Text.primary)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .frame(maxWidth: 150)
+                    .frame(maxWidth: 120)
                 Image(systemName: "chevron.up")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(VitrineTokens.Text.secondary)

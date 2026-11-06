@@ -49,7 +49,8 @@ extension EditorView {
                         reindentOnPaste: environment.appSettings.reindentOnPaste,
                         pasteFromClipboard: pasteFromClipboard,
                         beginPastedDocument: beginPastedDocument,
-                        leaveAnnotationContext: leaveAnnotationContext)
+                        leaveAnnotationContext: leaveAnnotationContext,
+                        isCollapsed: isCanvasMode)
                 }
             }
         }
@@ -62,11 +63,7 @@ extension EditorView {
         // Accept a dropped source file or selected text. `.onDrop` with UTType
         // payloads is the current API; the bounded item-provider bridge runs in one
         // owned task so a replacement drop or disappearing editor cancels it.
-        .onDrop(of: [.image, .fileURL, .text], isTargeted: $isDropTargeted) { providers in
-            dropTask?.cancel()
-            dropTask = Task { await handleDrop(providers) }
-            return true
-        }
+        .onDrop(of: Self.droppableTypes, isTargeted: $isDropTargeted, perform: acceptDrop)
         .onChange(of: settings.style.foregroundImage) { _, _ in
             imageProcessing.cancel()
         }
@@ -77,6 +74,14 @@ extension EditorView {
         }
         .overlay { dropAffordance }
         .accessibilityContainerIdentifier("editor-drop-target")
+    }
+
+    static let droppableTypes: [UTType] = [.image, .fileURL, .text]
+
+    func acceptDrop(_ providers: [NSItemProvider]) -> Bool {
+        dropTask?.cancel()
+        dropTask = Task { await handleDrop(providers) }
+        return true
     }
 
     /// Compact access to the explicit, session-only file connection: an icon in the code
@@ -549,9 +554,16 @@ extension EditorView {
                 CanvasDock(
                     settings: settings, themes: themes, presets: presets,
                     entitlements: entitlements, legibility: legibility,
-                    presetThumbnails: session.presetThumbnails)
+                    presetThumbnails: session.presetThumbnails,
+                    presentFramePaywall: { exportSheet = .framePaywall })
             }
         }
+        // The code column is the drop target until canvas mode collapses it.
+        .onDrop(
+            of: isCanvasMode ? Self.droppableTypes : [], isTargeted: $isDropTargeted,
+            perform: acceptDrop
+        )
+        .overlay { if isCanvasMode { dropAffordance } }
         .background(stageBackground)
         .layoutPriority(EditorLayout.stageLayoutPriority)
         // A container, so the canvas text and the inline callout field keep their own ids.
@@ -944,6 +956,7 @@ private struct CodeDocumentEditor: View {
     let pasteFromClipboard: () -> Void
     let beginPastedDocument: (String) -> LanguageDetector.Interpretation
     let leaveAnnotationContext: () -> Void
+    let isCollapsed: Bool
 
     var body: some View {
         CodeEditorView(
@@ -955,7 +968,8 @@ private struct CodeDocumentEditor: View {
             fontLigatures: settings.style.fontLigatures,
             reindentOnPaste: reindentOnPaste,
             onReplaceAllPaste: beginPastedDocument,
-            onUserEdit: leaveAnnotationContext
+            onUserEdit: leaveAnnotationContext,
+            isHidden: isCollapsed
         )
         .overlay {
             if settings.documentIsEmpty {

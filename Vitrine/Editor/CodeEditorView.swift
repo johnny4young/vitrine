@@ -22,6 +22,9 @@ struct CodeEditorView: NSViewRepresentable {
     }
     /// Called on each user edit, so a draw tool or selected mark stops owning ⌘Z.
     var onUserEdit: () -> Void = {}
+    /// Hidden rather than removed, so it leaves the key-view loop and VoiceOver while
+    /// keeping its text, undo stack and width.
+    var isHidden = false
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -89,6 +92,7 @@ struct CodeEditorView: NSViewRepresentable {
         let coordinator = context.coordinator
         coordinator.parent = self
         coordinator.configureIfFontChanged(textView)
+        if nsView.isHidden != isHidden { nsView.isHidden = isHidden }
 
         if textView.string != text {
             // External change (e.g. reopening a recent capture): sync + recolor now.

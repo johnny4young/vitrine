@@ -18,8 +18,6 @@ struct CanvasModeTests {
                 $0.accessibilityIdentifier()
                     == VitrineCommand.toggleCanvasMode.accessibilityIdentifier
             })
-        #expect(item.keyEquivalent == "f")
-        #expect(item.keyEquivalentModifierMask == [.command, .shift])
         #expect(item.target === menu.editorCommands)
     }
 
@@ -31,7 +29,9 @@ struct CanvasModeTests {
         }
         var seen: [String: String] = [:]
         for item in items(makeIsolatedAppMenu().make()) where !item.keyEquivalent.isEmpty {
-            let mask = item.keyEquivalentModifierMask.intersection(.deviceIndependentFlagsMask)
+            var mask = item.keyEquivalentModifierMask.intersection(.deviceIndependentFlagsMask)
+            // AppKit reads an uppercase key equivalent as Shift plus that key.
+            if item.keyEquivalent != item.keyEquivalent.lowercased() { mask.insert(.shift) }
             let signature = "\(mask.rawValue):\(item.keyEquivalent.lowercased())"
             #expect(seen[signature] == nil, "\(item.title) reuses \(seen[signature] ?? "")'s key")
             seen[signature] = item.title
@@ -94,8 +94,40 @@ struct CanvasModeTests {
         #expect(Set(names).count == backgrounds.count)
     }
 
-    /// Collapsing keeps the text view alive at its column width, so its wrap and undo
-    /// survive, and a field in a hidden column stops taking keystrokes.
+    /// A popover or panel can be key without becoming main; commands then act on the
+    /// main window behind it. A real window, such as Settings, still wins.
+    @Test func menuCommandsLookPastAKeyPopoverOrPanel() {
+        final class MainCapableWindow: NSWindow {
+            override var canBecomeMain: Bool { true }
+        }
+        let editor = MainCapableWindow()
+        let settings = MainCapableWindow()
+        let panel = NSPanel()
+        #expect(!panel.canBecomeMain)
+        #expect(EditorWindowController.commandTarget(key: panel, main: editor) === editor)
+        #expect(EditorWindowController.commandTarget(key: settings, main: editor) === settings)
+        #expect(EditorWindowController.commandTarget(key: nil, main: editor) === editor)
+    }
+
+    /// The click that closes a popover on mouse down reaches its button's action next.
+    @Test func pressingTheOpenPanesButtonClosesItInsteadOfReopening() {
+        let closed = DockPopoverClose(pane: .canvas, uptime: 100)
+        #expect(
+            DockPopoverClose.pane(afterPressing: .canvas, open: .canvas, lastClose: nil, now: 100)
+                == nil)
+        #expect(
+            DockPopoverClose.pane(
+                afterPressing: .canvas, open: nil, lastClose: closed, now: 100.1) == nil)
+        #expect(
+            DockPopoverClose.pane(
+                afterPressing: .theme, open: nil, lastClose: closed, now: 100.1) == .theme)
+        #expect(
+            DockPopoverClose.pane(
+                afterPressing: .canvas, open: nil, lastClose: closed, now: 102) == .canvas)
+    }
+
+    /// Collapsing keeps the text view alive at its column width, so its text, wrap and
+    /// undo survive, but hides it from the key-view loop so typing cannot reach it.
     @Test func collapsingTheColumnsKeepsTheCodeEditorAndDropsItsFocus() throws {
         let environment = AppEnvironment(defaults: testDefaults())
         let session = EditorSession(
@@ -118,6 +150,8 @@ struct CanvasModeTests {
         let textView = try #require(Self.firstTextView(in: hosting.view))
         let width = textView.frame.width
         #expect(window.makeFirstResponder(textView))
+        textView.insertText("!", replacementRange: textView.selectedRange())
+        let text = textView.string
 
         session.isCanvasMode = true
         RunLoop.main.run(until: Date().addingTimeInterval(0.5))
@@ -125,11 +159,19 @@ struct CanvasModeTests {
         #expect(Self.firstTextView(in: hosting.view) === textView)
         #expect(textView.frame.width == width)
         #expect(window.firstResponder !== textView)
+        #expect(!textView.canBecomeKeyView)
+        for _ in 0..<40 {
+            window.selectNextKeyView(nil)
+            #expect(window.firstResponder !== textView)
+        }
 
         session.isCanvasMode = false
         RunLoop.main.run(until: Date().addingTimeInterval(0.5))
         hosting.view.layoutSubtreeIfNeeded()
         #expect(Self.firstTextView(in: hosting.view) === textView)
+        #expect(textView.canBecomeKeyView)
+        #expect(textView.string == text)
+        #expect(textView.undoManager?.canUndo == true)
     }
 
     /// The stage gets every point the collapsed columns give up.
