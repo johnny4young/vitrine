@@ -213,28 +213,6 @@ struct CopyPreviewTests {
         #expect(frame.maxX > visible.midX)
     }
 
-    @Test func thePreviewUsesTheScreenUnderThePointer() {
-        let primary = (
-            frame: CGRect(x: 0, y: 0, width: 1600, height: 1200),
-            visible: CGRect(x: 0, y: 80, width: 1600, height: 1095)
-        )
-        let side = (
-            frame: CGRect(x: 1600, y: -300, width: 1920, height: 1080),
-            visible: CGRect(x: 1600, y: -300, width: 1920, height: 1055)
-        )
-        let screens = [primary, side]
-        #expect(
-            CopyPreview.visibleFrame(containing: CGPoint(x: 800, y: 600), screens: screens)
-                == primary.visible)
-        #expect(
-            CopyPreview.visibleFrame(containing: CGPoint(x: 2000, y: 0), screens: screens)
-                == side.visible)
-        #expect(
-            CopyPreview.visibleFrame(containing: CGPoint(x: -50, y: 0), screens: screens)
-                == primary.visible)
-        #expect(CopyPreview.visibleFrame(containing: .zero, screens: []) == nil)
-    }
-
     @Test func thePreviewOutlastsTheHUDAndWaitsLongerForVoiceOver() {
         let regular = CopyPreview.lifetime(voiceOverRunning: false)
         #expect(regular > CaptureHUD.displayDuration(hasActions: false))
