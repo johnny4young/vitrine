@@ -726,6 +726,74 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
     }
 
+    /// A selected mark's toolbar sits beside it in Select mode, clear of its delete badge.
+    @MainActor
+    func testSelectedMarkToolbarSitsBesideTheMark() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let stageGroup = element("editor-preview-stage", in: app)
+        let code = stageGroup.staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
+        assertExists(code, in: app, timeout: 3)
+        let center = code.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let toolbar = element("annotation-mark-toolbar", in: app)
+        let delete = app.buttons["Delete annotation"]
+
+        revealToolbarAction(
+            "annotation-tool-rectangle", from: "annotation-tool-picker", in: app
+        ).click()
+        center.withOffset(CGVector(dx: -60, dy: -25)).press(
+            forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 60, dy: 25)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.15)
+        assertExists(delete, in: app, timeout: 3)
+        XCTAssertFalse(toolbar.exists, "A draw tool keeps the canvas free for the next mark")
+
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+        assertExists(toolbar, in: app, timeout: 3)
+        assertExists(element("annotation-mark-toolbar-color", in: app), in: app)
+        assertExists(element("annotation-mark-toolbar-size", in: app), in: app)
+        XCTAssertFalse(toolbar.frame.intersects(delete.frame), "The toolbar covers the badge")
+        XCTAssertTrue(stageGroup.frame.contains(toolbar.frame), "The toolbar left the stage")
+
+        let marks = stageGroup.buttons.matching(NSPredicate(format: "label == %@", "Rectangle"))
+        XCTAssertEqual(marks.count, 1)
+        element("annotation-mark-toolbar-duplicate", in: app).click()
+        XCTAssertTrue(
+            marks.element(boundBy: 1).waitForExistence(timeout: 3), "Duplicate adds a mark")
+        element("annotation-undo", in: app).click()
+        XCTAssertTrue(
+            marks.element(boundBy: 1).waitForNonExistence(timeout: 3),
+            "Undo removes the copy in one step")
+        XCTAssertEqual(marks.count, 1)
+        XCTAssertTrue(toolbar.waitForNonExistence(timeout: 3))
+
+        center.click()
+        assertExists(toolbar, in: app, timeout: 3)
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        XCTAssertTrue(toolbar.waitForNonExistence(timeout: 3), "Escape drops the selection")
+
+        // A blur box offers only Duplicate: nothing that weakens what it hides.
+        revealToolbarAction(
+            "annotation-tool-blur", from: "annotation-tool-picker", in: app
+        ).click()
+        center.withOffset(CGVector(dx: -60, dy: 45)).press(
+            forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 60, dy: 85)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.15)
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+        assertExists(toolbar, in: app, timeout: 3)
+        assertExists(element("annotation-mark-toolbar-duplicate", in: app), in: app)
+        XCTAssertFalse(element("annotation-mark-toolbar-color", in: app).exists)
+        XCTAssertFalse(element("annotation-mark-toolbar-size", in: app).exists)
+    }
+
     /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.
     @MainActor
     func testLegibilityBadgeWarnsAndItsFixSwitchesTheTheme() throws {

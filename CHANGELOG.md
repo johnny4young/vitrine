@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- A selected mark gets a small toolbar beside it on the stage with its color, size and
+  Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
+  you draw, drag or resize, and is never part of an export.
 - Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
   hides the code and inspector columns. A dock on the stage shows the current theme,
   typography, background and padding, and opens the inspector's section for each in a

@@ -141,6 +141,17 @@
         }
       }
     },
+    "Selected mark" : {
+      "comment" : "Accessibility label for the toolbar shown beside the selected annotation.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marca seleccionada"
+          }
+        }
+      }
+    },
     "Don't warn for this theme" : {
       "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
       "localizations" : {

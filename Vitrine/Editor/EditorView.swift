@@ -80,6 +80,8 @@ struct EditorView: View {
     /// stage is focusable only in that state, so it does not compete with the code
     /// editor for caret navigation.
     @FocusState var stageFocused: Bool
+    /// Tab from the focused stage moves here, into the selected mark's toolbar.
+    @FocusState var markToolbarFocused: Bool
 
     /// The text callout being edited inline . Non-nil shows a focused
     /// field over the mark and blanks its canvas copy so the field is the only text
