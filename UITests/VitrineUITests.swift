@@ -720,7 +720,6 @@ final class VitrineUITests: XCTestCase {
         let bar = element("recipe-applied-bar", in: app)
         assertExists(bar, in: app, timeout: 8)
         assertExists(element("recipe-bar-summary", in: app), in: app)
-        assertExists(element("recipe-bar-save", in: app), in: app)
         let revert = element("recipe-bar-revert", in: app)
         assertHittable("recipe-bar-revert", in: app, "Revert should be reachable on the stage")
         XCTAssertTrue(revert.isEnabled, "The demo baseline differs by one style field")

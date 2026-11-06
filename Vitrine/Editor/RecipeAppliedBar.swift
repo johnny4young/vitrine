@@ -16,17 +16,49 @@ struct AppliedRecipe {
     func changedFields(in style: SnapshotConfig) -> Set<String> {
         var reference = baseline
         reference.language = style.language
-        return StyleSnapshot(capturing: style).changedFields(
+        var fields = StyleSnapshot(capturing: style).changedFields(
             from: StyleSnapshot(capturing: reference))
+        // A snapshot swaps an image background for a gradient, so compare the raw value.
+        fields.remove("background")
+        if style.background != baseline.background { fields.insert("background") }
+        return fields
     }
 
-    /// `style` with the recipe's look restored; code, marks and metadata stay.
-    func reverted(_ style: SnapshotConfig) -> SnapshotConfig {
-        var updated = style
-        StyleSnapshot(capturing: baseline).apply(to: &updated) { _ in baseline.theme }
-        updated.terminalPalette = baseline.terminalPalette
-        updated.terminalCursor = baseline.terminalCursor
-        return updated
+    /// The style fields Revert writes, taken raw so an image background round-trips.
+    struct Look {
+        var snapshot: StyleSnapshot
+        var theme: Theme
+        var terminalPalette: TerminalPaletteMode
+        var terminalCursor: TerminalCursorStyle
+        var background: VitrineDomain.BackgroundStyle
+
+        init(_ config: SnapshotConfig) {
+            snapshot = StyleSnapshot(capturing: config)
+            theme = config.theme
+            terminalPalette = config.terminalPalette
+            terminalCursor = config.terminalCursor
+            background = config.background
+        }
+
+        func apply(to config: inout SnapshotConfig) {
+            snapshot.apply(to: &config) { _ in theme }
+            config.terminalPalette = terminalPalette
+            config.terminalCursor = terminalCursor
+            config.background = background
+        }
+    }
+
+    /// Writes `look` into the style only, and registers its inverse so undo and redo
+    /// never touch code, marks or redactions made in between.
+    static func restore(_ look: Look, to settings: AppSettings, undoManager: UndoManager?) {
+        let current = Look(settings.style)
+        undoManager?.registerUndo(withTarget: settings) { settings in
+            restore(current, to: settings, undoManager: undoManager)
+        }
+        undoManager?.setActionName(String(localized: "Revert to Recipe"))
+        var style = settings.style
+        look.apply(to: &style)
+        settings.style = style
     }
 }
 
@@ -39,8 +71,8 @@ extension AppliedRecipe {
     }
 }
 
-/// Floats over the top of the stage, so showing it never moves the preview. It reads
-/// the style, not the document text, which keeps keystrokes from reaching it.
+/// Floats over the top of the stage, inside the margin the card is fitted with, so
+/// showing it never moves or covers the preview. It never reads the document text.
 struct RecipeAppliedBar: View {
     let session: EditorSession
     let settings: AppSettings
@@ -56,36 +88,32 @@ struct RecipeAppliedBar: View {
     }
 
     private func bar(_ applied: AppliedRecipe, changes: Set<String>) -> some View {
-        let canSave = session.environment.workspaceRecipes.associations.contains {
-            $0.id == applied.associationID
-        }
-        // A narrow stage, or a longer translation, gets icon buttons rather than clipping.
-        return ViewThatFits(in: .horizontal) {
-            row(applied, changes: changes, canSave: canSave, labelStyle: .titleOnly)
-            row(applied, changes: changes, canSave: canSave, labelStyle: .iconOnly)
-            row(
-                applied, changes: changes, canSave: canSave, labelStyle: .iconOnly,
-                showsFolder: false)
+        // Narrower stages and longer translations lose the folder first, then the labels.
+        ViewThatFits(in: .horizontal) {
+            row(applied, changes: changes, labelStyle: .titleOnly, showsFolder: true)
+            row(applied, changes: changes, labelStyle: .titleOnly, showsFolder: false)
+            row(applied, changes: changes, labelStyle: .iconOnly, showsFolder: false)
         }
         .buttonStyle(.bordered)
         .controlSize(.small)
         .font(.system(size: VitrineTokens.FontSize.caption))
-        .padding(.vertical, 5)
         .padding(.horizontal, VitrineTokens.Spacing.sm)
+        .frame(height: 26)
         .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
         .overlay(
             Capsule(style: .continuous)
                 .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
         )
         .padding(.horizontal, 12)
-        .padding(.top, 14)
+        // 6 + 26 stays inside the 36 pt the stage keeps above a height-fitted card.
+        .padding(.top, 6)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("recipe-applied-bar")
     }
 
     private func row(
-        _ applied: AppliedRecipe, changes: Set<String>, canSave: Bool,
-        labelStyle: some LabelStyle, showsFolder: Bool = true
+        _ applied: AppliedRecipe, changes: Set<String>, labelStyle: some LabelStyle,
+        showsFolder: Bool
     ) -> some View {
         HStack(spacing: VitrineTokens.Spacing.xs) {
             HStack(spacing: 6) {
@@ -120,26 +148,17 @@ struct RecipeAppliedBar: View {
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("recipe-bar-summary")
 
-            Group {
-                Button {
-                    revert(applied)
-                } label: {
-                    Label("Revert", systemImage: "arrow.uturn.backward")
-                }
-                .help("Revert")
-                .disabled(changes.isEmpty)
-                .accessibilityIdentifier("recipe-bar-revert")
-                Button {
-                    save(applied, fields: changes)
-                } label: {
-                    Label("Save to Recipe…", systemImage: "square.and.arrow.down")
-                }
-                .help("Save to Recipe…")
-                .disabled(changes.isEmpty || !canSave)
-                .accessibilityIdentifier("recipe-bar-save")
+            Button {
+                AppliedRecipe.restore(
+                    AppliedRecipe.Look(applied.baseline), to: settings, undoManager: undoManager)
+            } label: {
+                Label("Revert", systemImage: "arrow.uturn.backward")
             }
             .labelStyle(labelStyle)
             .fixedSize()
+            .help("Revert")
+            .disabled(changes.isEmpty)
+            .accessibilityIdentifier("recipe-bar-revert")
             Button {
                 session.appliedRecipe = nil
             } label: {
@@ -149,38 +168,6 @@ struct RecipeAppliedBar: View {
             .help("Close")
             .accessibilityLabel("Close")
             .accessibilityIdentifier("recipe-bar-close")
-        }
-    }
-
-    private func revert(_ applied: AppliedRecipe) {
-        let previous = settings.style
-        undoManager?.registerUndo(withTarget: settings) { settings in
-            settings.style = previous
-        }
-        undoManager?.setActionName(String(localized: "Revert to Recipe"))
-        settings.style = applied.reverted(previous)
-    }
-
-    private func save(_ applied: AppliedRecipe, fields: Set<String>) {
-        let style = settings.style
-        do {
-            let outcome = try WorkspaceRecipeFileExchange.saveStyleChanges(
-                StyleSnapshot(capturing: style), fields: fields,
-                customTheme: StoredCustomTheme(style.theme),
-                associationID: applied.associationID,
-                store: session.environment.workspaceRecipes)
-            guard outcome != .cancelled else { return }
-            if outcome == .savedToRecipe {
-                session.appliedRecipe?.baseline = style
-            }
-            session.feedback(Notifier.confirmation(String(localized: "Recipe saved")))
-        } catch let error as WorkspaceRecipeStore.StoreError {
-            session.feedback(Notifier.failure(error.message))
-        } catch let error as WorkspaceRecipeDocument.ImportError {
-            session.feedback(Notifier.failure(error.localizedMessage))
-        } catch {
-            session.feedback(
-                Notifier.failure(WorkspaceRecipeFileExchange.ExchangeError.writeFailed.message))
         }
     }
 }

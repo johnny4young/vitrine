@@ -71,6 +71,15 @@ final class EditorSession {
         }
         self.settings = resolvedSettings
         livingSnapshot = LivingSnapshotSession(settings: resolvedSettings)
+        livingSnapshot.onRefresh = { [weak self] previous in
+            self?.carryAppliedRecipe(from: previous)
+        }
+    }
+
+    /// A refresh of the watched file is the same source, so its recipe bar stays.
+    func carryAppliedRecipe(from previousGeneration: Int) {
+        guard appliedRecipe?.documentGeneration == previousGeneration else { return }
+        appliedRecipe?.documentGeneration = settings.documentGeneration
     }
 
     /// A restoration snapshot of the window's current draft document/style.

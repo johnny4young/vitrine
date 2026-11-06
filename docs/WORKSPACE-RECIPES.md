@@ -46,11 +46,9 @@ recipe can fall back to a usable parent association.
 
 When a recipe applies, a bar over the editor's stage names it and its folder and counts
 the style fields that differ from what it applied; code edits and language changes don't
-count. **Revert** restores those fields and can be undone. **Save to Recipe…** opens a save
-panel on the recipe file, because associations only keep read access, and writes just the
-changed style fields, plus the embedded palette when the theme changed. Every other key and
-value is kept, laid out with sorted keys like an export. The write is atomic: it replaces
-the whole file or fails.
+count, and a refresh of a live file keeps the bar. **Revert** restores those fields and can
+be undone without touching code or marks. Closing the bar keeps the style. The editor never
+writes to the recipe file.
 
 Association lookup happens only for a file you explicitly drop. Vitrine does not watch
 the folder, scan repository contents, infer a conventional recipe filename, or read Git

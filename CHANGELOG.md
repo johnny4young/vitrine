@@ -16,8 +16,7 @@ can never drift.
 
 - When a dropped file picks up a workspace recipe, a bar over the stage names the recipe and
   its folder and counts the style fields you've changed since. Revert restores the recipe's
-  look and can be undone; Save to Recipe… writes only the changed fields back to the file
-  you confirm, keeping the rest of it as it was. Closing the bar keeps the style.
+  look and can be undone; closing the bar keeps the style.
 - Warn in the inspector's Theme header when a capture's code text has low measured contrast
   on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
   stock theme only when it measures better, and can be dismissed for a theme until you quit.

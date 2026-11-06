@@ -8,18 +8,15 @@ import VitrineRendering
 @MainActor
 @Suite("Recipe applied bar")
 struct RecipeAppliedBarTests {
-    private let recipe = WorkspaceRecipe(
-        name: "Docs",
-        style: StyleSnapshot(
-            themeID: Theme.nord.id, padding: 40, wrapColumns: 72, terminalPalette: .raw,
-            background: .gradient(.forest)),
-        metadata: .init(windowTitle: "Docs", header: SnapshotMetadata(title: "Header")),
-        output: .init(destinationPresetID: "opengraph", scale: 2, format: .pdf))
-
-    // MARK: Counting changes
+    private func applied(_ settings: AppSettings) -> AppliedRecipe {
+        AppliedRecipe(
+            associationID: UUID(), name: "Docs", workspaceName: "docs",
+            baseline: settings.style, documentGeneration: settings.documentGeneration)
+    }
 
     @Test func changedFieldsNameOnlyWhatDiffers() {
-        let base = recipe.style
+        let base = StyleSnapshot(
+            themeID: Theme.nord.id, padding: 40, wrapColumns: 72, background: .gradient(.forest))
         var edited = base
         #expect(edited.changedFields(from: base).isEmpty)
 
@@ -30,124 +27,99 @@ struct RecipeAppliedBarTests {
         #expect(base.changedFields(from: edited) == ["padding", "themeID", "wrapColumns"])
     }
 
-    @Test func codeEditsAndLanguageSwitchesAreNotStyleChanges() throws {
+    @Test func codeEditsAndLanguageSwitchesAreNotStyleChanges() {
         let settings = AppSettings(defaults: testDefaults())
         settings.config.language = .swift
         settings.config.terminalPalette = .raw
-        let applied = AppliedRecipe(
-            associationID: UUID(), name: "Docs", workspaceName: "docs",
-            baseline: settings.style, documentGeneration: settings.documentGeneration)
+        let recipe = applied(settings)
 
         settings.config.code = "let typed = true"
         settings.config.highlightedLineRanges = [1...1]
         settings.config.language = .terminal
-        #expect(applied.changedFields(in: settings.style).isEmpty)
+        #expect(recipe.changedFields(in: settings.style).isEmpty)
 
         settings.style.fontSize += 2
         settings.style.showChrome.toggle()
-        #expect(applied.changedFields(in: settings.style) == ["fontSize", "showChrome"])
+        #expect(recipe.changedFields(in: settings.style) == ["fontSize", "showChrome"])
+    }
+
+    @Test func anImageBackgroundIsCountedAndRevertedAsItIs() {
+        let settings = AppSettings(defaults: testDefaults())
+        let image = VitrineDomain.BackgroundStyle.image(
+            ImageBackground(reference: ImageReference(fileName: "team.png")))
+        settings.style.background = image
+        let recipe = applied(settings)
+        #expect(recipe.changedFields(in: settings.style).isEmpty)
+
+        settings.style.background = .gradient(.forest)
+        #expect(recipe.changedFields(in: settings.style) == ["background"])
+        AppliedRecipe.restore(
+            AppliedRecipe.Look(recipe.baseline), to: settings, undoManager: nil)
+        #expect(settings.style.background == image)
     }
 
     @Test func revertRestoresTheLookAndKeepsTheDocument() {
         let settings = AppSettings(defaults: testDefaults())
         settings.config.language = .terminal
         settings.config.terminalCursor = .block
-        let baseline = settings.style
-        let applied = AppliedRecipe(
-            associationID: UUID(), name: "Docs", workspaceName: "docs",
-            baseline: baseline, documentGeneration: settings.documentGeneration)
+        let recipe = applied(settings)
 
         settings.config.code = "echo hi"
         settings.config.highlightedLineRanges = [1...1]
         settings.style.theme = .dracula
-        settings.style.padding = baseline.padding + 24
+        settings.style.padding = recipe.baseline.padding + 24
         settings.style.terminalCursor = .bar
-        settings.style = applied.reverted(settings.style)
+        AppliedRecipe.restore(
+            AppliedRecipe.Look(recipe.baseline), to: settings, undoManager: nil)
 
-        #expect(applied.changedFields(in: settings.style).isEmpty)
-        #expect(settings.style.theme.id == baseline.theme.id)
+        #expect(recipe.changedFields(in: settings.style).isEmpty)
+        #expect(settings.style.theme.id == recipe.baseline.theme.id)
         #expect(settings.style.terminalCursor == .block)
         #expect(settings.config.code == "echo hi")
         #expect(settings.config.highlightedLineRanges == [1...1])
     }
 
-    // MARK: Writing back
+    @Test func undoingARevertKeepsARedactionAddedAfterIt() {
+        let settings = AppSettings(defaults: testDefaults())
+        settings.config.code = "let token = 1\nlet other = 2"
+        let recipe = applied(settings)
+        let edited = recipe.baseline.padding + 24
+        settings.style.padding = edited
+        let undo = UndoManager()
+        undo.groupsByEvent = false
 
-    @Test func savingRewritesOnlyTheChangedFields() throws {
-        let original = try WorkspaceRecipeDocument(recipe: recipe).jsonData()
-        var edited = recipe.style
-        edited.padding = 64
-        edited.wrapColumns = nil
-        edited.terminalPalette = nil
+        undo.beginUndoGrouping()
+        AppliedRecipe.restore(
+            AppliedRecipe.Look(recipe.baseline), to: settings, undoManager: undo)
+        undo.endUndoGrouping()
+        settings.style.redactedLineRanges = [1...1]
 
-        let data = try WorkspaceRecipeDocument.updatingStyle(
-            in: original, to: edited, fields: ["padding", "wrapColumns"], customTheme: nil)
-        let saved = try WorkspaceRecipeDocument.recipe(from: data)
-
-        #expect(saved.style.padding == 64)
-        #expect(saved.style.wrapColumns == nil)
-        // Not in the changed set, so the file keeps it although `edited` dropped it.
-        #expect(saved.style.terminalPalette == .raw)
-        #expect(saved.name == recipe.name)
-        #expect(saved.metadata == recipe.metadata)
-        #expect(saved.output == recipe.output)
-        #expect(saved.style.changedFields(from: recipe.style) == ["padding", "wrapColumns"])
+        undo.undo()
+        #expect(settings.style.padding == edited)
+        #expect(settings.style.redactedLineRanges == [1...1])
+        undo.redo()
+        #expect(settings.style.padding == recipe.baseline.padding)
+        #expect(settings.style.redactedLineRanges == [1...1])
     }
 
-    @Test func aThemeChangeEmbedsOrDropsTheCustomPalette() throws {
-        let original = try WorkspaceRecipeDocument(recipe: recipe).jsonData()
-        let custom = StoredCustomTheme(
-            id: "custom.team", name: "Team", palette: ThemeTestFixtures.samplePalette())
-        var edited = recipe.style
-        edited.themeID = custom.id
+    @Test func aLiveRefreshOfTheSameFileKeepsTheBar() {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let settings = AppSettings(defaults: testDefaults())
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 71), environment: environment,
+            feedback: .noOp, presentation: .noOp, settings: settings)
+        session.appliedRecipe = applied(settings)
 
-        let embedded = try WorkspaceRecipeDocument.updatingStyle(
-            in: original, to: edited, fields: ["themeID"], customTheme: custom)
-        #expect(try WorkspaceRecipeDocument.recipe(from: embedded).customTheme == custom)
+        let refreshed = settings.documentGeneration
+        settings.noteDocumentReplaced()
+        session.livingSnapshot.onRefresh?(refreshed)
+        #expect(session.appliedRecipe?.documentGeneration == settings.documentGeneration)
 
-        edited.themeID = Theme.dracula.id
-        let builtIn = try WorkspaceRecipeDocument.updatingStyle(
-            in: embedded, to: edited, fields: ["themeID"], customTheme: nil)
-        let saved = try WorkspaceRecipeDocument.recipe(from: builtIn)
-        #expect(saved.customTheme == nil)
-        #expect(saved.style.themeID == Theme.dracula.id)
-    }
-
-    @Test func aFileThisBuildCannotReadIsNeverRewritten() throws {
-        var root = try #require(
-            try JSONSerialization.jsonObject(
-                with: WorkspaceRecipeDocument(recipe: recipe).jsonData()) as? [String: Any])
-        var body = try #require(root["recipe"] as? [String: Any])
-        body["futureOption"] = true
-        root["recipe"] = body
-        let newer = try JSONSerialization.data(withJSONObject: root)
-
-        #expect(throws: WorkspaceRecipeDocument.ImportError.unknownField("recipe.futureOption")) {
-            try WorkspaceRecipeDocument.updatingStyle(
-                in: newer, to: recipe.style, fields: ["padding"], customTheme: nil)
-        }
-        #expect(throws: WorkspaceRecipeDocument.ImportError.notARecipeFile) {
-            try WorkspaceRecipeDocument.updatingStyle(
-                in: Data("[]".utf8), to: recipe.style, fields: ["padding"], customTheme: nil)
-        }
-    }
-
-    @Test func theStoreReadsTheAssociatedFileForSaving() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(
-            "VitrineRecipeBar-\(UUID().uuidString)", isDirectory: true)
-        defer { try? FileManager.default.removeItem(at: root) }
-        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        let recipeURL = root.appendingPathComponent("docs.vitrine-recipe.json")
-        let bytes = try WorkspaceRecipeDocument(recipe: recipe).jsonData()
-        try bytes.write(to: recipeURL)
-        let store = WorkspaceRecipeStore(defaults: testDefaults())
-        let association = try store.associate(workspaceURL: root, recipeURL: recipeURL)
-
-        let file = try store.recipeFile(id: association.id)
-        #expect(file.data == bytes)
-        #expect(file.url == recipeURL.standardizedFileURL.resolvingSymlinksInPath())
-        #expect(throws: WorkspaceRecipeStore.StoreError.associationUnavailable) {
-            try store.recipeFile(id: UUID())
-        }
+        // Another document replaced it first, so a later refresh doesn't bring the bar back.
+        let replaced = settings.documentGeneration
+        settings.noteDocumentReplaced()
+        settings.noteDocumentReplaced()
+        session.livingSnapshot.onRefresh?(settings.documentGeneration - 1)
+        #expect(session.appliedRecipe?.documentGeneration == replaced)
     }
 }
