@@ -25,10 +25,10 @@ struct CarouselExportView: View {
     let profile: ColorProfile
     let feedback: FeedbackDisplay
     let presentation: BatchExportPresentation
+    /// The split lives with the window, because the editor's dividers follow it too.
+    @Bindable var splitModel: CarouselSplitModel
 
     @Environment(\.dismiss) private var dismiss
-
-    @State private var split = CarouselSplit()
 
     @State private var cues: CarouselPaginator.Cues
 
@@ -55,12 +55,13 @@ struct CarouselExportView: View {
 
     init(
         baseConfig: SnapshotConfig, profile: ColorProfile, feedback: FeedbackDisplay,
-        presentation: BatchExportPresentation
+        presentation: BatchExportPresentation, splitModel: CarouselSplitModel
     ) {
         self.baseConfig = baseConfig
         self.profile = profile
         self.feedback = feedback
         self.presentation = presentation
+        self.splitModel = splitModel
         _cues = State(
             initialValue: CarouselPaginator.Cues(
                 lineNumbers: baseConfig.showLineNumbers ? .continuing : .off,
@@ -76,7 +77,8 @@ struct CarouselExportView: View {
     private var rule: LocalizedStringKey? { EditorView.carouselRule(for: baseConfig) }
 
     private var request: SplitRequest {
-        SplitRequest(split: split, code: CarouselPaginator.splittableCode(of: baseConfig))
+        SplitRequest(
+            split: splitModel.split, code: CarouselPaginator.splittableCode(of: baseConfig))
     }
 
     private var pages: [CarouselPaginator.Slide] { outcome?.slides(for: request.code) ?? [] }
@@ -146,9 +148,10 @@ struct CarouselExportView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Stepper(
-                    value: $split.linesPerSlide, in: CarouselPaginator.linesPerSlideRange
+                    value: $splitModel.split.linesPerSlide,
+                    in: CarouselPaginator.linesPerSlideRange
                 ) {
-                    Text("Lines per slide: \(split.linesPerSlide)")
+                    Text("Lines per slide: \(splitModel.split.linesPerSlide)")
                 }
                 .accessibilityIdentifier("carousel-lines-stepper")
                 Spacer(minLength: 0)
@@ -163,8 +166,11 @@ struct CarouselExportView: View {
                 input: filmstripInput, hasShortTail: outcome?.hasShortTail ?? false,
                 model: filmstrip)
             switchRow(
-                "Prefer blank-line breaks", isOn: $split.prefersBlankLineBreaks,
+                "Prefer blank-line breaks", isOn: $splitModel.split.prefersBlankLineBreaks,
                 identifier: "carousel-prefer-blank-lines")
+            switchRow(
+                "Show dividers in the code", isOn: $splitModel.showsDividers,
+                identifier: "carousel-show-dividers")
         }
     }
 
