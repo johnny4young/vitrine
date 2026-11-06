@@ -1,6 +1,124 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld changes" : {
+      "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld change"
+                  }
+                },
+              "other" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld changes"
+                  }
+                }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld cambio"
+                  }
+                },
+              "other" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld cambios"
+                  }
+                }
+            }
+          }
+        }
+      }
+    },
+    "%@ recipe" : {
+      "comment" : "Editor recipe bar tooltip and VoiceOver label: the workspace recipe a dropped file applied.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta %@"
+          }
+        }
+      }
+    },
+    "Folder %@" : {
+      "comment" : "Editor recipe bar, VoiceOver: the associated folder whose recipe applied.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carpeta %@"
+          }
+        }
+      }
+    },
+    "Revert" : {
+      "comment" : "Editor recipe bar button: restore the recipe's style.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revertir"
+          }
+        }
+      }
+    },
+    "Save to Recipe…" : {
+      "comment" : "Editor recipe bar button: write the style changes back to the recipe file.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar en la receta…"
+          }
+        }
+      }
+    },
+    "Revert to Recipe" : {
+      "comment" : "Undo action name for restoring the recipe's style.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revertir a la receta"
+          }
+        }
+      }
+    },
+    "Recipe saved" : {
+      "comment" : "Confirmation after writing style changes to a workspace recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta guardada"
+          }
+        }
+      }
+    },
+    "Save this editor's style changes to “%@”." : {
+      "comment" : "Save panel message; the argument is the recipe file name.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda los cambios de estilo de este editor en “%@”."
+          }
+        }
+      }
+    },
     "Don't warn for this theme" : {
       "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
       "localizations" : {

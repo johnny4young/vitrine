@@ -53,6 +53,45 @@ enum WorkspaceRecipeFileExchange {
         }
     }
 
+    enum StyleSaveOutcome: Equatable {
+        case cancelled
+        case savedToRecipe
+        case savedElsewhere
+    }
+
+    /// Writes changed style fields into an association's recipe after the user confirms
+    /// the file in a save panel. Associations hold read-only bookmarks, so the panel is
+    /// what grants write access. The write is atomic or fails, never in place.
+    static func saveStyleChanges(
+        _ style: StyleSnapshot, fields: Set<String>, customTheme: StoredCustomTheme?,
+        associationID: UUID, store: WorkspaceRecipeStore
+    ) throws -> StyleSaveOutcome {
+        let source = try store.recipeFile(id: associationID)
+        let data = try WorkspaceRecipeDocument.updatingStyle(
+            in: source.data, to: style, fields: fields, customTheme: customTheme)
+        let filename = source.url.lastPathComponent
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [contentType]
+        panel.directoryURL = source.url.deletingLastPathComponent()
+        panel.nameFieldStringValue = filename
+        panel.message = String(localized: "Save this editor's style changes to “\(filename)”.")
+        panel.prompt = String(localized: "Save")
+        guard panel.runModal() == .OK, let url = panel.url else { return .cancelled }
+        do {
+            try data.write(to: url, options: .atomic)
+        } catch {
+            let nsError = error as NSError
+            Log.settings.error(
+                "Failed to save a workspace recipe (\(nsError.domain, privacy: .public) \(nsError.code, privacy: .public))"
+            )
+            throw ExchangeError.writeFailed
+        }
+        Log.settings.notice(
+            "Saved \(fields.count, privacy: .public) style fields to a workspace recipe")
+        let saved = url.standardizedFileURL.resolvingSymlinksInPath()
+        return saved == source.url ? .savedToRecipe : .savedElsewhere
+    }
+
     /// Asks for a workspace folder first and an existing recipe file second.
     /// Returning both URLs together prevents partially persisted associations when
     /// the second panel is cancelled.

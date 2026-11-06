@@ -169,6 +169,23 @@ final class WorkspaceRecipeStore {
         return resolved
     }
 
+    /// The association's recipe bytes and location, read fresh for an explicit Save.
+    /// The location stays in memory: it is never logged or persisted.
+    func recipeFile(id: UUID) throws -> (url: URL, data: Data) {
+        guard let association = associations.first(where: { $0.id == id }),
+            let url = try? resolve(association.recipeBookmark).url
+        else { throw StoreError.associationUnavailable }
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let data = try BoundedFileReader.read(
+                from: url, limit: WorkspaceRecipeFile.maximumByteCount)
+            return (canonicalURL(url), data)
+        } catch {
+            throw StoreError.recipe(.unreadable)
+        }
+    }
+
     func reload() {
         let reloaded = Self.readAssociations(from: defaults)
         guard reloaded != associations else { return }
