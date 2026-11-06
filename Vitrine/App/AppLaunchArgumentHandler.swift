@@ -63,6 +63,7 @@ import VitrineRendering
         /// `--brand-accent` (Debug) keeps the brand accent whatever the macOS accent is;
         /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
         /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
+        /// `--open-card-url <link>` fills the social card from a `vitrine://card` link;
         /// `--open-menu-panel` opens the real panel at a deterministic automation anchor;
         /// `--copy-preview-stays` keeps the copy preview until it is dismissed, and
         /// `--demo-copy-preview` shows one of the current document without copying;
@@ -290,6 +291,13 @@ import VitrineRendering
             }
             if arguments.contains("--open-social-card") {
                 SocialCardWindowController.shared.show()
+                didOpenWindow = true
+            }
+            if let index = arguments.firstIndex(of: "--open-card-url"),
+                arguments.indices.contains(index + 1), let url = URL(string: arguments[index + 1]),
+                let fill = try? CardTemplateLink.fill(from: url)
+            {
+                SocialCardWindowController.shared.open(fill)
                 didOpenWindow = true
             }
             if arguments.contains("--open-web-snapshot") {

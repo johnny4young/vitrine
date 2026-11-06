@@ -686,6 +686,13 @@ characters, impossible lengths, non-ASCII input, and non-zero unused tail bits b
 bounded zlib expansion and JSON decoding. A deterministic seeded adversarial corpus guards
 that contract against future normalization or Foundation decoder changes.
 
+**Card-template links.** `vitrine://card?template=release&title=…` fills a built-in
+`CardTemplate` (Release, Snippet, Announcement) and opens it in the Social Card window.
+`CardTemplateLink` accepts only `template` plus that template's slots, each once, within
+16 KB; values are length-bounded text or allow-listed choices (language, built-in theme,
+gradient accent), so no slot names a file or fetches anything. The replaced card stays one
+Undo away in the Social Card window.
+
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the capability
 gate. The helper prefers runtime bundle metadata, falls back to the enclosing app

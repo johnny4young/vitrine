@@ -1,5 +1,7 @@
 import AppKit
 import SwiftUI
+import VitrineDomain
+import VitrineRendering
 
 /// Owns the app's single social-card editor window.
 ///
@@ -75,6 +77,45 @@ final class SocialCardWindowController: NSObject {
         self.window = window
         window.makeKeyAndOrderFront(nil)
         AppActivation.bringForward()
+    }
+
+    /// Shows the window filled from `fill`. The card is app-global, so the replaced card
+    /// stays one Undo away in this window rather than being overwritten.
+    func open(_ fill: CardTemplate.Fill) {
+        show()
+        apply(fill, undoManager: window?.undoManager)
+    }
+
+    func apply(_ fill: CardTemplate.Fill, undoManager: UndoManager?) {
+        let card = fill.card(onto: environment.appSettings.socialCard)
+        guard card != environment.appSettings.socialCard else { return }
+        Self.replaceCard(in: environment.appSettings, with: card, undoManager: undoManager)
+        undoManager?.setActionName(String(localized: "Apply Card Template"))
+    }
+
+    // The undo manager does not retain its target, so target the settings that own the card.
+    private static func replaceCard(
+        in settings: AppSettings, with card: SocialCardModel, undoManager: UndoManager?
+    ) {
+        let previous = settings.socialCard
+        settings.socialCard = card
+        undoManager?.registerUndo(withTarget: settings) { [weak undoManager] settings in
+            replaceCard(in: settings, with: previous, undoManager: undoManager)
+        }
+    }
+
+    /// The palette's fill: the working card's copy carried into `template`, with the
+    /// editor's code when it has some. Terminal output becomes plain text, as in Use Editor Code.
+    static func paletteFill(
+        _ template: CardTemplate, card: SocialCardModel, editor: SnapshotConfig
+    ) -> CardTemplate.Fill {
+        var source = card
+        let excerpt = SocialCardModel.truncatedExcerpt(editor.sidecarText)
+        if !excerpt.isEmpty {
+            source.codeExcerpt = excerpt
+            source.language = editor.language == .terminal ? .plaintext : editor.language
+        }
+        return CardTemplate.Fill(template: template, carrying: source)
     }
 
     /// Builds the AppKit window hosting a ``SocialCardEditorView`` composed from this

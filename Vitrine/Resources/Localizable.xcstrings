@@ -1,6 +1,61 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Release" : {
+      "comment" : "Name of the built-in social card template for a release announcement",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lanzamiento"
+          }
+        }
+      }
+    },
+    "Snippet" : {
+      "comment" : "Name of the built-in social card template centered on a code snippet",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragmento"
+          }
+        }
+      }
+    },
+    "Announcement" : {
+      "comment" : "Name of the built-in headline-only social card template",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anuncio"
+          }
+        }
+      }
+    },
+    "New Social Card from “%@” Template" : {
+      "comment" : "Command palette item; the argument is a card template name",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva tarjeta social con la plantilla “%@”"
+          }
+        }
+      }
+    },
+    "Apply Card Template" : {
+      "comment" : "Undo action name after a card template fills the social card",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar plantilla de tarjeta"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
