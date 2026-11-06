@@ -113,6 +113,11 @@ import VitrineRendering
                     }
                     """
             }
+            if arguments.contains("--demo-line-marks") {
+                settings.style.highlightedLineRanges = [7...9]
+                settings.style.redactedLineRanges = [4...4]
+                settings.style.focusHighlightedLines = true
+            }
             if arguments.contains("--demo-terminal") {
                 var demo = settings.config
                 demo.code =

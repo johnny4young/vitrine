@@ -726,6 +726,34 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
     }
 
+    /// The code gutter and the selection actions both edit the marks the inspector shows.
+    @MainActor
+    func testCodeGutterAndSelectionActionsMarkLines() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        // The gutter is the text view's leading inset; line 1 sits just below the top inset.
+        editor.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: 20, dy: 20)).click()
+        chooseMenuItem(app.menuItems["code-lane-highlight"])
+
+        editor.click()
+        editor.typeKey("a", modifierFlags: .command)
+        let redact = element("code-selection-redact", in: app)
+        assertExists(redact, in: app, timeout: 3)
+        assertExists(element("code-selection-highlight", in: app), in: app)
+        redact.click()
+
+        element("inspector-disclosure-lines", in: app).click()
+        let field = element("highlight-lines-field", in: app)
+        assertExists(field, in: app, timeout: 3)
+        XCTAssertEqual(field.value as? String, "1")
+        assertExists(element("clear-redactions-button", in: app), in: app)
+    }
+
     /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.
     @MainActor
     func testLegibilityBadgeWarnsAndItsFixSwitchesTheTheme() throws {

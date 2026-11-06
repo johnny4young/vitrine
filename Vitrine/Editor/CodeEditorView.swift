@@ -26,6 +26,8 @@ struct CodeEditorView: NSViewRepresentable {
     /// Hidden rather than removed, so it leaves the key-view loop and VoiceOver while
     /// keeping its text, undo stack and width.
     var isHidden = false
+    /// The line marks the gutter and selection actions edit; absent outside an editor window.
+    @Environment(AppSettings.self) private var settings: AppSettings?
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
@@ -63,7 +65,7 @@ struct CodeEditorView: NSViewRepresentable {
         // Empty documents retain the panel's glass and onboarding overlay.
         // Highlighting pairs nonempty syntax with its own theme background.
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 14, height: 12)
+        textView.textContainerInset = NSSize(width: CodeTextView.baseInset, height: 12)
         textView.string = text
         textView.setAccessibilityIdentifier("code-editor-text-view")
         textView.setAccessibilityLabel("Code editor")
@@ -83,8 +85,12 @@ struct CodeEditorView: NSViewRepresentable {
             }
         }
 
+        textView.laneGutter = context.coordinator.gutter
+
         context.coordinator.configureIfFontChanged(textView)
         context.coordinator.applyHighlight(to: textView)
+        context.coordinator.syncLanes(textView, settings: settings)
+        context.coordinator.refreshLanes(textView)
         return scrollView
     }
 
@@ -101,6 +107,7 @@ struct CodeEditorView: NSViewRepresentable {
             textView.string = text
             textView.undoManager?.removeAllActions()
             coordinator.applyHighlight(to: textView)
+            coordinator.refreshLanes(textView)
         } else if coordinator.styleChanged {
             // Theme/language/font changed: recolor now (text edits are debounced).
             coordinator.applyHighlight(to: textView)
@@ -109,6 +116,7 @@ struct CodeEditorView: NSViewRepresentable {
             coordinator.appliedDividerRevision = slideDividers.revision
             (textView as? CodeTextView)?.install(slideDividers)
         }
+        coordinator.syncLanes(textView, settings: settings)
     }
 
     static func dismantleNSView(_ nsView: NSScrollView, coordinator: Coordinator) {
@@ -116,6 +124,7 @@ struct CodeEditorView: NSViewRepresentable {
         guard let textView = nsView.documentView as? CodeTextView else { return }
         textView.delegate = nil
         textView.onPaste = nil
+        coordinator.gutter.onAction = nil
         textView.undoManager?.removeAllActions()
         nsView.documentView = nil
     }
@@ -132,6 +141,10 @@ struct CodeEditorView: NSViewRepresentable {
         private var appliedFontLigatures: Bool?
         private var appliedMode: HighlightMode?
         var appliedDividerRevision = 0
+        let gutter = CodeLaneGutter()
+        private var selectionBar: NSHostingView<CodeSelectionActions>?
+        private var selectionBarContent: (lines: ClosedRange<Int>, marks: LineMarks)?
+        private var performLaneAction: (CodeLaneAction) -> Void = { _ in }
 
         /// The inputs that decide the text view's font and tab stops.
         struct FontInputs: Equatable {
@@ -273,6 +286,85 @@ struct CodeEditorView: NSViewRepresentable {
                 hasContent
                 ? NSColor(VitrineTokens.Text.readable(on: background)) : .textColor
             (textView as? CodeTextView)?.slideDividerColor = textView.insertionPointColor
+            gutter.ink = textView.insertionPointColor
+            gutter.highlightTint = NSColor(
+                HighlightManager.shared.lineHighlightColor(for: parent.theme))
+            (textView as? CodeTextView)?.showsGutter = hasContent
+            textView.setNeedsDisplay(textView.visibleRect)
+        }
+
+        /// Pushes the current marks into the gutter and the selection actions.
+        func syncLanes(_ textView: NSTextView, settings: AppSettings?) {
+            let style = settings?.style
+            let marks = style?.lineMarks ?? LineMarks()
+            let focus = style?.focusHighlightedLines ?? false
+            let changed = marks != gutter.marks || focus != gutter.focusesHighlighted
+            gutter.marks = marks
+            gutter.focusesHighlighted = focus
+            performLaneAction = { [weak settings] action in settings?.style.apply(action) }
+            gutter.onAction = settings == nil ? nil : { [weak self] in self?.performLaneAction($0) }
+            let resized = gutter.fit(codeFontSize: parent.fontSize, lineCount: lineCount)
+            if resized { (textView as? CodeTextView)?.updateGutterInset() }
+            if changed || resized {
+                textView.setNeedsDisplay(textView.visibleRect)
+                refreshSelectionBar(textView)
+            }
+        }
+
+        private var lineCount = 1
+
+        /// Runs per text change, so it counts lines once and redraws only the gutter.
+        func refreshLanes(_ textView: NSTextView) {
+            lineCount = LineSplitter.lineCount(of: textView.string)
+            if gutter.fit(codeFontSize: parent.fontSize, lineCount: lineCount) {
+                (textView as? CodeTextView)?.updateGutterInset()
+            }
+            refreshSelectionBar(textView)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let textView = notification.object as? NSTextView else { return }
+            refreshSelectionBar(textView)
+        }
+
+        /// Shows the selection actions while a selection spans text, pinned to the
+        /// pane's bottom edge.
+        private func refreshSelectionBar(_ textView: NSTextView) {
+            guard let scrollView = textView.enclosingScrollView else { return }
+            let lines =
+                gutter.onAction == nil
+                ? nil
+                : CodeLines.lines(of: textView.selectedRange(), in: textView.string as NSString)
+            guard let lines else {
+                selectionBar?.isHidden = true
+                selectionBarContent = nil
+                return
+            }
+            if let selectionBarContent, selectionBarContent == (lines, gutter.marks) {
+                return
+            }
+            selectionBarContent = (lines, gutter.marks)
+            let content = CodeSelectionActions(
+                lines: lines, marks: gutter.marks,
+                perform: { [weak self] in self?.performLaneAction($0) })
+            let bar = selectionBar ?? NSHostingView(rootView: content)
+            bar.rootView = content
+            bar.isHidden = false
+            if selectionBar == nil {
+                // Framed by hand: the scroll view tiles its subviews itself.
+                bar.sizingOptions = [.intrinsicContentSize]
+                bar.autoresizingMask = [
+                    .minXMargin, scrollView.isFlipped ? .minYMargin : .maxYMargin,
+                ]
+                scrollView.addSubview(bar)
+                selectionBar = bar
+            }
+            let size = bar.intrinsicContentSize
+            let bounds = scrollView.bounds
+            bar.frame = NSRect(
+                x: bounds.maxX - size.width - 10,
+                y: scrollView.isFlipped ? bounds.maxY - size.height - 10 : bounds.minY + 10,
+                width: size.width, height: size.height)
         }
 
         func textDidChange(_ notification: Notification) {
@@ -283,6 +375,7 @@ struct CodeEditorView: NSViewRepresentable {
             if textView.drawsBackground == textView.string.isEmpty {
                 applySurface(to: textView)
             }
+            refreshLanes(textView)
             let mode = HighlightPolicy.mode(for: textView.string, language: parent.language)
             if mode.usesPlainTextFallback {
                 debouncer.cancel()
@@ -371,6 +464,50 @@ final class CodeTextView: NSTextView {
     var slideDividerColor: NSColor = .tertiaryLabelColor
     private var dividersByOffset: [Int: SlideDivider] = [:]
 
+    static let baseInset: CGFloat = 14
+    /// How much of the base inset the gutter reuses, so the code sits a short gap after it.
+    static let gutterOverlap: CGFloat = 6
+    var laneGutter: CodeLaneGutter? { didSet { updateGutterInset() } }
+    var showsGutter = false { didSet { if showsGutter != oldValue { updateGutterInset() } } }
+    /// Half the gutter: the inset adds it on both sides and the origin once more on the left,
+    /// so the gutter takes room from the code's left edge only.
+    private var gutterShift: CGFloat = 0
+
+    func updateGutterInset() {
+        let gutter = showsGutter ? laneGutter?.width ?? 0 : 0
+        // Whole points: the text view rounds a fractional origin.
+        let shift = (max(0, gutter - Self.gutterOverlap) / 2).rounded(.up)
+        guard shift != gutterShift else { return }
+        gutterShift = shift
+        textContainerInset = NSSize(
+            width: Self.baseInset + shift, height: textContainerInset.height)
+        invalidateTextContainerOrigin()
+        setNeedsDisplay(visibleRect)
+    }
+
+    override var textContainerOrigin: NSPoint {
+        let origin = super.textContainerOrigin
+        return NSPoint(x: origin.x + gutterShift, y: origin.y)
+    }
+
+    private func isInGutter(_ event: NSEvent) -> Bool {
+        showsGutter && convert(event.locationInWindow, from: nil).x < textContainerOrigin.x - 2
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        if isInGutter(event), let laneGutter, laneGutter.onAction != nil {
+            laneGutter.click(
+                at: convert(event.locationInWindow, from: nil), with: event, in: self)
+            return
+        }
+        super.mouseDown(with: event)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        guard isInGutter(event) else { return super.mouseMoved(with: event) }
+        NSCursor.arrow.set()
+    }
+
     /// A split that finished after further typing is older than the shifted copy, so the copy
     /// stays and the settle that typing already scheduled replaces it.
     func install(_ layout: SlideDividerLayout) {
@@ -380,6 +517,7 @@ final class CodeTextView: NSTextView {
 
     override func drawBackground(in rect: NSRect) {
         super.drawBackground(in: rect)
+        if showsGutter { laneGutter?.draw(in: self, dirtyRect: rect) }
         guard !dividersByOffset.isEmpty else { return }
         drawSlideDividers()
     }
@@ -415,11 +553,11 @@ final class CodeTextView: NSTextView {
                 .foregroundColor: slideDividerColor.withAlphaComponent(0.75),
             ])
         let size = label.size()
-        let inset = textContainerInset.width
+        let leading = textContainerOrigin.x
         slideDividerColor.withAlphaComponent(0.45).setFill()
-        NSRect(x: inset, y: y, width: bounds.width - 2 * inset, height: 1).fill()
+        NSRect(x: leading, y: y, width: bounds.width - leading - Self.baseInset, height: 1).fill()
         // Above the rule: the end of a slide's last line is the likeliest empty spot.
-        label.draw(at: NSPoint(x: bounds.maxX - inset - size.width, y: y - size.height))
+        label.draw(at: NSPoint(x: bounds.maxX - Self.baseInset - size.width, y: y - size.height))
     }
 
     override func shouldChangeText(in range: NSRange, replacementString: String?) -> Bool {
@@ -436,8 +574,9 @@ final class CodeTextView: NSTextView {
 
     override func didChangeText() {
         super.didChangeText()
-        // A new line moves every divider below it, past the rect the edit redraws.
-        if !slideDividers.isEmpty { setNeedsDisplay(visibleRect) }
+        // A new line moves every divider and line number below it, past the rect the edit
+        // redraws.
+        if !slideDividers.isEmpty || showsGutter { setNeedsDisplay(visibleRect) }
     }
 
     override func paste(_ sender: Any?) {
