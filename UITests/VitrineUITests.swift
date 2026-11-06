@@ -882,8 +882,14 @@ final class VitrineUITests: XCTestCase {
         // Only a preset prints a readout, so it leaves once the derived gradient applies.
         XCTAssertTrue(
             element("inspector-value-background", in: app).waitForNonExistence(timeout: 3))
+        // Every variant has its own angle, so the custom-gradient angle shows the change.
+        let angle = element("custom-gradient-angle", in: app)
+        assertExists(angle, in: app, timeout: 3)
+        let before = angle.value as? String
         shuffle.click()
-        assertExists(shuffle, in: app, timeout: 3)
+        let changed = NSPredicate(format: "value != %@", before ?? "")
+        wait(for: [expectation(for: changed, evaluatedWith: angle)], timeout: 3)
+        assertExists(shuffle, in: app)
     }
 
     @MainActor

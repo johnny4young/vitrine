@@ -564,6 +564,7 @@ extension EditorView {
                     settings: settings, themes: themes, presets: presets,
                     entitlements: entitlements, legibility: legibility,
                     presetThumbnails: session.presetThumbnails,
+                    magicBackground: session.magicBackground,
                     presentFramePaywall: { exportSheet = .framePaywall }
                 )
                 .markToolbarAvoids()
@@ -683,7 +684,8 @@ extension EditorView {
     var inspectorColumn: some View {
         EditorInspectorView(
             settings: settings, themes: themes, presets: presets, entitlements: entitlements,
-            legibility: legibility, presetThumbnails: session.presetThumbnails)
+            legibility: legibility, presetThumbnails: session.presetThumbnails,
+            magicBackground: session.magicBackground)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a

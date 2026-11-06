@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Change Background" : {
+      "comment" : "Undo action name for picking a derived background or its next variant.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar fondo"
+          }
+        }
+      }
+    },
     "Magic" : {
       "comment" : "Background swatch and inspector row for a gradient derived from the capture's own colors.",
       "localizations" : {

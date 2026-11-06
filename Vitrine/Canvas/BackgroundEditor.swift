@@ -21,12 +21,10 @@ struct BackgroundControls: View {
     /// Keeps each surface's accessibility identifiers distinct (e.g. "social-card-").
     var identifierPrefix = ""
     /// Derives gradients from the capture; `nil` hides the Magic swatch.
-    var magic: (() async -> [CustomGradient])? = nil
+    var magic: MagicBackgroundControl? = nil
 
     /// The preset to return to when the Gradient kind is chosen again.
     @State private var lastPreset: GradientPreset?
-    @State private var magicGradients: [CustomGradient] = []
-    @State private var magicTask: Task<Void, Never>?
 
     var body: some View {
         switch layout {
@@ -65,6 +63,9 @@ struct BackgroundControls: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Gradient preset")
         .accessibilityIdentifier("\(identifierPrefix)background-gradient-preset")
+        // Any other write wins over a derivation still running, and so does closing.
+        .onChange(of: background) { magic?.model.cancel() }
+        .onDisappear { magic?.model.cancel() }
     }
 
     /// In Settings the picker takes the row's whole width: the Spanish labels leave no room
@@ -150,23 +151,13 @@ struct BackgroundControls: View {
         }
     }
 
-    /// The derived gradient on the canvas, if the background is still one of them.
-    private var magicIndex: Int? {
-        guard case .customGradient(let gradient) = background else { return nil }
-        return magicGradients.firstIndex(of: gradient)
-    }
+    private var magicIndex: Int? { magic?.model.index(of: background) }
 
-    /// Derives again on every press, so Shuffle follows content edited since.
     private func applyMagic(advancing: Bool) {
         guard let magic else { return }
-        let next = advancing ? (magicIndex ?? -1) + 1 : 0
-        magicTask?.cancel()
-        magicTask = Task {
-            let gradients = await magic()
-            guard !Task.isCancelled, !gradients.isEmpty else { return }
-            magicGradients = gradients
-            background = .customGradient(gradients[next % gradients.count])
-        }
+        magic.model.request(
+            advancing: advancing, current: background, input: magic.input, derive: magic.derive,
+            apply: magic.apply)
     }
 
     private var swatchSize: CGFloat { layout == .settings ? 26 : 28 }
@@ -190,6 +181,15 @@ struct BackgroundControls: View {
         background = kind.makeDefault(
             from: background, lastPreset: lastPreset, imageStore: imageStore)
     }
+}
+
+/// What the Magic swatch needs from its surface: where results live, what a derivation reads,
+/// how to derive, and how to apply one with undo.
+struct MagicBackgroundControl {
+    let model: MagicBackgroundModel
+    let input: () -> MagicBackgroundModel.Input
+    let derive: () async -> [CustomGradient]
+    let apply: (CustomGradient) -> Void
 }
 
 /// The selectable background kinds shown in the editor's kind picker.

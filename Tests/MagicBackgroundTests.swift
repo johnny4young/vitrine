@@ -38,10 +38,22 @@ struct MagicBackgroundTests {
 
     private func hue(_ color: RGBAColor) -> Double { MagicBackground.HSL(color).hue }
 
-    @Test func theSameCaptureAlwaysDerivesTheSameGradients() throws {
-        let first = MagicBackground.gradients(for: config())
+    private func cardColor(_ theme: Theme) throws -> RGBAColor {
+        let card = try #require(
+            ThemeLegibility.cardColor(theme: theme, language: .swift, palette: .theme))
+        return RGBAColor(
+            red: card.redComponent, green: card.greenComponent, blue: card.blueComponent,
+            opacity: 1)
+    }
+
+    private func rule(card: RGBAColor? = nil) -> MagicBackground.StopRule {
+        MagicBackground.StopRule(card: card, seenThrough: nil)
+    }
+
+    @Test func theSameCaptureAlwaysDerivesTheSameGradients() async throws {
+        let first = await MagicBackground.gradients(for: config())
         #expect(first.count >= 2)
-        #expect(MagicBackground.gradients(for: config()) == first)
+        #expect(await MagicBackground.gradients(for: config()) == first)
         let data = try JSONEncoder().encode(
             BackgroundStyle.customGradient(try #require(first.first)))
         #expect(
@@ -49,44 +61,67 @@ struct MagicBackgroundTests {
                 == .customGradient(try #require(first.first)))
     }
 
-    @Test func gradientsFollowTheInkTheTextIsDrawnIn() throws {
+    @Test func gradientsFollowTheInkTheTextIsDrawnIn() async throws {
         let theme = try theme(background: "#101010", foreground: "#E0402A")
-        let gradient = try #require(MagicBackground.gradients(for: config(theme: theme)).first)
+        let gradient = try #require(
+            await MagicBackground.gradients(for: config(theme: theme)).first)
         let ink = try #require(RGBAColor(hex: "#E0402A"))
         #expect(MagicBackground.hueDistance(hue(gradient.stops[0].color), hue(ink)) < 0.02)
     }
 
-    @Test(arguments: [Theme.oneDark, Theme.github])
-    func everyStopLeavesTheCardStandingOff(_ theme: Theme) throws {
-        let card = try #require(
-            ThemeLegibility.cardColor(theme: theme, language: .swift, palette: .theme))
-        let cardColor = RGBAColor(
-            red: card.redComponent, green: card.greenComponent, blue: card.blueComponent,
-            opacity: 1)
-        let gradients = MagicBackground.gradients(for: config(theme: theme))
+    @Test(arguments: ["one-dark", "github", "mid-tone"])
+    func everyStopLeavesTheCardStandingOff(_ name: String) async throws {
+        // A mid-tone card is darker than its HSL lightness suggests, so only darkening works.
+        let theme =
+            switch name {
+            case "one-dark": Theme.oneDark
+            case "github": Theme.github
+            default: try theme(background: "#00A000", foreground: "#FFFFFF")
+            }
+        let cardColor = try cardColor(theme)
+        let gradients = await MagicBackground.gradients(for: config(theme: theme))
         #expect(!gradients.isEmpty)
         for stop in gradients.flatMap(\.stops) {
             #expect(MagicBackground.contrast(stop.color, cardColor) >= Brand.Contrast.aaLarge)
         }
     }
 
-    @Test func anEmptyCaptureStillOffersANeutralPair() throws {
-        let gradients = MagicBackground.gradients(for: config(""))
+    @Test func anEmptyCaptureStillOffersANeutralPair() async throws {
+        let gradients = await MagicBackground.gradients(for: config(""))
         let first = try #require(gradients.first)
         #expect(first.stops.allSatisfy { MagicBackground.HSL($0.color).saturation <= 0.13 })
     }
 
-    @Test func aTranslucentCardKeepsTheTextReadableOnEveryStop() throws {
-        let theme = try theme(background: "#00000080", foreground: "#FFFFFF")
+    @Test(arguments: [("#00000080", "#FFFFFF"), ("#FFFFFF80", "#333333")])
+    func aTranslucentCardKeepsTheTextReadableAndTheCardDistinct(
+        _ colors: (String, String)
+    ) async throws {
+        let theme = try theme(background: colors.0, foreground: colors.1)
+        let card = try cardColor(theme)
         var probe = config(theme: theme)
-        let gradients = MagicBackground.gradients(for: probe)
+        let gradients = await MagicBackground.gradients(for: probe)
         #expect(!gradients.isEmpty)
         probe.showShadow = false
         for stop in gradients.flatMap(\.stops) {
             probe.background = .solid(stop.color)
             let report = try #require(ThemeLegibility.measure(ThemeLegibility.Input(probe)))
-            #expect(!report.isWeak)
+            #expect(!report.isWeak, "\(stop.color.hexString)")
+            #expect(
+                MagicBackground.rounded(MagicBackground.contrast(stop.color, card))
+                    >= Brand.Contrast.aaLarge, "\(stop.color.hexString)")
         }
+    }
+
+    @Test func aMidGrayCardStillStandsOff() throws {
+        let card = try #require(RGBAColor(hex: "#777777"))
+        let tone = MagicBackground.HSL(try #require(RGBAColor(hex: "#3050D0")))
+        let stop = MagicBackground.backdrop(tone, rule: rule(card: card))
+        #expect(MagicBackground.rounded(MagicBackground.contrast(stop, card)) >= 3)
+    }
+
+    @Test func ratiosCompareAtThreeDecimals() {
+        #expect(MagicBackground.rounded(2.999_6) == 3)
+        #expect(MagicBackground.rounded(2.999_4) < 3)
     }
 
     @Test func paletteRanksByWeightAndKeepsHuesApart() throws {
@@ -100,7 +135,7 @@ struct MagicBackgroundTests {
                 .init(color: nearRed, weight: 0.1), .init(color: red, weight: 0.3),
                 .init(color: blue, weight: 0),
             ],
-            card: nil)
+            rule: rule())
         #expect(palette.count == 2)
         #expect(MagicBackground.hueDistance(hue(palette[0]), hue(red)) < 0.02)
         #expect(MagicBackground.hueDistance(hue(palette[1]), hue(blue)) < 0.02)
@@ -108,12 +143,12 @@ struct MagicBackgroundTests {
 
     @Test func oneHueGetsAnAnalogousPartnerAndVariantsNeverRepeat() throws {
         let red = try #require(RGBAColor(hex: "#D03030"))
-        let palette = MagicBackground.palette(from: [.init(color: red, weight: 1)], card: nil)
+        let palette = MagicBackground.palette(from: [.init(color: red, weight: 1)], rule: rule())
         #expect(palette.count == 2)
-        let gradients = MagicBackground.variants(of: palette, card: nil)
+        let gradients = MagicBackground.variants(of: palette, rule: rule())
         #expect(Set(gradients).count == gradients.count)
         #expect(gradients.map(\.angle) == [135, 45, 120, 90])
-        #expect(MagicBackground.variants(of: [], card: nil).isEmpty)
+        #expect(MagicBackground.variants(of: [], rule: rule()).isEmpty)
     }
 
     @Test func hslRoundTripsThroughEverySector() throws {

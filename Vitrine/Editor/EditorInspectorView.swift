@@ -25,6 +25,7 @@ struct EditorInspectorView: View {
     var entitlements: Entitlements
     var legibility: LegibilityModel
     var presetThumbnails: PresetThumbnailModel
+    var magicBackground: MagicBackgroundModel
     /// Shows only this section, for canvas mode's popovers; `nil` is the full column.
     var pane: InspectorPane? = nil
     /// A popover cannot host the paywall sheet, so it asks the editor window to.
@@ -48,6 +49,7 @@ struct EditorInspectorView: View {
     /// The last scan's outcome, so a scan that finds nothing still answers.
     @State private var secretScan: SecretScanReport?
     @Environment(\.foregroundImageStore) private var foregroundImageStore
+    @Environment(\.undoManager) private var environmentUndoManager
 
     var body: some View {
         if let pane {
@@ -307,17 +309,26 @@ struct EditorInspectorView: View {
         ) {
             BackgroundControls(
                 background: $settings.style.background, layout: .inspector,
-                identifierPrefix: "inspector-", magic: magicGradients)
+                identifierPrefix: "inspector-", magic: magicControl)
         }
     }
 
-    /// Read at the press, not in `body`, so the inspector never observes the document text.
-    private func magicGradients() async -> [CustomGradient] {
-        guard let reference = settings.style.foregroundImage else {
-            return MagicBackground.gradients(for: settings.config)
-        }
-        guard let url = foregroundImageStore.url(for: reference) else { return [] }
-        return await MagicBackground.gradients(forImageAt: url)
+    /// The closures read the document at the press, never in `body`, so typing can't reach here.
+    private var magicControl: MagicBackgroundControl {
+        let settings = settings
+        let store = foregroundImageStore
+        let undoManager = windowUndoManager ?? environmentUndoManager
+        return MagicBackgroundControl(
+            model: magicBackground,
+            input: { MagicBackgroundModel.Input(settings) },
+            derive: {
+                guard let reference = settings.style.foregroundImage else {
+                    return await MagicBackground.gradients(for: settings.config)
+                }
+                guard let url = store.url(for: reference) else { return [] }
+                return await MagicBackground.gradients(forImageAt: url)
+            },
+            apply: { MagicBackgroundModel.apply($0, to: settings, undoManager: undoManager) })
     }
 
     /// The frame for a beautified image — none, a macOS window, a browser window, or a

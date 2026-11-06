@@ -18,69 +18,64 @@ public enum MagicBackground {
         }
     }
 
+    /// What a code derivation reads, gathered in one pass on the main actor.
+    nonisolated public struct CodeSource: Sendable {
+        let card: RGBAColor
+        let isTranslucent: Bool
+        let samples: ThemeLegibility.Samples?
+    }
+
     /// The card must stand off every stop by at least the large-text ratio.
     nonisolated static let cardSeparation = Brand.Contrast.aaLarge
     nonisolated static let minimumSaturation = 0.18
     nonisolated static let minimumHueGap = 1.0 / 8
     nonisolated static let sampleSide = 16
+    nonisolated static let lightnessStep = 0.04
 
-    /// Gradients for a code capture, from the colors its visible text is drawn in. Under a
-    /// translucent card each stop is darkened or lightened until the legibility guard passes.
-    public static func gradients(for config: SnapshotConfig) -> [CustomGradient] {
+    /// Reads the card and the visible text's inks once; the search runs off the main actor.
+    public static func codeSource(for config: SnapshotConfig) -> CodeSource? {
         guard
             let card = ThemeLegibility.cardColor(
                 theme: config.theme, language: config.language, palette: config.terminalPalette)
-        else { return [] }
-        let cardColor = RGBAColor(
-            red: card.redComponent, green: card.greenComponent, blue: card.blueComponent,
-            opacity: 1)
-        let candidates = variants(
-            of: palette(from: codeSwatches(for: config), card: cardColor), card: cardColor)
-        guard card.alphaComponent < 1 else { return candidates }
-        let towardDark = HSL(cardColor).lightness < 0.5
-        return candidates.map { gradient in
-            CustomGradient(
-                stops: gradient.stops.map {
-                    GradientStop(
-                        color: readable($0.color, config: config, towardDark: towardDark),
-                        location: $0.location)
-                },
-                angle: gradient.angle)
-        }
+        else { return nil }
+        return CodeSource(
+            card: RGBAColor(
+                red: card.redComponent, green: card.greenComponent, blue: card.blueComponent,
+                opacity: 1),
+            isTranslucent: card.alphaComponent < 1,
+            samples: ThemeLegibility.samples(ThemeLegibility.Input(config)))
     }
 
-    /// Gradients for a beautified image, from a small fixed-size sample of its pixels.
+    /// Gradients for a code capture, from the colors its visible text is drawn in.
+    public static func gradients(for config: SnapshotConfig) async -> [CustomGradient] {
+        guard let source = codeSource(for: config) else { return [] }
+        return await gradients(from: source)
+    }
+
+    @concurrent public static func gradients(from source: CodeSource) async -> [CustomGradient] {
+        let rule = StopRule(
+            card: source.card, seenThrough: source.isTranslucent ? source.samples : nil)
+        let swatches = source.samples.map(swatches(of:)) ?? []
+        return variants(of: palette(from: swatches, rule: rule), rule: rule)
+    }
+
+    /// Gradients for a beautified image, from a small fixed-size sample of its pixels. ImageIO
+    /// may resample differently across OS versions; a result is saved as a gradient anyway.
     @concurrent public static func gradients(forImageAt url: URL) async -> [CustomGradient] {
-        variants(of: palette(from: swatches(ofImageAt: url), card: nil), card: nil)
+        let rule = StopRule(card: nil, seenThrough: nil)
+        return variants(of: palette(from: swatches(ofImageAt: url), rule: rule), rule: rule)
     }
 
-    /// The glyph share of each ink, measured by the legibility guard over a known surface so a
-    /// translucent card still reports.
-    static func codeSwatches(for config: SnapshotConfig) -> [Swatch] {
-        var probe = config
-        probe.background = .solid(.fallbackBlack)
-        probe.showShadow = false
-        guard let report = ThemeLegibility.measure(ThemeLegibility.Input(probe)) else { return [] }
+    /// The glyph share of each ink color.
+    nonisolated static func swatches(of samples: ThemeLegibility.Samples) -> [Swatch] {
+        let total = Double(samples.entries.reduce(0) { $0 + $1.count })
         var weights: [String: Double] = [:]
-        for ink in report.inks { weights[ink.hex, default: 0] += ink.share }
+        for entry in samples.entries {
+            weights[entry.hex, default: 0] += Double(entry.count) / total
+        }
         return weights.compactMap { hex, weight in
             RGBAColor(hex: hex).map { Swatch(color: $0, weight: weight) }
         }
-    }
-
-    private static func readable(
-        _ color: RGBAColor, config: SnapshotConfig, towardDark: Bool
-    ) -> RGBAColor {
-        var hsl = HSL(color)
-        for _ in 0..<10 {
-            var probe = config
-            probe.background = .solid(hsl.color)
-            probe.showShadow = false
-            guard let report = ThemeLegibility.measure(ThemeLegibility.Input(probe)), report.isWeak
-            else { return hsl.color }
-            hsl.lightness = min(max(hsl.lightness + (towardDark ? -0.08 : 0.08), 0), 1)
-        }
-        return hsl.color
     }
 
     nonisolated static func swatches(ofImageAt url: URL) -> [Swatch] {
@@ -144,7 +139,7 @@ public enum MagicBackground {
 
     /// Up to three distinct hues, heaviest first. Grays and the card's own color carry no hue,
     /// so content without one gets a neutral pair in its dominant tone.
-    nonisolated static func palette(from swatches: [Swatch], card: RGBAColor?) -> [RGBAColor] {
+    nonisolated static func palette(from swatches: [Swatch], rule: StopRule) -> [RGBAColor] {
         let ranked = swatches.filter { $0.weight > 0 }.sorted {
             $0.weight != $1.weight ? $0.weight > $1.weight : $0.color.hexString < $1.color.hexString
         }
@@ -152,16 +147,17 @@ public enum MagicBackground {
         for swatch in ranked where picked.count < 3 {
             let hsl = HSL(swatch.color)
             guard hsl.saturation >= minimumSaturation,
-                card.map({ contrast(swatch.color, $0) >= 1.2 }) ?? true,
+                rule.card.map({ rounded(contrast(swatch.color, $0)) >= 1.2 }) ?? true,
                 picked.allSatisfy({ hueDistance($0.hue, hsl.hue) >= minimumHueGap })
             else { continue }
             picked.append(hsl)
         }
         guard let first = picked.first else {
             let tone =
-                ranked.first.map { HSL($0.color) } ?? card.map { HSL($0) } ?? HSL(.fallbackBlack)
+                ranked.first.map { HSL($0.color) } ?? rule.card.map { HSL($0) }
+                ?? HSL(.fallbackBlack)
             let neutral = HSL(hue: tone.hue, saturation: min(tone.saturation, 0.12), lightness: 0.5)
-            return [neutral.shifted(-0.14), neutral.shifted(0.12)].map { backdrop($0, card: card) }
+            return [neutral.shifted(-0.14), neutral.shifted(0.12)].map { backdrop($0, rule: rule) }
         }
         if picked.count == 1 {
             picked.append(
@@ -169,12 +165,11 @@ public enum MagicBackground {
                     hue: (first.hue + minimumHueGap).truncatingRemainder(dividingBy: 1),
                     saturation: first.saturation, lightness: first.lightness))
         }
-        return picked.map { backdrop($0, card: card) }
+        return picked.map { backdrop($0, rule: rule) }
     }
 
     /// Linear, reversed, three-stop and tonal variants of a palette, without repeats.
-    nonisolated static func variants(of palette: [RGBAColor], card: RGBAColor?) -> [CustomGradient]
-    {
+    nonisolated static func variants(of palette: [RGBAColor], rule: StopRule) -> [CustomGradient] {
         guard let first = palette.first else { return [] }
         let second = palette.count > 1 ? palette[1] : first
         let third = palette.count > 2 ? palette[2] : nil
@@ -182,11 +177,11 @@ public enum MagicBackground {
         let layouts: [([RGBAColor], Double)] = [
             ([first, second], 135),
             ([second, third ?? first], 45),
-            ([first, second, third ?? backdrop(base.shifted(0.16), card: card)], 120),
+            ([first, second, third ?? backdrop(base.shifted(0.16), rule: rule)], 120),
             (
                 [
-                    backdrop(base.shifted(-0.14), card: card),
-                    backdrop(base.shifted(0.14), card: card),
+                    backdrop(base.shifted(-0.14), rule: rule),
+                    backdrop(base.shifted(0.14), rule: rule),
                 ], 90
             ),
         ]
@@ -203,22 +198,65 @@ public enum MagicBackground {
         return gradients
     }
 
-    /// A hue tamed into a backdrop, then moved away from the card until the card stands off it.
-    nonisolated static func backdrop(_ hsl: HSL, card: RGBAColor?) -> RGBAColor {
-        var tone = HSL(
+    /// A hue tamed into a backdrop, then the nearest lightness, either way out to black and
+    /// white, that meets the rule. Failing that, the nearest that keeps the card distinct.
+    nonisolated static func backdrop(_ hsl: HSL, rule: StopRule) -> RGBAColor {
+        let tone = HSL(
             hue: hsl.hue,
             saturation: hsl.saturation < minimumSaturation
                 ? hsl.saturation : min(max(hsl.saturation, 0.3), 0.8),
             lightness: min(max(hsl.lightness, 0.3), 0.7))
-        guard let card else { return tone.color }
-        let lighten = HSL(card).lightness < 0.5
-        while contrast(tone.color, card) < cardSeparation,
-            lighten ? tone.lightness < 0.9 : tone.lightness > 0.1
-        {
-            tone.lightness += lighten ? 0.04 : -0.04
+        guard let card = rule.card else { return tone.color }
+        let white = RGBAColor(red: 1, green: 1, blue: 1, opacity: 1)
+        let black = RGBAColor.fallbackBlack
+        let lightenFirst = contrast(white, card) >= contrast(black, card)
+        var candidates: [RGBAColor] = [tone.color]
+        for step in 1...Int((1 / lightnessStep).rounded()) {
+            for sign in lightenFirst ? [1.0, -1.0] : [-1.0, 1.0] {
+                let lightness = tone.lightness + sign * lightnessStep * Double(step)
+                guard (0...1).contains(lightness) else { continue }
+                candidates.append(
+                    HSL(hue: tone.hue, saturation: tone.saturation, lightness: lightness).color)
+            }
         }
-        return tone.color
+        candidates += lightenFirst ? [white, black] : [black, white]
+        return candidates.first(where: rule.allows) ?? candidates.first(where: rule.separates)
+            ?? (lightenFirst ? white : black)
     }
+
+    /// What a stop must meet: the card stands off it, and text seen through a translucent card
+    /// stays readable over it. Each color is measured once per derivation.
+    nonisolated final class StopRule {
+        let card: RGBAColor?
+        let seenThrough: ThemeLegibility.Samples?
+        private var readability: [RGBAColor: Bool] = [:]
+
+        init(card: RGBAColor?, seenThrough: ThemeLegibility.Samples?) {
+            self.card = card
+            self.seenThrough = seenThrough
+        }
+
+        func separates(_ color: RGBAColor) -> Bool {
+            guard let card else { return true }
+            return MagicBackground.rounded(MagicBackground.contrast(color, card))
+                >= MagicBackground.cardSeparation
+        }
+
+        func reads(_ color: RGBAColor) -> Bool {
+            guard let seenThrough else { return true }
+            if let known = readability[color] { return known }
+            let backdrop = NSColor(
+                srgbRed: color.red, green: color.green, blue: color.blue, alpha: 1)
+            let reads = !ThemeLegibility.isWeak(seenThrough.inks(over: backdrop))
+            readability[color] = reads
+            return reads
+        }
+
+        func allows(_ color: RGBAColor) -> Bool { separates(color) && reads(color) }
+    }
+
+    /// Ratios compared at three decimals, so a last-digit libm difference can't flip a stop.
+    nonisolated static func rounded(_ ratio: Double) -> Double { (ratio * 1000).rounded() / 1000 }
 
     nonisolated static func contrast(_ a: RGBAColor, _ b: RGBAColor) -> Double {
         Brand.Contrast.ratio(
