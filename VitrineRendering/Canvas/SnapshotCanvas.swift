@@ -293,9 +293,7 @@ public struct SnapshotCanvas: View, Equatable {
                             .opacity(0.12))
             }
             codeBody
-                .reportsSnapCode {
-                    config.snapCodeMetrics(font: codeFont, lineSpacing: Self.codeLineSpacing)
-                }
+                .reportsSnapCode(config, lineSpacing: Self.codeLineSpacing)
             if let cue = config.slideCue, cue.rangeLabel != nil || cue.continuationLabel != nil {
                 slideCueFooter(cue)
             }

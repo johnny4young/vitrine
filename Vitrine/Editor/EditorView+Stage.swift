@@ -863,6 +863,7 @@ struct PreviewCardStage<Content: View>: View {
             // A drag on a card still changing shape would place a mark away from the pointer.
             .allowsHitTesting(reduceMotion || settledMorph == morph.generation)
             .scaleEffect(scale)
+            .onChange(of: scale, initial: true) { geometry.snapper.scale = $1 }
             // `scaleEffect` does not shrink the layout footprint, so without this the
             // unscaled (often very wide) card stays full-width in layout and its
             // centered overflow is clipped on the right. Pinning the footprint to the

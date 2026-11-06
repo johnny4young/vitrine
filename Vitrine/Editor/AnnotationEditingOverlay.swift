@@ -28,8 +28,8 @@ struct AnnotationEditingOverlay: View {
     let drawThickness: Double
     /// The emoji the sticker tool places; unused by every other tool.
     var stickerGlyph: String = AnnotationTool.stickerChoices[0]
-    /// Snaps dragged marks to the canvas layout; `nil` leaves drags free.
-    var snapper: AnnotationSnapper?
+    /// Snaps dragged marks to the canvas layout; without a layout, drags stay free.
+    var snapper = AnnotationSnapper()
     /// Called once at the start of each discrete edit (draw, move, resize, delete) so
     /// the editor can snapshot the annotations for undo.
     let onBeginEdit: () -> Void
@@ -104,9 +104,14 @@ struct AnnotationEditingOverlay: View {
                 TextAnnotationEditor(
                     annotation: binding, canvasSize: canvasSize, onCommit: endTextEditing)
             }
-            if !snapGuides.isEmpty { SnapGuidesView(guides: snapGuides) }
+            if !snapGuides.isEmpty {
+                SnapGuidesView(guides: snapGuides, lineWidth: snapper.guideWidth)
+            }
         }
         .frame(width: canvasSize.width, height: canvasSize.height)
+        #if DEBUG
+            .task(id: canvasSize) { await showDemoSnapGuide() }
+        #endif
     }
 
     /// The next badge number — one past the highest counter currently placed.
@@ -150,6 +155,33 @@ struct AnnotationEditingOverlay: View {
         onEndEdit()
     }
 
+    #if DEBUG
+        /// The `--demo-snap-guide` hook: a box resized onto the code rows with its guides up,
+        /// since a guide otherwise shows only mid-drag.
+        private func showDemoSnapGuide() async {
+            guard ProcessInfo.processInfo.arguments.contains("--demo-snap-guide"),
+                canvasSize.width > 0, settings.style.annotations.isEmpty
+            else { return }
+            for _ in 0..<100 where snapper.layout == nil {
+                try? await Task.sleep(for: .milliseconds(50))
+            }
+            guard let targets = snapper.targets(bypassed: false), targets.rowEdges.count > 3
+            else { return }
+            let start = CGPoint(x: targets.frameXs[2].position, y: targets.rowEdges[1].position)
+            let dragged = CGPoint(
+                x: canvasSize.width * 0.6, y: targets.rowEdges[3].position + targets.threshold / 2)
+            let (end, guides) = targets.snapEnd(dragged, anchor: start, kind: .rectangle)
+            let mark = Annotation.make(
+                kind: .rectangle,
+                from: AnnotationInteractionGeometry.normalize(start, in: canvasSize),
+                to: AnnotationInteractionGeometry.normalize(end, in: canvasSize),
+                color: RGBAColor(drawColor), thickness: drawThickness)
+            settings.style.annotations.append(mark)
+            selection = mark.id
+            snapGuides = guides
+        }
+    #endif
+
     private func delete(_ id: UUID) {
         onBeginEdit()
         settings.style.annotations.removeMark(id)
@@ -168,7 +200,7 @@ private struct DrawingLayer: View {
     let canvasSize: CGSize
     let nextCounterNumber: Int
     var stickerGlyph: String = ""
-    let snapper: AnnotationSnapper?
+    let snapper: AnnotationSnapper
     let onGuides: ([SnapGuide]) -> Void
     let onBeginDraw: () -> Void
     let onEndDraw: () -> Void
@@ -192,6 +224,7 @@ private struct DrawingLayer: View {
                 .opacity(0.9)
             }
         }
+        .onDisappear { if drag != nil { onGuides([]) } }
     }
 
     private var drawGesture: some Gesture {
@@ -211,10 +244,16 @@ private struct DrawingLayer: View {
                         kind: kind, from: value.startLocation, to: value.location)
                 else { return }
                 onBeginDraw()
-                let ends =
-                    kind.isPointPlaced
-                    ? (start: value.location, end: value.location)
-                    : snapped(value.startLocation, value.location)
+                let ends: (start: CGPoint, end: CGPoint)
+                if kind.isPointPlaced {
+                    let placed = snapper.apply(value.location, onGuides: { _ in }) {
+                        $0.snapEnd(value.location, anchor: value.location, kind: kind)
+                    }
+                    ends = (placed, placed)
+                } else {
+                    ends = AnnotationSnapper.committedEnds(
+                        preview: drag, start: value.startLocation, end: value.location)
+                }
                 onCommit(makeAnnotation(from: ends.start, to: ends.end))
                 onEndDraw()
             }
@@ -222,14 +261,9 @@ private struct DrawingLayer: View {
 
     /// Both ends of a drawn shape, snapped against each other.
     private func snapped(_ start: CGPoint, _ end: CGPoint) -> (start: CGPoint, end: CGPoint) {
-        guard let targets = snapper?.targets(bypassed: AnnotationSnapper.isBypassed) else {
-            onGuides([])
-            return (start, end)
+        snapper.apply((start, end), onGuides: onGuides) {
+            $0.snapEnds(start: start, end: end, kind: kind)
         }
-        let (snappedStart, startGuides) = targets.snapEnd(start, anchor: end, kind: kind)
-        let (snappedEnd, endGuides) = targets.snapEnd(end, anchor: start, kind: kind)
-        onGuides(startGuides + endGuides)
-        return (snappedStart, snappedEnd)
     }
 
     private func makeAnnotation(from start: CGPoint, to end: CGPoint) -> Annotation {
@@ -259,7 +293,7 @@ private struct AnnotationHandle: View {
     let onDelete: () -> Void
     /// Whether the selected mark's toolbar may show beside this mark.
     let offersMarkToolbar: Bool
-    let snapper: AnnotationSnapper?
+    let snapper: AnnotationSnapper
     let onGuides: ([SnapGuide]) -> Void
 
     @State private var dragOrigin: Annotation?
@@ -299,6 +333,8 @@ private struct AnnotationHandle: View {
                     .accessibilityHidden(true)
             }
         }
+        // A mark deleted mid-drag never sees its gesture end.
+        .onDisappear { if dragOrigin != nil || isResizing { onGuides([]) } }
     }
 
     /// A small delete badge at the selection's top-right — the primary way to remove
@@ -353,19 +389,16 @@ private struct AnnotationHandle: View {
                 guard let origin = dragOrigin else { return }
                 var moved = origin
                 moved.nudge(by: value.translation, in: canvasSize)
-                if let targets = snapper?.targets(bypassed: AnnotationSnapper.isBypassed) {
-                    let (delta, guides) = targets.snapMove(moved, in: canvasSize)
-                    if delta != .zero {
-                        moved = origin
-                        moved.nudge(
-                            by: CGSize(
-                                width: value.translation.width + delta.width,
-                                height: value.translation.height + delta.height),
-                            in: canvasSize)
-                    }
-                    onGuides(guides)
-                } else {
-                    onGuides([])
+                let delta = snapper.apply(CGSize.zero, onGuides: onGuides) {
+                    $0.snapMove(moved, in: canvasSize)
+                }
+                if delta != .zero {
+                    moved = origin
+                    moved.nudge(
+                        by: CGSize(
+                            width: value.translation.width + delta.width,
+                            height: value.translation.height + delta.height),
+                        in: canvasSize)
                 }
                 annotation = moved
             }
@@ -427,15 +460,9 @@ private struct AnnotationHandle: View {
                     onBeginEdit()
                 }
                 onSelect()
-                var point = value.location
-                if let targets = snapper?.targets(bypassed: AnnotationSnapper.isBypassed) {
-                    let other = Annotation.denormalize(annotation[keyPath: anchor], in: canvasSize)
-                    let (snapped, guides) = targets.snapEnd(
-                        point, anchor: other, kind: annotation.kind)
-                    point = snapped
-                    onGuides(guides)
-                } else {
-                    onGuides([])
+                let other = Annotation.denormalize(annotation[keyPath: anchor], in: canvasSize)
+                let point = snapper.apply(value.location, onGuides: onGuides) {
+                    $0.snapEnd(value.location, anchor: other, kind: annotation.kind)
                 }
                 annotation[keyPath: keyPath] = AnnotationInteractionGeometry.normalize(
                     point, in: canvasSize)
@@ -448,14 +475,10 @@ private struct AnnotationHandle: View {
     }
 }
 
-extension AnnotationSnapper {
-    /// Holding ⌘ while dragging places a mark freely, as alignment guides do in iWork.
-    static var isBypassed: Bool { NSEvent.modifierFlags.contains(.command) }
-}
-
 /// The guides of the active snap. Stage chrome: the export never draws the overlay.
 private struct SnapGuidesView: View {
     let guides: [SnapGuide]
+    let lineWidth: CGFloat
 
     var body: some View {
         Path { path in
@@ -470,7 +493,7 @@ private struct SnapGuidesView: View {
                 }
             }
         }
-        .stroke(VitrineTokens.Chrome.snapGuide, lineWidth: 1.5)
+        .stroke(VitrineTokens.Chrome.snapGuide, lineWidth: lineWidth)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
