@@ -193,34 +193,10 @@ struct DiffViewOptionsTests {
             config.redactedLineRanges = redacted ? [8...8] : []
             return try render(config)
         }
-        // Failure output keeps both renders and a same-value control for diagnosis.
-        var hidden = 0
-        for attempt in 1...RenderSettling.strictRenderAttempts {
-            hidden = try FontLigatureTests.compareRenderedPixels(
-                try folded("alpha\(attempt)", redacted: true),
-                try folded("omega\(attempt)", redacted: true)
-            ).differingPixels
-            if hidden == 0 { break }
-            if attempt == 1 {
-                func png(_ image: CGImage) -> String {
-                    NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])!
-                        .base64EncodedString()
-                }
-                print("DIAG PNGA \(png(try folded("alpha1", redacted: true)))")
-                print("DIAG PNGO \(png(try folded("omega1", redacted: true)))")
-                let same = try FontLigatureTests.compareRenderedPixels(
-                    try folded("alpha1", redacted: true), try folded("alpha1", redacted: true))
-                print("DIAG same-secret \(same.differingPixels) max=\(same.maxChannelDelta)")
-                var plain = diffConfig()
-                plain.code = Self.patch.replacingOccurrences(of: "-four", with: "-alpha1")
-                plain.diffContextLines = 0
-                print("DIAG PNGP \(png(try render(plain)))")
-                let font = CodeFont.resolved(family: "JetBrains Mono", size: 14, ligatures: false)
-                print("DIAG fonts \(font)")
-            }
-            RenderSettling.settleFontCaches()
-        }
-        #expect(hidden == 0)
+        #expect(
+            try differingPixels(
+                { try folded("alpha", redacted: true) }, { try folded("omega", redacted: true) })
+                == 0)
         let visible = try FontLigatureTests.compareRenderedPixels(
             try folded("alpha", redacted: false), try folded("omega", redacted: false))
         #expect(visible.differingPixels > 0)
