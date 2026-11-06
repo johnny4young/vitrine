@@ -157,6 +157,49 @@ vgrab --no-context date # omit the project and command header
   `vgrab -e git status` hands the output straight to a Vitrine window (nothing touches
   your clipboard).
 
+### `vitrine run` — the same capture without the shell hook
+
+`vitrine run` does what `vgrab` does from the CLI itself, so it works in any shell, script
+or Makefile with no setup:
+
+```sh
+vitrine run -- swift test                     # copy the image (the default)
+vitrine run --terminal-width 100 -- npm test  # pin the width, as vgrab -w does
+vitrine run --edit -- git status              # open the output in the editor instead
+vitrine run --no-context -- env               # no project, branch or command header
+vitrine run --title-from-command -- make lint  # show the arguments, masked
+```
+
+It runs only the command you typed, locally, under the system `script` pseudo-terminal, so
+the program keeps its colors and you still see its output as it runs. The output goes to a
+private temporary file that is removed once the image is copied; nothing leaves your Mac. It
+exits with the command's own status. Options go before the command, and `--` ends them. The
+command runs directly, so shell aliases and functions don't resolve; a name that isn't on
+`PATH` is reported without running anything.
+
+Like `vgrab`, it is free and accepts only the terminal-capture options (`--copy`, `--edit`,
+`--terminal-width`, `--filename`, `--title`, `--conceal-clipboard`, `--redact-secrets`).
+The sandboxed app never runs commands; only the CLI does.
+
+**Header and secrets.** Unlike `vgrab`, the header shows only the program: `vitrine run --
+mysql -u root -phunter2 app` is titled `$ mysql …`, because arguments can hold credentials in
+shapes no rule foresees. `--title-from-command` shows the arguments too, with `••••` in place
+of anything that may be a credential, whatever it looks like:
+
+- the value of an option or `NAME=` assignment whose name contains password, passwd, pass,
+  pwd, token, secret, key, auth, credential, cookie, session or bearer (`--author` excepted),
+  even when that value starts with `-`;
+- the word after `-p`, `-P`, `-a` or `-k`, a value attached to `-p` or `-P`, the value of
+  `-u`/`--user` when it holds a `:`, the whole user information of a URL
+  (`https://••••@host`), and an `-H`/`--header` whose name is one of those words, such as
+  `Authorization`, `Cookie` or `X-Api-Key`;
+- anything else the secret scanner flags.
+
+A `--title` you pass is shown as typed. The output is scanned too: a finding prints a warning
+on stderr that names the rows and kinds, never the matched text, and the image is copied
+unchanged. Add `--redact-secrets` to blank those rows, or `--no-context` to leave the header
+out entirely.
+
 ### `vpane` — capture a tmux pane
 
 Inside **tmux**, `vpane` captures what is *already on screen* without re-running
@@ -234,6 +277,7 @@ vitrine render <input-file> --out <image> --sidecars all    # image + txt/md/htm
 vitrine render <input-file> --out <image> --terminal-palette raw   # only affects --language terminal
 vitrine render <input-file> --out <image> --terminal-cursor block  # only affects --language terminal
 vitrine shell-init [zsh|bash|fish]            # print the helpers
+vitrine run [--copy | --edit] [--terminal-width <n>] [--no-context] [--title-from-command] [--redact-secrets] [--] <command> [args…]
 ```
 
 `--copy` puts the rendered image on the clipboard; `--stdin` reads the source from a

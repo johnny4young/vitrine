@@ -63,6 +63,7 @@ struct CLIArgumentParser {
     var showLineNumbers: Bool?
     var showChrome: Bool?
     var showShadow: Bool?
+    var sourceLines: ClosedRange<Int>?
     var highlightedLineRanges: [ClosedRange<Int>]?
     var redactedLineRanges: [ClosedRange<Int>]?
     var redactSecrets = false
@@ -321,6 +322,8 @@ struct CLIArgumentParser {
             showChrome = token == "--chrome"
         case .shadow:
             showShadow = token == "--shadow"
+        case .lines:
+            sourceLines = try resolveSourceLines(value, flag: token)
         case .highlightLines:
             highlightedLineRanges = try resolveLineRanges(value, flag: token)
         case .redactLines:

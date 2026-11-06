@@ -105,34 +105,28 @@ public enum CLICommandLine {
         }
 
         do {
+            // `run` validates its options before the user's command starts, then renders the
+            // capture through the same free terminal-capture contract `vgrab` uses.
+            if rawArguments.first == "run" {
+                guard
+                    let invocation = try CLIRunCommand.invocation(
+                        for: Array(rawArguments.dropFirst()))
+                else {
+                    print(CLIRunCommand.usage)
+                    exit(0)
+                }
+                try CLIEntitlement.authorize(invocation.options)
+                let outcome = try CLIRunCommand.perform(invocation, render: render)
+                print(outcome.summary)
+                exit(outcome.status)
+            }
+
             let options = try CLIArguments.parse(Array(CommandLine.arguments.dropFirst()))
             // Entitlement stays at the earliest process boundary. Authorization is lazy:
             // terminal-capture and render --edit never read a PRO token,
             // while locked automation exits before AppKit, fonts, or source files are touched.
             try CLIEntitlement.authorize(options)
-
-            // Bring up the shared application as a background accessory only after parsing
-            // and authorization succeed. This initializes ImageRenderer/Highlightr without
-            // showing a Dock icon, app-switcher entry, or menu bar.
-            let application = NSApplication.shared
-            application.setActivationPolicy(.accessory)
-
-            // Register the bundled monospaced fonts that ship next to the executable so the
-            // default font (JetBrains Mono) and every other bundled family render exactly as
-            // in the GUI. Fonts live beside the development binary or in the app Resources.
-            CLIFontRegistration.registerBundledFonts(in: CLIEnvironment.bundledFontsDirectory)
-
-            let summary: String
-            switch options.command {
-            case .terminalCapture, .render:
-                // `--edit` hands the source to the running editor (no render); otherwise the
-                // normal render-and-write/copy path produces the image.
-                summary =
-                    options.openInEditor
-                    ? try CLIRenderer.openInEditor(options) : try CLIRenderer.run(options)
-            case .multiSize: summary = try CLIRenderer.runMultiSize(options)
-            case .batch: summary = try CLIRenderer.runBatch(options)
-            }
+            let summary = try render(options)
             if !options.quiet { print(summary) }
             exit(0)
         } catch let error as CLIError {
@@ -150,6 +144,28 @@ public enum CLICommandLine {
         } catch {
             printError("error: \(error)")
             exit(1)
+        }
+    }
+
+    /// Renders authorized options, bringing AppKit up only now so ImageRenderer and
+    /// Highlightr work without a Dock icon, app-switcher entry, or menu bar.
+    private static func render(_ options: CLIOptions) throws -> String {
+        let application = NSApplication.shared
+        application.setActivationPolicy(.accessory)
+
+        // Register the bundled monospaced fonts that ship next to the executable so the
+        // default font (JetBrains Mono) and every other bundled family render exactly as
+        // in the GUI. Fonts live beside the development binary or in the app Resources.
+        CLIFontRegistration.registerBundledFonts(in: CLIEnvironment.bundledFontsDirectory)
+
+        switch options.command {
+        case .terminalCapture, .render:
+            // `--edit` hands the source to the running editor (no render); otherwise the
+            // normal render-and-write/copy path produces the image.
+            return options.openInEditor
+                ? try CLIRenderer.openInEditor(options) : try CLIRenderer.run(options)
+        case .multiSize: return try CLIRenderer.runMultiSize(options)
+        case .batch: return try CLIRenderer.runBatch(options)
         }
     }
 

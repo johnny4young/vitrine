@@ -194,6 +194,15 @@ extension CLIArgumentParser {
         if gitDiffSource != nil, imageInputPath != nil {
             throw CLIError.incompatibleOptions("Cannot combine a Git diff source with --image.")
         }
+        if sourceLines != nil {
+            if mode == .batch || gitDiffSource != nil || openInEditor {
+                throw CLIError.incompatibleOptions(
+                    "--lines needs one source file or --stdin, and an image output.")
+            }
+            if languageID == Language.terminal.rawValue {
+                throw CLIError.incompatibleOptions("--lines does not apply to terminal output.")
+            }
+        }
         if gitDiffSource != nil, !openInEditor, diffDecorations == nil {
             diffDecorations = true
         }
@@ -234,7 +243,7 @@ extension CLIArgumentParser {
                 || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
                 || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
-                || textSidecar || markdownSidecar || htmlSidecar
+                || textSidecar || markdownSidecar || htmlSidecar || sourceLines != nil
             if codeOnlyOptionsRequested {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --image with code-only or sidecar options.")
@@ -442,6 +451,9 @@ extension CLIArgumentParser {
             altText: altText,
             showLanguageBadge: resolvedLanguageBadge,
             showLineNumbers: showLineNumbers,
+            sourceLines: sourceLines,
+            sourceTitle: sourceLines != nil && !readStdin
+                ? inputPath.map(CLISourceOrigin.windowTitle(forFile:)) : nil,
             showChrome: showChrome,
             showShadow: showShadow,
             highlightedLineRanges: highlightedLineRanges,
