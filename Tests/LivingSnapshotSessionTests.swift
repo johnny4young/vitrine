@@ -237,6 +237,32 @@ struct LivingSnapshotSessionTests {
         #expect(session.status == .watching)
     }
 
+    @Test func aRefreshReportsTheGenerationItReplaced() async throws {
+        let settings = settings()
+        let source = URL(fileURLWithPath: "/tmp/Live.swift")
+        let disk = TestDisk(text: "let value = 1")
+        let session = LivingSnapshotSession(
+            settings: settings,
+            client: .init(
+                startAccess: { _ in false },
+                stopAccess: { _ in },
+                stamp: { _ in await disk.fileStamp() },
+                load: { _ in try await disk.loadedFile(for: source) }),
+            pollingInterval: .seconds(3_600))
+        defer { session.stop() }
+        var replaced: [Int] = []
+        session.onRefresh = { replaced.append($0) }
+        settings.documentCode = await disk.currentText()
+        _ = await wait(session.start(with: loaded(await disk.currentText(), url: source)))
+        #expect(replaced.isEmpty)
+
+        let generation = settings.documentGeneration
+        await disk.update(revision: 2, text: "let value = 2")
+        _ = await wait(session.checkForChanges())
+
+        #expect(replaced == [generation])
+    }
+
     @Test func dirtyEditorRequiresAnExplicitReload() async throws {
         let settings = settings()
         let source = URL(fileURLWithPath: "/tmp/Live.swift")

@@ -44,6 +44,12 @@ into the editor applies the most-specific matching recipe before loading the sou
 Nested associations therefore override parent folders, while an unavailable nested
 recipe can fall back to a usable parent association.
 
+When a recipe applies, a bar over the editor's stage names it and its folder and counts
+the style fields that differ from what it applied; code edits and language changes don't
+count, and a refresh of a live file keeps the bar. **Revert** restores those fields and can
+be undone without touching code or marks. Closing the bar keeps the style. The editor never
+writes to the recipe file.
+
 Association lookup happens only for a file you explicitly drop. Vitrine does not watch
 the folder, scan repository contents, infer a conventional recipe filename, or read Git
 configuration. Removing an association deletes neither the folder nor the recipe file,
