@@ -18,7 +18,7 @@ output and unlocks *new* surfaces.
 | Gating UI | `Vitrine/Pro/ProGate.swift` — `View.proGated(_:entitlements:action:)`, `ProBadge`, `PaywallSheet` |
 | Feature: Brand Kit | `Vitrine/Pro/BrandKit.swift` (`BrandKit`, `@MainActor BrandKitStore`), `VitrineRendering/Models/SnapshotConfig.swift` (`Watermark`), `VitrineRendering/Canvas/WatermarkBadge.swift` |
 | Feature: multi-size export | `Vitrine/Export/ExportManager+Batch.swift` (`exportPresetSizes`), `Vitrine/Export/MultiSizeExportView.swift` |
-| Feature: carousel export | `Vitrine/Export/ExportManager+Batch.swift` (`exportCarousel`), `Vitrine/Export/CarouselExportView.swift`, `Vitrine/Export/CarouselPaginator.swift` |
+| Feature: carousel export | `Vitrine/Export/ExportManager+Batch.swift` (`exportCarousel`), `Vitrine/Export/CarouselExportView.swift`, `Vitrine/Export/CarouselFilmstrip.swift`, `Vitrine/Export/CarouselPaginator.swift` |
 | Feature: automation gating | `VitrineCLI/CLICommandLine.swift`, `Vitrine/CLI/CLIOptions.swift` (`Command.requiresPro`), `Vitrine/AppIntents/RenderCodeImageIntent.swift`, `Vitrine/Services/CodeImageService.swift`, `Vitrine/CLI/CLIRenderer.swift` (`runBatch`) |
 | Tests | `Tests/EntitlementsTests.swift`, `Tests/LicenseActivationTests.swift`, `RepositoryTests/ProDocumentationTests.swift`, `Tests/BrandKitTests.swift`, `Tests/MultiSizeExportTests.swift`, `Tests/CLI/CLIEntitlementTests.swift`, `UITests/VitrineUITests.swift` |
 

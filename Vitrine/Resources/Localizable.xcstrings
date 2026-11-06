@@ -314,6 +314,83 @@
         }
       }
     },
+    "slide %lld · line %@" : {
+      "comment" : "Label on the boundary of a one-line slide drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · línea %2$@"
+          }
+        }
+      }
+    },
+    "Slide %lld of %lld, line %@" : {
+      "comment" : "Accessibility label of a one-line slide tile in the carousel filmstrip.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diapositiva %1$lld de %2$lld, línea %3$@"
+          }
+        }
+      }
+    },
+    "No preview: this slide is too long to draw here" : {
+      "comment" : "Tooltip and accessibility value of a carousel slide tile that isn't rendered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin vista previa: esta diapositiva es demasiado larga para dibujarla aquí"
+          }
+        }
+      }
+    },
+    "Show dividers in the code" : {
+      "comment" : "Switch in the carousel export sheet that draws slide boundaries in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar divisiones en el código"
+          }
+        }
+      }
+    },
+    "short" : {
+      "comment" : "Badge on the last slide of a carousel when it holds few lines compared with the others.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "corta"
+          }
+        }
+      }
+    },
+    "Slide %lld of %lld, lines %@" : {
+      "comment" : "Accessibility label of a slide tile in the carousel filmstrip.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diapositiva %1$lld de %2$lld, líneas %3$@"
+          }
+        }
+      }
+    },
+    "slide %lld · lines %@" : {
+      "comment" : "Label on a slide boundary drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · líneas %2$@"
+          }
+        }
+      }
+    },
     "Conflict: %@ is also a macOS shortcut" : {
       "comment" : "Settings notice under the global hotkey recorder. %@ is the shortcut, such as ⇧⌘3.",
       "localizations" : {

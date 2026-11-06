@@ -245,15 +245,16 @@ extension ExportManager {
             written: written, failed: failed, firstRenderFailure: firstRenderFailure)
     }
 
-    /// The encoded size of the first slide, the sample behind the sheet's size estimate.
+    /// The encoded size of the first slide that can be previewed, the sample behind the sheet's
+    /// size estimate.
     /// Renders on the main actor like the export itself and writes nothing.
     static func estimatedCarouselSlideBytes(
         _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
         cues: CarouselPaginator.Cues, profile: ColorProfile = .sRGB
     ) async -> Int? {
-        guard let first = slides.first else { return nil }
+        guard let index = slides.firstIndex(where: \.canPreview) else { return nil }
         let config = CarouselPaginator.slideConfig(
-            baseConfig, slide: first, at: 0, of: slides.count, cues: cues)
+            baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues)
         guard
             let raster = try? renderCGImageChecked(
                 config, scale: 1, fixedSize: carouselSlideSize, profile: profile)

@@ -17,6 +17,10 @@ can never drift.
 - When a dropped file picks up a workspace recipe, a bar over the stage names the recipe and
   its folder and counts the style fields you've changed since. Revert restores the recipe's
   look and can be undone; closing the bar keeps the style.
+- The carousel export sheet shows a filmstrip of the real slides before writing files, with
+  redactions in place, a flag on a last slide that came out short, and the slide size. A new
+  switch draws slide dividers in the code editor while you edit; they never touch the text. PRO
+  users opening it on a terminal capture or one with blur boxes now see why it can't export.
 - Warn in the inspector's Theme header when a capture's code text has low measured contrast
   on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
   stock theme only when it measures better, and can be dismissed for a theme until you quit.
