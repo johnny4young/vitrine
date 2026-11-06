@@ -109,6 +109,8 @@ struct CanvasDock: View {
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+                // It lies over the buttons, and its shape took their clicks.
+                .allowsHitTesting(false)
         }
         // Four capped values and the longest Spanish titles stay under 840 pt, inside the
         // stage of the narrowest (940 pt) window.
@@ -158,7 +160,12 @@ private struct DockPopoverAnchor<Content: View>: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
-    func makeNSView(context: Context) -> NSView { NSView() }
+    /// Never the hit view, so a click reaches the button in front of it.
+    final class AnchorView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    }
+
+    func makeNSView(context: Context) -> NSView { AnchorView() }
 
     func updateNSView(_ view: NSView, context: Context) {
         let coordinator = context.coordinator
