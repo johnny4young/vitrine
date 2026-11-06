@@ -402,6 +402,21 @@ struct EditorInspectorView: View {
                 .accessibilityLabel("ANSI palette")
                 .accessibilityIdentifier("terminal-palette-picker")
             }
+            InspectorRow(label: Text("Cursor")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (TerminalCursorStyle.hidden, Text("Hidden")),
+                        (TerminalCursorStyle.block, Text("Block")),
+                        (TerminalCursorStyle.bar, Text("Bar")),
+                    ],
+                    selection: $settings.style.terminalCursor
+                )
+                .help(
+                    "Drawn where the output left it, unless the program hid it or a full-screen app already exited."
+                )
+                .accessibilityLabel("Cursor")
+                .accessibilityIdentifier("terminal-cursor-picker")
+            }
         }
     }
 

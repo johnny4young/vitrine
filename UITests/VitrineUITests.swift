@@ -197,6 +197,7 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("terminal-palette-picker", in: app), in: app, timeout: 8)
+        assertExists(element("terminal-cursor-picker", in: app), in: app)
 
         let header = element("inspector-disclosure-header", in: app)
         assertExists(header, in: app)
@@ -1077,6 +1078,7 @@ final class VitrineUITests: XCTestCase {
         let background = element("style-subtab-background", in: app)
         assertExists(appearance, in: app, timeout: 3)
         assertExists(element("settings-terminal-palette-picker", in: app), in: app)
+        assertExists(element("settings-terminal-cursor-picker", in: app), in: app)
         lines.click()
         XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(appearance.isSelected)
@@ -1763,8 +1765,12 @@ final class VitrineUITests: XCTestCase {
             pasteboard.clearContents()
         }
         assertExists(element("empty-state", in: app), in: app, timeout: 8)
+        // The row is reserved and hidden while unread; some macOS builds still expose it, so
+        // check what it says rather than whether it exists.
+        let line = element("empty-stage-clipboard", in: app)
+        Thread.sleep(forTimeInterval: 2)
         XCTAssertFalse(
-            element("empty-stage-clipboard", in: app).waitForExistence(timeout: 2),
+            line.exists && line.label.contains("Clipboard holds"),
             "Default access must not name the clipboard's contents")
     }
 

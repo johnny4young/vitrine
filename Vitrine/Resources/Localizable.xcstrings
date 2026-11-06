@@ -1,6 +1,61 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Don't warn for this theme" : {
+      "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No advertir con este tema"
+          }
+        }
+      }
+    },
+    "Change Theme" : {
+      "comment" : "Undo action name for switching to the theme the legibility warning offered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar tema"
+          }
+        }
+      }
+    },
+    "Low code contrast" : {
+      "comment" : "Editor inspector: warning that a capture's code text is hard to read on its surface.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraste bajo en el código"
+          }
+        }
+      }
+    },
+    "%lld%% of the text" : {
+      "comment" : "Legibility details: how much of the capture's text is drawn in this color.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %% del texto"
+          }
+        }
+      }
+    },
+    "Use %@" : {
+      "comment" : "Legibility details: switch to the named theme, which measured readable.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar %@"
+          }
+        }
+      }
+    },
     "Divider" : {
       "comment" : "Comparison board inspector row: where the divider splits two captures, in percent",
       "localizations" : {
@@ -119,57 +174,57 @@
         }
       }
     },
-    "Don't warn for this theme" : {
-      "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
+    "Cursor" : {
+      "comment" : "Row that picks the cursor style of a terminal capture",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "No advertir con este tema"
+            "value" : "Cursor"
           }
         }
       }
     },
-    "Change Theme" : {
-      "comment" : "Undo action name for switching to the theme the legibility warning offered.",
+    "Hidden" : {
+      "comment" : "Terminal cursor style",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cambiar tema"
+            "value" : "Oculto"
           }
         }
       }
     },
-    "Low code contrast" : {
-      "comment" : "Editor inspector: warning that a capture's code text is hard to read on its surface.",
+    "Block" : {
+      "comment" : "Terminal cursor style",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Contraste bajo en el código"
+            "value" : "Bloque"
           }
         }
       }
     },
-    "%lld%% of the text" : {
-      "comment" : "Legibility details: how much of the capture's text is drawn in this color.",
+    "Bar" : {
+      "comment" : "Terminal cursor style",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld %% del texto"
+            "value" : "Barra"
           }
         }
       }
     },
-    "Use %@" : {
-      "comment" : "Legibility details: switch to the named theme, which measured readable.",
+    "Drawn where the output left it, unless the program hid it or a full-screen app already exited." : {
+      "comment" : "Tooltip of the terminal cursor control",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usar %@"
+            "value" : "Se dibuja donde lo dejó la salida, salvo que el programa lo haya ocultado o que una app de pantalla completa ya haya salido."
           }
         }
       }

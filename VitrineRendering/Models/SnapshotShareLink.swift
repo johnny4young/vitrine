@@ -47,7 +47,10 @@ public struct SharedSnapshot: Codable, Equatable {
         self.version = Self.schemaVersion
         self.code = config.richClipboardText
         self.languageID = config.language.rawValue
-        self.style = StyleSnapshot(capturing: config)
+        var style = StyleSnapshot(capturing: config)
+        // A redacted link holds only the final screen, which no longer says where the cursor was.
+        if !config.redactedLineRanges.isEmpty { style.terminalCursor = nil }
+        self.style = style
         self.annotations = Self.sanitizedAnnotations(config.annotationsWithSafeLegendLabels)
         self.windowTitle = config.windowTitle
         self.metadata = config.metadata

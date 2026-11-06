@@ -131,6 +131,10 @@ public struct SnapshotConfig: Equatable {
     /// Which colors `.terminal` output uses. Persisted style, like the theme.
     public var terminalPalette: TerminalPaletteMode = .theme
 
+    /// The cursor drawn on `.terminal` output. Only images and rich text carry it; the plain
+    /// text a capture exports is the output alone.
+    public var terminalCursor: TerminalCursorStyle = .hidden
+
     /// Soft-wrap long code lines at this column count, or `nil` to let a line run as wide
     /// as it needs (the default). Unlike `terminalColumns`, this is a persisted document
     /// style the user toggles in the Style pane: when set, the card is sized to the wrap

@@ -300,7 +300,8 @@ public enum RichPasteboard {
             return ANSIRenderer.attributedString(
                 config.code, font: font,
                 palette: .resolved(for: config.theme, mode: config.terminalPalette),
-                columns: config.terminalColumns, redacting: config.redactedLineRanges)
+                columns: config.terminalColumns, redacting: config.redactedLineRanges,
+                cursor: config.code.isEmpty ? .hidden : config.terminalCursor)
         }
         return HighlightManager.shared.attributedString(
             for: config.richClipboardText, language: config.language, theme: config.theme,
