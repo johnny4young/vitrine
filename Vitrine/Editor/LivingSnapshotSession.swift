@@ -98,6 +98,8 @@ final class LivingSnapshotSession {
     private(set) var displayName = ""
 
     var isActive: Bool { status != .inactive }
+    /// Called with the replaced generation after the watched file refreshes the document.
+    var onRefresh: ((_ previousGeneration: Int) -> Void)?
 
     private let settings: AppSettings
     private let client: FileClient
@@ -364,8 +366,10 @@ final class LivingSnapshotSession {
             status = .watching
             return
         }
+        let previousGeneration = settings.documentGeneration
         loaded.apply(to: &settings.config, replacing: true)
         settings.noteDocumentReplaced()
+        onRefresh?(previousGeneration)
         lastLoadedText = loaded.text
         status = .watching
         Log.capture.info(

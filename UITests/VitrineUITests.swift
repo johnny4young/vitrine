@@ -218,6 +218,46 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testCanvasModeHidesColumnsAndRestoresThemByKeyboardAndPalette() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        let editor = EditorRobot(testCase: self, app: app)
+        assertExists(editor.codeTextView, in: app, timeout: 8)
+
+        assertHittable("canvas-mode-button", in: app, "Canvas mode must be reachable")
+        element("canvas-mode-button", in: app).click()
+        XCTAssertTrue(element("editor-inspector", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(editor.codeTextView.waitForNonExistence(timeout: 3))
+        for pane in ["theme", "typography", "background"] {
+            assertExists(element("canvas-dock-\(pane)", in: app), in: app)
+        }
+        // The dock opens the inspector's own section, not a copy of its controls.
+        assertHittable("canvas-dock-canvas", in: app, "The dock must be reachable")
+        element("canvas-dock-canvas", in: app).click()
+        assertExists(element("padding-slider", in: app), in: app, timeout: 3)
+        // Pressing the open pane's button closes it rather than reopening it.
+        element("canvas-dock-canvas", in: app).click()
+        XCTAssertTrue(element("padding-slider", in: app).waitForNonExistence(timeout: 3))
+
+        app.typeKey("f", modifierFlags: [.command, .shift])
+        assertExists(element("editor-inspector", in: app), in: app, timeout: 3)
+        assertExists(editor.codeTextView, in: app)
+        XCTAssertTrue(element("canvas-dock", in: app).waitForNonExistence(timeout: 3))
+
+        app.typeKey("k", modifierFlags: .command)
+        let field = element("command-palette-field", in: app)
+        assertExists(field, in: app, timeout: 3)
+        field.typeText("canvas")
+        let command = element("command-palette-command-view.canvasMode", in: app)
+        XCTAssertTrue(command.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        app.typeKey(.return, modifierFlags: [])
+        assertExists(element("canvas-dock", in: app), in: app, timeout: 3)
+        XCTAssertTrue(element("editor-inspector", in: app).waitForNonExistence(timeout: 3))
+    }
+
+    @MainActor
     func testEditorLaunchesWithPrimaryControls() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
@@ -686,6 +726,74 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
     }
 
+    /// A selected mark's toolbar sits beside it in Select mode, clear of its delete badge.
+    @MainActor
+    func testSelectedMarkToolbarSitsBesideTheMark() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let stageGroup = element("editor-preview-stage", in: app)
+        let code = stageGroup.staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
+        assertExists(code, in: app, timeout: 3)
+        let center = code.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let toolbar = element("annotation-mark-toolbar", in: app)
+        let delete = app.buttons["Delete annotation"]
+
+        revealToolbarAction(
+            "annotation-tool-rectangle", from: "annotation-tool-picker", in: app
+        ).click()
+        center.withOffset(CGVector(dx: -60, dy: -25)).press(
+            forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 60, dy: 25)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.15)
+        assertExists(delete, in: app, timeout: 3)
+        XCTAssertFalse(toolbar.exists, "A draw tool keeps the canvas free for the next mark")
+
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+        assertExists(toolbar, in: app, timeout: 3)
+        assertExists(element("annotation-mark-toolbar-color", in: app), in: app)
+        assertExists(element("annotation-mark-toolbar-size", in: app), in: app)
+        XCTAssertFalse(toolbar.frame.intersects(delete.frame), "The toolbar covers the badge")
+        XCTAssertTrue(stageGroup.frame.contains(toolbar.frame), "The toolbar left the stage")
+
+        let marks = stageGroup.buttons.matching(NSPredicate(format: "label == %@", "Rectangle"))
+        XCTAssertEqual(marks.count, 1)
+        element("annotation-mark-toolbar-duplicate", in: app).click()
+        XCTAssertTrue(
+            marks.element(boundBy: 1).waitForExistence(timeout: 3), "Duplicate adds a mark")
+        element("annotation-undo", in: app).click()
+        XCTAssertTrue(
+            marks.element(boundBy: 1).waitForNonExistence(timeout: 3),
+            "Undo removes the copy in one step")
+        XCTAssertEqual(marks.count, 1)
+        XCTAssertTrue(toolbar.waitForNonExistence(timeout: 3))
+
+        center.click()
+        assertExists(toolbar, in: app, timeout: 3)
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        XCTAssertTrue(toolbar.waitForNonExistence(timeout: 3), "Escape drops the selection")
+
+        // A blur box offers only Duplicate: nothing that weakens what it hides.
+        revealToolbarAction(
+            "annotation-tool-blur", from: "annotation-tool-picker", in: app
+        ).click()
+        center.withOffset(CGVector(dx: -60, dy: 45)).press(
+            forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 60, dy: 85)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.15)
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+        assertExists(toolbar, in: app, timeout: 3)
+        assertExists(element("annotation-mark-toolbar-duplicate", in: app), in: app)
+        XCTAssertFalse(element("annotation-mark-toolbar-color", in: app).exists)
+        XCTAssertFalse(element("annotation-mark-toolbar-size", in: app).exists)
+    }
+
     /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.
     @MainActor
     func testLegibilityBadgeWarnsAndItsFixSwitchesTheTheme() throws {
@@ -708,6 +816,28 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("theme-legibility-dismiss-button", in: app), in: app)
         fix.click()
         XCTAssertTrue(badge.waitForNonExistence(timeout: 5))
+    }
+
+    /// The recipe bar counts a style change, reverts it, and closes without restyling.
+    @MainActor
+    func testRecipeBarRevertsAndCloses() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--demo-recipe-bar"])
+        defer { app.terminate() }
+
+        let bar = element("recipe-applied-bar", in: app)
+        assertExists(bar, in: app, timeout: 8)
+        assertExists(element("recipe-bar-summary", in: app), in: app)
+        let revert = element("recipe-bar-revert", in: app)
+        assertHittable("recipe-bar-revert", in: app, "Revert should be reachable on the stage")
+        XCTAssertTrue(revert.isEnabled, "The demo baseline differs by one style field")
+        revert.click()
+        let disabled = NSPredicate(format: "isEnabled == false")
+        expectation(for: disabled, evaluatedWith: revert)
+        waitForExpectations(timeout: 3)
+
+        element("recipe-bar-close", in: app).click()
+        XCTAssertTrue(bar.waitForNonExistence(timeout: 3))
     }
 
     /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and
@@ -924,6 +1054,7 @@ final class VitrineUITests: XCTestCase {
             "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
             "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
             "carousel-output-summary", "carousel-filmstrip", "carousel-slide-tile-0",
+            "carousel-show-dividers",
         ] {
             assertExists(element(identifier, in: app), in: app, timeout: 3)
         }

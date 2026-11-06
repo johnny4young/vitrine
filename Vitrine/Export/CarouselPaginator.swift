@@ -2,8 +2,8 @@ import Foundation
 import VitrineDomain
 import VitrineRendering
 
-/// How a document splits into slides. The sheet, the filmstrip and the export all ask this
-/// value, so they can't disagree about where a slide breaks.
+/// How a document splits into slides. The sheet, the filmstrip, the editor's dividers and
+/// the export all ask this value, so they can't disagree about where a slide breaks.
 nonisolated struct CarouselSplit: Equatable, Sendable {
     /// The default reads well on a 1080×1350 slide at the default font size.
     var linesPerSlide = 12
@@ -19,6 +19,41 @@ nonisolated struct CarouselSplit: Equatable, Sendable {
     @concurrent func outcome(of code: String) async -> CarouselPaginator.Outcome {
         CarouselPaginator.Outcome(split: self, code: code)
     }
+
+    @concurrent func dividers(in code: String) async -> [SlideDivider] {
+        CarouselPaginator.dividers(for: slides(of: code), in: code)
+    }
+}
+
+/// A boundary drawn in the code editor: the character that opens a slide and how to name it.
+nonisolated struct SlideDivider: Equatable, Sendable {
+    /// In UTF-16, the text view's unit.
+    var offset: Int
+    var slideNumber: Int
+    var lineRange: String
+    var isSingleLine = false
+
+    /// Where this divider belongs after an edit, until the settled split replaces it. `nil`
+    /// when the edit removed its position. Text typed at a slide's start stays on its line.
+    func shifted(replacing range: NSRange, with replacement: String) -> SlideDivider? {
+        let inserted = (replacement as NSString).length
+        var moved = self
+        if offset >= range.upperBound {
+            if offset == range.location, !replacement.contains("\n") { return self }
+            moved.offset += inserted - range.length
+        } else if offset > range.location {
+            return nil
+        }
+        return moved
+    }
+}
+
+/// One settled split for the editor, and the text its offsets are true for. A `nil` source
+/// means no dividers, whatever the text.
+nonisolated struct SlideDividerLayout: Equatable, Sendable {
+    var revision = 0
+    var source: String?
+    var dividers: [SlideDivider] = []
 }
 
 /// Splits a long snippet into the pages of a carousel export: N slides
@@ -101,6 +136,25 @@ enum CarouselPaginator {
         guard slides.count > 1, let last = slides.last else { return false }
         let fullest = slides.dropLast().map(\.visibleLineCount).max() ?? 0
         return last.visibleLineCount * 2 < fullest
+    }
+
+    /// One divider per slide after the first, at the character that opens it.
+    nonisolated static func dividers(for slides: [Slide], in code: String) -> [SlideDivider] {
+        guard slides.count > 1 else { return [] }
+        var dividers: [SlideDivider] = []
+        var line = 1
+        var pending = slides.dropFirst().enumerated().makeIterator()
+        var next = pending.next()
+        for (offset, unit) in code.utf16.enumerated() where unit == 0x0A {
+            line += 1
+            guard let (index, slide) = next, slide.firstLine == line else { continue }
+            dividers.append(
+                SlideDivider(
+                    offset: offset + 1, slideNumber: index + 2, lineRange: slide.lineRange,
+                    isSingleLine: slide.lineCount == 1))
+            next = pending.next()
+        }
+        return dividers
     }
 
     /// With `preferBlankLineBreaks`, each boundary moves to a nearby blank line and that

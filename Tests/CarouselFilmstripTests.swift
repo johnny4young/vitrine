@@ -7,7 +7,7 @@ import VitrineRendering
 @testable import Vitrine
 
 @MainActor
-@Suite("Carousel filmstrip")
+@Suite("Carousel filmstrip and slide dividers")
 struct CarouselFilmstripTests {
     private final class RenderLog {
         var configs: [SnapshotConfig] = []
@@ -43,11 +43,38 @@ struct CarouselFilmstripTests {
 
     // MARK: - One split
 
+    @Test func eachDividerOpensTheSlideTheExportWillWrite() {
+        let split = CarouselSplit(linesPerSlide: 4)
+        for code in [
+            document(lines: 18),
+            (1...18).map { "línea 👩‍💻 \($0)" }.joined(separator: "\r\n"),
+            (1...18).map { $0 % 5 == 0 ? "" : "l\($0)" }.joined(separator: "\n"),
+        ] {
+            let slides = split.slides(of: code)
+            let dividers = CarouselPaginator.dividers(for: slides, in: code)
+            #expect(dividers.count == slides.count - 1)
+            for (divider, (index, slide)) in zip(dividers, slides.enumerated().dropFirst()) {
+                let opened = (code as NSString).substring(
+                    with: NSRange(location: divider.offset, length: slide.text.utf16.count))
+                #expect(opened == slide.text)
+                #expect(divider.slideNumber == index + 1)
+                #expect(divider.lineRange == slide.lineRange)
+            }
+        }
+    }
+
+    @Test func aLoneSlideHasNoDivider() {
+        let code = document(lines: 3)
+        #expect(CarouselPaginator.dividers(for: CarouselSplit().slides(of: code), in: code).isEmpty)
+    }
+
     @Test func outcomeOffTheMainActorMatchesTheSplit() async {
         let code = document(lines: 40)
         let split = CarouselSplit(linesPerSlide: 7, prefersBlankLineBreaks: false)
         let outcome = await split.outcome(of: code)
         #expect(outcome.slides == split.slides(of: code))
+        let dividers = await split.dividers(in: code)
+        #expect(dividers == CarouselPaginator.dividers(for: outcome.slides, in: code))
     }
 
     // MARK: - Short tail
@@ -335,6 +362,232 @@ struct CarouselFilmstripTests {
         style.language = .swift
         style.foregroundImage = ImageReference(fileName: "image.png")
         #expect(!opens(style, unlocked: true))
+    }
+
+    // MARK: - Divider source
+
+    @Test func dividersFollowOnlySettledTextOfAnAcceptedCapture() {
+        let model = CarouselSplitModel()
+        let thumbnails = PresetThumbnailModel()
+        thumbnails.stagedCode = "code"
+        thumbnails.stagedGeneration = 3
+        func source(
+            _ style: SnapshotConfig = SnapshotConfig(), unlocked: Bool = true, generation: Int = 3
+        ) -> String? {
+            model.dividerSource(
+                style: style, isUnlocked: unlocked, thumbnails: thumbnails,
+                documentGeneration: generation)
+        }
+
+        #expect(source() == nil, "Off by default")
+        model.showsDividers = true
+        #expect(source() == "code")
+        #expect(source(unlocked: false) == nil)
+        #expect(source(generation: 4) == nil, "Text of a replaced document")
+        var style = SnapshotConfig()
+        style.language = .terminal
+        #expect(source(style) == nil)
+        style.language = .swift
+        style.annotations = [Annotation(kind: .blur, start: .zero, end: CGPoint(x: 1, y: 1))]
+        #expect(source(style) == nil)
+        style.annotations = []
+        style.foregroundImage = ImageReference(fileName: "image.png")
+        #expect(source(style) == nil)
+    }
+
+    @Test func refreshingWithoutASourceClearsTheDividers() async {
+        let model = CarouselSplitModel()
+        model.split.linesPerSlide = 4
+        await model.refreshDividers(code: document(lines: 12))
+        #expect(model.dividerLayout.dividers.map(\.slideNumber) == [2, 3])
+        #expect(model.dividerLayout.source == document(lines: 12))
+        await model.refreshDividers(code: nil)
+        #expect(model.dividerLayout.dividers.isEmpty)
+        #expect(model.dividerLayout.source == nil)
+    }
+
+    // MARK: - Dividers in the text view
+
+    private func divider(at offset: Int) -> SlideDivider {
+        SlideDivider(offset: offset, slideNumber: 2, lineRange: "5–8")
+    }
+
+    @Test func anEditMovesADividerWithItsLine() {
+        let divider = divider(at: 10)
+        #expect(
+            divider.shifted(replacing: NSRange(location: 2, length: 0), with: "abc")?.offset == 13)
+        #expect(divider.shifted(replacing: NSRange(location: 2, length: 3), with: "")?.offset == 7)
+        #expect(
+            divider.shifted(replacing: NSRange(location: 20, length: 1), with: "x")?.offset == 10)
+    }
+
+    @Test func textTypedAtASlidesStartStaysOnItsLine() {
+        let divider = divider(at: 10)
+        #expect(
+            divider.shifted(replacing: NSRange(location: 10, length: 0), with: "x")?.offset == 10)
+        #expect(
+            divider.shifted(replacing: NSRange(location: 10, length: 0), with: "\n")?.offset == 11)
+    }
+
+    @Test func removingADividersPositionRemovesIt() {
+        #expect(
+            divider(at: 10).shifted(replacing: NSRange(location: 8, length: 5), with: "") == nil)
+    }
+
+    private func dividers(in code: String, linesPerSlide: Int = 4) -> [SlideDivider] {
+        CarouselPaginator.dividers(
+            for: CarouselSplit(linesPerSlide: linesPerSlide, prefersBlankLineBreaks: false)
+                .slides(of: code), in: code)
+    }
+
+    private func snapshot(_ textView: NSTextView) throws -> Data? {
+        let bitmap = try #require(
+            textView.bitmapImageRepForCachingDisplay(in: textView.visibleRect))
+        textView.cacheDisplay(in: textView.visibleRect, to: bitmap)
+        return bitmap.tiffRepresentation
+    }
+
+    /// In a window, the only way a text view has an undo manager.
+    private func hostedTextView(_ code: String) throws -> (NSWindow, CodeTextView) {
+        let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        let textView = CodeTextView(frame: scrollView.bounds)
+        textView.isVerticallyResizable = true
+        textView.autoresizingMask = [.width]
+        textView.isRichText = false
+        textView.allowsUndo = true
+        scrollView.documentView = textView
+        let window = NSWindow(
+            contentRect: scrollView.frame, styleMask: [.titled], backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = scrollView
+        textView.string = code
+        window.layoutIfNeeded()
+        return (window, textView)
+    }
+
+    @Test func drawingDividersLeavesTextAndUndoAloneAndTheViewOnTextKit2() throws {
+        let code = document(lines: 12)
+        let (window, textView) = try hostedTextView(code)
+        let undoManager = try #require(textView.undoManager)
+        #expect(window.undoManager === undoManager)
+        let storage = try #require(textView.textStorage?.copy() as? NSAttributedString)
+
+        let plain = try snapshot(textView)
+        textView.slideDividers = dividers(in: code)
+        #expect(textView.slideDividers.count == 2)
+        let lined = try snapshot(textView)
+
+        #expect(textView.string == code)
+        #expect(textView.textStorage?.isEqual(to: storage) == true)
+        #expect(!undoManager.canUndo, "Installing and drawing dividers must not be undoable")
+        // Asking the old layout manager would have flipped the view out of TextKit 2 for good.
+        #expect(textView.textLayoutManager != nil)
+        #expect(plain != lined, "They actually drew")
+    }
+
+    @Test func dividersDrawAndClearAfterScrollingALongDocument() throws {
+        let code = document(lines: 2_000)
+        let (_, textView) = try hostedTextView(code)
+        textView.scrollRangeToVisible(NSRange(location: (code as NSString).length, length: 0))
+        textView.window?.layoutIfNeeded()
+        #expect(textView.visibleRect.minY > 1_000, "The view must have scrolled")
+
+        let plain = try snapshot(textView)
+        textView.slideDividers = dividers(in: code, linesPerSlide: 8)
+        #expect(try snapshot(textView) != plain, "A divider in the scrolled-to viewport draws")
+        textView.slideDividers = []
+        #expect(try snapshot(textView) == plain, "The difference was the dividers")
+    }
+
+    // MARK: - Settling
+
+    @Test func aSplitOlderThanTheTextLeavesTheShiftedCopyInPlace() {
+        let textView = CodeTextView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        textView.isRichText = false
+        let settled = document(lines: 12)
+        textView.string = settled
+        let layout = SlideDividerLayout(
+            revision: 1, source: settled, dividers: dividers(in: settled))
+        textView.install(layout)
+        let offsets = layout.dividers.map(\.offset)
+
+        // Typing moves on while the split of `settled` is still on its way.
+        textView.insertText("ab", replacementRange: NSRange(location: 0, length: 0))
+        let shifted = offsets.map { $0 + 2 }
+        #expect(textView.slideDividers.map(\.offset) == shifted)
+        textView.install(
+            SlideDividerLayout(revision: 2, source: settled, dividers: layout.dividers))
+        #expect(textView.slideDividers.map(\.offset) == shifted)
+
+        // The split of the current text replaces it, and clearing never waits for a match.
+        let current = textView.string
+        textView.install(
+            SlideDividerLayout(revision: 3, source: current, dividers: dividers(in: current)))
+        #expect(textView.slideDividers == dividers(in: current))
+        textView.install(SlideDividerLayout(revision: 4))
+        #expect(textView.slideDividers.isEmpty)
+    }
+
+    /// Delete across a divider and undo inside the debounce: the text settles back to what the
+    /// last split saw, so only the handoff count can bring the divider back.
+    @Test func textSettlingBackRestoresADividerAnEditRemoved() async throws {
+        let environment = AppEnvironment(
+            defaults: testDefaults(), entitlements: Entitlements(provider: DebugUnlockProvider()))
+        let settings = environment.appSettings
+        let model = CarouselSplitModel()
+        model.split = CarouselSplit(linesPerSlide: 4, prefersBlankLineBreaks: false)
+        model.showsDividers = true
+        let thumbnails = PresetThumbnailModel()
+        let code = document(lines: 12)
+        thumbnails.stage(code, generation: settings.documentGeneration)
+
+        let (window, textView) = try hostedTextView(code)
+        let hosting = NSHostingView(
+            rootView: SlideDividerRefresher(
+                settings: settings, model: model, thumbnails: thumbnails,
+                entitlements: environment.entitlements))
+        hosting.frame = NSRect(x: 0, y: 0, width: 10, height: 10)
+        window.contentView?.addSubview(hosting)
+        window.orderFrontRegardless()
+        defer { window.orderOut(nil) }
+        func settle() async throws {
+            for _ in 0..<5 {
+                hosting.needsLayout = true
+                hosting.layoutSubtreeIfNeeded()
+                try await Task.sleep(for: .milliseconds(100))
+            }
+        }
+
+        try await settle()
+        textView.install(model.dividerLayout)
+        let full = textView.slideDividers
+        #expect(full.count == 2)
+        let first = model.dividerLayout.revision
+
+        let around = NSRange(location: full[0].offset - 1, length: 2)
+        let removed = (code as NSString).substring(with: around)
+        textView.insertText("", replacementRange: around)
+        #expect(textView.slideDividers.count == 1)
+        textView.insertText(
+            removed, replacementRange: NSRange(location: around.location, length: 0))
+        #expect(textView.string == code)
+        #expect(textView.slideDividers.count == 1, "Shifting alone can't bring it back")
+
+        thumbnails.stage(code, generation: settings.documentGeneration)
+        try await settle()
+        #expect(model.dividerLayout.revision > first)
+        textView.install(model.dividerLayout)
+        #expect(textView.slideDividers == full)
+    }
+
+    @Test func typingShiftsTheTextViewsDividers() {
+        let textView = CodeTextView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        textView.isRichText = false
+        textView.string = "one\ntwo\nthree"
+        textView.slideDividers = [divider(at: 4)]
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        textView.insertText("ab", replacementRange: NSRange(location: 0, length: 0))
+        #expect(textView.slideDividers.map(\.offset) == [6])
     }
 
     // MARK: - Keyboard
