@@ -49,7 +49,11 @@ extension EditorView {
                         reindentOnPaste: environment.appSettings.reindentOnPaste,
                         pasteFromClipboard: pasteFromClipboard,
                         beginPastedDocument: beginPastedDocument,
-                        leaveAnnotationContext: leaveAnnotationContext)
+                        leaveAnnotationContext: leaveAnnotationContext,
+                        carouselSplit: session.carouselSplit,
+                        thumbnails: session.presetThumbnails,
+                        entitlements: entitlements,
+                        isCollapsed: isCanvasMode)
                 }
             }
         }
@@ -62,11 +66,7 @@ extension EditorView {
         // Accept a dropped source file or selected text. `.onDrop` with UTType
         // payloads is the current API; the bounded item-provider bridge runs in one
         // owned task so a replacement drop or disappearing editor cancels it.
-        .onDrop(of: [.image, .fileURL, .text], isTargeted: $isDropTargeted) { providers in
-            dropTask?.cancel()
-            dropTask = Task { await handleDrop(providers) }
-            return true
-        }
+        .onDrop(of: Self.droppableTypes, isTargeted: $isDropTargeted, perform: acceptDrop)
         .onChange(of: settings.style.foregroundImage) { _, _ in
             imageProcessing.cancel()
         }
@@ -77,6 +77,14 @@ extension EditorView {
         }
         .overlay { dropAffordance }
         .accessibilityContainerIdentifier("editor-drop-target")
+    }
+
+    static let droppableTypes: [UTType] = [.image, .fileURL, .text]
+
+    func acceptDrop(_ providers: [NSItemProvider]) -> Bool {
+        dropTask?.cancel()
+        dropTask = Task { await handleDrop(providers) }
+        return true
     }
 
     /// Compact access to the explicit, session-only file connection: an icon in the code
@@ -452,29 +460,45 @@ extension EditorView {
             // The card's measured size reaches this content through `PreviewCardStage`,
             // which reads it in its own body. See `PreviewCardGeometry` for why the
             // editor's body must not read it.
-            PreviewCardStage(geometry: cardGeometry, stageSize: proxy.size) { cardSize in
+            PreviewCardStage(geometry: cardGeometry, stageSize: proxy.size) { canvasSize in
                 // The preview mirrors the active preset's framing, so selecting a
                 // fixed-size preset (e.g. OpenGraph 1200×630) updates the canvas
                 // immediately. The interactive annotation overlay is a sibling at
                 // the canvas's natural size, so it shares the canvas coordinate space and
                 // scales with it — a pointer drag maps straight to normalized
-                // annotation coordinates.
-                ZStack {
-                    SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
-                        .equatable()
-                        .fixedSize()
-                        .onGeometryChange(for: CGSize.self, of: \.size) {
-                            cardGeometry.size = $0
+                // annotation coordinates. Top-aligned, because a legend band extends
+                // the card below that coordinate space.
+                let destination = settings.effectiveFixedSize
+                let document = settings.documentGeneration
+                ZStack(alignment: .top) {
+                    ThemeFadingCanvas(
+                        canvas: SnapshotCanvas(config: previewConfig, fixedSize: destination)
+                    )
+                    .fixedSize()
+                    .onGeometryChange(for: PreviewCardGeometry.Measurement.self) {
+                        .init(size: $0.size, destination: destination, document: document)
+                    } action: {
+                        cardGeometry.record($0)
+                    }
+                    .onPreferenceChange(CounterLegendReportKey.self) {
+                        cardGeometry.legendHeight = $0.height
+                        cardGeometry.legendDropped = $0.dropped
+                    }
+                    // Marks the export's transparent pixels, and only those.
+                    .background {
+                        if case .transparent = settings.style.background {
+                            TransparencyGrid()
                         }
-                        .compositingGroup()
-                        .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
-                        // Expose the canvas text as children: as one aggregate element,
-                        // automated drags on annotation endpoint handles stop landing.
-                        .accessibilityElement(children: .contain)
+                    }
+                    .compositingGroup()
+                    .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
+                    // Expose the canvas text as children: as one aggregate element,
+                    // automated drags on annotation endpoint handles stop landing.
+                    .accessibilityElement(children: .contain)
                     AnnotationEditingOverlay(
                         settings: settings, selection: $selectedAnnotationID,
                         editingAnnotationID: $editingAnnotationID,
-                        canvasSize: cardSize, activeTool: activeTool,
+                        canvasSize: canvasSize, activeTool: activeTool,
                         drawColor: newDrawColor, drawThickness: newDrawThickness,
                         stickerGlyph: newStickerGlyph,
                         onBeginEdit: beginAnnotationEdit,
@@ -485,14 +509,14 @@ extension EditorView {
                     if previewConfig.watermark?.placement == .free {
                         FreeWatermarkDragHandle(
                             position: $brandKit.brandKit.freePosition,
-                            contentRect: CGRect(origin: .zero, size: cardSize))
+                            contentRect: CGRect(origin: .zero, size: canvasSize))
                     }
                     // Safe-area guide: editor-only chrome over the preview —
                     // never part of the export, which is why it lives here beside the
                     // annotation overlay rather than inside SnapshotCanvas.
                     if showsSafeAreaGuides {
                         SafeAreaGuideOverlay(
-                            canvasSize: cardSize,
+                            canvasSize: canvasSize,
                             code: previewConfig.sidecarText,
                             showsGuideRect: settings.effectiveFixedSize != nil)
                     }
@@ -503,27 +527,78 @@ extension EditorView {
                 .focused($stageFocused)
                 .focusEffectDisabled()
                 .onChange(of: selectedAnnotationID) { _, id in
+                    // A Duplicate pressed from the keyboard keeps the toolbar's focus.
+                    if markToolbarFocused, id != nil { return }
                     stageFocused = id != nil && editingAnnotationID == nil
                 }
                 .onChange(of: editingAnnotationID) { _, id in
                     stageFocused = id == nil && selectedAnnotationID != nil
                 }
-                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
-                    nudgeSelection(
-                        press.key, shift: press.modifiers.contains(.shift),
-                        isRepeat: press.phase == .repeat) ? .handled : .ignored
-                }
-                .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-                    deleteSelection() ? .handled : .ignored
+                .onKeyPress(
+                    keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .delete, .deleteForward],
+                    action: markKeyPress
+                )
+                // Buttons take focus only with macOS keyboard navigation on, as elsewhere.
+                .onKeyPress(keys: [.tab]) { press in
+                    guard press.modifiers.isEmpty, activeTool == .select,
+                        NSApp.isFullKeyboardAccessEnabled
+                    else { return .ignored }
+                    markToolbarFocused = true
+                    return .handled
                 }
                 .onExitCommand(perform: clearAnnotationSelection)
             }
         }
         .onGeometryChange(for: CGSize.self, of: \.size) { stageSize = $0 }
         .clipped()
-        .background(stageBackground)
         .overlay(alignment: .bottom) {
             StageStatusCapsule(settings: settings, geometry: cardGeometry, stageSize: stageSize)
+        }
+        .overlay(alignment: .topTrailing) {
+            CanvasModeButton(isCanvasMode: isCanvasMode) { session.isCanvasMode.toggle() }
+        }
+        // An inset, not an overlay, so the card fits above the dock instead of under it.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isCanvasMode {
+                CanvasDock(
+                    settings: settings, themes: themes, presets: presets,
+                    entitlements: entitlements, legibility: legibility,
+                    presetThumbnails: session.presetThumbnails,
+                    presentFramePaywall: { exportSheet = .framePaywall }
+                )
+                .markToolbarAvoids()
+            }
+        }
+        // The code column is the drop target until canvas mode collapses it.
+        .onDrop(
+            of: isCanvasMode ? Self.droppableTypes : [], isTargeted: $isDropTargeted,
+            perform: acceptDrop
+        )
+        .overlay { if isCanvasMode { dropAffordance } }
+        .background(stageBackground)
+        .overlay(alignment: .top) {
+            RecipeAppliedBar(session: session, settings: settings)
+        }
+        // Last, outside the preview's scale: it keeps its size and never reaches an export.
+        // Stage chrome joins `MarkToolbarAnchors.avoiding` to keep the toolbar off it.
+        .overlayPreferenceValue(MarkToolbarAnchorsKey.self) { anchors in
+            if let mark = anchors.mark {
+                GeometryReader { proxy in
+                    MarkToolbarPlacer(
+                        mark: proxy[mark], avoiding: anchors.avoiding.map { proxy[$0] },
+                        stage: proxy.size
+                    ) { popoverEdge, holdPlace in
+                        AnnotationMarkToolbar(
+                            color: annotationStyleColor, thickness: annotationStyleThickness,
+                            showsColor: annotationStyleUsesColor,
+                            showsThickness: annotationStyleUsesThickness,
+                            popoverEdge: popoverEdge, focus: $markToolbarFocused,
+                            onStyleEditEnded: endAnnotationEdit, onSizeDragging: holdPlace,
+                            onDuplicate: duplicateSelection, onMarkKey: markKeyPress,
+                            onExit: { stageFocused = selectedAnnotationID != nil })
+                    }
+                }
+            }
         }
         .layoutPriority(EditorLayout.stageLayoutPriority)
         // A container, so the canvas text and the inline callout field keep their own ids.
@@ -535,6 +610,8 @@ extension EditorView {
         .background {
             PreviewCodeSynchronizer(settings: settings) { code in
                 stagedPreviewCode = code
+                legibility.stagedCode = code
+                session.presetThumbnails.stage(code, generation: settings.documentGeneration)
             }
         }
     }
@@ -594,16 +671,19 @@ extension EditorView {
     }
 
     /// The card's ambient drop shadow, tinted from the background's leading
-    /// stop (`drop-shadow(0 24px 48px rgba(g1, 0.28))`).
+    /// stop (`drop-shadow(0 24px 48px rgba(g1, 0.28))`). The export has no such shadow, so
+    /// a transparent capture must not show one around its checker.
     var ambientShadowColor: Color {
-        (glowColors?.0 ?? .black).opacity(0.28)
+        if case .transparent = settings.style.background { return .clear }
+        return (glowColors?.0 ?? .black).opacity(0.28)
     }
 
     /// The focused inspector column with progressive disclosure for advanced
     /// controls, on glass per the current design.
     var inspectorColumn: some View {
         EditorInspectorView(
-            settings: settings, themes: themes, entitlements: entitlements)
+            settings: settings, themes: themes, presets: presets, entitlements: entitlements,
+            legibility: legibility, presetThumbnails: session.presetThumbnails)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a
@@ -668,9 +748,15 @@ extension EditorView {
         let intake = beginPastedDocument(text)
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
-        settings.documentCode =
-            environment.appSettings.reindentOnPaste
-            ? CodeFormatter.tidy(intake.code, language: intake.language) : intake.code
+        settings.documentCode = Self.pastedCode(
+            intake, reindents: environment.appSettings.reindentOnPaste)
+    }
+
+    /// The document text that Paste Code produces.
+    static func pastedCode(
+        _ intake: LanguageDetector.Interpretation, reindents: Bool
+    ) -> String {
+        reindents ? CodeFormatter.tidy(intake.code, language: intake.language) : intake.code
     }
 
     /// Pasting a whole document is a new capture: it stops the live file, drops marks
@@ -695,19 +781,75 @@ extension EditorView {
 @Observable
 final class PreviewCardGeometry {
     var size: CGSize = .zero
+    /// The part of `size` a legend band takes up below the annotation canvas.
+    var legendHeight: CGFloat = 0
+    /// Legend entries a fixed frame had no room for.
+    var legendDropped = 0
+
+    /// The latest destination change that moved the card.
+    private(set) var morph = StageFitMorph()
+    private var destination: CGSize?
+    private var document = 0
+
+    /// A size and what it was measured under, read together so a destination that leaves
+    /// the size alone cannot pass for one still on its way.
+    nonisolated struct Measurement: Equatable, Sendable {
+        let size: CGSize
+        let destination: CGSize?
+        let document: Int
+    }
+
+    /// A loaded document can move the destination too, but it is new content, not the same
+    /// card reshaped.
+    func record(_ measurement: Measurement) {
+        if measurement.destination != destination, measurement.document == document,
+            measurement.size != size, size.width > 0, size.height > 0
+        {
+            morph = StageFitMorph(generation: morph.generation + 1, previousCard: size)
+        }
+        destination = measurement.destination
+        document = measurement.document
+        size = measurement.size
+    }
+
+    /// The space normalized annotations are placed in.
+    var canvasSize: CGSize {
+        CGSize(width: size.width, height: max(size.height - legendHeight, 0))
+    }
 }
 
 /// Scales the preview card to fit the stage and pins its layout footprint to the scaled
-/// size, handing the card's measured size to `content`.
-private struct PreviewCardStage<Content: View>: View {
+/// size, handing `content` the annotation canvas's size, without any legend band.
+struct PreviewCardStage<Content: View>: View {
     let geometry: PreviewCardGeometry
     let stageSize: CGSize
-    @ViewBuilder let content: (CGSize) -> Content
+    let fitAnimation: Animation
+    let morphSpring: Spring
+    let content: (CGSize) -> Content
+
+    @ReducesMotion private var reduceMotion
+    @State private var settledMorph = 0
+
+    init(
+        geometry: PreviewCardGeometry, stageSize: CGSize,
+        fitAnimation: Animation = .easeInOut(duration: 0.25),
+        morphSpring: Spring = StageFitMorph.spring,
+        @ViewBuilder content: @escaping (CGSize) -> Content
+    ) {
+        self.geometry = geometry
+        self.stageSize = stageSize
+        self.fitAnimation = fitAnimation
+        self.morphSpring = morphSpring
+        self.content = content
+    }
 
     var body: some View {
         let cardSize = geometry.size
         let scale = EditorView.fitScale(card: cardSize, in: stageSize)
-        content(cardSize)
+        let morph = geometry.morph
+        content(geometry.canvasSize)
+            // A drag on a card still changing shape would place a mark away from the pointer.
+            .allowsHitTesting(reduceMotion || settledMorph == morph.generation)
             .scaleEffect(scale)
             // `scaleEffect` does not shrink the layout footprint, so without this the
             // unscaled (often very wide) card stays full-width in layout and its
@@ -715,8 +857,23 @@ private struct PreviewCardStage<Content: View>: View {
             // *scaled* size centers the card on its visible bounds and keeps it fully
             // inside the stage at every window size (usability fix).
             .frame(width: cardSize.width * scale, height: cardSize.height * scale)
+            // Inside the animations, or the card's position is not animated with its size.
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .motionSensitiveAnimation(.easeInOut(duration: 0.25), value: scale)
+            // A morph animates the frame through its effect, so the fit itself lands at once.
+            .transaction(value: morph.generation) { $0.animation = nil }
+            .motionSensitiveAnimation(fitAnimation, value: scale)
+            .modifier(
+                StageFitMorphEffect(
+                    generation: morph.generation,
+                    startingScale: morph.startingScale(to: cardSize, in: stageSize))
+            )
+            .motionSensitiveAnimation(.spring(morphSpring), value: morph.generation)
+            .task(id: morph.generation) {
+                guard settledMorph != morph.generation else { return }
+                try? await Task.sleep(for: .seconds(morphSpring.settlingDuration))
+                guard !Task.isCancelled else { return }
+                settledMorph = morph.generation
+            }
     }
 }
 
@@ -731,17 +888,29 @@ private struct StageStatusCapsule: View {
     let stageSize: CGSize
 
     var body: some View {
-        let line = line
+        let destinationName = destinationName
+        let details = details
+        let line = destinationName + details
         Menu {
             DestinationMenuOptions(settings: settings)
         } label: {
             HStack(spacing: 7) {
-                Text(verbatim: line)
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .monospacedDigit()
-                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                HStack(spacing: 0) {
+                    // Only the numbers roll. A name rolling through its letters is noise.
+                    Text(verbatim: destinationName)
+                        .contentTransition(.identity)
+                        // The new name is drawn at once, inside its width as it eases, so it
+                        // cannot run over the numbers on their way to their new place.
+                        .clipped()
+                    Text(verbatim: details)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .layoutPriority(1)
+                }
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .lineLimit(1)
+                .truncationMode(.middle)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(VitrineTokens.Text.secondary)
@@ -750,6 +919,12 @@ private struct StageStatusCapsule: View {
             .padding(.horizontal, VitrineTokens.Spacing.sm)
             .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
             .contentShape(Capsule(style: .continuous))
+            // For a destination change and not for the card growing with typing.
+            .motionSensitiveAnimation(
+                .easeOut(duration: 0.24),
+                value: StageFitReadout(
+                    destination: settings.effectiveFixedSize,
+                    morph: geometry.morph.generation))
         }
         .customLabelMenu(cornerRadius: 14)
         .frame(maxWidth: stageSize.width > 24 ? stageSize.width - 24 : nil)
@@ -757,22 +932,35 @@ private struct StageStatusCapsule: View {
         .accessibilityLabel("Destination")
         .accessibilityValue(Text(verbatim: line))
         .accessibilityIdentifier("editor-status-capsule")
+        .markToolbarAvoids()
         .padding(.bottom, 14)
     }
 
-    private var line: String {
-        let destination = settings.selectedPreset?.displayName ?? String(localized: "Custom")
+    private var destinationName: String {
+        settings.selectedPreset?.displayName ?? String(localized: "Custom")
+    }
+
+    /// Everything after the name, with its leading separator.
+    private var details: String {
         let cardSize = geometry.size
         let size = settings.effectiveFixedSize ?? cardSize
         let dimensions = "\(Int(size.width.rounded())) × \(Int(size.height.rounded()))"
         let output = "\(settings.export.format.displayName) \(settings.effectiveExportScale)×"
-        var line = "\(destination) · \(dimensions) · \(output)"
+        var line = " · \(dimensions) · \(output)"
         if stageSize.width > 0 {
             let zoom = Int((EditorView.fitScale(card: cardSize, in: stageSize) * 100).rounded())
             if zoom < 100 { line += " · \(zoom)%" }
         }
+        if geometry.legendDropped > 0 {
+            line += " · " + String(localized: "Legend: \(geometry.legendDropped) hidden")
+        }
         return line
     }
+}
+
+private struct StageFitReadout: Equatable {
+    let destination: CGSize?
+    let morph: Int
 }
 
 /// Every destination by its full name. A view of its own so the capsule's size changes
@@ -803,6 +991,10 @@ private struct CodeDocumentEditor: View {
     let pasteFromClipboard: () -> Void
     let beginPastedDocument: (String) -> LanguageDetector.Interpretation
     let leaveAnnotationContext: () -> Void
+    let carouselSplit: CarouselSplitModel
+    let thumbnails: PresetThumbnailModel
+    let entitlements: Entitlements
+    let isCollapsed: Bool
 
     var body: some View {
         CodeEditorView(
@@ -814,8 +1006,18 @@ private struct CodeDocumentEditor: View {
             fontLigatures: settings.style.fontLigatures,
             reindentOnPaste: reindentOnPaste,
             onReplaceAllPaste: beginPastedDocument,
-            onUserEdit: leaveAnnotationContext
+            onUserEdit: leaveAnnotationContext,
+            slideDividers: carouselSplit.dividerLayout,
+            isHidden: isCollapsed
         )
+        .background {
+            // A collapsed editor draws no dividers, so it does not lay them out either.
+            if !isCollapsed {
+                SlideDividerRefresher(
+                    settings: settings, model: carouselSplit, thumbnails: thumbnails,
+                    entitlements: entitlements)
+            }
+        }
         .overlay {
             if settings.documentIsEmpty {
                 // The overlay is non-interactive except for its "Paste Code" button
@@ -828,10 +1030,45 @@ private struct CodeDocumentEditor: View {
                         "Paste code or terminal output, or open a live file to turn it into a beautiful image.",
                     actionTitle: "Paste Code",
                     action: pasteFromClipboard,
-                    compact: true
+                    compact: true,
+                    // A new identity measures again when the preference changes.
+                    footer: {
+                        EmptyStageClipboardLine(reindentsOnPaste: reindentOnPaste)
+                            .id(reindentOnPaste)
+                    }
                 )
             }
         }
+    }
+}
+
+/// Childless, and it reads the document only while dividers are on and only once settled, so
+/// a keystroke never re-evaluates it.
+struct SlideDividerRefresher: View {
+    let settings: AppSettings
+    let model: CarouselSplitModel
+    let thumbnails: PresetThumbnailModel
+    let entitlements: Entitlements
+
+    private struct Input: Equatable {
+        let code: String?
+        let split: CarouselSplit
+        /// Text that settles back to what it was still needs its split, or a divider an edit
+        /// removed stays gone after that edit is undone.
+        let handoffs: Int
+    }
+
+    var body: some View {
+        let handoffs = model.showsDividers ? thumbnails.stagedHandoffs : 0
+        let code = model.dividerSource(
+            style: settings.style, isUnlocked: entitlements.isUnlocked(.carouselExport),
+            thumbnails: thumbnails, documentGeneration: settings.documentGeneration)
+        Color.clear
+            .frame(width: 0, height: 0)
+            .task(id: Input(code: code, split: model.split, handoffs: handoffs)) {
+                await model.refreshDividers(code: code)
+            }
+            .accessibilityHidden(true)
     }
 }
 
@@ -906,10 +1143,18 @@ private struct PreviewCodeSynchronizer: View {
 
     @State private var hasSynchronized = false
 
+    /// The generation is here so a replacement with identical text still hands off.
+    private struct Document: Equatable {
+        let code: String
+        let generation: Int
+    }
+
     var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
-            .task(id: settings.documentCode) {
+            .task(
+                id: Document(code: settings.documentCode, generation: settings.documentGeneration)
+            ) {
                 let code = settings.documentCode
                 if !hasSynchronized {
                     hasSynchronized = true

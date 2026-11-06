@@ -230,6 +230,7 @@ extension CLIArgumentParser {
             let codeOnlyOptionsRequested =
                 themeID != nil || languageID != nil || fontName != nil || fontLigatures != nil
                 || fontSize != nil || terminalColumns != nil || wrapColumns != nil || formatCode
+                || terminalPalette != nil || terminalCursor != nil
                 || metadataFilename != nil || metadataTitle != nil
                 || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
@@ -284,6 +285,14 @@ extension CLIArgumentParser {
             if wrapColumns != nil {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --wrap-columns.")
+            }
+            if terminalPalette != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with --terminal-palette.")
+            }
+            if terminalCursor != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with --terminal-cursor.")
             }
             if styleOptionsRequested || themeID != nil {
                 throw CLIError.incompatibleOptions(
@@ -392,6 +401,8 @@ extension CLIArgumentParser {
             cornerRadius: cornerRadius,
             shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,
+            terminalPalette: terminalPalette,
+            terminalCursor: terminalCursor,
             wrapColumns: wrapColumns,
             formatCode: formatCode,
             format: resolvedFormat,
@@ -416,6 +427,7 @@ extension CLIArgumentParser {
             counterPosition: annotations.counter.position,
             counterColor: annotations.counter.color,
             counterSize: annotations.counter.size,
+            counterLabel: annotations.counterLabel,
             arrows: annotations.arrows.materialized,
             lines: annotations.lines.materialized,
             rectangles: annotations.rectangles.materialized,

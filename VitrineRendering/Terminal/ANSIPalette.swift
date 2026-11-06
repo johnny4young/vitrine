@@ -119,6 +119,67 @@ public struct ANSIPalette {
         defaultForeground: rgb(0xD8, 0xDE, 0xE9),
         defaultBackground: rgb(0x2E, 0x34, 0x40))
 
+    /// The standard xterm colors. The card stays light or dark with the theme, because the
+    /// header and window title take their color from the theme, so some need `legible`.
+    private static let xterm = [
+        rgb(0x00, 0x00, 0x00), rgb(0xCD, 0x00, 0x00), rgb(0x00, 0xCD, 0x00),
+        rgb(0xCD, 0xCD, 0x00), rgb(0x00, 0x00, 0xEE), rgb(0xCD, 0x00, 0xCD),
+        rgb(0x00, 0xCD, 0xCD), rgb(0xE5, 0xE5, 0xE5),
+        rgb(0x7F, 0x7F, 0x7F), rgb(0xFF, 0x00, 0x00), rgb(0x00, 0xFF, 0x00),
+        rgb(0xFF, 0xFF, 0x00), rgb(0x5C, 0x5C, 0xFF), rgb(0xFF, 0x00, 0xFF),
+        rgb(0x00, 0xFF, 0xFF), rgb(0xFF, 0xFF, 0xFF),
+    ]
+    private static let rawDark = rawPalette(
+        foreground: rgb(0xE5, 0xE5, 0xE5), background: rgb(0x00, 0x00, 0x00))
+    private static let rawLight = rawPalette(
+        foreground: rgb(0x00, 0x00, 0x00), background: rgb(0xFF, 0xFF, 0xFF))
+
+    private static func rawPalette(foreground: NSColor, background: NSColor) -> ANSIPalette {
+        ANSIPalette(
+            base: xterm.map { legible($0, on: background) }, defaultForeground: foreground,
+            defaultBackground: background)
+    }
+
+    /// Moves a color away from the card only as far as a 3:1 contrast needs, so white on a
+    /// white card stays visible and a color that already reads keeps its exact value.
+    private static func legible(_ color: NSColor, on background: NSColor) -> NSColor {
+        let target: CGFloat = luminance(background) > 0.5 ? 0 : 1
+        guard let source = color.usingColorSpace(.sRGB) else { return color }
+        var result = source
+        var amount: CGFloat = 0
+        while contrast(result, background) < 3, amount < 1 {
+            amount = min(amount + 0.01, 1)
+            result = NSColor(
+                srgbRed: source.redComponent + (target - source.redComponent) * amount,
+                green: source.greenComponent + (target - source.greenComponent) * amount,
+                blue: source.blueComponent + (target - source.blueComponent) * amount, alpha: 1)
+        }
+        return result
+    }
+
+    private static func contrast(_ first: NSColor, _ second: NSColor) -> CGFloat {
+        let (a, b) = (luminance(first), luminance(second))
+        return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+    }
+
+    private static func luminance(_ color: NSColor) -> CGFloat {
+        guard let color = color.usingColorSpace(.sRGB) else { return 0 }
+        func linear(_ channel: CGFloat) -> CGFloat {
+            channel <= 0.04045 ? channel / 12.92 : pow((channel + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(color.redComponent) + 0.7152 * linear(color.greenComponent)
+            + 0.0722 * linear(color.blueComponent)
+    }
+
+    /// The palette a capture renders with. Every terminal surface resolves it here, so the
+    /// preview and each export can't disagree.
+    public static func resolved(for theme: Theme, mode: TerminalPaletteMode) -> ANSIPalette {
+        switch mode {
+        case .theme: forTheme(theme)
+        case .raw: theme.appearance == .light ? rawLight : rawDark
+        }
+    }
+
     /// The terminal palette to use for a syntax theme: a signature palette for the
     /// themes that have one, otherwise a light or dark default matching the theme's
     /// appearance — so the Style theme picker also drives the terminal look (and a
@@ -145,10 +206,10 @@ public enum ANSIRenderer {
     /// explicit or inverse background is painted per run.
     public static func attributedString(
         _ text: String, font: NSFont, palette: ANSIPalette = .terminal, columns: Int? = nil,
-        redacting rows: [ClosedRange<Int>] = []
+        redacting rows: [ClosedRange<Int>] = [], cursor: TerminalCursorStyle = .hidden
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        for run in exportRuns(text, columns: columns, redacting: rows) {
+        for run in exportRuns(text, columns: columns, redacting: rows, cursor: cursor) {
             result.append(
                 NSAttributedString(
                     string: run.text,
@@ -171,9 +232,10 @@ public enum ANSIRenderer {
     /// Text and attributed exports share this transform so styles and row numbers cannot
     /// diverge. A replacement gets a fresh style, not attributes from hidden content.
     private static func exportRuns(
-        _ text: String, columns: Int?, redacting rows: [ClosedRange<Int>]
+        _ text: String, columns: Int?, redacting rows: [ClosedRange<Int>],
+        cursor: TerminalCursorStyle = .hidden
     ) -> [ANSIRun] {
-        let runs = styledRuns(text, columns: columns)
+        let runs = styledRuns(text, columns: columns, cursor: cursor)
         let redactions = LineHighlight.normalize(rows)
         guard !redactions.isEmpty else { return runs }
         var result: [ANSIRun] = []
@@ -210,13 +272,18 @@ public enum ANSIRenderer {
     /// Grid mode skips ``normalize(_:)`` on purpose: that collapses the `\r`/`\b` redraws
     /// the emulator interprets itself as cursor motion, and keeps the cursor escapes it
     /// needs intact.
-    private static func styledRuns(_ text: String, columns: Int? = nil) -> [ANSIRun] {
+    private static func styledRuns(
+        _ text: String, columns: Int? = nil, cursor: TerminalCursorStyle = .hidden
+    ) -> [ANSIRun] {
         if TerminalScreen.usesScreenAddressing(text) {
             // `columns` pins the reconstruction width (`--terminal-width`); `nil` lets the
             // emulator infer it. Line mode reflows to the image, so the width is moot there.
-            return TerminalScreen.runs(text, columns: columns)
+            return TerminalScreen.runs(text, columns: columns, cursor: cursor)
         }
-        return ANSIParser.parse(normalize(text))
+        let runs = ANSIParser.parse(normalize(text))
+        // Line mode tracks no column, so its cursor sits where the output ended.
+        guard cursor != .hidden, !TerminalScreen.leavesCursorHidden(text) else { return runs }
+        return runs + cursor.runs()
     }
 
     /// What a redraw escape does to the lines ``normalize(_:)`` has emitted. The line
@@ -505,6 +572,11 @@ public enum ANSIRenderer {
         // inverse); plain runs let the canvas terminal fill show through.
         if hasExplicitBackground || style.inverse {
             attributes[.backgroundColor] = background
+        }
+        // Measured, because a fallback font's glyph can be wider than the code font's cell.
+        if style.isCursorBar {
+            attributes[.kern] = -NSAttributedString(string: "\u{258F}", attributes: attributes)
+                .size().width
         }
         if style.underline {
             attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue

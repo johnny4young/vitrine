@@ -71,6 +71,8 @@ public struct TerminalScreen: Sendable {
     var rows: [[TerminalCell]]
     var cursorRow = 0
     var cursorCol = 0
+    /// DECTCEM: a program can leave its cursor hidden, and then there is none to draw.
+    var cursorVisible = true
     /// Real terminals delay autowrap until the next printable character. Keeping that
     /// pending state avoids double-advancing when a full-width line is followed by `\n`.
     var pendingWrap = false

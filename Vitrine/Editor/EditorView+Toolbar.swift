@@ -91,7 +91,9 @@ extension EditorView {
                     onBringToFront: bringSelectionToFront,
                     onSendToBack: sendSelectionToBack,
                     density: density.annotationDensity,
-                    onStyleEditEnded: endAnnotationEdit
+                    onStyleEditEnded: endAnnotationEdit,
+                    legend: annotationLegendEdit,
+                    onLegendSubmitted: { stageFocused = selectedAnnotationID != nil }
                 )
                 .onChange(of: activeTool) { _, newTool in
                     if newTool != .select { selectedAnnotationID = nil }
@@ -154,11 +156,7 @@ extension EditorView {
     /// to the Copy Image command's shortcut so the menu and CTA stay in lockstep.
     @ViewBuilder func copyImageCTA(compact: Bool) -> some View {
         let button = GradientCTAButton {
-            Image(systemName: VitrineCommand.copyImage.systemImageName)
-                .font(.system(size: 12, weight: .semibold))
-            if !compact {
-                Text("Copy image")
-            }
+            CopyImageCTALabel(confirmation: session.copyConfirmation, compact: compact)
         } action: {
             copyImage()
         }
@@ -201,6 +199,12 @@ extension EditorView {
             .disabled(!settings.hasRenderableContent)
             .accessibilityIdentifier("pin-snapshot-button")
 
+            if let title = reproductionCommandTitle {
+                Button(title, systemImage: "terminal", action: copyReproductionCommand)
+                    .disabled(!settings.hasRenderableContent)
+                    .accessibilityIdentifier("copy-reproduction-command-button")
+            }
+
             if foldsExports {
                 Button(action: presentMultiSizeExport) {
                     Label(
@@ -217,10 +221,7 @@ extension EditorView {
                             ? "Export carousel" : "Export carousel — Requires PRO",
                         systemImage: "rectangle.stack")
                 }
-                .disabled(
-                    !settings.hasRenderableContent || settings.style.usesImageContent
-                        || !Self.carouselAccepts(settings.style)
-                )
+                .disabled(!carouselCanOpen)
                 .help(carouselHelp)
                 .accessibilityIdentifier("export-carousel-button")
             }
@@ -247,22 +248,8 @@ extension EditorView {
     /// it gets out of the way once its job is done. Users who copy more than
     /// once can keep it open from Settings.
     func copyImage() {
-        guard clearsPreflight(.copy, EditorPresentation.copyPayload(of: settings)) else { return }
-        // Surface the outcome so the toolbar's primary CTA isn't silent on success or a
-        // render/encode failure — mirroring the menu command and the quick-capture HUD.
-        // The HUD shows near the menu bar regardless of `closeAfterCopy`.
-        let outcome = RenderedImageCopy.copy(settings.exportConfig, settings: settings)
-        session.feedback(ExportFeedback.copyOutcome(outcome))
-        // Close *this* window — captured via `WindowAccessor`, so it never depends on
-        // `keyWindow` being right — deferred past the button's action, and `close()`
-        // (not `performClose`) so it is unconditional.
-        guard
-            Self.shouldCloseAfterCopy(
-                copied: outcome == .copied,
-                preferenceEnabled: settings.outputBehavior.closeAfterCopy)
-        else { return }
-        guard let editorWindow = editorWindow.value else { return }
-        Task { editorWindow.close() }
+        // *This* window, captured via `WindowAccessor`, so it never depends on `keyWindow`.
+        session.copyImage(closing: editorWindow.value)
     }
 
     /// A failed clipboard write leaves the editor open so the user can retry or save
@@ -373,10 +360,7 @@ extension EditorView {
                 }
             }
             .help(carouselHelp)
-            .disabled(
-                !settings.hasRenderableContent || settings.style.usesImageContent
-                    || !Self.carouselAccepts(settings.style)
-            )
+            .disabled(!carouselCanOpen)
             .accessibilityLabel(Text("Export carousel"))
             .accessibilityValue(entitlements.proRequirementValue(for: .carouselExport))
             .accessibilityIdentifier("export-carousel-button")
@@ -385,17 +369,37 @@ extension EditorView {
     /// Terminal transcripts can't be cut by raw lines, and blur boxes are placed against
     /// the whole canvas, so neither can be carried onto slides safely.
     static func carouselAccepts(_ style: SnapshotConfig) -> Bool {
-        style.language != .terminal && !style.annotations.contains { $0.kind == .blur }
+        carouselRule(for: style) == nil
+    }
+
+    /// Why this capture can't become slides, printed in the tooltip and in the sheet.
+    static func carouselRule(for style: SnapshotConfig) -> LocalizedStringKey? {
+        if style.language == .terminal {
+            return "Carousel export isn't available for terminal captures"
+        }
+        if style.annotations.contains(where: { $0.kind == .blur }) {
+            return "Remove blur boxes, or use Redact secrets, to export a carousel"
+        }
+        return nil
     }
 
     private var carouselHelp: LocalizedStringKey {
-        if settings.style.language == .terminal {
-            return "Carousel export isn't available for terminal captures"
-        }
-        if settings.style.annotations.contains(where: { $0.kind == .blur }) {
-            return "Remove blur boxes, or use Redact secrets, to export a carousel"
-        }
-        return "Split the snippet into numbered carousel slides (4:5)"
+        Self.carouselRule(for: settings.style)
+            ?? "Split the snippet into numbered carousel slides (4:5)"
+    }
+
+    /// With PRO, a refused capture still opens the sheet, which says why. Without it the button
+    /// stays off, so the paywall never sells something this capture can't use.
+    static func carouselCanOpen(
+        _ style: SnapshotConfig, hasRenderableContent: Bool, isUnlocked: Bool
+    ) -> Bool {
+        hasRenderableContent && !style.usesImageContent && (carouselAccepts(style) || isUnlocked)
+    }
+
+    private var carouselCanOpen: Bool {
+        Self.carouselCanOpen(
+            settings.style, hasRenderableContent: settings.hasRenderableContent,
+            isUnlocked: entitlements.isUnlocked(.carouselExport))
     }
 
     /// Routes both toolbar densities through one presentation state and one sheet host.
@@ -409,7 +413,11 @@ extension EditorView {
     }
 
     func presentCarouselExport() {
-        if entitlements.isUnlocked(.carouselExport), !clearsPreflight(.export, .image) { return }
+        if entitlements.isUnlocked(.carouselExport), Self.carouselAccepts(settings.style),
+            !clearsPreflight(.export, .image)
+        {
+            return
+        }
         exportSheet = .carousel(isUnlocked: entitlements.isUnlocked(.carouselExport))
     }
 
@@ -434,9 +442,14 @@ extension EditorView {
                 baseConfig: settings.exportConfig,
                 profile: settings.export.colorProfile,
                 feedback: session.feedback,
-                presentation: session.presentation.batchExport)
+                presentation: session.presentation.batchExport,
+                splitModel: session.carouselSplit)
         case .carouselPaywall:
             PaywallSheet(feature: .carouselExport, entitlements: entitlements)
+        case .automationPaywall:
+            PaywallSheet(feature: .automation, entitlements: entitlements)
+        case .framePaywall:
+            PaywallSheet(feature: .advancedFrames, entitlements: entitlements)
         }
     }
 

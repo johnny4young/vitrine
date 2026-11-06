@@ -18,6 +18,79 @@ can never drift.
   and a diffstat bar, and a context slider that folds unchanged lines around each change.
   The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
   links keep the full patch.
+- A selected mark gets a small toolbar beside it on the stage with its color, size and
+  Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
+  you draw, drag or resize, and is never part of an export.
+- Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
+  hides the code and inspector columns. A dock on the stage shows the current theme,
+  typography, background and padding, and opens the inspector's section for each in a
+  popover. Each window has its own mode, and leaving it restores both columns as they were.
+- When a dropped file picks up a workspace recipe, a bar over the stage names the recipe and
+  its folder and counts the style fields you've changed since. Revert restores the recipe's
+  look and can be undone; closing the bar keeps the style.
+- The carousel export sheet shows a filmstrip of the real slides before writing files, with
+  redactions in place, a flag on a last slide that came out short, and the slide size. A new
+  switch draws slide dividers in the code editor while you edit; they never touch the text. PRO
+  users opening it on a terminal capture or one with blur boxes now see why it can't export.
+- Warn in the inspector's Theme header when a capture's code text has low measured contrast
+  on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
+  stock theme only when it measures better, and can be dismissed for a theme until you quit.
+- The empty editor says what the clipboard holds, such as "14 lines of Swift", counting
+  the lines a paste would produce, when System Settings always allows Vitrine to read the
+  clipboard. Otherwise it stays silent and the contents stay unread.
+- The capture HUD shows the size of the PNG it put on the clipboard.
+- Comparison boards get a Slider layout for two captures: one frame split at a divider you
+  drag, or move with the arrow keys when macOS keyboard navigation is on. Exports draw the
+  line at the chosen position.
+- Preview the style presets as thumbnails of the current capture under Presets in the
+  inspector, and apply one with a click. They show a preset's style on a short excerpt,
+  update once typing settles, and mask redacted or blurred content. An image capture shows
+  the image; an empty document shows the sample.
+- Terminal captures get an ANSI palette control, Theme or Raw xterm colors, in the inspector
+  and Settings ▸ Style, with `--terminal-palette`. The default is today's rendering.
+- Terminal captures can draw their cursor, Hidden, Block or Bar, in the inspector and
+  Settings ▸ Style, with `--terminal-cursor`. The default stays Hidden, and plain text exports
+  never include the cursor.
+- The inspector's Header section lists a terminal capture's filename and title as removable
+  chips, with a prompt picker and an undoable Remove arguments. Text they remove also leaves
+  the alternative text and window title.
+- Open what a Help topic describes from a button on its card: the Settings pane it names
+  or the editor. Help never runs a capture.
+- What's New leads each highlight with a bold phrase, so a release scans at a glance.
+- Chip rows that overflow fade only the edges that hide chips and add a button that pages
+  through them, so they scroll without a trackpad. Selecting a theme, font, or background
+  brings its chip into view. Nothing is drawn when the chips fit.
+- The editor's Copy button turns into a check after a successful copy, without changing
+  its width. A failed copy never shows the check.
+- Annotation tools tint under the pointer and scale slightly on press; theme chips lift on
+  hover like the swatches. Reduce Motion removes the scaling and every transition.
+- Changing the theme cross-fades the preview, and changing the destination eases the card's
+  frame to the new shape. Reduce Motion lands both at once, and exports are unaffected.
+- Settings ▸ Style ▸ Background leads with the kind picker, so custom gradients, solid
+  colors, images and transparency are one click away.
+- A transparent background now shows a checker behind the editor's preview. The checker
+  follows the system appearance there and on comparison boards.
+- General settings report when the global hotkey is also a Vitrine menu command or an
+  enabled macOS shortcut, with a Change… action that starts recording. macOS does not
+  reveal other apps' hotkeys, so clashes with them are not reported. A macOS shortcut kept
+  with the recorder's Use Anyway is not reported again.
+- The locked Brand Kit pane previews a sample mark drawn by the real renderer.
+- Type a legend on a selected counter, or pass `--counter-label`, to list it under the
+  capture. Masking is best effort: a label that looks like a secret or matches a redacted
+  line or a value in blurred code is replaced, so check the legend before sharing.
+  A fixed-size frame gives the legend at most a third of its height and says when
+  entries don't fit.
+- Copy the command line that reproduces an editor window's image, from its More menu or
+  the command palette. It names what the line can't include, such as annotations or a
+  pasted image.
+- See five copyable recipe commands with their free or PRO access, and the order in which
+  defaults, recipes and flags override each other.
+- Deleting a counter renumbers the badges above it, so they stay in order.
+- The multi-size sheet shows an estimated total for the selected sizes, measured from real
+  renders, except for very large documents.
+- Show what the next capture will be under the menu bar's capture button: language, line
+  count, theme and destination. Language and lines appear only when System Settings always
+  allows Vitrine to read the clipboard; otherwise the panel leaves the contents unread.
 - Carousel export can move slide breaks to nearby blank lines, keep line numbers
   continuous across slides, and draw a page badge and a "continues →" cue on each slide.
   The sheet shows the folder, the file names and an estimated size before anything is
@@ -44,6 +117,8 @@ can never drift.
 
 ### Changed
 
+- Gather the Library's preset actions in one menu beside the preset picker. Export is
+  labeled Export Saved Presets… because it writes every saved preset to one file.
 - Move Pin snapshot and Make This Window the Default into the toolbar's More menu until
   the window is wide enough for every action.
 - Open Web Snapshot on HTML in builds without URL capture, with the reason one click

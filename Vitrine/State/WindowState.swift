@@ -127,6 +127,8 @@ struct EditorWindowState: Codable, Equatable {
     var imageFrameAppearanceID: String
     var windowTitle: String
     var wrapColumns: Int?
+    var terminalPalette: TerminalPaletteMode?
+    var terminalCursor: TerminalCursorStyle?
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
     var showDiffStats: Bool
@@ -164,6 +166,8 @@ struct EditorWindowState: Codable, Equatable {
         imageFrameAppearanceID = config.imageFrameAppearance.rawValue
         windowTitle = config.windowTitle
         wrapColumns = config.wrapColumns
+        terminalPalette = config.terminalPalette
+        terminalCursor = config.terminalCursor
         focusHighlightedLines = config.focusHighlightedLines
         diffDecorations = config.diffDecorations
         showDiffStats = config.showDiffStats
@@ -228,6 +232,8 @@ struct EditorWindowState: Codable, Equatable {
         config.imageFrameAppearance = FrameAppearance(rawValue: imageFrameAppearanceID) ?? .auto
         config.windowTitle = windowTitle
         config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
+        config.terminalPalette = terminalPalette ?? .theme
+        config.terminalCursor = terminalCursor ?? .hidden
         config.focusHighlightedLines = focusHighlightedLines
         config.diffDecorations = diffDecorations
         config.showDiffStats = showDiffStats
@@ -243,6 +249,7 @@ struct EditorWindowState: Codable, Equatable {
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
         case showDiffStats, diffContextLines
+        case terminalPalette, terminalCursor
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
 
@@ -293,6 +300,10 @@ struct EditorWindowState: Codable, Equatable {
         windowTitle =
             (try? container.decode(String.self, forKey: .windowTitle)) ?? fallback.windowTitle
         wrapColumns = try? container.decodeIfPresent(Int.self, forKey: .wrapColumns)
+        terminalPalette = try? container.decodeIfPresent(
+            TerminalPaletteMode.self, forKey: .terminalPalette)
+        terminalCursor = try? container.decodeIfPresent(
+            TerminalCursorStyle.self, forKey: .terminalCursor)
         focusHighlightedLines =
             (try? container.decode(Bool.self, forKey: .focusHighlightedLines))
             ?? fallback.focusHighlightedLines

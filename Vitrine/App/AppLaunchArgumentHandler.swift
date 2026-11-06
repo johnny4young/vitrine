@@ -6,6 +6,7 @@ import VitrineRendering
 
     import AppKit
     import CryptoKit
+    import KeyboardShortcuts
 
     /// Handles explicit development and UI-automation launch arguments.
     ///
@@ -58,6 +59,7 @@ import VitrineRendering
         /// `--demo-html-format` preloads compact markup for the Format Code smoke test;
         /// `--demo-sql-format` does the same for a compact query;
         /// `--demo-secret` preloads a synthetic token for the export pre-flight smoke test;
+        /// `--demo-terminal` preloads a colored capture with a project and command header;
         /// `--brand-accent` (Debug) keeps the brand accent whatever the macOS accent is;
         /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
         /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
@@ -67,6 +69,7 @@ import VitrineRendering
         /// New through its real version gate; `--skip-onboarding` just marks the
         /// quick-start as seen; `--open-second-editor` drives the multi-window UI smoke; `--demo-brand-kit-free`
         /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests;
+        /// `--demo-hotkey-conflict` stores a menu-taken hotkey, in an isolated suite only;
         /// `--web-snapshot-ui-test-renderer` keeps that strict UI journey deterministic
         /// when XCTest cannot launch WebKit's out-of-process renderer;
         /// the `--memory-*` hooks run bounded lifecycle evidence journeys and terminate
@@ -109,6 +112,15 @@ import VitrineRendering
                         }
                     }
                     """
+            }
+            if arguments.contains("--demo-terminal") {
+                var demo = settings.config
+                demo.code =
+                    "\u{1B}[32m✓\u{1B}[0m 42 tests passed\n\u{1B}[33m!\u{1B}[0m 1 skipped\n\u{1B}[31m✗\u{1B}[0m 0 failed"
+                demo.language = .terminal
+                demo.metadata.filename = "weather-app · main"
+                demo.metadata.title = "$ swift test --parallel"
+                settings.config = demo
             }
             if arguments.contains("--demo-large-document") {
                 let comment = String(repeating: "x", count: 480)
@@ -239,6 +251,13 @@ import VitrineRendering
                 }
                 EditorWindowController.shared.show()
                 didOpenWindow = true
+            }
+            // The recorder refuses a menu shortcut, so only an older stored one can clash.
+            if arguments.contains("--demo-hotkey-conflict"),
+                ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"]?.isEmpty == false
+            {
+                KeyboardShortcuts.setShortcut(
+                    .init(.s, modifiers: [.command, .shift]), for: .quickCapture)
             }
             if arguments.contains("--open-settings") {
                 SettingsWindowManager.shared.show()

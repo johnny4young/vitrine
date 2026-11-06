@@ -17,6 +17,8 @@ implementations. The CLI target does not compile app adapters as an allowlist.
 | Logging | Each process/module | App, CLI and rendering own their loggers; `LogCategory` in Domain owns the subsystem/category vocabulary. No app lifecycle code compiles into CLI. |
 | Editor handoff | `Vitrine/CLI/EditorHandoff.swift` | Deliberately source-shared local pasteboard/URL adapter for two processes, not a render or Domain dependency. The app consumes; the CLI stages. |
 | Shell integration | `Vitrine/CLI/ShellInit.swift` | Deliberately source-shared shell selection/snippet contract. Settings installs the same snippet the CLI prints. No extra module is justified for these two small integration boundaries. |
+| Reproduction command | `Vitrine/CLI/CLIReproductionCommand.swift` | Deliberately source-shared pure mapping. The editor copies the line; hostless CLI tests run it through a real shell and the real parser. |
+| Recipes card commands | `Vitrine/CLI/CLICookbookEntry.swift` | Deliberately source-shared sample lines. Settings copies them; hostless CLI tests parse them and pin their access tier against the real gate. |
 
 The Domain import guard permits CryptoKit only for pure signed-token operations, not
 Security or StoreKit. Hostless token tests pin the wire format and rejection behavior;
@@ -191,6 +193,11 @@ for the user-visible contract and limitations.
 - **Language detection** on paste (heuristic + manual override via the picker).
 - **Permission:** a clear `NSPasteboardUsageDescription`; content **never leaves the
   Mac** (no network by default).
+- **Panel summary:** opening the menu-bar panel lists pasteboard types and runs the silent
+  URL pattern check, which also matches code containing a URL, so it only hides the line
+  when URL capture is on. Under `accessBehavior == .alwaysAllow` it also reads the text
+  on a serial queue and keeps only its language and line count. Text is not read when
+  marked concealed, transient or remote at the time of the read.
 
 ## Color management
 
@@ -396,7 +403,10 @@ Composing or exporting a board therefore cannot trigger an implicit file read.
 `ComparisonBoardComposer` resolves row and column counts before rendering and gives
 every item an equal, aspect-fit image area. Automatic layout keeps two or three items
 in one row and uses a two-by-two grid for four; explicit horizontal, vertical, and grid
-layouts are deterministic alternatives. The finished image goes through the same color
+layouts are deterministic alternatives. The slider layout resolves two items into one
+card through `Metrics.wipe`, whose whole-point geometry the composer draws and the
+editor's divider control reads; each capture is clipped to its side, never stacked, and
+any other item count draws as automatic. The finished image goes through the same color
 normalization and PNG/PDF encoders as every other capture. This generic core remains
 separate from `ResponsiveBoardComposer`, whose variable-width cards and viewport labels
 are specialized for web snapshots.
@@ -943,6 +953,7 @@ Vitrine/
 │   ├── ShareManager.swift     # NSSharingService
 │   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
 │   ├── CarouselExportView.swift # multi-slide export sheet
+│   ├── CarouselFilmstrip.swift # slide tiles and the window's split and editor dividers
 │   ├── ComparisonBoard.swift # path-free validated 2–4 item value
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
 │   └── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
@@ -951,6 +962,7 @@ Vitrine/
 │   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
 │   ├── ComparisonBoardPreview.swift # debounced preview phase and failure state
 │   ├── ComparisonBoardEditorView.swift # preview, layout, captions, export controls
+│   ├── ComparisonBoardDividerHandle.swift # slider divider: pointer, keyboard, VoiceOver
 │   └── ComparisonBoardPresentation.swift # injected share operation
 ├── Settings/
 │   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)

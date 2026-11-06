@@ -24,6 +24,11 @@ struct BrandKitSettingsSection: View {
     @State private var isImportingLogo = false
     @State private var logoImportTask: Task<Void, Never>?
 
+    #if !VITRINE_DIRECT_DOWNLOAD
+        @State private var isRestoring = false
+        @State private var restoreMessage: String?
+    #endif
+
     var body: some View {
         Group {
             if entitlements.isUnlocked(.brandKit) {
@@ -144,8 +149,8 @@ struct BrandKitSettingsSection: View {
         }
     }
 
-    /// The locked state: a crown + PRO badge, the value blurb, and an unlock button
-    /// that presents the shared `PaywallSheet` for the brand-kit feature.
+    /// The locked state: a crown + PRO badge, a preview of what the kit draws, what it
+    /// covers, and an unlock button that presents the shared `PaywallSheet`.
     private var upsell: some View {
         TokenGroup(title: Text("Brand Kit")) {
             VStack(alignment: .leading, spacing: 10) {
@@ -157,22 +162,40 @@ struct BrandKitSettingsSection: View {
                         .foregroundStyle(VitrineTokens.Text.primary)
                     ProBadge()
                 }
-                Text("Add your logo, handle, and accent color to every snapshot.")
+                BrandKitLockedPreviewImage()
+                Text("Your logo, handle and QR chip on captures and carousel slides.")
                     .font(.system(size: VitrineTokens.FontSize.subhead))
                     .foregroundStyle(VitrineTokens.Text.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                Button {
-                    showingPaywall = true
-                } label: {
-                    Text("Unlock Vitrine PRO")
+                HStack(spacing: VitrineTokens.Spacing.xs) {
+                    Button {
+                        showingPaywall = true
+                    } label: {
+                        Text("Unlock Vitrine PRO")
+                    }
+                    .accentProminentButtonStyle()
+                    .accessibilityIdentifier("brand-kit-unlock-button")
+                    #if !VITRINE_DIRECT_DOWNLOAD
+                        RestorePurchasesButton(
+                            entitlements: entitlements, isWorking: $isRestoring,
+                            notice: $restoreMessage
+                        )
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("brand-kit-restore-button")
+                    #endif
                 }
-                .accentProminentButtonStyle()
-                .accessibilityIdentifier("brand-kit-unlock-button")
+                #if !VITRINE_DIRECT_DOWNLOAD
+                    if let restoreMessage {
+                        Text(verbatim: restoreMessage)
+                            .font(.system(size: VitrineTokens.FontSize.caption))
+                            .foregroundStyle(VitrineTokens.Text.secondary)
+                    }
+                #endif
             }
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .accessibilityIdentifier("settings-brand-kit-upsell")
+        .accessibilityContainerIdentifier("settings-brand-kit-upsell")
     }
 
     /// Picks a logo image through an open panel and imports it into the container,
@@ -222,6 +245,64 @@ struct BrandKitSettingsSection: View {
 
     private var placement: Binding<Watermark.Placement> {
         Binding(get: { brandKit.brandKit.placement }, set: { brandKit.brandKit.placement = $0 })
+    }
+}
+
+/// A fixed sample mark drawn by the real renderer, so the locked pane shows what the kit
+/// produces. It never reaches `BrandKitStore`, so a free export stays unbranded.
+enum BrandKitLockedPreview {
+    // Tall enough that the corner mark clears the code window, as it does on a real capture.
+    static let canvasSize = CGSize(width: 480, height: 256)
+
+    static var config: SnapshotConfig {
+        var config = SnapshotConfig(
+            code: "let greeting = \"Hello, world!\"\nprint(greeting)",
+            language: .swift)
+        config.fontSize = 12
+        config.watermark = Watermark(
+            text: String(localized: "@yourhandle · your-project"),
+            logoImage: NSImage(
+                systemSymbolName: "seal.fill", accessibilityDescription: nil
+            )?
+            .withSymbolConfiguration(.init(paletteColors: [.white])),
+            logoIdentity: "locked-preview-logo",
+            tint: RGBAColor(red: 1, green: 0.83, blue: 0.47, opacity: 1),
+            placement: .bottomTrailing,
+            qrImage: QRCodeGenerator.image(for: "https://example.com/you").map { code in
+                NSImage(cgImage: code, size: NSSize(width: code.width, height: code.height))
+            },
+            qrIdentity: "locked-preview-link")
+        return config
+    }
+
+    /// Rendered once: the sample takes no user input, the renderer no appearance, and the
+    /// app's language is fixed for a launch.
+    static let image = render()
+
+    static func render() -> NSImage? {
+        ExportManager.renderNSImage(config, scale: 2, fixedSize: canvasSize, budget: .preview)
+    }
+}
+
+private struct BrandKitLockedPreviewImage: View {
+    var body: some View {
+        ZStack {
+            if let image = BrandKitLockedPreview.image {
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFit()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .aspectRatio(
+            BrandKitLockedPreview.canvasSize.width / BrandKitLockedPreview.canvasSize.height,
+            contentMode: .fit
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
+        .accessibilityElement()
+        .accessibilityLabel("Sample capture with a Brand Kit mark")
+        .accessibilityAddTraits(.isImage)
+        .accessibilityIdentifier("brand-kit-locked-preview")
     }
 }
 

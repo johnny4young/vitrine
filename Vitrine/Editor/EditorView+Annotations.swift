@@ -45,6 +45,24 @@ extension EditorView {
             })
     }
 
+    /// The selected counter's legend field, or `nil` when the selection has no legend.
+    var annotationLegendEdit: AnnotationLegendEdit? {
+        guard let selected = selectedAnnotation, selected.kind == .counter else { return nil }
+        let id = selected.id
+        return AnnotationLegendEdit(
+            id: id,
+            text: Binding(
+                get: { settings.style.annotations.first { $0.id == id }?.text ?? "" },
+                set: { newValue in
+                    guard let index = settings.style.annotations.firstIndex(where: { $0.id == id })
+                    else { return }
+                    beginAnnotationEdit()
+                    settings.style.annotations[index].text = String(
+                        newValue.prefix(CounterLegend.maxLabelLength))
+                }),
+            isMasked: previewConfig.isLegendLabelMasked(selected))
+    }
+
     /// Whether the color swatch applies to the current context (the selected mark, or
     /// the active draw tool). The selected-mark case derives from the same
     /// `AnnotationTool` policy as the draw-tool case, so a kind excluded there (blur,
@@ -80,7 +98,8 @@ extension EditorView {
         else { return }
 
         beginAnnotationEdit()
-        let copy = original.duplicated(in: cardGeometry.size, counterNumber: nextCounterNumber)
+        let copy = original.duplicated(
+            in: cardGeometry.canvasSize, counterNumber: nextCounterNumber)
         settings.style.annotations.append(copy)
         selectedAnnotationID = copy.id
         endAnnotationEdit()
@@ -122,10 +141,21 @@ extension EditorView {
     func deleteSelection() -> Bool {
         guard let id = selectedAnnotationID, editingAnnotationID == nil else { return false }
         beginAnnotationEdit()
-        settings.style.annotations.removeAll { $0.id == id }
+        settings.style.annotations.removeMark(id)
         selectedAnnotationID = nil
         endAnnotationEdit()
         return true
+    }
+
+    /// Arrows nudge and Delete removes the selected mark, from the stage or its toolbar.
+    func markKeyPress(_ press: KeyPress) -> KeyPress.Result {
+        let handled =
+            press.key == .delete || press.key == .deleteForward
+            ? deleteSelection()
+            : nudgeSelection(
+                press.key, shift: press.modifiers.contains(.shift),
+                isRepeat: press.phase == .repeat)
+        return handled ? .handled : .ignored
     }
 
     /// Escape drops the selection and returns to the Select tool.
@@ -137,7 +167,7 @@ extension EditorView {
     /// Moves the selected mark by one arrow-key press: one canvas point normally or
     /// ten with Shift. Auto-repeat records only the initial undo snapshot.
     func nudgeSelection(_ key: KeyEquivalent, shift: Bool, isRepeat: Bool) -> Bool {
-        guard let id = selectedAnnotationID,
+        guard editingAnnotationID == nil, let id = selectedAnnotationID,
             let index = settings.style.annotations.firstIndex(where: { $0.id == id })
         else { return false }
 
@@ -153,7 +183,7 @@ extension EditorView {
         guard let delta else { return false }
 
         if !isRepeat { beginAnnotationEdit() }
-        settings.style.annotations[index].nudge(by: delta, in: cardGeometry.size)
+        settings.style.annotations[index].nudge(by: delta, in: cardGeometry.canvasSize)
         if !isRepeat { endAnnotationEdit() }
         return true
     }

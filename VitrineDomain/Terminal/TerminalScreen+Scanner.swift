@@ -5,11 +5,50 @@ extension TerminalScreen {
 
     /// Replays `text` at an inferred width and height and returns the final screen as
     /// styled runs, ready for ``ANSIRenderer``.
-    public static func runs(_ text: String, columns: Int? = nil) -> [ANSIRun] {
+    public static func runs(
+        _ text: String, columns: Int? = nil, cursor: TerminalCursorStyle = .hidden
+    ) -> [ANSIRun] {
         var screen = TerminalScreen(
             columns: columns ?? inferColumns(text), rows: inferRows(text))
         screen.feed(text)
-        return screen.runs()
+        return screen.runs(cursor: cursor)
+    }
+
+    /// Whether the stream's last cursor-visibility escape hid the cursor, for line mode,
+    /// which never replays the stream.
+    public static func leavesCursorHidden(_ text: String) -> Bool {
+        let scalars = Array(text.unicodeScalars)
+        var hidden = false
+        var index = 0
+        while index + 1 < scalars.count {
+            guard scalars[index] == "\u{1B}" else {
+                index += 1
+                continue
+            }
+            let next = scalars[index + 1]
+            // A string body can hold escaped sequences, which don't reach the terminal as such.
+            if next == "]" {
+                index = ANSIParser.scanOSC(scalars, from: index + 2).end
+            } else if ANSIParser.isStringSequenceIntroducer(next) {
+                index = ANSIParser.skipStringSequence(scalars, from: index + 2)
+            } else if next == "c" {
+                hidden = false  // RIS
+                index += 2
+            } else if next == "[" {
+                let (params, finalByte, end) = ANSIParser.scanCSI(scalars, from: index + 2)
+                if params == "!", finalByte == "p" {
+                    hidden = false  // DECSTR
+                } else if params.hasPrefix("?"), finalByte == "h" || finalByte == "l",
+                    parseParams(String(params.dropFirst())).contains(25)
+                {
+                    hidden = finalByte == "l"
+                }
+                index = max(end, index + 2)
+            } else {
+                index += 1
+            }
+        }
+        return hidden
     }
 
     // MARK: - Routing: is this a full-screen TUI?

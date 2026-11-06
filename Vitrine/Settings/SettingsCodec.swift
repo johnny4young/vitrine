@@ -30,6 +30,8 @@ enum SettingsCodec {
         static let showShadow = "showShadow"
         static let showLineNumbers = "showLineNumbers"
         static let wrapColumns = "wrapColumns"
+        static let terminalPalette = "terminalPalette"
+        static let terminalCursor = "terminalCursor"
         static let highlightedLines = "highlightedLines"
         static let focusHighlightedLines = "focusHighlightedLines"
         static let diffDecorations = "diffDecorations"
@@ -51,6 +53,7 @@ enum SettingsCodec {
         static let concealClipboard = "concealClipboard"
         static let textSidecar = "textSidecar"
         static let hotkeyAction = "hotkeyAction"
+        static let acknowledgedMacOSHotkey = "acknowledgedMacOSHotkey"
         static let appLanguage = "appLanguage"
         static let treatURLs = "treatURLsAsScreenshot"
         static let reindentOnPaste = "reindentOnPaste"
@@ -111,11 +114,13 @@ enum SettingsCodec {
         static let all = [
             themeID, languageID, fontSize, padding, cornerRadius, shadowRadius, showChrome,
             windowTitle,
-            showShadow, showLineNumbers, wrapColumns, highlightedLines, focusHighlightedLines,
+            showShadow, showLineNumbers, wrapColumns, terminalPalette, terminalCursor,
+            highlightedLines, focusHighlightedLines,
             diffDecorations, showDiffStats, diffContextLines, annotations, metadata,
             gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
-            colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction, appLanguage,
+            colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction,
+            acknowledgedMacOSHotkey, appLanguage,
             treatURLs,
             reindentOnPaste,
             webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,
@@ -128,6 +133,7 @@ enum SettingsCodec {
             // Written by the inspector's @AppStorage toggle, not by this codec — listed so
             // "Reset All Settings" actually clears it.
             SafeAreaGuide.storageKey,
+            PresetThumbnailModel.expandedStorageKey,
         ]
     }
 
@@ -184,6 +190,16 @@ enum SettingsCodec {
         // column range so a hand-edited number cannot distort the card.
         if let value = defaults.object(forKey: Keys.wrapColumns) as? Int {
             config.wrapColumns = SettingsDefaults.clampWrapColumns(value)
+        }
+        if let value = defaults.string(forKey: Keys.terminalPalette)
+            .flatMap(TerminalPaletteMode.init(rawValue:))
+        {
+            config.terminalPalette = value
+        }
+        if let value = defaults.string(forKey: Keys.terminalCursor)
+            .flatMap(TerminalCursorStyle.init(rawValue:))
+        {
+            config.terminalCursor = value
         }
         if let value = defaults.object(forKey: Keys.focusHighlightedLines) as? Bool {
             config.focusHighlightedLines = value
@@ -313,6 +329,8 @@ enum SettingsCodec {
         } else {
             defaults.removeObject(forKey: Keys.wrapColumns)
         }
+        defaults.set(config.terminalPalette.rawValue, forKey: Keys.terminalPalette)
+        defaults.set(config.terminalCursor.rawValue, forKey: Keys.terminalCursor)
         defaults.set(config.focusHighlightedLines, forKey: Keys.focusHighlightedLines)
         defaults.set(config.diffDecorations, forKey: Keys.diffDecorations)
         defaults.set(config.showDiffStats, forKey: Keys.showDiffStats)

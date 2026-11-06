@@ -105,6 +105,8 @@ struct EditorWindowStateTests {
             filename: "main.py", title: "Demo", caption: "A caption", showLanguageBadge: true)
         config.windowTitle = "Demo window"
         config.wrapColumns = 72
+        config.terminalPalette = .raw
+        config.terminalCursor = .bar
         config.focusHighlightedLines = true
         config.diffDecorations = true
         config.showDiffStats = true

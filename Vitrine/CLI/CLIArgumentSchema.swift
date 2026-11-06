@@ -35,6 +35,8 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case cornerRadius
     case shadowRadius
     case terminalWidth
+    case terminalPalette
+    case terminalCursor
     case wrapColumns
     case formatCode
     case format
@@ -64,6 +66,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case counterY
     case counterColor
     case counterSize
+    case counterLabel
     case arrow
     case arrowColor
     case arrowSize
@@ -265,6 +268,18 @@ nonisolated enum CLIArgumentSchema {
                 "Reconstruct terminal output at exactly n columns instead of inferring the width (1-1000). Only affects --language terminal; set by `vgrab -w`.",
             terminalCaptureAllowed: true),
         definition(
+            .terminalPalette, ["--terminal-palette"], .value("theme|raw"),
+            synopsis: "--terminal-palette <theme|raw>",
+            description:
+                "Color terminal output with the theme's palette or legible xterm colors. Only affects --language terminal."
+        ),
+        definition(
+            .terminalCursor, ["--terminal-cursor"], .value("hidden|block|bar"),
+            synopsis: "--terminal-cursor <hidden|block|bar>",
+            description:
+                "Draw the terminal cursor where the output left it, unless the program hid it or a full-screen app already exited. Only affects --language terminal."
+        ),
+        definition(
             .wrapColumns, ["--wrap-columns", "--wrap"], .value("n"), synopsis: "--wrap-columns <n>",
             description: "Soft-wrap long code lines at n columns (40-200)."),
         definition(
@@ -374,6 +389,9 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .counterSize, ["--counter-size"], .value("2...28"), synopsis: "--counter-size <2...28>",
             description: "Counter size weight; requires --counter."),
+        definition(
+            .counterLabel, ["--counter-label"], .value("text"), synopsis: "--counter-label <text>",
+            description: "Counter legend text, listed under the capture; requires --counter."),
         definition(
             .arrow, ["--arrow"], .value("x1,y1,x2,y2"), synopsis: "--arrow <x1,y1,x2,y2>",
             description: "Add a repeatable arrow from normalized tail to head."),

@@ -21,9 +21,9 @@ struct EditorCardGeometryContractTests {
     /// The only lines in the editor that may name the measured size: the writer and the
     /// two annotation actions.
     private static let allowedLines: Set<String> = [
-        "cardGeometry.size = $0",
-        "let copy = original.duplicated(in: cardGeometry.size, counterNumber: nextCounterNumber)",
-        "settings.style.annotations[index].nudge(by: delta, in: cardGeometry.size)",
+        "cardGeometry.record($0)",
+        "in: cardGeometry.canvasSize, counterNumber: nextCounterNumber)",
+        "settings.style.annotations[index].nudge(by: delta, in: cardGeometry.canvasSize)",
     ]
 
     @Test func onlyTheStageSubviewsAndTheAnnotationActionsReadTheCardSize() throws {
@@ -38,7 +38,9 @@ struct EditorCardGeometryContractTests {
         for file in files {
             let source = try String(contentsOf: file, encoding: .utf8)
             for (number, line) in source.components(separatedBy: .newlines).enumerated()
-            where line.contains("cardGeometry.size") {
+            where ["size", "canvasSize", "record", "morph"].contains(where: {
+                line.contains("cardGeometry.\($0)")
+            }) {
                 let trimmed = line.trimmingCharacters(in: .whitespaces)
                 if Self.allowedLines.contains(trimmed) {
                     found.insert(trimmed)

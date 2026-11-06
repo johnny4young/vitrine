@@ -11,6 +11,14 @@ import VitrineRendering
 /// capture. Each file equals what a single export with that preset selected would
 /// produce; the rendering itself lives in `ExportManager.exportPresetSizes`.
 struct MultiSizeExportView: View {
+    /// What the running measurement depends on. `restarts` starts it again after a stop.
+    private struct EstimateRequest: Equatable {
+        var input: PresetSizeEstimator.Input
+        var selected: Set<String>
+        var isExporting: Bool
+        var restarts: Int
+    }
+
     /// The user's current snapshot (code + style + any brand watermark). Each preset
     /// overlays only its own padding/background/size on top of this.
     let baseConfig: SnapshotConfig
@@ -36,6 +44,9 @@ struct MultiSizeExportView: View {
     /// the inline progress indicator so a multi-preset export at 2–3× scale shows work
     /// instead of a frozen sheet.
     @State private var progress: (completed: Int, total: Int)?
+
+    @State private var estimator = PresetSizeEstimator()
+    @State private var estimateRestarts = 0
 
     /// Whether an export is in flight — disables the buttons so the batch can't be
     /// re-triggered or the sheet dismissed mid-write.
@@ -64,6 +75,25 @@ struct MultiSizeExportView: View {
         // into the chosen folder while reporting completion to a sheet that is gone. This
         // enforces the invariant the buttons only imply.
         .interactiveDismissDisabled(isExporting)
+        .task(id: estimateRequest) {
+            guard !isExporting else {
+                estimator.stop()
+                return
+            }
+            let request = estimateRequest
+            await estimator.measure(
+                ExportPreset.all.filter { request.selected.contains($0.id) }, for: request.input)
+        }
+    }
+
+    private var estimateInput: PresetSizeEstimator.Input {
+        PresetSizeEstimator.Input(config: baseConfig, format: format, profile: profile)
+    }
+
+    private var estimateRequest: EstimateRequest {
+        EstimateRequest(
+            input: estimateInput, selected: selected, isExporting: isExporting,
+            restarts: estimateRestarts)
     }
 
     /// The multi-size sheet's distinct body: the scrollable preset list and the
@@ -100,9 +130,24 @@ struct MultiSizeExportView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(VitrineTokens.Accent.systemText)
                     .accessibilityIdentifier("multi-size-select-none")
+                Spacer(minLength: 0)
+                sizeEstimate
             }
             .font(.system(size: VitrineTokens.FontSize.caption))
         }
+    }
+
+    /// Shares the row with the selection buttons, so its arrival never resizes the sheet.
+    private var sizeEstimate: some View {
+        let summary = estimator.total(of: selected, for: estimateInput).map {
+            ExportSizeEstimate.summary(format: format, bytes: $0)
+        }
+        return Text(verbatim: summary?.text ?? "")
+            .foregroundStyle(VitrineTokens.Text.secondary)
+            .monospacedDigit()
+            .accessibilityLabel(Text(verbatim: summary?.spokenText ?? ""))
+            .accessibilityHidden(summary == nil)
+            .accessibilityIdentifier("multi-size-size-estimate")
     }
 
     private func binding(for preset: ExportPreset) -> Binding<Bool> {
@@ -121,10 +166,15 @@ struct MultiSizeExportView: View {
         let presets = ExportPreset.all.filter { selected.contains($0.id) }
         guard !presets.isEmpty else { return }
 
+        // The panel runs a modal loop, and renders would keep stealing time from it.
+        estimator.stop()
         guard
             let directory = presentation.chooseDirectory(
                 message: String(localized: "Choose a folder for the exported images."))
-        else { return }
+        else {
+            estimateRestarts += 1
+            return
+        }
 
         failureNote = nil
         let total = presets.count
@@ -143,7 +193,16 @@ struct MultiSizeExportView: View {
                 expected: total,
                 renderFailure: result.firstRenderFailure)
             if completion.isComplete {
-                feedback(Notifier.confirmation(String(localized: "Images exported")))
+                let droppedLegend = presets.contains { preset in
+                    var config = baseConfig
+                    preset.apply(to: &config)
+                    return config.counterLegendFit(in: preset.sizing.fixedSize).dropped > 0
+                }
+                feedback(
+                    Notifier.confirmation(
+                        droppedLegend
+                            ? String(localized: "Images exported. Some legend entries didn't fit.")
+                            : String(localized: "Images exported")))
                 presentation.reveal(directory)
                 dismiss()
             } else {

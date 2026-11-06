@@ -80,6 +80,8 @@ struct EditorView: View {
     /// stage is focusable only in that state, so it does not compete with the code
     /// editor for caret navigation.
     @FocusState var stageFocused: Bool
+    /// Tab from the focused stage moves here, into the selected mark's toolbar.
+    @FocusState var markToolbarFocused: Bool
 
     /// The text callout being edited inline . Non-nil shows a focused
     /// field over the mark and blanks its canvas copy so the field is the only text
@@ -135,6 +137,9 @@ struct EditorView: View {
     /// flash on open).
     @State var stagedPreviewCode: String?
 
+    /// Feeds the contrast warning that debounced code without tying the inspector to it.
+    @State var legibility = LegibilityModel()
+
     /// This editor's own weak `NSWindow` slot, captured via `WindowAccessor`, so actions
     /// like close-after-copy target it directly without making the hosted SwiftUI tree
     /// own its AppKit window.
@@ -189,6 +194,8 @@ struct EditorView: View {
         }
     }
 
+    var isCanvasMode: Bool { session.isCanvasMode }
+
     // Split so each part type-checks quickly on older compilers.
     var body: some View {
         withDialogs(withEvents(editorLayout))
@@ -200,8 +207,12 @@ struct EditorView: View {
         VStack(spacing: 0) {
             editorToolbar
             HStack(spacing: 0) {
+                // Canvas mode collapses the side columns instead of removing them, so the
+                // text view keeps its undo stack and wrap width, and the inspector its
+                // disclosures. Each keeps its own width and overflows off the window.
                 codeColumn
                     .frame(width: EditorLayout.codeColumnWidth)
+                    .modifier(CollapsedColumn(isCollapsed: isCanvasMode, overflow: .trailing))
                 previewStage
                 inspectorColumn
                     // Grows with the window, up to a cap, so the chip strips can finish a
@@ -210,6 +221,7 @@ struct EditorView: View {
                         minWidth: EditorLayout.inspectorMinWidth,
                         maxWidth: EditorLayout.inspectorMaxWidth
                     )
+                    .modifier(CollapsedColumn(isCollapsed: isCanvasMode, overflow: .leading))
                     // The priority is what makes that frame mean anything, and it has to
                     // beat `EditorLayout.stageLayoutPriority`. The stage is unboundedly
                     // flexible, so whichever of the two is sized first takes everything:
@@ -257,6 +269,14 @@ struct EditorView: View {
                 selectedAnnotationID = nil
                 editingAnnotationID = nil
                 pendingDrop = nil
+                session.copyConfirmation.clear()
+            }
+            .onChange(of: session.isCanvasMode) { _, isCanvasMode in
+                // A collapsed column's field must not keep taking keystrokes.
+                guard isCanvasMode, editingAnnotationID == nil,
+                    let window = editorWindow.value, window.firstResponder is NSText
+                else { return }
+                window.makeFirstResponder(nil)
             }
             .onReceive(NotificationCenter.default.publisher(for: .vitrineSelectAnnotationTool)) {
                 notification in
@@ -289,23 +309,57 @@ struct EditorView: View {
                     showCommandPalette = true
                 }
                 #if DEBUG
-                    // Same gates as the toolbar button: without PRO this opens the paywall.
+                    if ProcessInfo.processInfo.arguments.contains("--canvas-mode") {
+                        session.isCanvasMode = true
+                    }
+                    // Same gates as the toolbar button: a refused capture opens the rule with
+                    // PRO, and otherwise stays shut. Without PRO an accepted one gets the paywall.
                     if Self.carouselHookOpens(
                         settings.style, hasRenderableContent: settings.hasRenderableContent,
+                        isUnlocked: entitlements.isUnlocked(.carouselExport),
                         arguments: ProcessInfo.processInfo.arguments)
                     {
                         presentCarouselExport()
+                    }
+                    if ProcessInfo.processInfo.arguments.contains("--demo-recipe-bar") {
+                        var baseline = settings.style
+                        baseline.showLineNumbers.toggle()
+                        session.appliedRecipe = AppliedRecipe(
+                            associationID: UUID(), name: "Documentation", workspaceName: "docs",
+                            baseline: baseline, documentGeneration: settings.documentGeneration)
+                    }
+                    if ProcessInfo.processInfo.arguments.contains("--open-multi-size-export"),
+                        settings.hasRenderableContent
+                    {
+                        presentMultiSizeExport()
                     }
                 #endif
             }
     }
 
+    /// A side column canvas mode keeps alive but out of sight, input and VoiceOver.
+    struct CollapsedColumn: ViewModifier {
+        let isCollapsed: Bool
+        let overflow: Alignment
+
+        func body(content: Content) -> some View {
+            content
+                .frame(width: isCollapsed ? 0 : nil, alignment: overflow)
+                .opacity(isCollapsed ? 0 : 1)
+                .allowsHitTesting(!isCollapsed)
+                .disabled(isCollapsed)
+                .accessibilityHidden(isCollapsed)
+        }
+    }
+
     #if DEBUG
         static func carouselHookOpens(
-            _ style: SnapshotConfig, hasRenderableContent: Bool, arguments: [String]
+            _ style: SnapshotConfig, hasRenderableContent: Bool, isUnlocked: Bool,
+            arguments: [String]
         ) -> Bool {
-            arguments.contains("--open-carousel-export") && hasRenderableContent
-                && !style.usesImageContent && carouselAccepts(style)
+            arguments.contains("--open-carousel-export")
+                && carouselCanOpen(
+                    style, hasRenderableContent: hasRenderableContent, isUnlocked: isUnlocked)
         }
     #endif
 

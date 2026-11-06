@@ -21,7 +21,19 @@ struct EditorInspectorView: View {
     @AppStorage(SafeAreaGuide.storageKey, store: AppDefaults.current)
     private var showsSafeAreaGuides = false
     var themes: CustomThemeStore
+    var presets: PresetStore
     var entitlements: Entitlements
+    var legibility: LegibilityModel
+    var presetThumbnails: PresetThumbnailModel
+    /// Shows only this section, for canvas mode's popovers; `nil` is the full column.
+    var pane: InspectorPane? = nil
+    /// A popover cannot host the paywall sheet, so it asks the editor window to.
+    var presentFramePaywall: (() -> Void)? = nil
+    var windowUndoManager: UndoManager? = nil
+
+    /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
+    @AppStorage(PresetThumbnailModel.expandedStorageKey, store: AppDefaults.current)
+    private var showPresets = false
 
     /// Disclosure state for the advanced sections. All start collapsed so the
     /// inspector opens compact; the primary style cluster above them is always
@@ -37,6 +49,28 @@ struct EditorInspectorView: View {
     @State private var secretScan: SecretScanReport?
 
     var body: some View {
+        if let pane {
+            section(pane)
+                .padding(VitrineTokens.Spacing.md)
+                .frame(width: EditorLayout.inspectorMaxWidth)
+                .tint(VitrineTokens.Accent.systemText)
+        } else {
+            column
+        }
+    }
+
+    /// The same section views the column stacks, so a popover cannot drift from it.
+    @ViewBuilder private func section(_ pane: InspectorPane) -> some View {
+        switch pane {
+        case .background: backgroundSection
+        case .frame: frameSection
+        case .theme: themeSection
+        case .typography: typographySection
+        case .canvas: canvasSection
+        }
+    }
+
+    private var column: some View {
         ScrollViewReader { proxy in
             inspectorScrollView
                 .onChange(of: showLines) { _, open in
@@ -47,6 +81,9 @@ struct EditorInspectorView: View {
                 }
                 .onChange(of: showOutput) { _, open in
                     reveal("inspector-disclosure-output", when: open, proxy)
+                }
+                .onChange(of: showPresets) { _, open in
+                    reveal("inspector-disclosure-presets", when: open, proxy)
                 }
         }
     }
@@ -73,6 +110,9 @@ struct EditorInspectorView: View {
                 } else {
                     themeSection
                     typographySection
+                    if settings.style.language == .terminal {
+                        terminalSection
+                    }
                 }
                 canvasSection
 
@@ -179,6 +219,9 @@ struct EditorInspectorView: View {
                         label: Text("Header"), identifier: "inspector-disclosure-header",
                         isExpanded: $showHeader
                     ) {
+                        if settings.style.language == .terminal, !settings.style.usesImageContent {
+                            TerminalContextChips(settings: settings)
+                        }
                         MetadataFields(settings: settings)
                     }
                     .id("inspector-disclosure-header")
@@ -191,6 +234,12 @@ struct EditorInspectorView: View {
                         outputControls
                     }
                     .id("inspector-disclosure-output")
+
+                    PresetThumbnailSection(
+                        settings: settings, themes: themes, presets: presets,
+                        model: presetThumbnails, isExpanded: $showPresets
+                    )
+                    .id("inspector-disclosure-presets")
                 }
             }
             .padding(.top, 18)
@@ -282,7 +331,11 @@ struct EditorInspectorView: View {
                         get: { settings.style.imageFrame },
                         set: { newFrame in
                             if newFrame.isPro, !entitlements.isUnlocked(.advancedFrames) {
-                                showingFramePaywall = true
+                                if let presentFramePaywall {
+                                    presentFramePaywall()
+                                } else {
+                                    showingFramePaywall = true
+                                }
                             } else {
                                 settings.style.imageFrame = newFrame
                             }
@@ -323,15 +376,20 @@ struct EditorInspectorView: View {
     private var themeSection: some View {
         InspectorSection(
             title: Text("Theme"),
-            value: (settings.style.theme.displayName, "inspector-value-theme")
+            value: (settings.style.theme.displayName, "inspector-value-theme"),
+            accessory: {
+                LegibilityBadge(
+                    settings: settings, model: legibility, windowUndoManager: windowUndoManager)
+            }
         ) {
             ThemeChipPicker(
                 settings: settings, themes: themes,
                 chipSize: CGSize(width: 52, height: 34), dotSize: 6,
-                topPadding: 2, bottomPadding: 6
+                topPadding: 5, bottomPadding: 6
             )
             .accessibilityIdentifier("style-theme-picker")
         }
+        .background { LegibilityMeter(settings: settings, model: legibility) }
     }
 
     private var typographySection: some View {
@@ -361,6 +419,38 @@ struct EditorInspectorView: View {
                     label: "Font size", value: $settings.style.fontSize,
                     range: SettingsDefaults.fontSizeRange,
                     step: 1, identifier: "font-size-slider", width: 92)
+            }
+        }
+    }
+
+    private var terminalSection: some View {
+        InspectorSection(title: Text("Terminal")) {
+            InspectorRow(label: Text("ANSI palette")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (TerminalPaletteMode.theme, Text("Theme")),
+                        (TerminalPaletteMode.raw, Text("Raw")),
+                    ],
+                    selection: $settings.style.terminalPalette
+                )
+                .help("Raw uses the standard xterm colors, lifted only where they would vanish.")
+                .accessibilityLabel("ANSI palette")
+                .accessibilityIdentifier("terminal-palette-picker")
+            }
+            InspectorRow(label: Text("Cursor")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (TerminalCursorStyle.hidden, Text("Hidden")),
+                        (TerminalCursorStyle.block, Text("Block")),
+                        (TerminalCursorStyle.bar, Text("Bar")),
+                    ],
+                    selection: $settings.style.terminalCursor
+                )
+                .help(
+                    "Drawn where the output left it, unless the program hid it or a full-screen app already exited."
+                )
+                .accessibilityLabel("Cursor")
+                .accessibilityIdentifier("terminal-cursor-picker")
             }
         }
     }

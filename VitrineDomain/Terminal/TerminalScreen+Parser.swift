@@ -30,6 +30,9 @@ extension TerminalScreen {
                 case "8":
                     restoreCursor()
                     index += 2  // DECRC
+                case "c":  // RIS — only its effect on the cursor shows in a static capture
+                    cursorVisible = true
+                    index += 2
                 case "M":  // RI — reverse index (up; scroll the region down at the top)
                     pendingWrap = false
                     if cursorRow == scrollTop {
@@ -100,9 +103,13 @@ extension TerminalScreen {
     // MARK: - CSI dispatch
 
     mutating func applyCSI(_ params: String, _ finalByte: Unicode.Scalar) {
-        // DEC private modes (`ESC[?…h` / `…l`) — the only one acted on is the alternate
-        // screen; the rest (cursor visibility, mouse, bracketed paste) are visual no-ops
-        // for a static capture.
+        if params == "!", finalByte == "p" {
+            cursorVisible = true  // DECSTR
+            return
+        }
+        // DEC private modes (`ESC[?…h` / `…l`) — only the alternate screen and cursor
+        // visibility are acted on; the rest (mouse, bracketed paste) are visual no-ops for
+        // a static capture.
         if params.hasPrefix("?") {
             applyPrivateMode(String(params.dropFirst()), finalByte)
             return
@@ -191,6 +198,7 @@ extension TerminalScreen {
             pendingWrap = false
             if setting { enterAltScreen() } else { leaveAltScreen() }
         }
+        if modes.contains(25), setting || finalByte == "l" { cursorVisible = setting }
     }
 
     // MARK: - Parameter parsing

@@ -132,17 +132,24 @@ extension EditorView {
         replacing: Bool,
         startsLivingSnapshot: Bool = false
     ) {
+        var applied: WorkspaceRecipeStore.ResolvedRecipe?
         if replacing {
             session.livingSnapshot.stop()
-        }
-        if replacing, let sourceURL = loaded.sourceURL,
-            environment.workspaceRecipes.applyRecipe(
-                for: sourceURL, to: settings, themes: environment.customThemes) != nil
-        {
-            Log.capture.info("Applied a workspace recipe to an explicitly loaded file")
+            applied = loaded.sourceURL.flatMap {
+                environment.workspaceRecipes.applyRecipe(
+                    for: $0, to: settings, themes: environment.customThemes)
+            }
+            session.appliedRecipeID = applied?.association.id
+            if applied != nil {
+                Log.capture.info("Applied a workspace recipe to an explicitly loaded file")
+            }
         }
         loaded.apply(to: &settings.config, replacing: replacing)
-        if replacing { settings.noteDocumentReplaced() }
+        if replacing {
+            settings.noteDocumentReplaced()
+            // Taken after the file loads, so the baseline has the document's language.
+            session.appliedRecipe = applied.map { AppliedRecipe($0, settings: settings) }
+        }
         environment.appSettings.noteLanguageUsed(settings.config.language)
         if startsLivingSnapshot {
             session.livingSnapshot.start(with: loaded)

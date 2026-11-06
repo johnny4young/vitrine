@@ -1,5 +1,6 @@
 import CoreGraphics
 import ImageIO
+import PDFKit
 import Testing
 import UniformTypeIdentifiers
 import VitrineDomain
@@ -54,6 +55,40 @@ struct ComparisonBoardExportTests {
         }
     }
 
+    /// A vector PDF would keep text and pixels that the composed image clips or redacts.
+    @Test(arguments: [ComparisonBoard.Layout.automatic, .slider])
+    func pdfHoldsOnlyTheComposedRaster(_ layout: ComparisonBoard.Layout) throws {
+        let draft = try ComparisonBoardDraft(
+            captures: [capture("before"), capture("after")],
+            baseConfig: SnapshotConfig(),
+            profile: .sRGB,
+            renderScale: 2,
+            render: { _, _, _ in solidImage() })
+        draft.layout = layout
+        let expected = try draft.compose(scale: draft.resolvedExportScale, profile: .sRGB)
+
+        let payload = try ComparisonBoardExporter.encodedPayloadChecked(
+            for: draft, format: .pdf, profile: .sRGB)
+
+        let text = try #require(PDFDocument(data: payload.data)).string ?? ""
+        #expect(text.isEmpty, "extractable text: \(text)")
+
+        let provider = try #require(CGDataProvider(data: payload.data as CFData))
+        // A page's dictionaries are only valid while the document is alive.
+        let document = try #require(CGPDFDocument(provider))
+        defer { withExtendedLifetime(document) {} }
+        let page = try #require(document.page(at: 1)?.dictionary)
+        var resources: CGPDFDictionaryRef?
+        #expect(CGPDFDictionaryGetDictionary(page, "Resources", &resources))
+        let resourceDictionary = try #require(resources)
+        var fonts: CGPDFDictionaryRef?
+        #expect(!CGPDFDictionaryGetDictionary(resourceDictionary, "Font", &fonts))
+        var objects: CGPDFDictionaryRef?
+        #expect(CGPDFDictionaryGetDictionary(resourceDictionary, "XObject", &objects))
+        let images = imageSizes(in: try #require(objects))
+        #expect(images == [CGSize(width: expected.pixelWidth, height: expected.pixelHeight)])
+    }
+
     @Test func invalidDraftFailsBeforeEncoding() throws {
         let draft = try ComparisonBoardDraft(
             captures: [capture("before"), capture("after")],
@@ -65,6 +100,32 @@ struct ComparisonBoardExportTests {
             try ComparisonBoardExporter.encodedPayloadChecked(
                 for: draft, format: .png, profile: .sRGB)
         }
+    }
+
+    /// Every XObject counts: a form or second image would fail the single-image expectation.
+    private func imageSizes(in objects: CGPDFDictionaryRef) -> [CGSize] {
+        var sizes: [CGSize] = []
+        CGPDFDictionaryApplyBlock(
+            objects,
+            { _, object, _ in
+                var stream: CGPDFStreamRef?
+                guard CGPDFObjectGetValue(object, .stream, &stream), let stream,
+                    let dictionary = CGPDFStreamGetDictionary(stream)
+                else {
+                    sizes.append(.zero)
+                    return true
+                }
+                var subtype: UnsafePointer<CChar>?
+                var width: CGPDFInteger = 0
+                var height: CGPDFInteger = 0
+                CGPDFDictionaryGetName(dictionary, "Subtype", &subtype)
+                CGPDFDictionaryGetInteger(dictionary, "Width", &width)
+                CGPDFDictionaryGetInteger(dictionary, "Height", &height)
+                let isImage = subtype.map { String(cString: $0) == "Image" } ?? false
+                sizes.append(isImage ? CGSize(width: width, height: height) : .zero)
+                return true
+            }, nil)
+        return sizes
     }
 
     private func capture(_ code: String) -> Capture {

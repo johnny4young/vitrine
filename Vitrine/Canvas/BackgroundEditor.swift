@@ -4,12 +4,12 @@ import UniformTypeIdentifiers
 import VitrineDomain
 import VitrineRendering
 
-/// The background control shared by the Settings Style pane and the inspectors: the
-/// gradient preset swatches, a "+" that switches to a custom kind, and, once the
-/// background is no longer a stock preset, the kind picker and per-kind controls.
+/// The background control shared by the Settings Style pane and the inspectors. Settings has
+/// the room to lead with the kind picker. An inspector leads with the gradient preset swatches
+/// and a "+", and shows the kind picker once the background is no longer a stock preset.
 struct BackgroundControls: View {
     enum Layout {
-        /// Settings rows with captions.
+        /// Settings rows.
         case settings
         /// Compact inspector rows.
         case inspector
@@ -21,41 +21,63 @@ struct BackgroundControls: View {
     /// Keeps each surface's accessibility identifiers distinct (e.g. "social-card-").
     var identifierPrefix = ""
 
+    /// The preset to return to when the Gradient kind is chosen again.
+    @State private var lastPreset: GradientPreset?
+
     var body: some View {
-        ChipScroll(topPadding: 2, bottomPadding: 6) {
+        switch layout {
+        case .settings:
+            kindRow
+            if selectedPreset != nil { presetSwatches }
+        case .inspector:
+            presetSwatches
+            if selectedPreset == nil { kindRow }
+        }
+        if selectedPreset == nil { detail }
+    }
+
+    private var presetSwatches: some View {
+        ChipScroll(name: "\(identifierPrefix)background", topPadding: 2, bottomPadding: 6) {
             ForEach(GradientPreset.allCases) { preset in
                 GradientSwatch(
                     preset: preset, isSelected: selectedPreset == preset, size: swatchSize
                 ) {
                     background = .gradient(preset)
                 }
+                .chipScrollItem(id: preset.id, isSelected: selectedPreset == preset)
             }
-            CustomBackgroundSwatch(size: swatchSize) {
-                background = BackgroundKind.solid.makeDefault(
-                    from: background, imageStore: imageStore)
+            if layout == .inspector {
+                CustomBackgroundSwatch(size: swatchSize) { switchKind(to: .solid) }
             }
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Gradient preset")
         .accessibilityIdentifier("\(identifierPrefix)background-gradient-preset")
+    }
 
-        if selectedPreset == nil {
-            row(label: Text("Kind"), caption: Text("Gradient preset, solid color, or image")) {
-                TokenSegmentedPicker(
-                    options: [
-                        (BackgroundKind.gradient, Text("Gradient")),
-                        (.customGradient, Text("Custom")),
-                        (.solid, Text("Solid")),
-                        (.image, Text("Image")),
-                        (.transparent, Text("Transparent")),
-                    ],
-                    selection: kindBinding
-                )
-                .accessibilityLabel("Kind")
-                .accessibilityIdentifier("\(identifierPrefix)background-kind-picker")
-            }
-            detail
+    /// In Settings the picker takes the row's whole width: the Spanish labels leave no room
+    /// beside them for a label the group title already implies.
+    @ViewBuilder private var kindRow: some View {
+        switch layout {
+        case .settings: kindPicker.padding(.vertical, 9)
+        case .inspector: InspectorRow(label: Text("Kind")) { kindPicker }
         }
+    }
+
+    private var kindPicker: some View {
+        TokenSegmentedPicker(
+            options: [
+                (BackgroundKind.gradient, Text("Gradient")),
+                (.customGradient, Text("Custom")),
+                (.solid, Text("Solid")),
+                (.image, Text("Image")),
+                (.transparent, Text("Transparent")),
+            ],
+            selection: kindBinding,
+            fillsWidth: layout == .settings
+        )
+        .accessibilityLabel("Kind")
+        .accessibilityIdentifier("\(identifierPrefix)background-kind-picker")
     }
 
     /// The controls for the active non-preset kind.
@@ -71,7 +93,7 @@ struct BackgroundControls: View {
             }
             .padding(.vertical, layout == .settings ? 9 : 0)
         case .solid(let color):
-            row(label: Text("Color"), caption: nil) {
+            row(label: Text("Color")) {
                 ColorPicker(
                     "Color",
                     selection: Binding(
@@ -97,10 +119,10 @@ struct BackgroundControls: View {
 
     @ViewBuilder
     private func row<Content: View>(
-        label: Text, caption: Text?, @ViewBuilder content: () -> Content
+        label: Text, @ViewBuilder content: () -> Content
     ) -> some View {
         switch layout {
-        case .settings: TokenRow(label: label, caption: caption, content: content)
+        case .settings: TokenRow(label: label, content: content)
         case .inspector: InspectorRow(label: label, content: content)
         }
     }
@@ -117,8 +139,14 @@ struct BackgroundControls: View {
     private var kindBinding: Binding<BackgroundKind> {
         Binding(
             get: { BackgroundKind(background) },
-            set: { background = $0.makeDefault(from: background, imageStore: imageStore) }
+            set: { switchKind(to: $0) }
         )
+    }
+
+    private func switchKind(to kind: BackgroundKind) {
+        if let selectedPreset { lastPreset = selectedPreset }
+        background = kind.makeDefault(
+            from: background, lastPreset: lastPreset, imageStore: imageStore)
     }
 }
 
@@ -146,14 +174,15 @@ enum BackgroundKind: String, CaseIterable, Identifiable {
     /// A default `BackgroundStyle` for this kind, seeded from the previous style
     /// where it makes sense so switching kinds carries intent forward.
     func makeDefault(
-        from previous: VitrineDomain.BackgroundStyle, imageStore: BackgroundImageStore
+        from previous: VitrineDomain.BackgroundStyle, lastPreset: GradientPreset? = nil,
+        imageStore: BackgroundImageStore
     )
         -> VitrineDomain.BackgroundStyle
     {
         switch self {
         case .gradient:
             if case .gradient = previous { return previous }
-            return .gradient(.aurora)
+            return .gradient(lastPreset ?? .aurora)
         case .customGradient:
             switch previous {
             case .customGradient: return previous

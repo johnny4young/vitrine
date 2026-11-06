@@ -59,6 +59,39 @@ that restyles a code snapshot restyles a terminal one:
 - A **dark** theme renders on a dark card with a balanced One-Dark-family palette.
 - **Dracula** and **Nord** map to their own signature ANSI palettes.
 
+**Terminal ▸ ANSI palette ▸ Raw** (`--terminal-palette raw`) uses the standard xterm colors
+instead. The card stays light or dark with the theme, so the header stays readable, and Raw
+lifts one of the 16 base colors only where it would vanish on that card, such as bright white
+on white. 256-color and truecolor values are drawn as written. Settings ▸ Style sets the default
+for new captures, and a preset carries Raw only when saved from a terminal capture.
+
+## Cursor
+
+**Terminal ▸ Cursor** (`--terminal-cursor block|bar`) draws the cursor on the image and in rich
+text. The default is Hidden, and plain text never includes it. Scrolling output gets the cursor
+where the output ended; a full-screen app still running at the end of the capture gets it at its
+real cell. A bar on a cell with its own background inverts that cell instead, because the cell
+would paint over the bar. A cursor parked more than one row past the content, or beyond both the content's width and 80
+columns, isn't drawn, so it can't grow the image. There is no cursor to draw when the program hid it (`ESC[?25l`), or when the frame comes
+from a full-screen app that already exited, which is the usual `vgrab htop`. A share link of a
+redacted capture holds only the final screen, so it opens without a cursor.
+
+## Prompt and context chips
+
+In the inspector's **Header** section, a terminal capture lists its **Filename** and **Title**
+as chips: `weather-app · main` becomes two labels and `$ htop` a prompt and a command. A title
+without a `$` or `›` prompt is plain text and gets no command chip. Removing a chip, changing the
+prompt, or using **Remove arguments** rewrites those two fields, plus any copy of their text in
+the alternative text and window title, so the removed text leaves the image, share links and the
+copied command. The chips read only those fields, never the transcript, and Edit ▸ Undo restores
+a removal until the window closes.
+
+Remove arguments reads the command the way a shell does and keeps only its name. It drops any
+leading `VAR=value` and the command's directory, and clears the title when the first word doesn't
+look like a command name, such as a URL or `user@host`. Text you reworded in the alternative text
+stays as you wrote it, so check it before sharing. `vgrab -e` still opens without a header, so
+the chips start empty until you fill those fields.
+
 ## The catch: color is lost when you copy
 
 The hard part isn't Vitrine — it's *getting* colored output. Most programs **disable
@@ -198,6 +231,8 @@ vitrine render --stdin --copy                 # read a pipe, copy the image
 vitrine render <input-file> --edit            # open it in the editor (no image)
 vitrine render <input-file> --out <image> --text-sidecar   # image + .txt of the output
 vitrine render <input-file> --out <image> --sidecars all    # image + txt/md/html
+vitrine render <input-file> --out <image> --terminal-palette raw   # only affects --language terminal
+vitrine render <input-file> --out <image> --terminal-cursor block  # only affects --language terminal
 vitrine shell-init [zsh|bash|fish]            # print the helpers
 ```
 

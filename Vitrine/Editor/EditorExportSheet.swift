@@ -9,6 +9,8 @@ enum EditorExportSheet: String, Hashable, Identifiable {
     case multiSizePaywall
     case carouselExport
     case carouselPaywall
+    case automationPaywall
+    case framePaywall
 
     var id: String { rawValue }
 

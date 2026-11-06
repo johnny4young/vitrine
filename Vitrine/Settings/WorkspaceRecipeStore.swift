@@ -25,6 +25,8 @@ final class WorkspaceRecipeStore {
     struct ResolvedRecipe: Equatable {
         var association: WorkspaceRecipeAssociation
         var recipe: WorkspaceRecipe
+        /// From the workspace folder, or `nil` when the recipe sits outside it.
+        var recipeRelativePath: String?
     }
 
     enum StoreError: Error, Equatable {
@@ -216,7 +218,11 @@ final class WorkspaceRecipeStore {
             refreshed = true
         }
         if refreshed { associations[index] = association }
-        return ResolvedRecipe(association: association, recipe: recipe)
+        return ResolvedRecipe(
+            association: association, recipe: recipe,
+            recipeRelativePath: relativePath(
+                of: canonicalURL(recipeResolution.url),
+                within: canonicalURL(workspaceResolution.url)))
     }
 
     private struct BookmarkResolution {
@@ -250,6 +256,12 @@ final class WorkspaceRecipeStore {
         let workspaceComponents = workspace.pathComponents
         guard sourceComponents.count > workspaceComponents.count else { return false }
         return sourceComponents.prefix(workspaceComponents.count).elementsEqual(workspaceComponents)
+    }
+
+    private func relativePath(of file: URL, within workspace: URL) -> String? {
+        guard contains(file, within: workspace) else { return nil }
+        return file.pathComponents.dropFirst(workspace.pathComponents.count)
+            .joined(separator: "/")
     }
 
     private func displayName(for url: URL, fallback: String) -> String {

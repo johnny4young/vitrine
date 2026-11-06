@@ -38,6 +38,8 @@ enum QuickCapture {
         var outcome: Outcome
         var copiedToClipboard: Bool
         var savedToFile: Bool
+        /// The size of the PNG that reached the clipboard.
+        var copiedPNGBytes: Int? = nil
         /// The document to open when the capture defers to the editor. It carries the
         /// one-off destination framing without writing it into the app-wide default.
         var editorDocument: SnapshotConfig? = nil
@@ -52,7 +54,7 @@ enum QuickCapture {
     /// from ordinary pasteboard or save-panel failures. The public `Outcome` exposes
     /// only the render category needed for actionable feedback.
     private enum ExportAttempt {
-        case completed(didCopy: Bool, didSave: Bool)
+        case completed(didCopy: Bool, didSave: Bool, copiedPNGBytes: Int?)
         case renderFailed(RenderBudgetError)
     }
 
@@ -145,10 +147,12 @@ enum QuickCapture {
         let attempt = copyAndSave(plan, settings: settings)
         let didCopy: Bool
         let didSave: Bool
+        let copiedPNGBytes: Int?
         switch attempt {
-        case .completed(let copied, let saved):
+        case .completed(let copied, let saved, let bytes):
             didCopy = copied
             didSave = saved
+            copiedPNGBytes = bytes
         case .renderFailed(let error):
             Log.capture.error("Quick capture stopped: render failed safely")
             return .nonProducing(.renderFailed(error))
@@ -161,7 +165,8 @@ enum QuickCapture {
         return Result(
             outcome: didCopy ? .copied : .rendered,
             copiedToClipboard: didCopy,
-            savedToFile: didSave)
+            savedToFile: didSave,
+            copiedPNGBytes: copiedPNGBytes)
     }
 
     /// Renders `config` once and applies the requested clipboard copy and file save from
@@ -208,6 +213,7 @@ enum QuickCapture {
         }
 
         var didCopy = false
+        var copiedPNGBytes: Int?
         var deferredRenderFailure: RenderBudgetError?
         // `autoCopy` implies `needsRaster`, so the binding always succeeds here;
         // it simply keeps the optional handling explicit.
@@ -217,7 +223,8 @@ enum QuickCapture {
                     cgImage: cgImage, config: plan.config,
                     includeRichText: settings.export.richClipboard,
                     includePlainText: settings.export.textSidecar,
-                    concealed: settings.outputBehavior.concealClipboard, to: pasteboard)
+                    concealed: settings.outputBehavior.concealClipboard, to: pasteboard,
+                    onCopied: { copiedPNGBytes = $0 })
                 {
                 case .copied:
                     didCopy = true
@@ -228,7 +235,8 @@ enum QuickCapture {
                 }
             } else {
                 switch ExportManager.copyPNGToPasteboardOutcome(
-                    cgImage, concealed: settings.outputBehavior.concealClipboard, to: pasteboard)
+                    cgImage, concealed: settings.outputBehavior.concealClipboard, to: pasteboard,
+                    onCopied: { copiedPNGBytes = $0 })
                 {
                 case .copied:
                     didCopy = true
@@ -263,7 +271,7 @@ enum QuickCapture {
         if !didCopy, !didSave, let deferredRenderFailure {
             return .renderFailed(deferredRenderFailure)
         }
-        return .completed(didCopy: didCopy, didSave: didSave)
+        return .completed(didCopy: didCopy, didSave: didSave, copiedPNGBytes: copiedPNGBytes)
     }
 
     /// Resolves a one-off destination preset without changing the user's saved default.
@@ -350,10 +358,12 @@ enum QuickCapture {
         let attempt = copyAndSave(plan, settings: settings, pasteboard: pasteboard)
         let didCopy: Bool
         let didSave: Bool
+        let copiedPNGBytes: Int?
         switch attempt {
-        case .completed(let copied, let saved):
+        case .completed(let copied, let saved, let bytes):
             didCopy = copied
             didSave = saved
+            copiedPNGBytes = bytes
         case .renderFailed(let error):
             Log.capture.error("Text capture stopped: render failed safely")
             return .nonProducing(.renderFailed(error))
@@ -365,7 +375,8 @@ enum QuickCapture {
         return Result(
             outcome: didCopy ? .copied : .rendered,
             copiedToClipboard: didCopy,
-            savedToFile: didSave)
+            savedToFile: didSave,
+            copiedPNGBytes: copiedPNGBytes)
     }
 
     /// Runs a quick capture and applies its user-facing side effects: opens the

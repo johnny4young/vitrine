@@ -245,25 +245,44 @@ extension ExportManager {
             written: written, failed: failed, firstRenderFailure: firstRenderFailure)
     }
 
-    /// The encoded size of the first slide, the sample behind the sheet's size estimate.
+    /// The encoded size of the first slide that can be previewed, the sample behind the sheet's
+    /// size estimate.
     /// Renders on the main actor like the export itself and writes nothing.
     static func estimatedCarouselSlideBytes(
         _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
         cues: CarouselPaginator.Cues, profile: ColorProfile = .sRGB
     ) async -> Int? {
-        guard let first = slides.first else { return nil }
+        guard let index = slides.firstIndex(where: \.canPreview) else { return nil }
         let config = CarouselPaginator.slideConfig(
-            baseConfig, slide: first, at: 0, of: slides.count, cues: cues)
+            baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues)
         guard
             let raster = try? renderCGImageChecked(
                 config, scale: 1, fixedSize: carouselSlideSize, profile: profile)
         else { return nil }
-        return await encodedPNGByteCount(raster)
+        return await encodedByteCount(raster, format: .png)
     }
 
-    @concurrent nonisolated private static func encodedPNGByteCount(_ image: CGImage) async -> Int?
-    {
-        rasterData(from: image, format: .png)?.count
+    /// The encoded size of one preset's file, rendered as `exportPresetSizes` renders it.
+    /// Writes nothing, and `nil` means the export would fail for this preset too.
+    static func estimatedPresetBytes(
+        _ baseConfig: SnapshotConfig, preset: ExportPreset, format: ExportFormat,
+        profile: ColorProfile = .sRGB
+    ) async -> Int? {
+        var config = baseConfig
+        preset.apply(to: &config)
+        let size = preset.sizing.fixedSize
+        if format == .pdf { return pdfData(config, fixedSize: size)?.count }
+        guard
+            let raster = try? renderCGImageChecked(
+                config, scale: CGFloat(preset.scale), fixedSize: size, profile: profile)
+        else { return nil }
+        return await encodedByteCount(raster, format: format)
+    }
+
+    @concurrent nonisolated private static func encodedByteCount(
+        _ image: CGImage, format: ExportFormat
+    ) async -> Int? {
+        rasterData(from: image, format: format)?.count
     }
 
     /// One finished raster in an image-set export, named without its extension.

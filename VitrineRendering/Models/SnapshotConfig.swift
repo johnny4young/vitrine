@@ -136,6 +136,13 @@ public struct SnapshotConfig: Equatable {
     /// untouched.
     public var terminalColumns: Int?
 
+    /// Which colors `.terminal` output uses. Persisted style, like the theme.
+    public var terminalPalette: TerminalPaletteMode = .theme
+
+    /// The cursor drawn on `.terminal` output. Only images and rich text carry it; the plain
+    /// text a capture exports is the output alone.
+    public var terminalCursor: TerminalCursorStyle = .hidden
+
     /// Soft-wrap long code lines at this column count, or `nil` to let a line run as wide
     /// as it needs (the default). Unlike `terminalColumns`, this is a persisted document
     /// style the user toggles in the Style pane: when set, the card is sized to the wrap
@@ -259,6 +266,37 @@ public struct SnapshotConfig: Equatable {
                 : Self.redactedLinePlaceholder
         }
         return lines.joined(separator: "\n")
+    }
+}
+
+extension SnapshotConfig {
+    /// Writes an edited terminal header back. Text it drops also leaves the alt text and
+    /// window title, which can hold a copy of it; words written around that copy stay.
+    public mutating func applyTerminalHeader(_ edited: TerminalHeaderContext) {
+        let old = TerminalHeaderContext(filename: metadata.filename, title: metadata.title)
+        metadata.filename = edited.filename
+        metadata.title = edited.title
+        var description = altText?.text ?? ""
+        let edits = [
+            (old.title, edited.title), (old.titleText, edited.titleText),
+            (old.filename, edited.filename),
+        ]
+        for case (let before?, let after) in edits where before != after {
+            description = Self.replacing(before, with: after, in: description)
+            windowTitle = Self.replacing(before, with: after, in: windowTitle)
+        }
+        altText = try? SnapshotAltText.normalized(description)
+    }
+
+    /// Whole words only, so removing the command `git` can't touch `digital`. A removal
+    /// takes the separator the alt text draft put in front of it.
+    private static func replacing(_ text: String, with new: String?, in source: String) -> String {
+        let word = "(?<!\\w)" + NSRegularExpression.escapedPattern(for: text) + "(?!\\w)"
+        return source.replacingOccurrences(
+            of: new == nil ? "(?:[:,] )?" + word : word,
+            with: NSRegularExpression.escapedTemplate(for: new ?? ""),
+            options: .regularExpression
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

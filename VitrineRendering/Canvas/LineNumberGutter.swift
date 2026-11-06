@@ -190,14 +190,16 @@ struct CodeLinesView: View {
     /// The band drawn behind a row: a diff add/remove band when diff decorations are
     /// on and the line is a change, otherwise the plain highlight band (or nothing).
     private func rowBackground(line: AttributedString, isHighlighted: Bool) -> Color {
-        if diffDecorations, let diff = diffBand(of: line) { return diff }
+        if diffDecorations, let diff = Self.diffBand(firstCharacter: line.characters.first) {
+            return diff
+        }
         return isHighlighted ? highlightColor : Color.clear
     }
 
     /// A green band for an added (`+`) line, red for a removed (`-`) line, `nil`
     /// otherwise — the GitHub-style diff coloring (the first glyph is the diff marker).
-    private func diffBand(of line: AttributedString) -> Color? {
-        switch line.characters.first {
+    static func diffBand(firstCharacter: Character?) -> Color? {
+        switch firstCharacter {
         case "+": DiffColor.added.opacity(0.18)
         case "-": DiffColor.removed.opacity(0.18)
         default: nil
@@ -228,7 +230,7 @@ public enum LineSplitter {
     /// and trailing lines counted. Empty text counts as a single (empty) row. Count
     /// line-feed bytes directly so status updates for large documents do not allocate
     /// an array of every line merely to read its count.
-    public static func lineCount(of text: String) -> Int {
+    public nonisolated static func lineCount(of text: String) -> Int {
         var count = 1
         for byte in text.utf8 where byte == 0x0A { count += 1 }
         return count

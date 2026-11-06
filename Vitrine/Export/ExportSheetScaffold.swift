@@ -15,7 +15,7 @@ import SwiftUI
 /// existing UI tests keep addressing the exact ids they always have.
 struct ExportSheetScaffold<Body: View>: View {
     let title: LocalizedStringKey
-    let subtitle: LocalizedStringKey
+    let subtitle: LocalizedStringKey?
     /// The sheet's fixed width — the one dimension the two sheets don't share.
     let width: CGFloat
     /// The root accessibility id; applied with `.contain` so the body's own ids survive.
@@ -37,6 +37,8 @@ struct ExportSheetScaffold<Body: View>: View {
 
     let confirmTitle: LocalizedStringKey
     let confirmIdentifier: String
+    /// Off when the sheet can only explain why there is nothing to confirm.
+    var showsConfirm = true
     let confirmDisabled: Bool
     let onConfirm: () -> Void
 
@@ -50,9 +52,11 @@ struct ExportSheetScaffold<Body: View>: View {
                 Text(title)
                     .font(.system(size: VitrineTokens.FontSize.headline, weight: .bold))
                     .foregroundStyle(VitrineTokens.Text.primary)
-                Text(subtitle)
-                    .font(.system(size: VitrineTokens.FontSize.subhead))
-                    .foregroundStyle(VitrineTokens.Text.secondary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.system(size: VitrineTokens.FontSize.subhead))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                }
             }
 
             content
@@ -97,11 +101,13 @@ struct ExportSheetScaffold<Body: View>: View {
                     indicator
                 }
             }
-            Button(confirmTitle, action: onConfirm)
-                .accentProminentButtonStyle()
-                .disabled(confirmDisabled)
-                .accessibilityIdentifier(confirmIdentifier)
-                .keyboardShortcut(.return, modifiers: .command)
+            if showsConfirm {
+                Button(confirmTitle, action: onConfirm)
+                    .accentProminentButtonStyle()
+                    .disabled(confirmDisabled)
+                    .accessibilityIdentifier(confirmIdentifier)
+                    .keyboardShortcut(.return, modifiers: .command)
+            }
         }
     }
 }

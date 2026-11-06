@@ -124,6 +124,11 @@ struct PerformanceTests {
         /// fixture is the first record of what typing costs, and a target chosen before
         /// that evidence would either warn on every run or mean nothing.
         static let keystrokeHardCeiling: Duration = .milliseconds(1000)
+
+        /// One preset thumbnail. The model renders one per frame after a quiet window, so this
+        /// is what each of those frames pays.
+        static let presetThumbnailTarget: Duration = .milliseconds(30)
+        static let presetThumbnailHardCeiling: Duration = .milliseconds(500)
     }
 
     /// How many timed renders each case samples (after the discarded warm-up).
@@ -541,18 +546,194 @@ struct PerformanceTests {
             "recents-add exceeded the Recents hard ceiling")
     }
 
-    @Test func typingInTheEditorMeetsBudget() throws {
+    @Test func presetThumbnailsMeetBudget() {
+        // One settle's work on the main actor, split across frames by the model. Each sample
+        // is a distinct excerpt, or the highlight cache would answer instead of the work.
+        let tiles = StylePreset.builtIns
+        let lines = Self.defaultConfig().code.split(separator: "\n").prefix(8)
+            .joined(separator: "\n")
+        func thumbnail(_ preset: StylePreset, _ sample: Int) -> Duration {
+            var config = SnapshotConfig()
+            config.code = "\(lines)\n// sample \(sample)"
+            preset.style.apply(to: &config)
+            var image: CGImage?
+            let elapsed = ContinuousClock().measure {
+                image = ExportManager.renderThumbnail(
+                    config, pixels: PresetThumbnailModel.pixelSize)
+            }
+            if image == nil { Issue.record("thumbnail render produced no image") }
+            return elapsed
+        }
+        for preset in tiles { _ = thumbnail(preset, -1) }
+        let durations = (0..<Self.sampleCount).flatMap { sample in
+            tiles.map { thumbnail($0, sample) }
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "preset-thumbnail", target: PerfBudget.presetThumbnailTarget)
+        #expect(
+            stats.p95 <= PerfBudget.presetThumbnailHardCeiling,
+            "preset-thumbnail exceeded its hard ceiling")
+    }
+
+    @Test func presetThumbnailOfA4KImageMeetsBudget() throws {
+        // The largest common screenshot, so its draw into a tile is what this measures. The
+        // decode is shared with the stage, so the warm-up pass pays it.
+        let store = BackgroundImageStore(
+            directory: URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("perf-thumbnail-\(UUID().uuidString)", isDirectory: true))
+        defer { try? FileManager.default.removeItem(at: store.directory) }
+        let bitmap = try #require(
+            NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: 3_840, pixelsHigh: 2_160, bitsPerSample: 8,
+                samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        var config = SnapshotConfig()
+        config.foregroundImage = try store.importImage(data: png, preferredExtension: "png")
+        StylePreset.aurora.style.apply(to: &config)
+        func render() -> CGImage? {
+            ExportManager.renderThumbnail(
+                config, pixels: PresetThumbnailModel.pixelSize, foregroundImageStore: store)
+        }
+        _ = render()
+        let clock = ContinuousClock()
+        let durations = (0..<Self.sampleCount).map { _ in
+            clock.measure { #expect(render() != nil) }
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "preset-thumbnail-4k-image", target: nil)
+        #expect(stats.p95 <= PerfBudget.presetThumbnailHardCeiling)
+    }
+
+    @Test func presetThumbnailOfA32KBTerminalMeetsBudget() {
+        // The largest terminal capture that gets an excerpt, parse included, which is why the
+        // model waits for the quiet window before doing this.
+        let row = "\u{1B}[32mok\u{1B}[0m \u{1B}[1mTest\u{1B}[0m \u{1B}[2mpassed in 12 ms\u{1B}[0m\n"
+        let rows = (HighlightPolicy.maximumCacheableByteCount - 64) / row.utf8.count
+        let code = String(repeating: row, count: rows)
+        func sample(_ index: Int) -> Duration {
+            let source = PresetThumbnailModel.source(
+                style: SnapshotConfig(code: "", language: .terminal), code: code + "sample \(index)"
+            )
+            return ContinuousClock().measure {
+                var config = PresetThumbnailModel.excerpt(of: source)
+                StylePreset.aurora.style.apply(to: &config)
+                #expect(
+                    ExportManager.renderThumbnail(config, pixels: PresetThumbnailModel.pixelSize)
+                        != nil)
+            }
+        }
+        _ = sample(-1)
+        let stats = Statistics((0..<Self.sampleCount).map(sample))
+        report(stats, label: "preset-thumbnail-terminal-32kb", target: nil)
+        #expect(stats.p95 <= PerfBudget.presetThumbnailHardCeiling)
+    }
+
+    // One tile is one main-actor stretch, which the filmstrip's model spaces out by frames.
+    private func carouselTile(code: (Int) -> String, label: String) {
+        func sample(_ index: Int) -> Duration {
+            let slide = CarouselPaginator.Slide(text: code(index), firstLine: 1, lineCount: 1)
+            let config = CarouselPaginator.slideConfig(
+                SnapshotConfig(), slide: slide, at: 0, of: 2, cues: .none)
+            return ContinuousClock().measure {
+                #expect(CarouselFilmstripModel.renderTile(config, profile: .sRGB) != nil)
+            }
+        }
+        _ = sample(-1)
+        let stats = Statistics((0..<Self.sampleCount).map(sample))
+        report(stats, label: label, target: nil)
+        #expect(stats.p95 <= PerfBudget.presetThumbnailHardCeiling)
+    }
+
+    @Test func carouselTileOfAFullSlideMeetsBudget() {
+        let lines = (1...CarouselPaginator.linesPerSlideRange.upperBound)
+            .map { "let value\($0) = compute(input, \($0))" }.joined(separator: "\n")
+        carouselTile(code: { "\(lines)\n// sample \($0)" }, label: "carousel-tile")
+    }
+
+    @Test func carouselTileAtTheLongLineLimitMeetsBudget() {
+        // Tokens, not one word: highlighting is most of what a long line costs.
+        let line = String(
+            repeating: "let a = foo(1); ",
+            count: CarouselPaginator.Slide.maximumPreviewBytes / 16 - 1)
+        carouselTile(code: { "\(line)// \($0)" }, label: "carousel-tile-long-line")
+    }
+
+    @Test func theFilmstripOfManySlidesLaysOutOnlyWhatItShows() {
+        let slides = (0..<25_000).map {
+            CarouselPaginator.Slide(text: "line", firstLine: $0 * 4 + 1, lineCount: 4)
+        }
+        let input = CarouselFilmstripModel.Input(
+            base: SnapshotConfig(), slides: slides, cues: .none, profile: .sRGB)
+        let durations = (0..<Self.sampleCount).map { _ in
+            let hosting = NSHostingView(
+                rootView: CarouselFilmstrip(
+                    input: input, hasShortTail: false,
+                    model: CarouselFilmstripModel(quietWindow: .seconds(30))))
+            hosting.frame = NSRect(x: 0, y: 0, width: 392, height: 150)
+            return ContinuousClock().measure { hosting.layoutSubtreeIfNeeded() }
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "carousel-strip-25k-slides", target: nil)
+        #expect(stats.p95 <= PerfBudget.hardCeiling)
+    }
+
+    @Test func splittingALongDocumentMeasuresWhatLeavesTheMainActor() {
+        let code = (1...100_000).map { "let value\($0) = compute(input)" }
+            .joined(separator: "\n")
+        let split = CarouselSplit()
+        let stats = Statistics(
+            (0..<Self.sampleCount).map { _ in
+                ContinuousClock().measure {
+                    _ = CarouselPaginator.Outcome(split: split, code: code)
+                }
+            })
+        report(stats, label: "carousel-split-100k-lines", target: nil)
+        #expect(stats.p95 <= PerfBudget.hardCeiling)
+    }
+
+    @Test func typingInTheEditorMeetsBudget() async throws {
+        try await measureTyping(label: "editor-keystroke", showsSlideDividers: false)
+    }
+
+    @Test func typingWithSlideDividersOnMeetsBudget() async throws {
+        try await measureTyping(label: "editor-keystroke-slide-dividers", showsSlideDividers: true)
+    }
+
+    private func spinRunLoop() { RunLoop.main.run(until: Date().addingTimeInterval(1)) }
+
+    // The worst case for the shifted copy: every divider below the caret, on a long document.
+    @Test func typingAtTheTopOfALongDocumentMeetsBudget() async throws {
+        try await measureTyping(
+            label: "editor-keystroke-top-long", showsSlideDividers: false, typesAtTheTop: true)
+    }
+
+    @Test func typingAtTheTopWithSlideDividersOnMeetsBudget() async throws {
+        try await measureTyping(
+            label: "editor-keystroke-top-long-slide-dividers", showsSlideDividers: true,
+            typesAtTheTop: true)
+    }
+
+    private func measureTyping(
+        label: String, showsSlideDividers: Bool, typesAtTheTop: Bool = false
+    ) async throws {
         // A keystroke is not a render: the text view takes the edit, the editor's SwiftUI
         // hierarchy updates, and AppKit runs a layout pass before the next frame. The
         // window hosts the editor through the same factory as the real editor window, so
         // its sizing configuration is part of what this measures.
-        let environment = AppEnvironment(defaults: testDefaults())
+        let environment = AppEnvironment(
+            defaults: testDefaults(),
+            entitlements: showsSlideDividers ? Entitlements(provider: DebugUnlockProvider()) : nil)
         let session = EditorSession(
             identity: EditorWindowIdentity(index: 97), environment: environment,
             feedback: .noOp, presentation: .noOp)
         defer { session.discard() }
-        session.settings.documentCode = Self.largeConfig().code
-            .split(separator: "\n").prefix(60).joined(separator: "\n")
+        session.settings.documentCode =
+            typesAtTheTop
+            ? (1...5_000).map { "let value\($0) = compute(input)" }.joined(separator: "\n")
+            : Self.largeConfig().code.split(separator: "\n").prefix(60).joined(separator: "\n")
+        session.carouselSplit.showsDividers = showsSlideDividers
+        session.carouselSplit.split.linesPerSlide = typesAtTheTop ? 4 : 12
 
         let hosting = EditorWindowController.makeHostingController(
             environment: environment, session: session)
@@ -569,10 +750,17 @@ struct PerformanceTests {
         root.layoutSubtreeIfNeeded()
         // Let the preview's first handoff and the other appearance tasks run, as they do
         // once a real window is open, so the samples time typing rather than opening.
-        RunLoop.main.run(until: Date().addingTimeInterval(1))
+        spinRunLoop()
 
-        let textView = try #require(Self.firstTextView(in: root))
-        let end = (textView.string as NSString).length
+        let textView = try #require(Self.firstTextView(in: root) as? CodeTextView)
+        if showsSlideDividers {
+            // Awaited here: a resumed task doesn't run inside the nested run loop above.
+            await session.carouselSplit.refreshDividers(code: session.settings.documentCode)
+            root.needsLayout = true
+            root.layoutSubtreeIfNeeded()
+        }
+        #expect(textView.slideDividers.isEmpty != showsSlideDividers)
+        let end = typesAtTheTop ? 0 : (textView.string as NSString).length
         textView.setSelectedRange(NSRange(location: end, length: 0))
         let typed = Array("\nlet typed = compute(input)")
         var next = 0
@@ -596,10 +784,18 @@ struct PerformanceTests {
         }
         #expect(session.settings.documentCode.contains("let typed"))
         let stats = Statistics(durations)
-        report(stats, label: "editor-keystroke", target: nil)
+        report(stats, label: label, target: nil)
         #expect(
             stats.p95 <= PerfBudget.keystrokeHardCeiling,
-            "editor-keystroke exceeded the keystroke hard ceiling")
+            "\(label) exceeded the keystroke hard ceiling")
+
+        // Drawing belongs to the frame, not the layout pass the samples above time.
+        let bitmap = try #require(
+            textView.bitmapImageRepForCachingDisplay(in: textView.visibleRect))
+        let draws = (0..<Self.sampleCount).map { _ in
+            clock.measure { textView.cacheDisplay(in: textView.visibleRect, to: bitmap) }
+        }
+        report(Statistics(draws), label: "\(label)-draw", target: nil)
     }
 
     private static func firstTextView(in view: NSView) -> NSTextView? {
@@ -719,6 +915,7 @@ struct PerformanceTests {
         #expect(PerfBudget.remoteChunkTarget < PerfBudget.remoteChunkHardCeiling)
         #expect(PerfBudget.remoteChunkHardCeiling < PerfBudget.hardCeiling)
         #expect(PerfBudget.keystrokeHardCeiling < PerfBudget.hardCeiling)
+        #expect(PerfBudget.presetThumbnailTarget < PerfBudget.presetThumbnailHardCeiling)
     }
 }
 

@@ -16,6 +16,9 @@ struct LibrarySettingsView: View {
             StylePresetsSection(settings: settings, store: presets, themes: themes)
             WorkspaceRecipeSettingsSection(
                 settings: settings, store: workspaceRecipes, themes: themes)
+            if CLIToolInstaller.embeddedCLI != nil {
+                WorkspaceRecipeCommandsSection(settings: settings)
+            }
             CustomThemesSection(settings: settings, store: themes)
         }
         .accessibilityIdentifier("settings-library-pane")
@@ -36,7 +39,7 @@ struct StylePresetsSection: View {
 
     /// The preset id selected in the picker, or `nil` before the user picks one.
     /// This is a selection cursor for the row actions, not an applied-state mirror;
-    /// applying is an explicit button so a preset never silently overwrites the
+    /// applying is an explicit menu action so a preset never silently overwrites the
     /// live style on selection.
     @State private var selectedID: String?
     @State private var pendingDeletion: StylePreset?
@@ -52,40 +55,39 @@ struct StylePresetsSection: View {
 
     var body: some View {
         TokenGroup(title: Text("Presets")) {
-            TokenRow(
-                label: Text("Preset"),
-                caption: Text("Apply a saved style in one click")
-            ) {
-                Picker("Preset", selection: pickerBinding) {
-                    Text("Choose a preset…").tag(Self.noneTag)
-                    Section("Built-in") {
-                        ForEach(StylePreset.builtIns) { preset in
-                            Text(preset.name).tag(preset.id)
-                        }
-                    }
-                    if !store.userPresets.isEmpty {
-                        Section("Saved") {
-                            ForEach(store.userPresets) { preset in
+            TokenRow(label: Text("Preset")) {
+                HStack(spacing: VitrineTokens.Spacing.xs) {
+                    Picker("Preset", selection: pickerBinding) {
+                        Text("Choose a preset…").tag(Self.noneTag)
+                        Section("Built-in") {
+                            ForEach(StylePreset.builtIns) { preset in
                                 Text(preset.name).tag(preset.id)
                             }
                         }
+                        if !store.userPresets.isEmpty {
+                            Section("Saved") {
+                                ForEach(store.userPresets) { preset in
+                                    Text(preset.name).tag(preset.id)
+                                }
+                            }
+                        }
                     }
+                    .labelsHidden()
+                    // A long saved name truncates here, so it can't push the menu away.
+                    .frame(maxWidth: 260)
+                    .help(
+                        "Choose a preset to apply, duplicate, rename, or delete. Selecting does not change your current style."
+                    )
+                    .accessibilityLabel("Preset")
+                    .accessibilityIdentifier("style-preset-picker")
+
+                    presetActionsMenu
                 }
-                .labelsHidden()
-                .fixedSize()
-                .help(
-                    "Choose a preset to apply, duplicate, rename, or delete. Selecting does not change your current style."
-                )
-                .accessibilityLabel("Preset")
-                .accessibilityIdentifier("style-preset-picker")
             }
 
-            TokenRow(
-                label: Text("Selected preset"),
-                caption: Text("Save the default style, then export or import as JSON")
-            ) {
+            TokenRow(label: Text("Default style")) {
                 HStack(spacing: VitrineTokens.Spacing.xs) {
-                    Button("Save Default Style…") {
+                    Button("Save as Preset…") {
                         saveName = settings.config.theme.displayName
                         showSavePrompt = true
                     }
@@ -96,22 +98,10 @@ struct StylePresetsSection: View {
                     Button("Import…") { runImport() }
                         .help("Add presets from a Vitrine preset file (.json).")
                         .accessibilityIdentifier("import-presets-button")
-                    Button("Export…") {
-                        PresetFileExchange.exportWithSavePanel(store: store)
-                    }
-                    .disabled(store.userPresets.isEmpty)
-                    .help(
-                        store.userPresets.isEmpty
-                            ? Text("Save a preset first to export your presets.")
-                            : Text("Export your saved presets to a JSON file.")
-                    )
-                    .accessibilityIdentifier("export-presets-button")
                 }
                 .buttonStyle(.bordered)
                 .fixedSize()
             }
-
-            presetRowActions
         }
         .confirmationDialog(
             "Delete Preset?",
@@ -168,53 +158,61 @@ struct StylePresetsSection: View {
         }
     }
 
-    /// The Apply / Duplicate / Rename / Delete row for the selected preset.
-    ///
-    /// The row is always present so the group's layout and semantics stay
-    /// steady rather than appearing and disappearing as the selection changes.
-    /// With nothing selected the buttons are disabled; the destructive
-    /// Rename/Delete pair stays disabled — not hidden — for an immutable
-    /// built-in, so the available actions read as a stable set the user can
-    /// see but not invoke.
-    private var presetRowActions: some View {
+    /// Every action on a preset. Items stay listed, disabled, when they don't apply: the
+    /// selected-preset actions without a selection, Rename and Delete for a built-in.
+    private var presetActionsMenu: some View {
         let preset = selectedPreset
         let canEdit = preset.map { !$0.isBuiltIn } ?? false
-        return TokenRow {
-            HStack(spacing: VitrineTokens.Spacing.xs) {
-                Button("Apply") {
-                    if let preset { settings.applyStylePreset(preset, themes: themes) }
-                }
-                .help("Make this preset's style the default for new windows and captures.")
-                .disabled(preset == nil)
-                .accessibilityIdentifier("apply-style-preset-button")
-                Button("Duplicate") {
-                    if let preset { selectedID = store.duplicate(preset).id }
-                }
-                .help("Make an editable copy of this preset.")
-                .disabled(preset == nil)
-                .accessibilityIdentifier("duplicate-style-preset-button")
-                Button("Rename") {
-                    if let preset {
-                        renameName = preset.name
-                        showRenamePrompt = true
-                    }
-                }
-                .help("Rename this saved preset. Built-in presets can't be renamed.")
-                .disabled(!canEdit)
-                .accessibilityIdentifier("rename-style-preset-button")
-                Button("Delete", role: .destructive) {
-                    if let preset {
-                        pendingDeletion = preset
-                    }
-                }
-                .tint(VitrineTokens.Accent.destructiveText)
-                .help("Delete this saved preset. Built-in presets can't be deleted.")
-                .disabled(!canEdit)
-                .accessibilityIdentifier("delete-style-preset-button")
+        return Menu {
+            Button("Apply") {
+                if let preset { settings.applyStylePreset(preset, themes: themes) }
             }
-            .buttonStyle(.bordered)
-            .fixedSize()
+            .help("Make this preset's style the default for new windows and captures.")
+            .disabled(preset == nil)
+            .accessibilityIdentifier("apply-style-preset-button")
+            Button("Duplicate") {
+                if let preset { selectedID = store.duplicate(preset).id }
+            }
+            .help("Make an editable copy of this preset.")
+            .disabled(preset == nil)
+            .accessibilityIdentifier("duplicate-style-preset-button")
+            Button("Rename…") {
+                if let preset {
+                    renameName = preset.name
+                    showRenamePrompt = true
+                }
+            }
+            .help("Rename this saved preset. Built-in presets can't be renamed.")
+            .disabled(!canEdit)
+            .accessibilityIdentifier("rename-style-preset-button")
+            Button("Delete…", role: .destructive) {
+                if let preset {
+                    pendingDeletion = preset
+                }
+            }
+            .help("Delete this saved preset. Built-in presets can't be deleted.")
+            .disabled(!canEdit)
+            .accessibilityIdentifier("delete-style-preset-button")
+            Divider()
+            // Writes every saved preset to one file, whatever the picker shows.
+            Button("Export Saved Presets…") {
+                PresetFileExchange.exportWithSavePanel(store: store)
+            }
+            .disabled(store.userPresets.isEmpty)
+            .help(
+                store.userPresets.isEmpty
+                    ? Text("Save a preset first to export your presets.")
+                    : Text("Export your saved presets to a JSON file.")
+            )
+            .accessibilityIdentifier("export-presets-button")
+        } label: {
+            Image(systemName: "ellipsis")
         }
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Preset actions")
+        .accessibilityLabel("Preset actions")
+        .accessibilityIdentifier("style-preset-actions-menu")
     }
 
     /// The currently selected preset, resolved across built-ins and user presets.
