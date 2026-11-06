@@ -257,6 +257,32 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(element("editor-inspector", in: app).waitForNonExistence(timeout: 3))
     }
 
+    /// A click on the rendered code, which is selectable text, and one on the padding beside
+    /// it open the dock's matching popovers.
+    @MainActor
+    func testStageRegionsOpenTheirDockSectionsInCanvasMode() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--canvas-mode"])
+        defer { app.terminate() }
+        assertExists(element("canvas-dock", in: app), in: app, timeout: 8)
+        let code = element("editor-preview-stage", in: app).staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
+        assertExists(code, in: app, timeout: 3)
+
+        code.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
+        assertExists(element("font-size-slider", in: app), in: app, timeout: 3)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("font-size-slider", in: app).waitForNonExistence(timeout: 3))
+
+        // Past the card's 26 pt inset and its shadow, inside the default 32 pt padding.
+        code.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
+            .withOffset(CGVector(dx: -47, dy: 0)).click()
+        assertExists(
+            element("inspector-background-gradient-preset", in: app), in: app, timeout: 3)
+    }
+
     @MainActor
     func testEditorLaunchesWithPrimaryControls() throws {
         continueAfterFailure = false

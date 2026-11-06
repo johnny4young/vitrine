@@ -30,6 +30,8 @@ struct EditorInspectorView: View {
     /// A popover cannot host the paywall sheet, so it asks the editor window to.
     var presentFramePaywall: (() -> Void)? = nil
     var windowUndoManager: UndoManager? = nil
+    /// Stage clicks that open and scroll to a section of the column.
+    var stageRegions: StageRegionModel? = nil
 
     /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
     @AppStorage(PresetThumbnailModel.expandedStorageKey, store: AppDefaults.current)
@@ -85,6 +87,15 @@ struct EditorInspectorView: View {
                 .onChange(of: showPresets) { _, open in
                     reveal("inspector-disclosure-presets", when: open, proxy)
                 }
+                .onChange(of: stageRegions?.reveal) { _, request in
+                    switch request?.target {
+                    case .header where !showHeader: showHeader = true
+                    case .header: reveal("inspector-disclosure-header", when: true, proxy)
+                    case .pane(let pane):
+                        reveal("inspector-section-\(pane.rawValue)", when: true, proxy)
+                    case nil: break
+                    }
+                }
         }
     }
 
@@ -101,20 +112,20 @@ struct EditorInspectorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 scopeNote
-                backgroundSection
+                backgroundSection.id("inspector-section-background")
                 // A beautified image swaps the code-only style controls (theme, fonts)
                 // for the frame picker; everything else (background, canvas, header,
                 // output) applies to both.
                 if settings.style.usesImageContent {
-                    frameSection
+                    frameSection.id("inspector-section-frame")
                 } else {
                     themeSection
-                    typographySection
+                    typographySection.id("inspector-section-typography")
                     if settings.style.language == .terminal {
                         terminalSection
                     }
                 }
-                canvasSection
+                canvasSection.id("inspector-section-canvas")
 
                 VStack(alignment: .leading, spacing: 0) {
                     // The line gutter / highlight / redact controls only make sense for

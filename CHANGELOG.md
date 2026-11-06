@@ -14,6 +14,11 @@ can never drift.
 
 ### Added
 
+- Clicking a part of the preview opens the inspector section that styles it: the background,
+  the drop shadow, the window chrome, the header, or the code's typography (the frame, for an
+  image). In canvas mode it opens the dock's popover instead. A dashed outline marks the part
+  under the pointer, and VoiceOver offers the same routes as actions on the preview. Clicks
+  that select, draw or move a mark are unchanged.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.

@@ -1,6 +1,72 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Edit Background" : {
+      "comment" : "Accessibility action on the editor's preview: opens the Background settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar fondo"
+          }
+        }
+      }
+    },
+    "Edit Shadow" : {
+      "comment" : "Accessibility action on the editor's preview: opens the drop shadow settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar sombra"
+          }
+        }
+      }
+    },
+    "Edit Window Chrome" : {
+      "comment" : "Accessibility action on the editor's preview: opens the window chrome settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar marco de ventana"
+          }
+        }
+      }
+    },
+    "Edit Header" : {
+      "comment" : "Accessibility action on the editor's preview: opens the Header settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar encabezado"
+          }
+        }
+      }
+    },
+    "Edit Typography" : {
+      "comment" : "Accessibility action on the editor's preview: opens the Typography settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar tipografía"
+          }
+        }
+      }
+    },
+    "Edit Frame" : {
+      "comment" : "Accessibility action on the editor's preview of an image: opens the Frame settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar marco"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {

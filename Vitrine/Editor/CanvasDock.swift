@@ -68,6 +68,7 @@ struct CanvasDock: View {
     let entitlements: Entitlements
     let legibility: LegibilityModel
     let presetThumbnails: PresetThumbnailModel
+    var stageRegions: StageRegionModel? = nil
     let presentFramePaywall: () -> Void
 
     @State private var openPane: InspectorPane?
@@ -121,6 +122,13 @@ struct CanvasDock: View {
         .accessibilityIdentifier("canvas-dock")
         // The swapped panes' popover closes with its button; it must not reopen on return.
         .onChange(of: style.usesImageContent) { openPane = nil }
+        // A stage region opens its pane like the button would, so a second click closes it.
+        .onChange(of: stageRegions?.reveal) { _, reveal in
+            guard case .pane(let pane) = reveal?.target else { return }
+            openPane = DockPopoverClose.pane(
+                afterPressing: pane, open: openPane, lastClose: lastClose,
+                now: ProcessInfo.processInfo.systemUptime)
+        }
         #if DEBUG
             .task {
                 let arguments = ProcessInfo.processInfo.arguments
