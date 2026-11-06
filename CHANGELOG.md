@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
+  hides the code and inspector columns. A dock on the stage shows the current theme,
+  typography, background and padding, and opens the inspector's section for each in a
+  popover. Each window has its own mode, and leaving it restores both columns as they were.
 - When a dropped file picks up a workspace recipe, a bar over the stage names the recipe and
   its folder and counts the style fields you've changed since. Revert restores the recipe's
   look and can be undone; closing the bar keeps the style.

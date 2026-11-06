@@ -448,6 +448,8 @@ extension EditorView {
             PaywallSheet(feature: .carouselExport, entitlements: entitlements)
         case .automationPaywall:
             PaywallSheet(feature: .automation, entitlements: entitlements)
+        case .framePaywall:
+            PaywallSheet(feature: .advancedFrames, entitlements: entitlements)
         }
     }
 

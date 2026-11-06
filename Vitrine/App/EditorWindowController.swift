@@ -36,6 +36,8 @@ final class EditorSession {
     /// This window's preset thumbnails, fed from the same debounced code as the preview.
     let presetThumbnails = PresetThumbnailModel()
     let carouselSplit = CarouselSplitModel()
+    /// Hides the code and inspector columns for this window only; never persisted.
+    var isCanvasMode = false
 
     /// Creates a session for `identity` with its own ephemeral settings.
     ///
@@ -425,13 +427,24 @@ final class EditorWindowController: NSObject {
 
     // MARK: - Key-window session (menu command target)
 
+    /// The window a menu command acts on. A popover or panel can be key without becoming
+    /// main, so commands then act on the main window behind it, such as the editor.
+    static func commandTarget(key: NSWindow?, main: NSWindow?) -> NSWindow? {
+        guard let key, key.canBecomeMain else { return main }
+        return key
+    }
+
+    static var commandTargetWindow: NSWindow? {
+        commandTarget(key: NSApp.keyWindow, main: NSApp.mainWindow)
+    }
+
     /// The session of the key (or, failing that, the main) editor window, so a Copy /
     /// Save / Share / Make Default initiated from the menu acts on the visible editor.
     /// `nil` when no editor window is key, which is how the editor commands
     /// stay disabled outside an editor.
     var keyWindowSession: EditorSession? {
-        let target = NSApp.keyWindow ?? NSApp.mainWindow
-        guard let target else { return nil }
+        guard let target = Self.commandTargetWindow
+        else { return nil }
         for (index, window) in windows where window === target {
             return sessions[index]
         }

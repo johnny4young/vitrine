@@ -335,6 +335,11 @@ final class AppMenu {
         themeItem.submenu = themeMenu
         menu.addItem(themeItem)
         menu.addItem(.separator())
+        menu.addItem(
+            item(
+                for: .toggleCanvasMode,
+                action: #selector(EditorCommandResponder.toggleCanvasMode(_:)),
+                target: editorCommands))
 
         let fullScreen = NSMenuItem(
             title: String(localized: "Enter Full Screen"),
