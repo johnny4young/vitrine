@@ -519,19 +519,17 @@ extension EditorView {
                 .focused($stageFocused)
                 .focusEffectDisabled()
                 .onChange(of: selectedAnnotationID) { _, id in
+                    // A Duplicate pressed from the keyboard keeps the toolbar's focus.
+                    if markToolbarFocused, id != nil { return }
                     stageFocused = id != nil && editingAnnotationID == nil
                 }
                 .onChange(of: editingAnnotationID) { _, id in
                     stageFocused = id == nil && selectedAnnotationID != nil
                 }
-                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
-                    nudgeSelection(
-                        press.key, shift: press.modifiers.contains(.shift),
-                        isRepeat: press.phase == .repeat) ? .handled : .ignored
-                }
-                .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-                    deleteSelection() ? .handled : .ignored
-                }
+                .onKeyPress(
+                    keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .delete, .deleteForward],
+                    action: markKeyPress
+                )
                 // Buttons take focus only with macOS keyboard navigation on, as elsewhere.
                 .onKeyPress(keys: [.tab]) { press in
                     guard press.modifiers.isEmpty, activeTool == .select,
@@ -549,17 +547,22 @@ extension EditorView {
         .overlay(alignment: .bottom) {
             StageStatusCapsule(settings: settings, geometry: cardGeometry, stageSize: stageSize)
         }
-        // Outside the preview's scale, so it keeps its size and never reaches an export.
-        .overlayPreferenceValue(SelectedMarkChromeKey.self) { chrome in
-            if let chrome {
+        // Last, outside the preview's scale: it keeps its size and never reaches an export.
+        // Stage chrome joins `MarkToolbarAnchors.avoiding` to keep the toolbar off it.
+        .overlayPreferenceValue(MarkToolbarAnchorsKey.self) { anchors in
+            if let mark = anchors.mark {
                 GeometryReader { proxy in
-                    MarkToolbarLayout(mark: proxy[chrome]) {
+                    MarkToolbarPlacer(
+                        mark: proxy[mark], avoiding: anchors.avoiding.map { proxy[$0] },
+                        stage: proxy.size
+                    ) { popoverEdge, holdPlace in
                         AnnotationMarkToolbar(
                             color: annotationStyleColor, thickness: annotationStyleThickness,
                             showsColor: annotationStyleUsesColor,
                             showsThickness: annotationStyleUsesThickness,
-                            focus: $markToolbarFocused, onStyleEditEnded: endAnnotationEdit,
-                            onDuplicate: duplicateSelection, onDelete: deleteSelection,
+                            popoverEdge: popoverEdge, focus: $markToolbarFocused,
+                            onStyleEditEnded: endAnnotationEdit, onSizeDragging: holdPlace,
+                            onDuplicate: duplicateSelection, onMarkKey: markKeyPress,
                             onExit: { stageFocused = selectedAnnotationID != nil })
                     }
                 }
@@ -898,6 +901,9 @@ private struct StageStatusCapsule: View {
         .accessibilityLabel("Destination")
         .accessibilityValue(Text(verbatim: line))
         .accessibilityIdentifier("editor-status-capsule")
+        .anchorPreference(key: MarkToolbarAnchorsKey.self, value: .bounds) {
+            MarkToolbarAnchors(avoiding: [$0])
+        }
         .padding(.bottom, 14)
     }
 

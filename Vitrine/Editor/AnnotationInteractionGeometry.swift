@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import VitrineDomain
+import VitrineRendering
 
 /// Canvas-space interaction geometry shared by drawing, selecting and resizing.
 /// SwiftUI scales the whole overlay with the preview; these values must not apply
@@ -75,15 +76,13 @@ struct AnnotationInteractionGeometry {
             y: max(box.minY - Self.deleteBadgeOffset, 10))
     }
 
-    /// The selection with its endpoint handles and delete badge, at the largest size, so a
-    /// toolbar placed beside it holds still while the size slider moves.
+    /// The drawn mark with its selection outline, endpoint handles and delete badge.
     var chromeBounds: CGRect {
-        var largest = annotation
-        largest.thickness = Annotation.thicknessRange.upperBound
-        let reach = Self.deleteBadgeOffset + max(Self.handleDiameter, Self.deleteBadgeSize) / 2
+        let handle = Self.handleDiameter / 2
         let badge = Self.deleteBadgeSize / 2
-        return AnnotationInteractionGeometry(annotation: largest, canvasSize: canvasSize)
-            .selectionBounds.insetBy(dx: -reach, dy: -reach).union(
+        return selectionBounds.insetBy(dx: -handle, dy: -handle)
+            .union(AnnotationMarkBounds.drawn(annotation, in: canvasSize))
+            .union(
                 CGRect(
                     x: deleteBadgeCenter.x - badge, y: deleteBadgeCenter.y - badge,
                     width: Self.deleteBadgeSize, height: Self.deleteBadgeSize))

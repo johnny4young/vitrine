@@ -262,7 +262,9 @@ private struct AnnotationHandle: View {
                 let chrome = geometry.chromeBounds
                 Color.clear
                     .frame(width: chrome.width, height: chrome.height)
-                    .anchorPreference(key: SelectedMarkChromeKey.self, value: .bounds) { $0 }
+                    .anchorPreference(key: MarkToolbarAnchorsKey.self, value: .bounds) {
+                        MarkToolbarAnchors(mark: $0)
+                    }
                     .position(x: chrome.midX, y: chrome.midY)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
