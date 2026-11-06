@@ -166,14 +166,16 @@ struct CodeLinesView: View {
     /// The band drawn behind a row: a diff add/remove band when diff decorations are
     /// on and the line is a change, otherwise the plain highlight band (or nothing).
     private func rowBackground(line: AttributedString, isHighlighted: Bool) -> Color {
-        if diffDecorations, let diff = diffBand(of: line) { return diff }
+        if diffDecorations, let diff = Self.diffBand(firstCharacter: line.characters.first) {
+            return diff
+        }
         return isHighlighted ? highlightColor : Color.clear
     }
 
     /// A green band for an added (`+`) line, red for a removed (`-`) line, `nil`
     /// otherwise — the GitHub-style diff coloring (the first glyph is the diff marker).
-    private func diffBand(of line: AttributedString) -> Color? {
-        switch line.characters.first {
+    static func diffBand(firstCharacter: Character?) -> Color? {
+        switch firstCharacter {
         case "+": Color(hex: "#2EA043").opacity(0.18)
         case "-": Color(hex: "#F85149").opacity(0.18)
         default: nil

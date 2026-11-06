@@ -546,6 +546,7 @@ extension EditorView {
         .background {
             PreviewCodeSynchronizer(settings: settings) { code in
                 stagedPreviewCode = code
+                legibility.stagedCode = code
                 session.presetThumbnails.stagedCode = code
                 session.presetThumbnails.stagedGeneration = settings.documentGeneration
             }
@@ -619,7 +620,7 @@ extension EditorView {
     var inspectorColumn: some View {
         EditorInspectorView(
             settings: settings, themes: themes, presets: presets, entitlements: entitlements,
-            presetThumbnails: session.presetThumbnails)
+            legibility: legibility, presetThumbnails: session.presetThumbnails)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a

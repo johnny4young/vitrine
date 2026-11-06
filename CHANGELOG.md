@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- Warn in the inspector's Theme header when a capture's code text has low measured contrast
+  on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
+  stock theme only when it measures better, and can be dismissed for a theme until you quit.
 - The empty editor says what the clipboard holds, such as "14 lines of Swift", counting
   the lines a paste would produce, when System Settings always allows Vitrine to read the
   clipboard. Otherwise it stays silent and the contents stay unread.

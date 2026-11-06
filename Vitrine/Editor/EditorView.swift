@@ -135,6 +135,9 @@ struct EditorView: View {
     /// flash on open).
     @State var stagedPreviewCode: String?
 
+    /// Feeds the contrast warning that debounced code without tying the inspector to it.
+    @State var legibility = LegibilityModel()
+
     /// This editor's own weak `NSWindow` slot, captured via `WindowAccessor`, so actions
     /// like close-after-copy target it directly without making the hosted SwiftUI tree
     /// own its AppKit window.

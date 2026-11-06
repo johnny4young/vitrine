@@ -45,6 +45,135 @@
         }
       }
     },
+    "Clipboard holds %@" : {
+      "comment" : "Empty editor: what the clipboard holds. The argument is a measurement such as 14 lines of Swift.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El portapapeles tiene %@"
+          }
+        }
+      }
+    },
+    "%lld lines of %@" : {
+      "comment" : "Empty editor: how much the clipboard holds and its language, as in 14 lines of Swift.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line of %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines of %@"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld línea de %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld líneas de %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "about %@" : {
+      "comment" : "VoiceOver: an estimated file size, read in place of the tilde mark.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "alrededor de %@"
+          }
+        }
+      }
+    },
+    "%@ to %@" : {
+      "comment" : "VoiceOver: the first and last file names of a carousel export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ a %2$@"
+          }
+        }
+      }
+    },
+    "Don't warn for this theme" : {
+      "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No advertir con este tema"
+          }
+        }
+      }
+    },
+    "Change Theme" : {
+      "comment" : "Undo action name for switching to the theme the legibility warning offered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar tema"
+          }
+        }
+      }
+    },
+    "Low code contrast" : {
+      "comment" : "Editor inspector: warning that a capture's code text is hard to read on its surface.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraste bajo en el código"
+          }
+        }
+      }
+    },
+    "%lld%% of the text" : {
+      "comment" : "Legibility details: how much of the capture's text is drawn in this color.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %% del texto"
+          }
+        }
+      }
+    },
+    "Use %@" : {
+      "comment" : "Legibility details: switch to the named theme, which measured readable.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar %@"
+          }
+        }
+      }
+    },
     "Conflict: %@ is also a macOS shortcut" : {
       "comment" : "Settings notice under the global hotkey recorder. %@ is the shortcut, such as ⇧⌘3.",
       "localizations" : {
@@ -423,113 +552,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quitar %@"
-          }
-        }
-      }
-    },
-    "Hidden in the export" : {
-      "comment" : "Shown beside a counter's legend text when it matches hidden text and is replaced in the export.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oculto en la exportación"
-          }
-        }
-      }
-    },
-    "Legend: %lld hidden" : {
-      "comment" : "Status capsule: how many legend entries a fixed frame had no room for.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leyenda: %lld ocultas"
-          }
-        }
-      }
-    },
-    "Images exported. Some legend entries didn't fit." : {
-      "comment" : "Confirmation after a multi-size export where a fixed frame left out legend entries.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Imágenes exportadas. Algunas entradas de la leyenda no cupieron."
-          }
-        }
-      }
-    },
-    "Legend" : {
-      "comment" : "Placeholder of the field where the user types a counter's legend text.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leyenda"
-          }
-        }
-      }
-    },
-    "Counter legend text" : {
-      "comment" : "Accessibility label of the field where the user types a counter's legend text.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Texto de la leyenda del contador"
-          }
-        }
-      }
-    },
-    "Clipboard holds %@" : {
-      "comment" : "Empty editor: what the clipboard holds. The argument is a measurement such as 14 lines of Swift.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "El portapapeles tiene %@"
-          }
-        }
-      }
-    },
-    "%lld lines of %@" : {
-      "comment" : "Empty editor: how much the clipboard holds and its language, as in 14 lines of Swift.",
-      "localizations" : {
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld line of %@"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld lines of %@"
-                }
-              }
-            }
-          }
-        },
-        "es" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld línea de %@"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld líneas de %@"
-                }
-              }
-            }
           }
         }
       }
@@ -1062,28 +1084,6 @@
         }
       }
     },
-    "about %@" : {
-      "comment" : "VoiceOver: an estimated file size, read in place of the tilde mark.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "alrededor de %@"
-          }
-        }
-      }
-    },
-    "%@ to %@" : {
-      "comment" : "VoiceOver: the first and last file names of a carousel export.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ a %2$@"
-          }
-        }
-      }
-    },
     "%lld by %lld" : {
       "comment" : "Menu bar capture summary, read aloud: output width by height in pixels.",
       "localizations" : {
@@ -1435,6 +1435,61 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "receta fuera de su carpeta"
+          }
+        }
+      }
+    },
+    "Hidden in the export" : {
+      "comment" : "Shown beside a counter's legend text when it matches hidden text and is replaced in the export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oculto en la exportación"
+          }
+        }
+      }
+    },
+    "Legend: %lld hidden" : {
+      "comment" : "Status capsule: how many legend entries a fixed frame had no room for.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda: %lld ocultas"
+          }
+        }
+      }
+    },
+    "Images exported. Some legend entries didn't fit." : {
+      "comment" : "Confirmation after a multi-size export where a fixed frame left out legend entries.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imágenes exportadas. Algunas entradas de la leyenda no cupieron."
+          }
+        }
+      }
+    },
+    "Legend" : {
+      "comment" : "Placeholder of the field where the user types a counter's legend text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda"
+          }
+        }
+      }
+    },
+    "Counter legend text" : {
+      "comment" : "Accessibility label of the field where the user types a counter's legend text.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Texto de la leyenda del contador"
           }
         }
       }
