@@ -33,6 +33,7 @@ final class EditorSession {
     var appliedRecipeID: UUID?
     /// This window's preset thumbnails, fed from the same debounced code as the preview.
     let presetThumbnails = PresetThumbnailModel()
+    let carouselSplit = CarouselSplitModel()
     /// Hides the code and inspector columns for this window only; never persisted.
     var isCanvasMode = false
 
