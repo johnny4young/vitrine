@@ -1741,8 +1741,12 @@ final class VitrineUITests: XCTestCase {
             pasteboard.clearContents()
         }
         assertExists(element("empty-state", in: app), in: app, timeout: 8)
+        // The row is reserved and hidden while unread; some macOS builds still expose it, so
+        // check what it says rather than whether it exists.
+        let line = element("empty-stage-clipboard", in: app)
+        Thread.sleep(forTimeInterval: 2)
         XCTAssertFalse(
-            element("empty-stage-clipboard", in: app).waitForExistence(timeout: 2),
+            line.exists && line.label.contains("Clipboard holds"),
             "Default access must not name the clipboard's contents")
     }
 
