@@ -8,8 +8,22 @@ extension View {
     }
 }
 
+extension EnvironmentValues {
+    /// Stands in for the system setting, whose environment value is read-only.
+    @Entry var reduceMotionOverride: Bool?
+}
+
+/// Whether to remove motion: the system setting, unless a host overrides it.
+@propertyWrapper
+struct ReducesMotion: DynamicProperty {
+    @Environment(\.accessibilityReduceMotion) private var system
+    @Environment(\.reduceMotionOverride) private var override
+
+    var wrappedValue: Bool { override ?? system }
+}
+
 private struct MotionSensitiveAnimation<V: Equatable>: ViewModifier {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ReducesMotion private var reduceMotion
 
     let animation: Animation
     let value: V

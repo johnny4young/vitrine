@@ -1089,6 +1089,7 @@ final class VitrineUITests: XCTestCase {
         background.click()
         XCTAssertTrue(background.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(lines.isSelected)
+        assertExists(element("background-kind-picker", in: app), in: app, timeout: 3)
         appearance.click()
         XCTAssertTrue(appearance.wait(for: \.isSelected, toEqual: true, timeout: 3))
     }

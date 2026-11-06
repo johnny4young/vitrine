@@ -8227,23 +8227,6 @@
         }
       }
     },
-    "Gradient preset, solid color, or image" : {
-      "comment" : "Background kind row caption.",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gradient preset, solid color, or image"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajuste preestablecido de gradiente, color sólido o imagen"
-          }
-        }
-      }
-    },
     "Header" : {
       "comment" : "Inspector and settings section title for the optional header.",
       "localizations" : {
