@@ -59,36 +59,50 @@ struct FlowLayout: Layout {
 
 /// An uppercase-labeled inspector section: 11 pt gaps, no tile (the glass
 /// column itself is the surface).
-struct InspectorSection<Content: View>: View {
+struct InspectorSection<Accessory: View, Content: View>: View {
     let title: Text
     /// The section's current value and its identifier, readable without scanning the
     /// section's controls.
     var value: (text: String, identifier: String)? = nil
+    /// A control beside the header, outside its combined accessibility element.
+    @ViewBuilder var accessory: Accessory
     @ViewBuilder var content: Content
 
     var body: some View {
         VStack(alignment: .leading, spacing: 11) {
             HStack(spacing: VitrineTokens.Spacing.xs) {
-                TokenGroupLabel(title: title)
-                    .fixedSize()
-                Spacer(minLength: 0)
-                if let value {
-                    Text(verbatim: value.text)
-                        .font(.system(size: VitrineTokens.FontSize.caption))
-                        .monospacedDigit()
-                        .foregroundStyle(VitrineTokens.Text.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                        .help(Text(verbatim: value.text))
+                HStack(spacing: VitrineTokens.Spacing.xs) {
+                    TokenGroupLabel(title: title)
+                        .fixedSize()
+                    Spacer(minLength: 0)
+                    if let value {
+                        Text(verbatim: value.text)
+                            .font(.system(size: VitrineTokens.FontSize.caption))
+                            .monospacedDigit()
+                            .foregroundStyle(VitrineTokens.Text.tertiary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(Text(verbatim: value.text))
+                    }
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(title)
+                .accessibilityValue(value?.text ?? "")
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier(value?.identifier ?? "")
+                accessory
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(title)
-            .accessibilityValue(value?.text ?? "")
-            .accessibilityAddTraits(.isHeader)
-            .accessibilityIdentifier(value?.identifier ?? "")
             content
         }
+    }
+}
+
+extension InspectorSection where Accessory == EmptyView {
+    init(
+        title: Text, value: (text: String, identifier: String)? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.init(title: title, value: value, accessory: { EmptyView() }, content: content)
     }
 }
 
