@@ -363,7 +363,7 @@ enum ProFeature: String, CaseIterable, Sendable {
     case brandKit
     /// One capture exported to many platform sizes in a single pass.
     case multiSizeExport
-    /// A long snippet split into numbered 4:5 slides for a carousel post.
+    /// A long snippet split into numbered slides for a carousel post.
     /// Unlocks with the same tier as everything else; a distinct case so the paywall
     /// describes the feature the user actually tapped.
     case carouselExport

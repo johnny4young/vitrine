@@ -23,7 +23,7 @@ struct CarouselFilmstripTests {
     private func model(
         _ log: RenderLog, quietWindow: Duration = .zero, frameGap: Duration = .zero
     ) -> CarouselFilmstripModel {
-        CarouselFilmstripModel(quietWindow: quietWindow, frameGap: frameGap) { config, _ in
+        CarouselFilmstripModel(quietWindow: quietWindow, frameGap: frameGap) { config, _, _ in
             log.configs.append(config)
             return Self.pixel()
         }
@@ -131,11 +131,14 @@ struct CarouselFilmstripTests {
 
         await model.refresh(input)
 
+        let fontSize = CarouselPaginator.fittedFontSize(
+            base, slides: input.slides, cues: cues, size: .linkedIn)
         #expect(
             log.configs
                 == [0, 1].map {
                     CarouselPaginator.slideConfig(
-                        base, slide: input.slides[$0], at: $0, of: input.slides.count, cues: cues)
+                        base, slide: input.slides[$0], at: $0, of: input.slides.count, cues: cues,
+                        fontSize: fontSize)
                 })
         // Line 6 is the second row of the second slide, and only that slide hides it.
         #expect(log.configs[0].redactedLineRanges.isEmpty)
@@ -282,7 +285,7 @@ struct CarouselFilmstripTests {
             text: String(repeating: "x", count: CarouselPaginator.Slide.maximumPreviewBytes + 1),
             firstLine: 1, lineCount: 1)
         let short = CarouselPaginator.Slide(text: "let a = 1", firstLine: 2, lineCount: 1)
-        let estimate = await ExportManager.estimatedCarouselSlideBytes(
+        let estimate = await ExportManager.estimatedCarouselBytes(
             SnapshotConfig(), slides: [long, short], cues: .none)
         #expect(estimate != nil)
     }
@@ -291,7 +294,7 @@ struct CarouselFilmstripTests {
         let slide = CarouselPaginator.Slide(
             text: String(repeating: "x", count: CarouselPaginator.Slide.maximumPreviewBytes + 1),
             firstLine: 1, lineCount: 1)
-        let estimate = await ExportManager.estimatedCarouselSlideBytes(
+        let estimate = await ExportManager.estimatedCarouselBytes(
             SnapshotConfig(), slides: [slide], cues: .none)
         #expect(estimate == nil)
     }

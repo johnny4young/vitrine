@@ -61,7 +61,8 @@ struct PublishWorkflowTests {
         redacted.clearContentMarks()
         redacted.code = "secret\nfour"
         redacted.redactedLineRanges = [1...1]
-        redacted.fontSize = max(redacted.fontSize, ExportManager.carouselMinimumFontSize)
+        redacted.fontSize = CarouselPaginator.fittedFontSize(
+            base, slides: slides, cues: .none, size: .linkedIn)
         let reference = try #require(
             ExportManager.renderCGImage(
                 redacted, scale: 1, fixedSize: ExportManager.carouselSlideSize))
@@ -78,7 +79,7 @@ struct PublishWorkflowTests {
         #expect(!EditorView.carouselAccepts(style))
     }
 
-    /// The export writes one numbered PNG per page at the 4:5 slide frame, and each
+    /// The export writes one numbered PNG per page at the default slide frame, and each
     /// slide matches a single render of that page at the normalized-pixel layer.
     /// ImageIO may encode identical pixels into different PNG byte streams, so the
     /// compressed container bytes are deliberately outside this rendering contract.
@@ -106,8 +107,9 @@ struct PublishWorkflowTests {
             var single = base
             single.clearContentMarks()
             single.code = page
-            // Slides render at the carousel font floor so they stay legible at feed size.
-            single.fontSize = max(single.fontSize, ExportManager.carouselMinimumFontSize)
+            // Every slide shares the type size fitted to the frame.
+            single.fontSize = CarouselPaginator.fittedFontSize(
+                base, slides: slides, cues: .none, size: .linkedIn)
             let reference = try #require(
                 ExportManager.renderCGImage(
                     single, scale: 1, fixedSize: ExportManager.carouselSlideSize))

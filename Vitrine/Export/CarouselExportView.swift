@@ -17,6 +17,12 @@ struct CarouselExportView: View {
     private struct OutputPlan: Equatable {
         var folder: URL?
         var slideCount: Int
+        var output: CarouselOutput
+    }
+
+    private struct EstimateRequest: Equatable {
+        var input: CarouselFilmstripModel.Input
+        var output: CarouselOutput
     }
 
     /// The user's current snapshot (style + any brand watermark); each slide replaces
@@ -41,8 +47,8 @@ struct CarouselExportView: View {
     /// the sandbox grants no folder until the user picks it.
     @State private var folder: URL?
 
-    /// The encoded size of a sampled slide, scaled by the live slide count.
-    @State private var bytesPerSlide: Int?
+    /// The encoded size of every file, sampled from one slide.
+    @State private var estimatedBytes: Int?
 
     /// Held in state so slides written during the export don't rename the line under it.
     @State private var plannedFilenames: [String] = []
@@ -85,7 +91,7 @@ struct CarouselExportView: View {
 
     private var filmstripInput: CarouselFilmstripModel.Input {
         CarouselFilmstripModel.Input(
-            base: baseConfig, slides: pages, cues: cues, profile: profile)
+            base: baseConfig, slides: pages, cues: cues, size: splitModel.size, profile: profile)
     }
 
     private var confirmTitle: LocalizedStringKey {
@@ -98,7 +104,7 @@ struct CarouselExportView: View {
         ExportSheetScaffold(
             title: "Export carousel",
             subtitle: rule == nil
-                ? "Split the snippet into numbered 4:5 slides for a carousel post." : nil,
+                ? "Split the snippet into numbered slides for a carousel post." : nil,
             width: 440,
             rootIdentifier: "carousel-export-sheet",
             failureNote: failureNote,
@@ -125,6 +131,8 @@ struct CarouselExportView: View {
                         Divider()
                         slideControls
                         Divider()
+                        sizeControls
+                        Divider()
                         outputControls
                     }
                     .toggleStyle(.switch)
@@ -138,8 +146,10 @@ struct CarouselExportView: View {
         .onAppear { outcome = CarouselPaginator.Outcome(split: request.split, code: request.code) }
         .task(id: request) { await refreshSplit() }
         // The tiles' input is everything a slide's pixels depend on, config and profile included.
-        .task(id: filmstripInput) { await refreshSizeEstimate() }
-        .task(id: OutputPlan(folder: folder, slideCount: pages.count)) {
+        .task(id: EstimateRequest(input: filmstripInput, output: splitModel.output)) {
+            await refreshSizeEstimate()
+        }
+        .task(id: OutputPlan(folder: folder, slideCount: pages.count, output: splitModel.output)) {
             refreshPlannedFilenames()
         }
     }
@@ -176,25 +186,47 @@ struct CarouselExportView: View {
 
     private var slideControls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Segments share one width, so a long label can outgrow the row.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 10) {
-                    Text("Line numbers")
-                        .fixedSize()
-                    Spacer(minLength: 0)
-                    lineNumbersPicker
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Line numbers")
-                    lineNumbersPicker
-                }
-            }
+            labeledRow("Line numbers") { lineNumbersPicker }
             switchRow(
                 "Page badge “2 / 4”", isOn: $cues.showsPageBadge,
                 identifier: "carousel-page-badge")
             switchRow(
                 "“continues →” cue", isOn: $cues.showsContinuation,
                 identifier: "carousel-continuation-cue")
+        }
+    }
+
+    private var sizeControls: some View {
+        labeledRow("Size") {
+            Picker("Size", selection: $splitModel.size) {
+                Text(verbatim: "LinkedIn 4:5").tag(CarouselSlideSize.linkedIn)
+                Text(verbatim: "Instagram 1:1").tag(CarouselSlideSize.instagram)
+                Text(verbatim: "X 16:9").tag(CarouselSlideSize.x)
+                Text("Story 9:16").tag(CarouselSlideSize.story)
+            }
+            .pickerStyle(.segmented)
+            .controlSize(.small)
+            .labelsHidden()
+            .fixedSize()
+            .accessibilityIdentifier("carousel-slide-size")
+        }
+    }
+
+    /// Segments share one width, so a long label can outgrow the row.
+    private func labeledRow(
+        _ title: LocalizedStringKey, @ViewBuilder control: () -> some View
+    ) -> some View {
+        let control = control()
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) {
+                Text(title).fixedSize()
+                Spacer(minLength: 0)
+                control
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title)
+                control
+            }
         }
     }
 
@@ -219,8 +251,19 @@ struct CarouselExportView: View {
     private var outputControls: some View {
         // Paginated once here: every line below needs only the count.
         let slideCount = pages.count
-        let estimatedBytes = bytesPerSlide.map { $0 * slideCount }
         return VStack(alignment: .leading, spacing: 6) {
+            labeledRow("Output") {
+                Picker("Output", selection: $splitModel.output) {
+                    Text("PNG set").tag(CarouselOutput.pngSet)
+                    Text(verbatim: "PDF").tag(CarouselOutput.pdf)
+                    Text("Both").tag(CarouselOutput.both)
+                }
+                .pickerStyle(.segmented)
+                .controlSize(.small)
+                .labelsHidden()
+                .fixedSize()
+                .accessibilityIdentifier("carousel-output-format")
+            }
             HStack(spacing: 10) {
                 folderLabel
                     .lineLimit(1)
@@ -286,7 +329,7 @@ struct CarouselExportView: View {
         guard slideCount > 0 else { return "" }
         let summary = CarouselPaginator.outputSummary(
             filenames: outputFilenames(slideCount: slideCount), estimatedBytes: estimatedBytes)
-        let size = CarouselPaginator.slideSizeLabel(ExportManager.carouselSlideSize)
+        let size = CarouselPaginator.slideSizeLabel(splitModel.size.pixels)
         return summary + " · " + size + " · " + String(localized: "Existing files are kept")
     }
 
@@ -302,30 +345,32 @@ struct CarouselExportView: View {
         guard slideCount > 0 else { return "" }
         let summary = CarouselPaginator.spokenOutputSummary(
             filenames: outputFilenames(slideCount: slideCount), estimatedBytes: estimatedBytes)
-        let size = CarouselPaginator.slideSizeLabel(ExportManager.carouselSlideSize)
+        let size = CarouselPaginator.slideSizeLabel(splitModel.size.pixels)
         return summary + ", " + size + ", " + String(localized: "Existing files are kept")
     }
 
     private func outputFilenames(slideCount: Int) -> [String] {
-        plannedFilenames.count == slideCount
-            ? plannedFilenames : CarouselPaginator.plannedFilenames(slideCount: slideCount, in: nil)
+        let requested = CarouselPaginator.requestedFilenames(
+            slideCount: slideCount, output: splitModel.output)
+        return plannedFilenames.count == requested.count ? plannedFilenames : requested
     }
 
     /// Waits out a stepper run before rendering, since the sample renders on the main actor.
     private func refreshSizeEstimate() async {
         // The old sample described other slides, so the size is left out until the new one.
-        bytesPerSlide = nil
+        estimatedBytes = nil
         try? await Task.sleep(for: .milliseconds(300))
         guard !Task.isCancelled else { return }
-        let estimate = await ExportManager.estimatedCarouselSlideBytes(
-            baseConfig, slides: pages, cues: cues, profile: profile)
+        let estimate = await ExportManager.estimatedCarouselBytes(
+            baseConfig, slides: pages, cues: cues, size: splitModel.size,
+            output: splitModel.output, profile: profile)
         guard !Task.isCancelled else { return }
-        bytesPerSlide = estimate
+        estimatedBytes = estimate
     }
 
     private func refreshPlannedFilenames() {
         plannedFilenames = CarouselPaginator.plannedFilenames(
-            slideCount: pages.count, in: folder)
+            slideCount: pages.count, output: splitModel.output, in: folder)
     }
 
     private func chooseFolder() {
@@ -346,17 +391,22 @@ struct CarouselExportView: View {
         guard let directory = folder ?? presentation.chooseDirectory(message: folderPrompt)
         else { return }
 
+        let (size, output) = (splitModel.size, splitModel.output)
+        let fileCount = CarouselPaginator.requestedFilenames(
+            slideCount: pages.count, output: output
+        ).count
         failureNote = nil
-        progress = (0, pages.count)
+        progress = (0, fileCount)
         Task {
             let result = await ExportManager.exportCarousel(
-                baseConfig, slides: pages, cues: cues, to: directory, profile: profile,
+                baseConfig, slides: pages, cues: cues, size: size, output: output,
+                to: directory, profile: profile,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil
             let completion = BatchExportCompletion(
                 written: result.written,
                 failed: result.failed,
-                expected: pages.count,
+                expected: fileCount,
                 renderFailure: result.firstRenderFailure)
             if completion.isComplete {
                 feedback(Notifier.confirmation(String(localized: "Carousel exported")))

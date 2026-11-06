@@ -332,6 +332,41 @@ public enum ExportManager {
         return produced ? data as Data : nil
     }
 
+    /// Renders each config as one page of a single vector PDF, every page pinned to
+    /// `fixedSize`. Returns nil for no pages or when a page context cannot be created.
+    public static func pdfData(
+        pages configs: [SnapshotConfig], fixedSize: CGSize,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+    ) -> Data? {
+        let data = NSMutableData()
+        var mediaBox = CGRect(origin: .zero, size: fixedSize)
+        guard !configs.isEmpty, let consumer = CGDataConsumer(data: data as CFMutableData),
+            let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
+        else { return nil }
+        for config in configs {
+            let renderer = ImageRenderer(
+                content: SnapshotCanvas(config: config, fixedSize: fixedSize)
+                    .environment(\.backgroundImageStore, backgroundImageStore)
+                    .environment(\.foregroundImageStore, foregroundImageStore))
+            renderer.proposedSize = ProposedViewSize(fixedSize)
+            var drawn = false
+            renderer.render { _, renderInContext in
+                context.beginPDFPage(nil)
+                if case .image = config.background {
+                    context.setFillColor(CGColor(gray: 0, alpha: 1))
+                    context.fill(mediaBox)
+                }
+                renderInContext(context)
+                context.endPDFPage()
+                drawn = true
+            }
+            guard drawn else { return nil }
+        }
+        context.closePDF()
+        return data as Data
+    }
+
     /// Wraps a finished `CGImage` in single-page PDF data — the `CGImage` analogue of the
     /// view-based `pdfData(_:proposedSize:)`, for raster-backed exports (web snapshots,
     /// comparison boards). The page is sized in points (`pixels / scale`), so a 2× capture
