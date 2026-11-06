@@ -206,10 +206,10 @@ public enum ANSIRenderer {
     /// explicit or inverse background is painted per run.
     public static func attributedString(
         _ text: String, font: NSFont, palette: ANSIPalette = .terminal, columns: Int? = nil,
-        redacting rows: [ClosedRange<Int>] = []
+        redacting rows: [ClosedRange<Int>] = [], cursor: TerminalCursorStyle = .hidden
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        for run in exportRuns(text, columns: columns, redacting: rows) {
+        for run in exportRuns(text, columns: columns, redacting: rows, cursor: cursor) {
             result.append(
                 NSAttributedString(
                     string: run.text,
@@ -232,9 +232,10 @@ public enum ANSIRenderer {
     /// Text and attributed exports share this transform so styles and row numbers cannot
     /// diverge. A replacement gets a fresh style, not attributes from hidden content.
     private static func exportRuns(
-        _ text: String, columns: Int?, redacting rows: [ClosedRange<Int>]
+        _ text: String, columns: Int?, redacting rows: [ClosedRange<Int>],
+        cursor: TerminalCursorStyle = .hidden
     ) -> [ANSIRun] {
-        let runs = styledRuns(text, columns: columns)
+        let runs = styledRuns(text, columns: columns, cursor: cursor)
         let redactions = LineHighlight.normalize(rows)
         guard !redactions.isEmpty else { return runs }
         var result: [ANSIRun] = []
@@ -271,13 +272,18 @@ public enum ANSIRenderer {
     /// Grid mode skips ``normalize(_:)`` on purpose: that collapses the `\r`/`\b` redraws
     /// the emulator interprets itself as cursor motion, and keeps the cursor escapes it
     /// needs intact.
-    private static func styledRuns(_ text: String, columns: Int? = nil) -> [ANSIRun] {
+    private static func styledRuns(
+        _ text: String, columns: Int? = nil, cursor: TerminalCursorStyle = .hidden
+    ) -> [ANSIRun] {
         if TerminalScreen.usesScreenAddressing(text) {
             // `columns` pins the reconstruction width (`--terminal-width`); `nil` lets the
             // emulator infer it. Line mode reflows to the image, so the width is moot there.
-            return TerminalScreen.runs(text, columns: columns)
+            return TerminalScreen.runs(text, columns: columns, cursor: cursor)
         }
-        return ANSIParser.parse(normalize(text))
+        let runs = ANSIParser.parse(normalize(text))
+        // Line mode tracks no column, so its cursor sits where the output ended.
+        guard cursor != .hidden, !TerminalScreen.leavesCursorHidden(text) else { return runs }
+        return runs + cursor.runs()
     }
 
     /// What a redraw escape does to the lines ``normalize(_:)`` has emitted. The line
@@ -566,6 +572,11 @@ public enum ANSIRenderer {
         // inverse); plain runs let the canvas terminal fill show through.
         if hasExplicitBackground || style.inverse {
             attributes[.backgroundColor] = background
+        }
+        // Measured, because a fallback font's glyph can be wider than the code font's cell.
+        if style.isCursorBar {
+            attributes[.kern] = -NSAttributedString(string: "\u{258F}", attributes: attributes)
+                .size().width
         }
         if style.underline {
             attributes[.underlineStyle] = NSUnderlineStyle.single.rawValue

@@ -7,22 +7,24 @@ enum RenderedImageCopy {
     /// Copies at `settings`' geometry and output. An editor session's `outputBehavior`
     /// is the app-wide instance, so this is right for a session and the default alike.
     static func copy(
-        _ config: SnapshotConfig, settings: AppSettings, pasteboard: NSPasteboard = .general
+        _ config: SnapshotConfig, settings: AppSettings, pasteboard: NSPasteboard = .general,
+        onCopied: (_ pngBytes: Int) -> Void = { _ in }
     ) -> ExportManager.CopyOutcome {
         copy(
             config, output: settings.export, behavior: settings.outputBehavior,
             scale: CGFloat(settings.effectiveExportScale), fixedSize: settings.effectiveFixedSize,
-            pasteboard: pasteboard)
+            pasteboard: pasteboard, onCopied: onCopied)
     }
 
     /// The same copy at explicit geometry, for one-off destination presets.
     static func copy(
         _ config: SnapshotConfig, output: ExportSettings, behavior: OutputBehavior,
-        scale: CGFloat, fixedSize: CGSize?, pasteboard: NSPasteboard = .general
+        scale: CGFloat, fixedSize: CGSize?, pasteboard: NSPasteboard = .general,
+        onCopied: (_ pngBytes: Int) -> Void = { _ in }
     ) -> ExportManager.CopyOutcome {
         ExportManager.copyToPasteboardOutcome(
             config, scale: scale, fixedSize: fixedSize, profile: output.colorProfile,
             richText: output.richClipboard, plainText: output.textSidecar,
-            concealed: behavior.concealClipboard, pasteboard: pasteboard)
+            concealed: behavior.concealClipboard, pasteboard: pasteboard, onCopied: onCopied)
     }
 }

@@ -8,6 +8,29 @@ public enum TerminalPaletteMode: String, CaseIterable, Codable, Hashable, Sendab
     case raw
 }
 
+/// How a terminal capture draws its cursor. `hidden` draws nothing.
+public enum TerminalCursorStyle: String, CaseIterable, Codable, Hashable, Sendable {
+    case hidden, block, bar
+
+    /// The runs that draw this cursor over one cell. A bar is a separate zero-advance glyph,
+    /// so it neither replaces the cell nor shifts the row. A cell's own background paints over
+    /// a glyph drawn before it, so a bar on a colored cell inverts the cell instead.
+    public func runs(over cell: String = " ", style: ANSIStyle = ANSIStyle()) -> [ANSIRun] {
+        switch self {
+        case .hidden:
+            return [ANSIRun(text: cell, style: style)]
+        case .bar where style.background == .default && !style.inverse:
+            var bar = ANSIStyle()
+            bar.isCursorBar = true
+            return [ANSIRun(text: "\u{258F}", style: bar), ANSIRun(text: cell, style: style)]
+        case .block, .bar:
+            var inverted = style
+            inverted.inverse.toggle()
+            return [ANSIRun(text: cell, style: inverted)]
+        }
+    }
+}
+
 /// The project, branch and command a terminal header shows, parsed from the header's own
 /// filename and title. It never reads the transcript, so it can't surface a redacted row.
 public struct TerminalHeaderContext: Equatable, Sendable {

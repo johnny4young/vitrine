@@ -111,9 +111,11 @@ final class EditorSession {
             presentation.clearsPreflight(
                 of: settings, for: .copy, delivering: EditorPresentation.copyPayload(of: settings))
         else { return nil }
+        var pngBytes: Int?
         let outcome = RenderedImageCopy.copy(
-            settings.exportConfig, settings: settings, pasteboard: pasteboard)
-        feedback(ExportFeedback.copyOutcome(outcome))
+            settings.exportConfig, settings: settings, pasteboard: pasteboard
+        ) { pngBytes = $0 }
+        feedback(ExportFeedback.copyOutcome(outcome, pngBytes: pngBytes))
         copyConfirmation.record(outcome)
         guard
             EditorView.shouldCloseAfterCopy(

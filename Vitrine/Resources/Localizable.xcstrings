@@ -1,6 +1,234 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Don't warn for this theme" : {
+      "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No advertir con este tema"
+          }
+        }
+      }
+    },
+    "Change Theme" : {
+      "comment" : "Undo action name for switching to the theme the legibility warning offered.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar tema"
+          }
+        }
+      }
+    },
+    "Low code contrast" : {
+      "comment" : "Editor inspector: warning that a capture's code text is hard to read on its surface.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contraste bajo en el código"
+          }
+        }
+      }
+    },
+    "%lld%% of the text" : {
+      "comment" : "Legibility details: how much of the capture's text is drawn in this color.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %% del texto"
+          }
+        }
+      }
+    },
+    "Use %@" : {
+      "comment" : "Legibility details: switch to the named theme, which measured readable.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar %@"
+          }
+        }
+      }
+    },
+    "Divider" : {
+      "comment" : "Comparison board inspector row: where the divider splits two captures, in percent",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divisor"
+          }
+        }
+      }
+    },
+    "Slider" : {
+      "comment" : "Comparison board layout: two captures in one frame, split at a divider",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cortina"
+          }
+        }
+      }
+    },
+    "Divider position" : {
+      "comment" : "Comparison board: where the divider splits two captures, as a percentage",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posición del divisor"
+          }
+        }
+      }
+    },
+    "Drag, or use the arrow keys, to move the divider" : {
+      "comment" : "VoiceOver hint on the comparison board's divider",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra o usa las flechas para mover el divisor"
+          }
+        }
+      }
+    },
+    "Clipboard holds %@" : {
+      "comment" : "Empty editor: what the clipboard holds. The argument is a measurement such as 14 lines of Swift.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El portapapeles tiene %@"
+          }
+        }
+      }
+    },
+    "%lld lines of %@" : {
+      "comment" : "Empty editor: how much the clipboard holds and its language, as in 14 lines of Swift.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line of %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines of %@"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld línea de %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld líneas de %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "about %@" : {
+      "comment" : "VoiceOver: an estimated file size, read in place of the tilde mark.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "alrededor de %@"
+          }
+        }
+      }
+    },
+    "%@ to %@" : {
+      "comment" : "VoiceOver: the first and last file names of a carousel export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ a %2$@"
+          }
+        }
+      }
+    },
+    "Cursor" : {
+      "comment" : "Row that picks the cursor style of a terminal capture",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cursor"
+          }
+        }
+      }
+    },
+    "Hidden" : {
+      "comment" : "Terminal cursor style",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oculto"
+          }
+        }
+      }
+    },
+    "Block" : {
+      "comment" : "Terminal cursor style",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloque"
+          }
+        }
+      }
+    },
+    "Bar" : {
+      "comment" : "Terminal cursor style",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra"
+          }
+        }
+      }
+    },
+    "Drawn where the output left it, unless the program hid it or a full-screen app already exited." : {
+      "comment" : "Tooltip of the terminal cursor control",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se dibuja donde lo dejó la salida, salvo que el programa lo haya ocultado o que una app de pantalla completa ya haya salido."
+          }
+        }
+      }
+    },
     "Conflict: %@ is also a macOS shortcut" : {
       "comment" : "Settings notice under the global hotkey recorder. %@ is the shortcut, such as ⇧⌘3.",
       "localizations" : {

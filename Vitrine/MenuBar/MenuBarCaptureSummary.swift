@@ -22,6 +22,23 @@ nonisolated struct ClipboardTextFacts: Equatable, Sendable {
     var isURL = false
 }
 
+extension ClipboardContent {
+    /// What was measured, as the empty editor names it. Unread text and images stay
+    /// unnamed: the first is unknown, and Paste Code cannot take the second.
+    nonisolated func measuredDescription(bundle: Bundle = .main) -> String? {
+        guard case .text(let facts?) = self else { return nil }
+        if facts.blockCount > 1 {
+            return String(localized: "\(facts.blockCount) code blocks", bundle: bundle)
+        }
+        // These two name no programming language worth reading out.
+        if facts.language == .plaintext || facts.language == .terminal {
+            return String(localized: "\(facts.lineCount) lines", bundle: bundle)
+        }
+        let language = facts.language.displayName
+        return String(localized: "\(facts.lineCount) lines of \(language)", bundle: bundle)
+    }
+}
+
 /// The one-line preview under the capture button.
 nonisolated struct MenuBarCaptureSummary: Equatable {
     var line: String
@@ -150,43 +167,49 @@ nonisolated enum ClipboardInspector {
     }
 
     /// Oversized or undecodable text stays unmeasured, so no number disagrees with the capture.
-    static func content(ofUTF8 data: Data) -> ClipboardContent {
+    static func content(ofUTF8 data: Data, tidying: Bool = false) -> ClipboardContent {
         guard data.count <= maximumMeasuredBytes,
             let text = String(data: data, encoding: .utf8)
         else { return .text(nil) }
-        return facts(of: text).map { .text($0) } ?? .nothing
+        return facts(of: text, tidying: tidying).map { .text($0) } ?? .nothing
     }
 
-    /// `nil` for blank text, which a capture treats as an empty clipboard.
-    static func facts(of text: String) -> ClipboardTextFacts? {
+    /// `nil` for blank text, which a capture treats as an empty clipboard. `tidying` counts
+    /// the lines an editor paste produces when it re-indents, which a quick capture does not.
+    static func facts(of text: String, tidying: Bool = false) -> ClipboardTextFacts? {
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         let interpreted = LanguageDetector.interpret(text)
+        let code =
+            tidying
+            ? CodeFormatter.tidy(interpreted.code, language: interpreted.language)
+            : interpreted.code
         return ClipboardTextFacts(
             language: interpreted.language,
-            lineCount: LineSplitter.lineCount(of: interpreted.code),
+            lineCount: LineSplitter.lineCount(of: code),
             blockCount: interpreted.blockCount,
             isURL: LanguageDetector.isURL(text))
     }
 
     /// `nil` when the pasteboard moved on or became marked around the read.
     static func readContent(
-        from name: NSPasteboard.Name, expecting changeCount: Int
+        from name: NSPasteboard.Name, expecting changeCount: Int, tidying: Bool = false
     ) async -> ClipboardContent? {
         await withCheckedContinuation { continuation in
             readQueue.async {
-                continuation.resume(returning: readNow(from: name, expecting: changeCount))
+                continuation.resume(
+                    returning: readNow(from: name, expecting: changeCount, tidying: tidying))
             }
         }
     }
 
     private static func readNow(
-        from name: NSPasteboard.Name, expecting changeCount: Int
+        from name: NSPasteboard.Name, expecting changeCount: Int, tidying: Bool
     ) -> ClipboardContent? {
         let pasteboard = NSPasteboard(name: name)
         guard isReadable(pasteboard, expecting: changeCount) else { return nil }
         let data = pasteboard.data(forType: .string)
         guard isReadable(pasteboard, expecting: changeCount) else { return nil }
-        return data.map(content(ofUTF8:)) ?? .nothing
+        return data.map { content(ofUTF8: $0, tidying: tidying) } ?? .nothing
     }
 
     private static func isReadable(_ pasteboard: NSPasteboard, expecting changeCount: Int) -> Bool {
@@ -213,4 +236,13 @@ nonisolated struct ClipboardReader: Sendable {
     static let live = ClipboardReader(
         read: { await ClipboardInspector.readContent(from: $0, expecting: $1) },
         detectsWebURL: { await ClipboardInspector.detectsWebURL(on: $0, expecting: $1) })
+
+    /// Measures what pasting into the editor produces under the re-indent preference.
+    static func editorPaste(reindents: Bool) -> ClipboardReader {
+        ClipboardReader(
+            read: {
+                await ClipboardInspector.readContent(from: $0, expecting: $1, tidying: reindents)
+            },
+            detectsWebURL: live.detectsWebURL)
+    }
 }

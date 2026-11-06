@@ -29,6 +29,8 @@ public struct ANSIStyle: Equatable, Sendable {
     /// with an empty-URI `ESC]8;;`, and survives SGR resets in between — so it lives on
     /// the style only to ride along the run split, not as an SGR attribute.
     public var hyperlink: String?
+    /// Marks the zero-advance glyph of a bar cursor. Never set by a parsed sequence.
+    public var isCursorBar = false
 
     public init(
         foreground: ANSIColor = .default,

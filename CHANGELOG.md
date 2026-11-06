@@ -14,12 +14,25 @@ can never drift.
 
 ### Added
 
+- Warn in the inspector's Theme header when a capture's code text has low measured contrast
+  on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
+  stock theme only when it measures better, and can be dismissed for a theme until you quit.
+- The empty editor says what the clipboard holds, such as "14 lines of Swift", counting
+  the lines a paste would produce, when System Settings always allows Vitrine to read the
+  clipboard. Otherwise it stays silent and the contents stay unread.
+- The capture HUD shows the size of the PNG it put on the clipboard.
+- Comparison boards get a Slider layout for two captures: one frame split at a divider you
+  drag, or move with the arrow keys when macOS keyboard navigation is on. Exports draw the
+  line at the chosen position.
 - Preview the style presets as thumbnails of the current capture under Presets in the
   inspector, and apply one with a click. They show a preset's style on a short excerpt,
   update once typing settles, and mask redacted or blurred content. An image capture shows
   the image; an empty document shows the sample.
 - Terminal captures get an ANSI palette control, Theme or Raw xterm colors, in the inspector
   and Settings ▸ Style, with `--terminal-palette`. The default is today's rendering.
+- Terminal captures can draw their cursor, Hidden, Block or Bar, in the inspector and
+  Settings ▸ Style, with `--terminal-cursor`. The default stays Hidden, and plain text exports
+  never include the cursor.
 - The inspector's Header section lists a terminal capture's filename and title as removable
   chips, with a prompt picker and an undoable Remove arguments. Text they remove also leaves
   the alternative text and window title.
@@ -55,6 +68,8 @@ can never drift.
 - See five copyable recipe commands with their free or PRO access, and the order in which
   defaults, recipes and flags override each other.
 - Deleting a counter renumbers the badges above it, so they stay in order.
+- The multi-size sheet shows an estimated total for the selected sizes, measured from real
+  renders, except for very large documents.
 - Show what the next capture will be under the menu bar's capture button: language, line
   count, theme and destination. Language and lines appear only when System Settings always
   allows Vitrine to read the clipboard; otherwise the panel leaves the contents unread.

@@ -300,7 +300,8 @@ public enum RichPasteboard {
             return ANSIRenderer.attributedString(
                 config.code, font: font,
                 palette: .resolved(for: config.theme, mode: config.terminalPalette),
-                columns: config.terminalColumns, redacting: config.redactedLineRanges)
+                columns: config.terminalColumns, redacting: config.redactedLineRanges,
+                cursor: config.code.isEmpty ? .hidden : config.terminalCursor)
         }
         return HighlightManager.shared.attributedString(
             for: config.richClipboardText, language: config.language, theme: config.theme,
@@ -352,14 +353,17 @@ public enum RichPasteboard {
         concealed: Bool = false,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
-        to pasteboard: NSPasteboard = .general
+        to pasteboard: NSPasteboard = .general,
+        onCopied: (_ pngBytes: Int) -> Void = { _ in }
     ) throws(RenderBudgetError) -> Bool {
         let payload = try makePayloadChecked(
             for: config, scale: scale, fixedSize: fixedSize, profile: profile,
             includeRichText: includeRichText, includePlainText: includePlainText,
             backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore)
-        return write(payload, concealed: concealed, to: pasteboard)
+        guard write(payload, concealed: concealed, to: pasteboard) else { return false }
+        onCopied(payload.png.count)
+        return true
     }
 
     /// Checked rich-copy path for an already-rendered raster. Payload creation can
@@ -371,14 +375,17 @@ public enum RichPasteboard {
         includeRichText: Bool,
         includePlainText: Bool = false,
         concealed: Bool = false,
-        to pasteboard: NSPasteboard = .general
+        to pasteboard: NSPasteboard = .general,
+        onCopied: (_ pngBytes: Int) -> Void = { _ in }
     ) -> ExportManager.CopyOutcome {
         guard
             let payload = makePayload(
                 cgImage: cgImage, for: config, includeRichText: includeRichText,
                 includePlainText: includePlainText)
         else { return .renderFailed(.encodingFailed) }
-        return write(payload, concealed: concealed, to: pasteboard) ? .copied : .failed
+        guard write(payload, concealed: concealed, to: pasteboard) else { return .failed }
+        onCopied(payload.png.count)
+        return .copied
     }
 
     // MARK: - Explicit single-representation copies

@@ -359,6 +359,25 @@ struct CLIReproductionCommandTests: CLITestSupport {
         try inDirectory(directory) { try expectRoundTrip(overriding, recipe: file) }
     }
 
+    @Test func aDocumentWithoutACursorOverridesARecipeWithOne() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let recipe = WorkspaceRecipe(
+            name: "Bar",
+            style: StyleSnapshot(
+                themeID: Theme.oneDark.id, terminalCursor: .bar, background: .gradient(.aurora)))
+        let file = try recipeFile(recipe, in: directory)
+        var style = applied(recipe)
+        style.language = .terminal
+        #expect(style.terminalCursor == .bar)
+        #expect(try !line(command(style).outcome(recipe: file)).contains("--terminal-cursor"))
+
+        style.terminalCursor = .hidden
+        let overriding = command(style)
+        #expect(try line(overriding.outcome(recipe: file)).contains("--terminal-cursor hidden"))
+        try inDirectory(directory) { try expectRoundTrip(overriding, recipe: file) }
+    }
+
     @Test func aMatchingRecipeNeedsOnlyItsPathAndFlagsOverrideTheRest() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

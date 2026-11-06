@@ -221,6 +221,7 @@ struct CLIReproductionCommand {
         if style.language == .terminal {
             label(
                 "--terminal-palette", style.terminalPalette.rawValue, base.terminalPalette.rawValue)
+            label("--terminal-cursor", style.terminalCursor.rawValue, base.terminalCursor.rawValue)
         }
         return flags
     }

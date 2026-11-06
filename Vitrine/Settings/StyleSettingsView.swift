@@ -181,6 +181,21 @@ struct StyleSettingsView: View {
                 .accessibilityLabel("ANSI palette")
                 .accessibilityIdentifier("settings-terminal-palette-picker")
             }
+            TokenRow(label: Text("Cursor")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (TerminalCursorStyle.hidden, Text("Hidden")),
+                        (TerminalCursorStyle.block, Text("Block")),
+                        (TerminalCursorStyle.bar, Text("Bar")),
+                    ],
+                    selection: $settings.config.terminalCursor
+                )
+                .help(
+                    "Drawn where the output left it, unless the program hid it or a full-screen app already exited."
+                )
+                .accessibilityLabel("Cursor")
+                .accessibilityIdentifier("settings-terminal-cursor-picker")
+            }
         }
 
         TokenGroup(title: Text("Canvas")) {

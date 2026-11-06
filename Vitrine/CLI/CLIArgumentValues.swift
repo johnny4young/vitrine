@@ -438,6 +438,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolveTerminalCursor(_ raw: String, flag: String) throws -> TerminalCursorStyle {
+        guard let value = TerminalCursorStyle(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     /// Parses and range-checks the editor's code soft-wrap width. Uses the same
     /// bounds as the Style pane, so a CLI render and a saved editor config agree.
     func resolveWrapColumns(_ raw: String, flag: String) throws -> Int {
