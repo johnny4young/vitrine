@@ -1,6 +1,28 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Invalid range" : {
+      "comment" : "Accessibility value of a terminal crop field whose text is not one first-last span",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rango no válido"
+          }
+        }
+      }
+    },
+    "Remove blur and spotlight boxes to crop" : {
+      "comment" : "Tooltip of the disabled terminal crop fields",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quita las cajas de desenfoque y de foco para recortar"
+          }
+        }
+      }
+    },
     "All" : {
       "comment" : "Placeholder of a terminal crop field when every row or column is kept",
       "localizations" : {

@@ -205,11 +205,13 @@ public struct SnapshotConfig: Equatable {
 
     /// Source for portable text and share links. Unredacted terminal captures retain
     /// their ANSI transcript for faithful reopening; once any rows are redacted or cropped,
-    /// only the sanitized final screen may leave the app, never the original transcript.
+    /// only the final screen may leave the app, never the original transcript. A cropped one
+    /// keeps its colors; a redacted one is plain text.
     public var richClipboardText: String {
         guard !usesImageContent else { return "" }
-        if language == .terminal, !redactedLineRanges.isEmpty || !terminalCrop.isEmpty {
-            return sidecarText
+        if language == .terminal, !redactedLineRanges.isEmpty { return sidecarText }
+        if language == .terminal, !terminalCrop.isEmpty {
+            return ANSIRenderer.styledText(code, columns: terminalColumns, crop: terminalCrop)
         }
         return replacingRedactedLines(in: code)
     }

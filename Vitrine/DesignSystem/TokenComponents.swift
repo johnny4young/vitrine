@@ -268,6 +268,7 @@ struct TokenTextField: View {
     let prompt: Text
     @Binding var text: String
     var width: CGFloat = 160
+    var isInvalid = false
     var onEndEditing: () -> Void = {}
 
     @FocusState private var isFocused: Bool
@@ -292,8 +293,11 @@ struct TokenTextField: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(
-                        isFocused ? VitrineTokens.Line.focusRing : VitrineTokens.Line.border,
-                        lineWidth: isFocused ? Brand.Stroke.focus : Brand.Stroke.hairline
+                        isInvalid
+                            ? VitrineTokens.Accent.destructiveText
+                            : isFocused ? VitrineTokens.Line.focusRing : VitrineTokens.Line.border,
+                        lineWidth: isFocused || isInvalid
+                            ? Brand.Stroke.focus : Brand.Stroke.hairline
                     )
             )
             .background(

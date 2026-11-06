@@ -127,6 +127,7 @@ final class PresetThumbnailModel {
         let crop = source.activeTerminalCrop
         excerpt.code = rows.joined(separator: "\n")
         excerpt.terminalCrop = TerminalCrop()
+        excerpt.firstLineNumber = source.firstLineNumber + crop.rowOffset
         excerpt.highlightedLineRanges = clip(crop.localRanges(source.highlightedLineRanges))
         excerpt.redactedLineRanges = clip(
             crop.localRanges(LineHighlight.normalize(source.redactedLineRanges)))

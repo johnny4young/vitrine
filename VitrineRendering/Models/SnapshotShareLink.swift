@@ -46,12 +46,14 @@ public struct SharedSnapshot: Codable, Equatable {
     /// is a local file, not shareable text.
     public init(capturing config: SnapshotConfig) {
         self.version = Self.schemaVersion
-        // A cropped link holds only the kept cells, under blank rows that keep their numbers.
+        // A cropped link holds only the kept cells. Blank rows above keep their numbers when a
+        // gutter or highlight shows them.
         let crop = config.activeTerminalCrop
         let kept = config.richClipboardText
-        let offset = kept.isEmpty ? 0 : crop.rowOffset
-        self.code = String(repeating: "\n", count: offset) + kept
-        self.terminalCrop = crop.rows.map { TerminalCrop(rows: $0) }
+        let numbered = config.showLineNumbers || !config.highlightedLineRanges.isEmpty
+        let rows = numbered && !kept.isEmpty ? crop.rows : nil
+        self.code = String(repeating: "\n", count: rows.map { $0.lowerBound - 1 } ?? 0) + kept
+        self.terminalCrop = rows.map { TerminalCrop(rows: $0) }
         self.languageID = config.language.rawValue
         var style = StyleSnapshot(capturing: config)
         // A redacted link holds only the final screen, which no longer says where the cursor was.

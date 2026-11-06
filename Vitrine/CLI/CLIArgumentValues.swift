@@ -440,10 +440,10 @@ extension CLIArgumentParser {
 
     /// One `first-last` span of the final screen's rows or columns.
     func resolveCropRange(_ raw: String, flag: String) throws -> ClosedRange<Int> {
-        let ranges = try resolveLineRanges(raw, flag: flag)
-        guard ranges.count == 1, let range = ranges.first, range.upperBound <= TerminalCrop.maximum
-        else { throw CLIError.invalidValue(flag: flag, value: raw) }
-        return range
+        guard let span = TerminalCrop.span(raw) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return span
     }
 
     var terminalCrop: TerminalCrop? {

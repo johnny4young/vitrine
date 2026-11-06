@@ -217,6 +217,12 @@ extension CLIArgumentParser {
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
 
+        // A blur box is placed on the whole canvas, so a crop would slide content out from under it.
+        if terminalCrop != nil, !annotations.blurBoxes.points.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --blur-box with --terminal-crop-rows or --terminal-crop-columns.")
+        }
+
         if imageInputPath != nil {
             if recipe != nil {
                 throw CLIError.incompatibleOptions(

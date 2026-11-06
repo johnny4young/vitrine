@@ -392,6 +392,19 @@ struct CLIReproductionCommandTests: CLITestSupport {
         #expect(try !line(command(style).outcome()).contains("--terminal-crop"))
     }
 
+    @Test func aCroppedCaptureWithABlurBoxHasNoCopiedLine() {
+        var style = SnapshotConfig(code: "", language: .terminal)
+        style.terminalCrop = TerminalCrop(rows: 3...8)
+        style.annotations = [
+            Annotation(kind: .blur, start: CGPoint(x: 0.1, y: 0.36), end: CGPoint(x: 0.9, y: 0.46))
+        ]
+        guard case .unavailable(let limits) = command(style).outcome() else {
+            Issue.record("A blurred, cropped capture must not get a line")
+            return
+        }
+        #expect(limits.contains(.annotations))
+    }
+
     @Test func aMatchingRecipeNeedsOnlyItsPathAndFlagsOverrideTheRest() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

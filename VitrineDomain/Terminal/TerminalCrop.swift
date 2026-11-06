@@ -36,14 +36,34 @@ public struct TerminalCrop: Codable, Hashable, Sendable {
         }
     }
 
+    /// One `first` or `first-last` span of positive numbers, either order; anything else,
+    /// including a list, is `nil`. The CLI and the inspector both read spans with it.
+    public static func span(_ text: String) -> ClosedRange<Int>? {
+        let bounds = text.split(separator: "-", omittingEmptySubsequences: false).map {
+            Int($0.trimmingCharacters(in: .whitespaces))
+        }
+        guard (1...2).contains(bounds.count), let low = bounds.first ?? nil,
+            let high = bounds.last ?? nil, min(low, high) >= 1, max(low, high) <= maximum
+        else { return nil }
+        return min(low, high)...max(low, high)
+    }
+
+    /// Blur and spotlight boxes sit at fixed canvas positions, so a crop would move the
+    /// content out from under them.
+    public static func isBlocked(by annotations: [Annotation]) -> Bool {
+        annotations.contains { $0.kind == .blur || $0.kind == .spotlight }
+    }
+
     /// Keeps the cropped cells of rendered runs. A wide character cut by a column edge
     /// becomes a space, so the cells beside it keep their place; a tab expands to spaces.
+    /// Marks and joiners go with the characters they attach, so a cut one leaves none.
     public func apply(to runs: [ANSIRun]) -> [ANSIRun] {
         guard !isEmpty else { return runs }
         var result: [ANSIRun] = []
         var row = 1
         var column = 1
         var keptBase = false
+        var joiner: Unicode.Scalar?
         for run in runs {
             var text = String.UnicodeScalarView()
             for scalar in run.text.unicodeScalars {
@@ -51,6 +71,8 @@ public struct TerminalCrop: Codable, Hashable, Sendable {
                     if keeps(row: row), keeps(row: row + 1) { text.append(scalar) }
                     row += 1
                     column = 1
+                    keptBase = false
+                    joiner = nil
                     continue
                 }
                 guard keeps(row: row) else { continue }
@@ -60,8 +82,13 @@ public struct TerminalCrop: Codable, Hashable, Sendable {
                 }
                 // A bar cursor draws over the cell that follows it without advancing.
                 if run.style.isCursorBar || CharacterWidth.displayWidth(scalar) == 0 {
-                    let kept = run.style.isCursorBar ? columns.contains(column) : keptBase
-                    if kept { text.append(scalar) }
+                    if run.style.isCursorBar {
+                        if columns.contains(column) { text.append(scalar) }
+                    } else if scalar == "\u{200D}" {
+                        joiner = keptBase ? scalar : nil
+                    } else if keptBase {
+                        text.append(scalar)
+                    }
                     continue
                 }
                 let width =
@@ -70,6 +97,8 @@ public struct TerminalCrop: Codable, Hashable, Sendable {
                 let inside = max(
                     0, min(last, columns.upperBound) - max(column, columns.lowerBound) + 1)
                 keptBase = inside == width && scalar != "\t"
+                if keptBase, let pending = joiner { text.append(pending) }
+                joiner = nil
                 if keptBase {
                     text.append(scalar)
                 } else {
