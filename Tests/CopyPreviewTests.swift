@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 import Testing
 import VitrineRendering
 
@@ -169,6 +170,22 @@ struct CopyPreviewTests {
         #expect(reopened == ["second"])
         #expect(controller.item == nil)
         #expect(controller.panel?.isVisible == false)
+    }
+
+    @Test func thePanelIsSizedBeforeItsFirstLayoutAndMatchesItsContent() throws {
+        let controller = makeController()
+        defer { controller.dismiss() }
+        controller.present(CopyPreview.Item(png: try samplePNG(width: 400, height: 200)) {})
+        let panel = try #require(controller.panel)
+        let expected = CopyPreview.panelSize(
+            for: CopyPreview.displaySize(for: CGSize(width: 400, height: 200)))
+        #expect(panel.frame.size == expected)
+
+        // The hosting view reports a zero fitting size here, which is why the panel is sized up front.
+        #expect(panel.contentView?.fittingSize == .zero)
+        let hosting = try #require(
+            panel.contentViewController as? NSHostingController<CopyPreviewView>)
+        #expect(hosting.sizeThatFits(in: CGSize(width: 2000, height: 2000)) == expected)
     }
 
     @Test func aLargeCopyIsDecodedAtThumbnailSize() throws {

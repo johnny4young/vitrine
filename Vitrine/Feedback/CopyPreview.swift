@@ -39,6 +39,14 @@ enum CopyPreview {
     }
 
     /// The bottom-trailing corner of `visible`, far from the HUD and the menu bar above.
+    static let inset = Brand.Spacing.md
+
+    /// The panel's size for a preview of `displaySize`, set up front because the hosting
+    /// view can report a zero fitting size before its first layout pass.
+    static func panelSize(for displaySize: CGSize) -> CGSize {
+        CGSize(width: displaySize.width + inset * 2, height: displaySize.height + inset * 2)
+    }
+
     static func frame(for size: CGSize, in visible: CGRect) -> CGRect {
         let margin = Brand.Spacing.md
         return CGRect(
@@ -243,7 +251,7 @@ struct CopyPreviewView: View {
                 .accessibilityIdentifier("copy-preview-dismiss")
             }
             .brandShadow(Brand.Shadow.card)
-            .padding(Brand.Spacing.md)
+            .padding(CopyPreview.inset)
             // Decorative entrance only; under Reduce Motion the preview simply appears.
             .opacity(animate && !shown ? 0 : 1)
             .offset(x: animate && !shown ? Brand.Spacing.lg : 0)
@@ -300,9 +308,10 @@ final class CopyPreviewController {
         self.item = item
         isHovered = false
         isDragging = false
+        let displaySize = CopyPreview.displaySize(
+            for: CGSize(width: image.width, height: image.height))
         let root = CopyPreviewView(
-            png: item.png, image: image,
-            size: CopyPreview.displaySize(for: CGSize(width: image.width, height: image.height)),
+            png: item.png, image: image, size: displaySize,
             animate: CaptureHUD.shouldAnimate(reduceMotion: CaptureHUD.reduceMotionEnabled),
             events: events(for: generation))
         let hosting = NSHostingController(rootView: root)
@@ -310,7 +319,7 @@ final class CopyPreviewController {
         hosting.sizingOptions = []
         let panel = reusablePanel()
         panel.contentViewController = hosting
-        let size = hosting.view.fittingSize
+        let size = CopyPreview.panelSize(for: displaySize)
         if let visible = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame {
             panel.setFrame(CopyPreview.frame(for: size, in: visible), display: false)
         } else {
