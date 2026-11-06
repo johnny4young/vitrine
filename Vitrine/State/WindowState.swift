@@ -112,6 +112,7 @@ struct EditorWindowState: Codable, Equatable {
     var fontSize: Double
     var fontLigatures: Bool
     var padding: Double
+    var paddingMode: PaddingMode?
     var cornerRadius: Double
     var shadowRadius: Double
     var showChrome: Bool
@@ -149,6 +150,7 @@ struct EditorWindowState: Codable, Equatable {
         fontSize = config.fontSize
         fontLigatures = config.fontLigatures
         padding = config.padding
+        paddingMode = config.paddingMode == .manual ? nil : config.paddingMode
         cornerRadius = config.cornerRadius
         shadowRadius = config.shadowRadius
         showChrome = config.showChrome
@@ -211,6 +213,7 @@ struct EditorWindowState: Codable, Equatable {
         config.fontSize = SettingsDefaults.clampFontSize(fontSize)
         config.fontLigatures = fontLigatures
         config.padding = SettingsDefaults.clampPadding(padding)
+        config.paddingMode = paddingMode ?? .manual
         config.cornerRadius = SettingsDefaults.clampCornerRadius(cornerRadius)
         config.shadowRadius = SettingsDefaults.clampShadowRadius(shadowRadius)
         config.showChrome = showChrome
@@ -238,7 +241,7 @@ struct EditorWindowState: Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case code, languageID, themeID, fontName, fontSize, fontLigatures
-        case padding, cornerRadius, shadowRadius, showChrome, showShadow
+        case padding, paddingMode, cornerRadius, shadowRadius, showChrome, showShadow
         case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
@@ -261,6 +264,7 @@ struct EditorWindowState: Codable, Equatable {
         fontLigatures =
             (try? container.decode(Bool.self, forKey: .fontLigatures)) ?? fallback.fontLigatures
         padding = (try? container.decode(Double.self, forKey: .padding)) ?? fallback.padding
+        paddingMode = try? container.decodeIfPresent(PaddingMode.self, forKey: .paddingMode)
         cornerRadius =
             (try? container.decode(Double.self, forKey: .cornerRadius)) ?? fallback.cornerRadius
         shadowRadius =

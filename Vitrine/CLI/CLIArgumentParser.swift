@@ -24,6 +24,7 @@ struct CLIArgumentParser {
     var fontLigatures: Bool?
     var fontSize: Double?
     var padding: Double?
+    var paddingMode: PaddingMode?
     var cornerRadius: Double?
     var shadowRadius: Double?
     var terminalColumns: Int?
@@ -192,6 +193,8 @@ struct CLIArgumentParser {
             fontSize = try resolveFontSize(value, flag: token)
         case .padding:
             padding = try resolvePadding(value, flag: token)
+        case .paddingMode:
+            paddingMode = try resolvePaddingMode(value, flag: token)
         case .cornerRadius:
             cornerRadius = try resolveCornerRadius(value, flag: token)
         case .shadowRadius:

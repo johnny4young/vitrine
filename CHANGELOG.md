@@ -14,6 +14,11 @@ can never drift.
 
 ### Added
 
+- A Balance switch under Padding (inspector and Settings ▸ Style) measures the padding to the
+  card and the visible part of its shadow, and sets the card a little above center, in the
+  window and in fixed-size destinations. `vitrine render --padding-mode balanced` does the
+  same. Off by default, so existing styles and exports render as before; presets, recipes,
+  restored windows and share links carry it.
 - Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
   hides the code and inspector columns. A dock on the stage shows the current theme,
   typography, background and padding, and opens the inspector's section for each in a

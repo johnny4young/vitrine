@@ -31,6 +31,7 @@ struct StyleCodecCompletenessTests {
         config.fontSize = 18
         config.fontLigatures = true
         config.padding = 48
+        config.paddingMode = .balanced
         config.cornerRadius = 18
         config.shadowRadius = 40
         config.showChrome = false

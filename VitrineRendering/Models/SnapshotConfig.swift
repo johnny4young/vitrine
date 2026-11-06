@@ -26,6 +26,14 @@ public struct SnapshotConfig: Equatable {
     /// change and never reflows the code.
     public var fontLigatures: Bool = false
     public var padding: Double = 32
+    /// `.balanced` reads `padding` as the visible margin; `.manual` keeps the geometric one.
+    public var paddingMode: PaddingMode = .manual
+
+    /// The on/off view of `paddingMode` that the Balance switches bind to.
+    public var balancesPadding: Bool {
+        get { paddingMode == .balanced }
+        set { paddingMode = newValue ? .balanced : .manual }
+    }
     public var background: BackgroundStyle = .gradient(.aurora)
     public var showChrome: Bool = true
 

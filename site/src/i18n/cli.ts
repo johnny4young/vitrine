@@ -274,6 +274,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--font-ligatures, --no-font-ligatures', description: both('Enable or disable programming ligatures.', 'Activa o desactiva ligaduras de programación.') },
       { flags: '--font-size', value: '<10...20>', description: both('Code font size in points.', 'Tamaño de la fuente en puntos.') },
       { flags: '--padding', value: '<16...64>', description: both('Canvas padding in points.', 'Relleno del lienzo en puntos.') },
+      { flags: '--padding-mode', value: '<manual|balanced>', description: both('Balanced measures the padding to the card and its shadow and sets the card a little above center.', 'Balanced mide el relleno hasta la tarjeta y su sombra, y sube un poco la tarjeta sobre el centro.') },
       { flags: '--corner-radius', value: '<0...48>', description: both('Code-card corner radius.', 'Radio de las esquinas de la tarjeta.') },
       { flags: '--shadow-radius', value: '<0...40>', description: both('Drop-shadow blur radius.', 'Radio de desenfoque de la sombra.') },
       { flags: '--terminal-width', value: '<1...1000>', description: both('Pin terminal reconstruction width; vgrab -w sets this automatically.', 'Fija el ancho de reconstrucción; vgrab -w lo define automáticamente.') },

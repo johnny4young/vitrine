@@ -237,6 +237,7 @@ final class VitrineUITests: XCTestCase {
         assertHittable("canvas-dock-canvas", in: app, "The dock must be reachable")
         element("canvas-dock-canvas", in: app).click()
         assertExists(element("padding-slider", in: app), in: app, timeout: 3)
+        assertExists(element("padding-balance-toggle", in: app), in: app)
         // Pressing the open pane's button closes it rather than reopening it.
         element("canvas-dock-canvas", in: app).click()
         XCTAssertTrue(element("padding-slider", in: app).waitForNonExistence(timeout: 3))
@@ -1158,6 +1159,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(appearance, in: app, timeout: 3)
         assertExists(element("settings-terminal-palette-picker", in: app), in: app)
         assertExists(element("settings-terminal-cursor-picker", in: app), in: app)
+        assertExists(element("settings-padding-balance-toggle", in: app), in: app)
         lines.click()
         XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(appearance.isSelected)

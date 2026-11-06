@@ -208,7 +208,7 @@ extension CLIArgumentParser {
             recipe != nil || stylePresetID != nil || canvasSize != nil || background != nil
             || backgroundImagePath != nil || transparent || fontName != nil
             || fontLigatures != nil
-            || fontSize != nil || padding != nil
+            || fontSize != nil || padding != nil || paddingMode != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
             || watermarkContentRequested
@@ -396,6 +396,7 @@ extension CLIArgumentParser {
             fontLigatures: fontLigatures,
             fontSize: fontSize,
             padding: padding,
+            paddingMode: paddingMode,
             cornerRadius: cornerRadius,
             shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,

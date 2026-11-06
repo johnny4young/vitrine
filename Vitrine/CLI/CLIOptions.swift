@@ -132,6 +132,7 @@ struct CLIOptions: Equatable {
     /// Optional canvas-padding override, in points. Uses the same bounds as the editor's
     /// Style pane.
     var padding: Double?
+    var paddingMode: PaddingMode?
     /// Optional code-card corner radius, in points. Nil preserves the app/preset default.
     var cornerRadius: Double?
     /// Optional drop-shadow blur radius, in points. Nil preserves the app/preset default.
@@ -497,6 +498,7 @@ struct CLIOptions: Equatable {
         if let fontLigatures { config.fontLigatures = fontLigatures }
         if let fontSize { config.fontSize = fontSize }
         if let padding { config.padding = padding }
+        if let paddingMode { config.paddingMode = paddingMode }
         if let cornerRadius { config.cornerRadius = cornerRadius }
         if let shadowRadius { config.shadowRadius = shadowRadius }
         if let wrapColumns { config.wrapColumns = wrapColumns }

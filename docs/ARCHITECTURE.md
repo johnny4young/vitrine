@@ -549,8 +549,8 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--font-ligatures`, `--no-font-ligatures`, `--transparent`, `--background <id>`,
 `--background-color <hex>`, `--background-image <path>`, `--background-fit <fill|fit>`,
 `--background-blur <0...40>`, `--background-dimming <0...1>`, style controls
-(`--font-size`, `--padding`, `--corner-radius`, `--shadow-radius`, `--wrap-columns`,
-`--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
+(`--font-size`, `--padding`, `--padding-mode`, `--corner-radius`, `--shadow-radius`,
+`--wrap-columns`, `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
 `--diff-bands`, `--no-diff-bands`), and the header controls (`--window-title`,
 `--filename`, `--title`, `--caption`, `--language-badge`, `--no-language-badge`) and an

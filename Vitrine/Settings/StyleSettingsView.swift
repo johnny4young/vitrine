@@ -204,6 +204,15 @@ struct StyleSettingsView: View {
                     label: "Padding", value: $settings.config.padding,
                     range: Self.paddingRange, step: 4, identifier: "padding-slider")
             }
+            TokenRow(label: Text("Balance")) {
+                Toggle("Balance", isOn: $settings.config.balancesPadding)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .help(
+                        "Counts the shadow in the padding and sets the card a little above center."
+                    )
+                    .accessibilityIdentifier("settings-padding-balance-toggle")
+            }
             TokenRow(label: Text("Corner radius")) {
                 ValueSlider(
                     label: "Corner radius", value: $settings.config.cornerRadius,
