@@ -12,6 +12,7 @@ struct FeedbackDisplay {
             @escaping (Notifier.RecoveryAction) -> Void
         ) -> Void
     private let presentPreview: (CopyPreview.Item) -> Void
+    private let dismissPreview: () -> Void
 
     init(
         _ perform:
@@ -19,10 +20,12 @@ struct FeedbackDisplay {
                 Notifier.CaptureFeedback,
                 @escaping (Notifier.RecoveryAction) -> Void
             ) -> Void,
-        preview: @escaping (CopyPreview.Item) -> Void = { _ in }
+        preview: @escaping (CopyPreview.Item) -> Void = { _ in },
+        dismissPreview: @escaping () -> Void = {}
     ) {
         self.perform = perform
         self.presentPreview = preview
+        self.dismissPreview = dismissPreview
     }
 
     func callAsFunction(
@@ -32,11 +35,12 @@ struct FeedbackDisplay {
         perform(feedback, onAction)
     }
 
-    /// Floats the copied PNG when `behavior` allows it; `reopen` runs on a click.
+    /// Floats the copied PNG when `behavior` allows it; `reopen` runs on a click. A copy
+    /// that is not previewed withdraws the older preview, which no longer matches it.
     func preview(
         _ png: Data?, behavior: OutputBehavior, reopen: @escaping () -> Void
     ) {
-        guard let png, CopyPreview.isShown(for: behavior) else { return }
+        guard let png, CopyPreview.isShown(for: behavior) else { return dismissPreview() }
         presentPreview(CopyPreview.Item(png: png, reopen: reopen))
     }
 
@@ -44,7 +48,8 @@ struct FeedbackDisplay {
         { feedback, onAction in
             CaptureHUDController.shared.present(feedback, onAction: onAction)
         },
-        preview: { CopyPreviewController.shared.present($0) })
+        preview: { CopyPreviewController.shared.present($0) },
+        dismissPreview: { CopyPreviewController.shared.dismiss() })
 
     static let noOp = FeedbackDisplay { _, _ in }
 }

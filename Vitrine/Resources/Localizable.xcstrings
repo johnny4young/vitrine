@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Vitrine %@ at %@.png" : {
+      "comment" : "File name of a copied image dropped from the copy preview: date, time",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine %1$@ a las %2$@.png"
+          }
+        }
+      }
+    },
     "Show a preview after copying" : {
       "comment" : "Output settings toggle: float a draggable thumbnail of each copied image",
       "localizations" : {

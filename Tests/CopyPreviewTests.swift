@@ -9,9 +9,28 @@ import VitrineRendering
 struct CopyPreviewTests {
     private final class PreviewSpy {
         var items: [CopyPreview.Item] = []
+        var dismissals = 0
         var display: FeedbackDisplay {
-            FeedbackDisplay({ _, _ in }, preview: { [weak self] in self?.items.append($0) })
+            FeedbackDisplay(
+                { _, _ in }, preview: { [weak self] in self?.items.append($0) },
+                dismissPreview: { [weak self] in self?.dismissals += 1 })
         }
+    }
+
+    /// Never ordered on screen, so the suite leaves no window on the developer's display.
+    private final class OffscreenPanel: NSPanel {
+        override func orderFrontRegardless() {}
+    }
+
+    private func makeController(
+        announcing: @escaping @MainActor (String) -> Void = { _ in }
+    )
+        -> CopyPreviewController
+    {
+        let controller = CopyPreviewController(
+            postAnnouncement: announcing, makePanel: { OffscreenPanel() })
+        controller.holdsUntilDismissed = true
+        return controller
     }
 
     private func makeSession(_ settings: AppSettings, display: FeedbackDisplay) -> EditorSession {
@@ -72,6 +91,7 @@ struct CopyPreviewTests {
 
         #expect(pasteboard.data(forType: .png) != nil)
         #expect(spy.items.isEmpty)
+        #expect(spy.dismissals == 1)
     }
 
     @Test(arguments: [true, false])
@@ -96,6 +116,7 @@ struct CopyPreviewTests {
 
         let item = try #require(spy.items.first)
         #expect(spy.items.count == 1)
+        #expect(spy.dismissals == 1)
         #expect(item.png == png)
         item.reopen()
         #expect(routed == [saved ? "recents" : "editor"])
@@ -126,8 +147,7 @@ struct CopyPreviewTests {
 
     @Test func aNewCopyReplacesThePreviewAndStaleEventsAreIgnored() throws {
         var announcements: [String] = []
-        let controller = CopyPreviewController(postAnnouncement: { announcements.append($0) })
-        controller.holdsUntilDismissed = true
+        let controller = makeController { announcements.append($0) }
         defer { controller.dismiss() }
         var reopened: [String] = []
         let first = try samplePNG(width: 30)
@@ -149,6 +169,33 @@ struct CopyPreviewTests {
         #expect(reopened == ["second"])
         #expect(controller.item == nil)
         #expect(controller.panel?.isVisible == false)
+    }
+
+    @Test func aLargeCopyIsDecodedAtThumbnailSize() throws {
+        let png = try samplePNG(width: 3000, height: 1000)
+        let image = try #require(CopyPreview.thumbnail(of: png, maxPixelSize: 440))
+        #expect(max(image.width, image.height) <= 440)
+        #expect(abs(Double(image.width) / Double(image.height) - 3) < 0.05)
+
+        let controller = makeController()
+        defer { controller.dismiss() }
+        controller.present(CopyPreview.Item(png: png) {})
+        #expect(controller.item?.png == png)
+    }
+
+    @Test(arguments: [true, false])
+    func changingEitherSettingWithdrawsTheShownPreview(conceal: Bool) async throws {
+        let behavior = AppSettings(defaults: testDefaults()).outputBehavior
+        let controller = makeController()
+        defer { controller.dismiss() }
+        controller.dismissOnPolicyChange(of: behavior)
+        controller.present(CopyPreview.Item(png: try samplePNG()) {})
+        #expect(controller.item != nil)
+
+        if conceal { behavior.concealClipboard = true } else { behavior.showsCopyPreview = false }
+        for _ in 0..<50 where controller.item != nil { await Task.yield() }
+
+        #expect(controller.item == nil)
     }
 
     @Test func thePreviewFitsItsBoxAndSitsAtTheBottomOfTheScreen() {

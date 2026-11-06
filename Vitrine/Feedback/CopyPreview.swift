@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
 import VitrineRendering
@@ -47,13 +48,31 @@ enum CopyPreview {
 
     /// Timestamped like a macOS screenshot; a drop never overwrites an existing file.
     static func fileName(at date: Date) -> String {
-        "Vitrine \(date.formatted(fileDateStyle)).png"
+        let day = date.formatted(dayStyle)
+        let time = date.formatted(timeStyle)
+        return String(
+            localized: "Vitrine \(day) at \(time).png",
+            comment: "File name of a copied image dropped from the copy preview: date, time")
     }
 
-    private static let fileDateStyle = Date.VerbatimFormatStyle(
-        format:
-            "\(year: .defaultDigits)-\(month: .twoDigits)-\(day: .twoDigits) at \(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)).\(minute: .twoDigits).\(second: .twoDigits)",
+    private static let dayStyle = Date.VerbatimFormatStyle(
+        format: "\(year: .defaultDigits)-\(month: .twoDigits)-\(day: .twoDigits)",
         timeZone: .current, calendar: Calendar(identifier: .gregorian))
+    private static let timeStyle = Date.VerbatimFormatStyle(
+        format:
+            "\(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)).\(minute: .twoDigits).\(second: .twoDigits)",
+        timeZone: .current, calendar: Calendar(identifier: .gregorian))
+
+    /// Decodes a small image for display, so a large copy is never held at full size.
+    static func thumbnail(of png: Data, maxPixelSize: CGFloat) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(png as CFData, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+        ]
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
 }
 
 /// The pasteboard item a drag carries: the copied PNG for apps that take image data,
@@ -61,6 +80,12 @@ enum CopyPreview {
 nonisolated final class CopiedImagePromise: NSFilePromiseProvider, NSFilePromiseProviderDelegate {
     let png: Data
     let fileName: String
+    private static let writeQueue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.maxConcurrentOperationCount = 1
+        queue.qualityOfService = .userInitiated
+        return queue
+    }()
 
     init(png: Data, fileName: String) {
         self.png = png
@@ -84,6 +109,10 @@ nonisolated final class CopiedImagePromise: NSFilePromiseProvider, NSFilePromise
         fileName
     }
 
+    func operationQueue(for filePromiseProvider: NSFilePromiseProvider) -> OperationQueue {
+        Self.writeQueue
+    }
+
     func filePromiseProvider(
         _ filePromiseProvider: NSFilePromiseProvider, writePromiseTo url: URL,
         completionHandler: @escaping (Error?) -> Void
@@ -100,7 +129,7 @@ nonisolated final class CopiedImagePromise: NSFilePromiseProvider, NSFilePromise
 /// Click, drag and hover over the preview image, tracked even while another app is active.
 final class CopyPreviewDragView: NSView, NSDraggingSource {
     var png = Data()
-    var image: NSImage?
+    var image: CGImage?
     var onClick: () -> Void = {}
     var onHover: (Bool) -> Void = { _ in }
     var onDragBegan: () -> Void = {}
@@ -135,7 +164,8 @@ final class CopyPreviewDragView: NSView, NSDraggingSource {
         let item = NSDraggingItem(
             pasteboardWriter: CopiedImagePromise(
                 png: png, fileName: CopyPreview.fileName(at: .now)))
-        item.setDraggingFrame(bounds, contents: image)
+        item.setDraggingFrame(
+            bounds, contents: image.map { NSImage(cgImage: $0, size: bounds.size) })
         onDragBegan()
         beginDraggingSession(with: [item], event: start, source: self)
     }
@@ -155,7 +185,7 @@ final class CopyPreviewDragView: NSView, NSDraggingSource {
 
 private struct CopyPreviewDragSource: NSViewRepresentable {
     let png: Data
-    let image: NSImage
+    let image: CGImage
     let events: CopyPreviewController.Events
 
     func makeNSView(context: Context) -> CopyPreviewDragView { CopyPreviewDragView() }
@@ -175,7 +205,7 @@ private struct CopyPreviewDragSource: NSViewRepresentable {
 
 struct CopyPreviewView: View {
     let png: Data
-    let image: NSImage
+    let image: CGImage
     let size: CGSize
     let animate: Bool
     let events: CopyPreviewController.Events
@@ -184,7 +214,7 @@ struct CopyPreviewView: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Brand.Radius.md)
-        Image(nsImage: image)
+        Image(decorative: image, scale: 1)
             .resizable()
             .frame(width: size.width, height: size.height)
             .clipShape(shape)
@@ -229,7 +259,11 @@ struct CopyPreviewView: View {
 /// Owns the one preview panel. A new copy replaces the shown preview instead of stacking,
 /// and callbacks from a replaced preview, such as a drag ending late, are ignored.
 final class CopyPreviewController {
-    static let shared = CopyPreviewController()
+    static let shared: CopyPreviewController = {
+        let controller = CopyPreviewController()
+        controller.dismissOnPolicyChange(of: AppEnvironment.shared.appSettings.outputBehavior)
+        return controller
+    }()
 
     struct Events {
         let open: () -> Void
@@ -247,19 +281,28 @@ final class CopyPreviewController {
     private var isDragging = false
     private var dismissTask: Task<Void, Never>?
     private let postAnnouncement: @MainActor (String) -> Void
+    private let makePanel: @MainActor () -> NSPanel
 
-    init(postAnnouncement: @escaping @MainActor (String) -> Void = CopyPreviewController.post) {
+    init(
+        postAnnouncement: @escaping @MainActor (String) -> Void = CopyPreviewController.post,
+        makePanel: @escaping @MainActor () -> NSPanel = CopyPreviewController.makePanel
+    ) {
         self.postAnnouncement = postAnnouncement
+        self.makePanel = makePanel
     }
 
     func present(_ item: CopyPreview.Item) {
-        guard let image = NSImage(data: item.png) else { return }
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        let maxPixelSize = max(CopyPreview.maximumSize.width, CopyPreview.maximumSize.height)
+        guard let image = CopyPreview.thumbnail(of: item.png, maxPixelSize: maxPixelSize * scale)
+        else { return dismiss() }
         generation += 1
         self.item = item
         isHovered = false
         isDragging = false
         let root = CopyPreviewView(
-            png: item.png, image: image, size: CopyPreview.displaySize(for: image.size),
+            png: item.png, image: image,
+            size: CopyPreview.displaySize(for: CGSize(width: image.width, height: image.height)),
             animate: CaptureHUD.shouldAnimate(reduceMotion: CaptureHUD.reduceMotionEnabled),
             events: events(for: generation))
         let hosting = NSHostingController(rootView: root)
@@ -301,11 +344,27 @@ final class CopyPreviewController {
                 self?.isHovered = $0
                 self?.scheduleDismiss()
             },
-            drag: { [weak self] in
-                guard current() else { return }
-                self?.isDragging = $0
-                self?.scheduleDismiss()
+            drag: { [weak self] dragging in
+                guard current(), let self else { return }
+                isDragging = dragging
+                // Tracking areas miss the pointer's return during a drag.
+                if !dragging, let panel {
+                    isHovered = panel.frame.contains(NSEvent.mouseLocation)
+                }
+                scheduleDismiss()
             })
+    }
+
+    /// A change to either setting withdraws the preview, whichever way it went.
+    func dismissOnPolicyChange(of behavior: OutputBehavior) {
+        withObservationTracking {
+            _ = (behavior.showsCopyPreview, behavior.concealClipboard)
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                self?.dismiss()
+                self?.dismissOnPolicyChange(of: behavior)
+            }
+        }
     }
 
     /// The countdown waits while the pointer rests on the preview or drags it.
@@ -324,6 +383,12 @@ final class CopyPreviewController {
 
     private func reusablePanel() -> NSPanel {
         if let panel { return panel }
+        let panel = makePanel()
+        self.panel = panel
+        return panel
+    }
+
+    static func makePanel() -> NSPanel {
         let panel = NSPanel(
             contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: false)
@@ -335,8 +400,9 @@ final class CopyPreviewController {
         panel.isOpaque = false
         panel.hasShadow = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        // Kept out of screen sharing; newer system capture APIs may still record it.
+        panel.sharingType = .none
         panel.setAccessibilityIdentifier("copy-preview-window")
-        self.panel = panel
         return panel
     }
 

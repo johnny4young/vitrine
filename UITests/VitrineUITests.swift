@@ -2070,15 +2070,36 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
-    func testCopyPreviewSettingIsOnByDefault() {
+    func testTurningTheCopyPreviewOffSkipsItOnTheNextCopy() throws {
         continueAfterFailure = false
-        let app = launch(arguments: VitrineLaunchArguments.settings)
-        defer { app.terminate() }
+        try skipUnlessADisplayFitsTheEditor()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-settings", "--copy-preview-stays"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
         assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
         element("settings-nav-output", in: app).click()
         let toggle = element("copy-preview-toggle", in: app)
         assertExists(toggle, in: app, timeout: 3)
         XCTAssertEqual(toggle.value as? Int, 1, "The copy preview must start on")
+        toggle.click()
+        XCTAssertEqual(toggle.value as? Int, 0)
+        app.typeKey("w", modifierFlags: .command)
+
+        assertHittable("copy-button", in: app, "Copy image is not reachable", timeout: 5)
+        element("copy-button", in: app).click()
+        let copied = NSPredicate { _, _ in pasteboard.data(forType: .png) != nil }
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [XCTNSPredicateExpectation(predicate: copied, object: nil)], timeout: 5),
+            .completed, "Copy image did not place a PNG on the pasteboard")
+        XCTAssertFalse(
+            element("copy-preview-image", in: app).waitForExistence(timeout: 2),
+            "A disabled preview must not appear")
     }
 
     @MainActor
