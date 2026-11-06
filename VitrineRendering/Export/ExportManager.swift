@@ -332,36 +332,57 @@ public enum ExportManager {
         return produced ? data as Data : nil
     }
 
-    /// Renders each config as one page of a single vector PDF, every page pinned to
-    /// `fixedSize`. Returns nil for no pages or when a page context cannot be created.
+    /// Renders each config as one page of a single PDF, every page pinned to `fixedSize` and
+    /// clipped to it. Pages are vector unless `rasterized`, which draws each as a `profile`
+    /// image so text cut off by the frame can't stay in the file. The main actor is released
+    /// between pages, and `onPage` follows them. Returns nil for no pages, a page context
+    /// that cannot be created, or a cancelled task.
     public static func pdfData(
-        pages configs: [SnapshotConfig], fixedSize: CGSize,
+        pages configs: [SnapshotConfig], fixedSize: CGSize, rasterized: Bool = false,
+        profile: ColorProfile = .sRGB,
         backgroundImageStore: BackgroundImageStore = .container,
-        foregroundImageStore: BackgroundImageStore = .foregroundContainer
-    ) -> Data? {
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
+        onPage: ((_ completed: Int) -> Void)? = nil
+    ) async -> Data? {
         let data = NSMutableData()
         var mediaBox = CGRect(origin: .zero, size: fixedSize)
         guard !configs.isEmpty, let consumer = CGDataConsumer(data: data as CFMutableData),
             let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
         else { return nil }
-        for config in configs {
-            let renderer = ImageRenderer(
-                content: SnapshotCanvas(config: config, fixedSize: fixedSize)
-                    .environment(\.backgroundImageStore, backgroundImageStore)
-                    .environment(\.foregroundImageStore, foregroundImageStore))
-            renderer.proposedSize = ProposedViewSize(fixedSize)
-            var drawn = false
-            renderer.render { _, renderInContext in
+        for (index, config) in configs.enumerated() {
+            if index > 0 { await Task.yield() }
+            guard !Task.isCancelled else { return nil }
+            if rasterized {
+                guard
+                    let image = try? renderCGImageChecked(
+                        config, scale: 1, fixedSize: fixedSize, profile: profile,
+                        backgroundImageStore: backgroundImageStore,
+                        foregroundImageStore: foregroundImageStore)
+                else { return nil }
                 context.beginPDFPage(nil)
-                if case .image = config.background {
-                    context.setFillColor(CGColor(gray: 0, alpha: 1))
-                    context.fill(mediaBox)
-                }
-                renderInContext(context)
+                context.draw(image, in: mediaBox)
                 context.endPDFPage()
-                drawn = true
+            } else {
+                let renderer = ImageRenderer(
+                    content: SnapshotCanvas(config: config, fixedSize: fixedSize)
+                        .environment(\.backgroundImageStore, backgroundImageStore)
+                        .environment(\.foregroundImageStore, foregroundImageStore))
+                renderer.proposedSize = ProposedViewSize(fixedSize)
+                var drawn = false
+                renderer.render { _, renderInContext in
+                    context.beginPDFPage(nil)
+                    context.clip(to: mediaBox)
+                    if case .image = config.background {
+                        context.setFillColor(CGColor(gray: 0, alpha: 1))
+                        context.fill(mediaBox)
+                    }
+                    renderInContext(context)
+                    context.endPDFPage()
+                    drawn = true
+                }
+                guard drawn else { return nil }
             }
-            guard drawn else { return nil }
+            onPage?(index + 1)
         }
         context.closePDF()
         return data as Data

@@ -38,7 +38,8 @@ struct CarouselFilmstripTests {
         cues: CarouselPaginator.Cues = .none
     ) -> CarouselFilmstripModel.Input {
         CarouselFilmstripModel.Input(
-            base: base, slides: split.slides(of: base.code), cues: cues, profile: .sRGB)
+            base: base, slides: split.slides(of: base.code), cues: cues, fontSize: 20,
+            profile: .sRGB)
     }
 
     // MARK: - One split
@@ -131,14 +132,12 @@ struct CarouselFilmstripTests {
 
         await model.refresh(input)
 
-        let fontSize = CarouselPaginator.fittedFontSize(
-            base, slides: input.slides, cues: cues, size: .linkedIn)
         #expect(
             log.configs
                 == [0, 1].map {
                     CarouselPaginator.slideConfig(
                         base, slide: input.slides[$0], at: $0, of: input.slides.count, cues: cues,
-                        fontSize: fontSize)
+                        fontSize: 20)
                 })
         // Line 6 is the second row of the second slide, and only that slide hides it.
         #expect(log.configs[0].redactedLineRanges.isEmpty)
@@ -315,13 +314,15 @@ struct CarouselFilmstripTests {
         model.visible = [0, 1]
         await model.refresh(
             CarouselFilmstripModel.Input(
-                base: base, slides: outcome.slides(for: base.code), cues: .none, profile: .sRGB))
+                base: base, slides: outcome.slides(for: base.code), cues: .none, fontSize: 20,
+                profile: .sRGB))
         #expect(log.configs.isEmpty)
 
         let settled = CarouselPaginator.Outcome(split: outcome.split, code: new)
         await model.refresh(
             CarouselFilmstripModel.Input(
-                base: base, slides: settled.slides(for: base.code), cues: .none, profile: .sRGB))
+                base: base, slides: settled.slides(for: base.code), cues: .none, fontSize: 20,
+                profile: .sRGB))
         #expect(log.configs.first?.redactedLineRanges == [3...3])
     }
 

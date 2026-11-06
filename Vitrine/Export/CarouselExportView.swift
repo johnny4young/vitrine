@@ -20,6 +20,14 @@ struct CarouselExportView: View {
         var output: CarouselOutput
     }
 
+    /// What the fitted type size depends on.
+    private struct FitRequest: Equatable {
+        var base: SnapshotConfig
+        var slides: [CarouselPaginator.Slide]
+        var cues: CarouselPaginator.Cues
+        var size: CarouselSlideSize
+    }
+
     private struct EstimateRequest: Equatable {
         var input: CarouselFilmstripModel.Input
         var output: CarouselOutput
@@ -46,6 +54,9 @@ struct CarouselExportView: View {
     /// The folder chosen in this sheet. Without one, confirming asks for it, because
     /// the sandbox grants no folder until the user picks it.
     @State private var folder: URL?
+
+    /// The last fit and what it was measured for; tiles, the estimate and the export share it.
+    @State private var fit: (request: FitRequest, value: CarouselFit)?
 
     /// The encoded size of every file, sampled from one slide.
     @State private var estimatedBytes: Int?
@@ -89,9 +100,20 @@ struct CarouselExportView: View {
 
     private var pages: [CarouselPaginator.Slide] { outcome?.slides(for: request.code) ?? [] }
 
+    private var fitRequest: FitRequest {
+        FitRequest(base: baseConfig, slides: pages, cues: cues, size: splitModel.size)
+    }
+
+    /// `nil` while the choices have moved on from the last fit.
+    private var currentFit: CarouselFit? {
+        guard let fit, fit.request == fitRequest else { return nil }
+        return fit.value
+    }
+
     private var filmstripInput: CarouselFilmstripModel.Input {
         CarouselFilmstripModel.Input(
-            base: baseConfig, slides: pages, cues: cues, size: splitModel.size, profile: profile)
+            base: baseConfig, slides: pages, cues: cues, size: splitModel.size,
+            fontSize: currentFit?.fontSize, profile: profile)
     }
 
     private var confirmTitle: LocalizedStringKey {
@@ -143,8 +165,18 @@ struct CarouselExportView: View {
         )
         .interactiveDismissDisabled(isExporting)
         // Synchronously, so the sheet doesn't open on an empty strip and a zero count.
-        .onAppear { outcome = CarouselPaginator.Outcome(split: request.split, code: request.code) }
+        .onAppear {
+            outcome = CarouselPaginator.Outcome(split: request.split, code: request.code)
+            refreshFit()
+        }
         .task(id: request) { await refreshSplit() }
+        // A fit is several layouts on the main actor, so a stepper run settles first.
+        .task(id: fitRequest) {
+            guard currentFit == nil else { return }
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
+            refreshFit()
+        }
         // The tiles' input is everything a slide's pixels depend on, config and profile included.
         .task(id: EstimateRequest(input: filmstripInput, output: splitModel.output)) {
             await refreshSizeEstimate()
@@ -330,7 +362,8 @@ struct CarouselExportView: View {
         let summary = CarouselPaginator.outputSummary(
             filenames: outputFilenames(slideCount: slideCount), estimatedBytes: estimatedBytes)
         let size = CarouselPaginator.slideSizeLabel(splitModel.size.pixels)
-        return summary + " · " + size + " · " + String(localized: "Existing files are kept")
+        return ([summary, size, String(localized: "Existing files are kept")] + overflowNote)
+            .joined(separator: " · ")
     }
 
     private func refreshSplit() async {
@@ -346,7 +379,21 @@ struct CarouselExportView: View {
         let summary = CarouselPaginator.spokenOutputSummary(
             filenames: outputFilenames(slideCount: slideCount), estimatedBytes: estimatedBytes)
         let size = CarouselPaginator.slideSizeLabel(splitModel.size.pixels)
-        return summary + ", " + size + ", " + String(localized: "Existing files are kept")
+        return ([summary, size, String(localized: "Existing files are kept")] + overflowNote)
+            .joined(separator: ", ")
+    }
+
+    private var overflowNote: [String] {
+        currentFit?.overflows == true ? [String(localized: "Some lines don't fit the slide")] : []
+    }
+
+    private func refreshFit() {
+        let request = fitRequest
+        fit = (
+            request,
+            CarouselPaginator.fit(
+                request.base, slides: request.slides, cues: request.cues, size: request.size)
+        )
     }
 
     private func outputFilenames(slideCount: Int) -> [String] {
@@ -359,10 +406,11 @@ struct CarouselExportView: View {
     private func refreshSizeEstimate() async {
         // The old sample described other slides, so the size is left out until the new one.
         estimatedBytes = nil
+        guard let fit = currentFit else { return }
         try? await Task.sleep(for: .milliseconds(300))
         guard !Task.isCancelled else { return }
         let estimate = await ExportManager.estimatedCarouselBytes(
-            baseConfig, slides: pages, cues: cues, size: splitModel.size,
+            baseConfig, slides: pages, cues: cues, size: splitModel.size, fit: fit,
             output: splitModel.output, profile: profile)
         guard !Task.isCancelled else { return }
         estimatedBytes = estimate
@@ -395,11 +443,13 @@ struct CarouselExportView: View {
         let fileCount = CarouselPaginator.requestedFilenames(
             slideCount: pages.count, output: output
         ).count
+        // The settled fit holds only for the split it was measured on.
+        let fit = currentFit.flatMap { pages == fitRequest.slides ? $0 : nil }
         failureNote = nil
-        progress = (0, fileCount)
+        progress = (0, ExportManager.carouselProgressUnits(slideCount: pages.count, output: output))
         Task {
             let result = await ExportManager.exportCarousel(
-                baseConfig, slides: pages, cues: cues, size: size, output: output,
+                baseConfig, slides: pages, cues: cues, size: size, fit: fit, output: output,
                 to: directory, profile: profile,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil

@@ -334,17 +334,15 @@ struct CarouselSplitAndCueTests {
         #expect(slides.map(\.firstLine) == [1, 6])
 
         let result = await ExportManager.exportCarousel(
-            base, slides: slides, cues: Self.cues, to: dir)
+            base, slides: slides, cues: Self.cues, fit: CarouselFit(fontSize: 30), to: dir)
         #expect(result.written == 2)
-        let fontSize = CarouselPaginator.fittedFontSize(
-            base, slides: slides, cues: Self.cues, size: .linkedIn)
         for (index, slide) in slides.enumerated() {
             let url = dir.appendingPathComponent(
                 CarouselPaginator.outputFilename(forSlideAt: index))
             let written = try #require(GoldenComparator.loadImage(at: url))
             let reference = try render(
                 CarouselPaginator.slideConfig(
-                    base, slide: slide, at: index, of: 2, cues: Self.cues, fontSize: fontSize))
+                    base, slide: slide, at: index, of: 2, cues: Self.cues, fontSize: 30))
             #expect(try compare(written, reference).matches)
         }
 

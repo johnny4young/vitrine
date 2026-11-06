@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Some lines don't fit the slide" : {
+      "comment" : "Carousel sheet note: lines overflow the slide even at the smallest type size.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algunas líneas no caben en la diapositiva"
+          }
+        }
+      }
+    },
     "Split the snippet into numbered slides for a carousel post." : {
       "comment" : "Subtitle of the carousel export sheet.",
       "localizations" : {

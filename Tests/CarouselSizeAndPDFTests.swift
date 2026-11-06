@@ -14,6 +14,10 @@ struct CarouselSizeAndPDFTests {
         var items: [Item] = []
     }
 
+    private static let cues = CarouselPaginator.Cues(
+        lineNumbers: .continuing, showsPageBadge: false, showsContinuation: true,
+        continuationLabel: "continues →")
+
     private func tempDirectory() throws -> URL {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("VitrineCarousel-\(UUID().uuidString)", isDirectory: true)
@@ -26,12 +30,55 @@ struct CarouselSizeAndPDFTests {
             .joined(separator: "\n")
     }
 
-    private func naturalSize(_ config: SnapshotConfig) -> CGSize {
-        var measured = CGSize.zero
-        ImageRenderer(content: SnapshotCanvas(config: config)).render { size, _ in
-            measured = size
+    /// The bounding box of non-transparent pixels, in pixels.
+    private func opaqueBox(_ image: CGImage) throws -> CGRect {
+        let (width, height) = (image.width, image.height)
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let context = try #require(
+            CGContext(
+                data: &pixels, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        var (minX, maxX, minY, maxY) = (width, -1, height, -1)
+        for y in 0..<height {
+            for x in 0..<width where pixels[(y * width + x) * 4 + 3] > 16 {
+                minX = min(minX, x)
+                maxX = max(maxX, x)
+                minY = min(minY, y)
+                maxY = max(maxY, y)
+            }
         }
-        return measured
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+    }
+
+    /// Every slide, framed, shows the whole card it has at its own size: nothing is cut off
+    /// or re-wrapped by the frame, and the card stays clear of the edges.
+    private func expectEverySlideFits(
+        _ base: SnapshotConfig, linesPerSlide: Int, size: CarouselSlideSize,
+        _ label: Comment
+    ) throws -> CarouselFit {
+        var base = base
+        base.background = .transparent
+        base.showShadow = false
+        let slides = CarouselSplit(linesPerSlide: linesPerSlide).slides(of: base.code)
+        let fit = CarouselPaginator.fit(base, slides: slides, cues: Self.cues, size: size)
+        #expect(!fit.overflows, label)
+        for index in slides.indices {
+            let config = CarouselPaginator.slideConfig(
+                base, slide: slides[index], at: index, of: slides.count, cues: Self.cues,
+                fontSize: fit.fontSize)
+            let framed = try opaqueBox(
+                try #require(ExportManager.renderCGImage(config, scale: 1, fixedSize: size.pixels)))
+            let natural = try opaqueBox(
+                try #require(ExportManager.renderCGImage(config, scale: 1)))
+            // A row layout may widen to the frame; a cut or re-wrapped line changes the height.
+            #expect(framed.width >= natural.width - 2, label)
+            #expect(abs(framed.height - natural.height) <= 2, label)
+            #expect(framed.minX > 0 && framed.minY > 0, label)
+            #expect(framed.maxX < size.pixels.width && framed.maxY < size.pixels.height, label)
+        }
+        return fit
     }
 
     // MARK: - Sizes
@@ -60,62 +107,71 @@ struct CarouselSizeAndPDFTests {
 
     // MARK: - Fitted type
 
-    @Test func theFittedCardFillsTheFrameWithoutOverflowing() {
+    @Test func slidesWithLineNumbersAndTheCueFitEverySize() throws {
+        var base = SnapshotConfig()
+        base.code = code(lines: 24, width: 40)
         for size in CarouselSlideSize.allCases {
-            for (lines, width) in [(3, 12), (12, 40), (20, 70)] {
-                var base = SnapshotConfig()
-                base.code = code(lines: lines, width: width)
-                let slides = CarouselSplit(linesPerSlide: 30).slides(of: base.code)
-                let fontSize = CarouselPaginator.fittedFontSize(
-                    base, slides: slides, cues: .none, size: size)
-                #expect(fontSize > ExportManager.carouselMinimumFontSize)
-                let frame = size.pixels
-                let margin = 2 * CarouselPaginator.fittedMargin * min(frame.width, frame.height)
-                func card(_ fontSize: Double) -> CGSize {
-                    naturalSize(
-                        CarouselPaginator.slideConfig(
-                            base, slide: slides[0], at: 0, of: 1, cues: .none,
-                            fontSize: fontSize))
-                }
-                let fitted = card(fontSize)
-                #expect(fitted.width <= frame.width - margin + 1, "\(size) \(lines)×\(width)")
-                #expect(fitted.height <= frame.height - margin + 1, "\(size) \(lines)×\(width)")
-                // A few points more would overflow one side: the type really fills the frame.
-                guard lines >= CarouselPaginator.fittedMinimumRows else { continue }
-                let larger = card(fontSize + 3)
-                #expect(
-                    larger.width > frame.width - margin || larger.height > frame.height - margin,
-                    "\(size) \(lines)×\(width)")
-            }
+            let fit = try expectEverySlideFits(base, linesPerSlide: 12, size: size, "\(size)")
+            // At this width the old floor left most of a slide empty.
+            #expect(fit.fontSize > 22, "\(size)")
         }
     }
 
-    @Test func shortSlidesSizeTheirTypeForEightLines() {
+    @Test func wrappedLinesAreCountedAsRows() throws {
+        var base = SnapshotConfig()
+        base.code = (1...10).map {
+            "let v\($0) = \"" + String(repeating: "wrap ", count: 14) + "\""
+        }
+        .joined(separator: "\n")
+        base.wrapColumns = 30
+        for size in [CarouselSlideSize.linkedIn, .x] {
+            _ = try expectEverySlideFits(base, linesPerSlide: 10, size: size, "\(size)")
+        }
+    }
+
+    @Test func wideCharactersAreMeasuredByTheirAdvance() throws {
+        var base = SnapshotConfig()
+        base.code = (1...8).map { "let 名前\($0) = \"東京都の天気予報は晴れのち曇りです 🌤️🌤️\"" }
+            .joined(separator: "\n")
+        for size in [CarouselSlideSize.instagram, .story] {
+            _ = try expectEverySlideFits(base, linesPerSlide: 4, size: size, "\(size)")
+        }
+    }
+
+    @Test func aNarrowSnippetKeepsRoomForTheContinuationCue() throws {
+        var base = SnapshotConfig()
+        base.code = "a\nb\nc\nd"
+        _ = try expectEverySlideFits(base, linesPerSlide: 2, size: .story, "story")
+    }
+
+    @Test func shortSlidesSizeTheirTypeForEightRows() {
         var short = SnapshotConfig()
         short.code = code(lines: 2, width: 10)
         var eight = SnapshotConfig()
         eight.code = code(lines: 8, width: 10)
         func fitted(_ config: SnapshotConfig) -> Double {
-            CarouselPaginator.fittedFontSize(
+            CarouselPaginator.fit(
                 config, slides: CarouselSplit().slides(of: config.code), cues: .none,
-                size: .instagram)
+                size: .instagram
+            ).fontSize
         }
         #expect(fitted(short) == fitted(eight))
     }
 
-    @Test func aWideLineShrinksTheTypeButNeverBelowTheFloor() {
+    @Test func aLineTooWideForTheFloorIsReported() {
         var base = SnapshotConfig()
         base.code = code(lines: 4, width: 20)
-        let narrow = CarouselPaginator.fittedFontSize(
-            base, slides: CarouselSplit().slides(of: base.code), cues: .none, size: .linkedIn)
-        base.code += "\n" + String(repeating: "w", count: 400)
-        let wide = CarouselPaginator.fittedFontSize(
-            base, slides: CarouselSplit().slides(of: base.code), cues: .none, size: .linkedIn)
-        #expect(wide < narrow)
-        #expect(wide == ExportManager.carouselMinimumFontSize)
+        let slides = CarouselSplit().slides(of: base.code)
         #expect(
-            CarouselPaginator.fittedFontSize(base, slides: [], cues: .none, size: .linkedIn)
-                == ExportManager.carouselMinimumFontSize)
+            !CarouselPaginator.fit(base, slides: slides, cues: .none, size: .linkedIn).overflows)
+        base.code += "\n" + String(repeating: "w", count: 400)
+        let wide = CarouselPaginator.fit(
+            base, slides: CarouselSplit().slides(of: base.code), cues: .none, size: .linkedIn)
+        #expect(
+            wide == CarouselFit(fontSize: ExportManager.carouselMinimumFontSize, overflows: true))
+        #expect(
+            CarouselPaginator.fit(base, slides: [], cues: .none, size: .linkedIn)
+                == CarouselFit(fontSize: ExportManager.carouselMinimumFontSize))
     }
 
     // MARK: - PDF
@@ -140,6 +196,40 @@ struct CarouselSizeAndPDFTests {
         #expect(document.string?.contains("v7") == true)
     }
 
+    @Test func anOverflowingCarouselLeavesNoHiddenTextInThePDF() async throws {
+        let dir = try tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var base = SnapshotConfig()
+        base.code = "let tail = 1\n" + String(repeating: "hidden ", count: 80)
+        let slides = CarouselSplit().slides(of: base.code)
+        #expect(
+            await ExportManager.exportCarousel(base, slides: slides, output: .pdf, to: dir)
+                .written == 1)
+        let document = try #require(
+            PDFDocument(url: dir.appendingPathComponent(CarouselPaginator.pdfFilename)))
+        #expect(document.pageCount == 1)
+        #expect(document.string?.contains("hidden") != true)
+    }
+
+    @Test func pdfPagesReportProgressAndStopWhenCancelled() async {
+        let configs = [SnapshotConfig(), SnapshotConfig(), SnapshotConfig()]
+        let pages = Log<Int>()
+        let data = await ExportManager.pdfData(
+            pages: configs, fixedSize: ExportManager.carouselSlideSize,
+            onPage: { pages.items.append($0) })
+        #expect(data != nil)
+        #expect(pages.items == [1, 2, 3])
+        #expect(
+            await ExportManager.pdfData(pages: [], fixedSize: ExportManager.carouselSlideSize)
+                == nil)
+
+        let task = Task {
+            await ExportManager.pdfData(pages: configs, fixedSize: ExportManager.carouselSlideSize)
+        }
+        task.cancel()
+        #expect(await task.value == nil)
+    }
+
     @Test func bothWritesTheSlidesAndThePDFWithoutReplacingEither() async throws {
         let dir = try tempDirectory()
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -156,11 +246,12 @@ struct CarouselSizeAndPDFTests {
         let result = await ExportManager.exportCarousel(
             base, slides: slides, output: .both, to: dir,
             onProgress: { completed, total in
-                #expect(total == 3)
+                #expect(total == 4)
                 progress.items.append(completed)
             })
         #expect(result.written == 3)
-        #expect(progress.items == [1, 2, 3])
+        // PDF pages first, then the PNGs as their writes land.
+        #expect(progress.items == [1, 2, 3, 4])
         #expect(try Data(contentsOf: existing) == Data("existing".utf8))
         for name in planned {
             #expect(FileManager.default.fileExists(atPath: dir.appendingPathComponent(name).path))
@@ -198,7 +289,6 @@ struct CarouselSizeAndPDFTests {
             })
         #expect(result.written == 1)
         #expect(result.failed == 1)
-        #expect(ExportManager.pdfData(pages: [], fixedSize: ExportManager.carouselSlideSize) == nil)
     }
 
     @Test func theEstimateCoversEachOutput() async throws {
@@ -207,19 +297,21 @@ struct CarouselSizeAndPDFTests {
         var base = SnapshotConfig()
         base.code = code(lines: 40, width: 30)
         let slides = CarouselSplit(linesPerSlide: 10).slides(of: base.code)
+        let fit = CarouselFit(fontSize: 30)
         #expect(
-            await ExportManager.exportCarousel(base, slides: slides, output: .pdf, to: dir)
-                .written == 1)
+            await ExportManager.exportCarousel(
+                base, slides: slides, fit: fit, output: .pdf, to: dir
+            ).written == 1)
         let written = try Data(contentsOf: dir.appendingPathComponent("carousel.pdf")).count
         let pdf = try #require(
             await ExportManager.estimatedCarouselBytes(
-                base, slides: slides, cues: .none, output: .pdf))
+                base, slides: slides, cues: .none, fit: fit, output: .pdf))
         #expect(abs(pdf - written) <= written / 4, "estimate \(pdf), written \(written)")
         let png = try #require(
             await ExportManager.estimatedCarouselBytes(
-                base, slides: slides, cues: .none, output: .pngSet))
+                base, slides: slides, cues: .none, fit: fit, output: .pngSet))
         let both = await ExportManager.estimatedCarouselBytes(
-            base, slides: slides, cues: .none, output: .both)
+            base, slides: slides, cues: .none, fit: fit, output: .both)
         #expect(both == pdf + png)
     }
 
@@ -241,6 +333,8 @@ struct CarouselSizeAndPDFTests {
                 filenames: ["carousel-01.png", "carousel.pdf"], estimatedBytes: nil)
                 == "carousel-01.png, carousel.pdf")
         #expect(CarouselPaginator.requestedFilenames(slideCount: 0, output: .both).isEmpty)
+        #expect(ExportManager.carouselProgressUnits(slideCount: 4, output: .both) == 8)
+        #expect(ExportManager.carouselProgressUnits(slideCount: 4, output: .pdf) == 4)
     }
 
     @Test func tilesKeepOneHeightAndTheSlideShape() {
@@ -253,7 +347,7 @@ struct CarouselSizeAndPDFTests {
         #expect(CarouselFilmstripModel.tileSize(for: .linkedIn) == CarouselFilmstripModel.tileSize)
     }
 
-    @Test func theFilmstripRendersAtTheChosenSize() async throws {
+    @Test func theFilmstripWaitsForTheFitAndRendersAtTheChosenSize() async throws {
         let sizes = Log<CarouselSlideSize>()
         let fonts = Log<Double>()
         let model = CarouselFilmstripModel(quietWindow: .zero, frameGap: .zero) { config, size, _ in
@@ -264,20 +358,21 @@ struct CarouselSizeAndPDFTests {
         var base = SnapshotConfig()
         base.code = code(lines: 8)
         let slides = CarouselSplit(linesPerSlide: 4).slides(of: base.code)
-        let input = CarouselFilmstripModel.Input(
+        var input = CarouselFilmstripModel.Input(
             base: base, slides: slides, cues: .none, size: .x, profile: .sRGB)
         model.visible = [0, 1]
         await model.refresh(input)
+        #expect(sizes.items.isEmpty)
+
+        input.fontSize = 33
+        await model.refresh(input)
         #expect(sizes.items == [.x, .x])
-        let fitted = CarouselPaginator.fittedFontSize(
-            base, slides: slides, cues: .none, size: .x)
-        #expect(fonts.items == [fitted, fitted])
-        #expect(model.fontSize(for: input) == fitted)
+        #expect(fonts.items == [33, 33])
 
         let tile = try #require(
             CarouselFilmstripModel.renderTile(
                 CarouselPaginator.slideConfig(
-                    base, slide: slides[0], at: 0, of: 2, cues: .none, fontSize: fitted),
+                    base, slide: slides[0], at: 0, of: 2, cues: .none, fontSize: 33),
                 size: .story, profile: .sRGB))
         #expect(abs(CGFloat(tile.height) - 2 * CarouselFilmstripModel.tileSize.height) <= 1)
     }

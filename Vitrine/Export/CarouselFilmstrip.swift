@@ -50,6 +50,8 @@ final class CarouselFilmstripModel {
         let slides: [CarouselPaginator.Slide]
         let cues: CarouselPaginator.Cues
         var size: CarouselSlideSize = .linkedIn
+        /// The carousel's fitted type size; no tile renders until it is known.
+        var fontSize: Double?
         let profile: ColorProfile
     }
 
@@ -76,8 +78,6 @@ final class CarouselFilmstripModel {
     private(set) var images: [Int: CGImage] = [:]
 
     @ObservationIgnored private var rendered: [Int: Rendered] = [:]
-    /// Scrolling refreshes too, and the fit takes two layouts, so it is kept per input.
-    @ObservationIgnored private var fitted: (input: Input, fontSize: Double)?
     private let quietWindow: Duration
     private let frameGap: Duration
     private let render: (SnapshotConfig, CarouselSlideSize, ColorProfile) -> CGImage?
@@ -102,26 +102,19 @@ final class CarouselFilmstripModel {
             fixedSize: size.pixels, profile: profile)
     }
 
-    func fontSize(for input: Input) -> Double {
-        if let fitted, fitted.input == input { return fitted.fontSize }
-        let fontSize = CarouselPaginator.fittedFontSize(
-            input.base, slides: input.slides, cues: input.cues, size: input.size)
-        fitted = (input, fontSize)
-        return fontSize
-    }
-
     func moveCurrent(by step: Int, count: Int) {
         current = min(max(current + step, 0), max(count - 1, 0))
     }
 
     func refresh(_ input: Input) async {
-        let live = visible.filter { $0 < input.slides.count }.sorted().prefix(Self.maximumLiveTiles)
+        let live =
+            input.fontSize == nil
+            ? [] : visible.filter { $0 < input.slides.count }.sorted().prefix(Self.maximumLiveTiles)
         var wanted: [Int: Rendered] = [:]
-        let fontSize = live.isEmpty ? nil : fontSize(for: input)
         for index in live {
             let config = CarouselPaginator.slideConfig(
                 input.base, slide: input.slides[index], at: index, of: input.slides.count,
-                cues: input.cues, fontSize: fontSize)
+                cues: input.cues, fontSize: input.fontSize)
             wanted[index] = Rendered(config: config, size: input.size, profile: input.profile)
         }
         // A tile that no longer matches leaves now, so it can't show an old split or a row

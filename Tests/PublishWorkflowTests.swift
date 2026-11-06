@@ -52,7 +52,8 @@ struct PublishWorkflowTests {
         base.code = "one\ntwo\nsecret\nfour"
         base.redactedLineRanges = [3...3]
         let slides = CarouselPaginator.slides(for: base.code, maxLinesPerSlide: 2)
-        let result = await ExportManager.exportCarousel(base, slides: slides, to: dir)
+        let result = await ExportManager.exportCarousel(
+            base, slides: slides, fit: CarouselFit(fontSize: 30), to: dir)
         #expect(result.written == 2)
 
         let written = try #require(
@@ -61,8 +62,7 @@ struct PublishWorkflowTests {
         redacted.clearContentMarks()
         redacted.code = "secret\nfour"
         redacted.redactedLineRanges = [1...1]
-        redacted.fontSize = CarouselPaginator.fittedFontSize(
-            base, slides: slides, cues: .none, size: .linkedIn)
+        redacted.fontSize = 30
         let reference = try #require(
             ExportManager.renderCGImage(
                 redacted, scale: 1, fixedSize: ExportManager.carouselSlideSize))
@@ -95,7 +95,8 @@ struct PublishWorkflowTests {
         let pages = slides.map(\.text)
         #expect(pages.count == 2)
 
-        let result = await ExportManager.exportCarousel(base, slides: slides, to: dir)
+        let result = await ExportManager.exportCarousel(
+            base, slides: slides, fit: CarouselFit(fontSize: 30), to: dir)
         #expect(result.written == 2)
         #expect(result.failed == 0)
 
@@ -107,9 +108,7 @@ struct PublishWorkflowTests {
             var single = base
             single.clearContentMarks()
             single.code = page
-            // Every slide shares the type size fitted to the frame.
-            single.fontSize = CarouselPaginator.fittedFontSize(
-                base, slides: slides, cues: .none, size: .linkedIn)
+            single.fontSize = 30
             let reference = try #require(
                 ExportManager.renderCGImage(
                     single, scale: 1, fixedSize: ExportManager.carouselSlideSize))
