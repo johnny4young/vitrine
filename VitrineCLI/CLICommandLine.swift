@@ -117,7 +117,11 @@ public enum CLICommandLine {
                 }
                 try CLIEntitlement.authorize(invocation.options)
                 let outcome = try CLIRunCommand.perform(invocation, render: render)
-                print(outcome.summary)
+                if let renderError = outcome.renderError {
+                    printError("error: " + renderError)
+                } else {
+                    print(outcome.summary)
+                }
                 exit(outcome.status)
             }
 

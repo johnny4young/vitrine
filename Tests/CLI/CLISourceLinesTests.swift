@@ -180,4 +180,53 @@ struct CLISourceLinesTests: CLITestSupport {
             }
         }
     }
+
+    @Test func readsOnlyTheFirstLineOfASmallRegularHead() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let gitDirectory = directory.appendingPathComponent(".git")
+        try FileManager.default.createDirectory(at: gitDirectory, withIntermediateDirectories: true)
+        let head = gitDirectory.appendingPathComponent("HEAD")
+
+        try "ref: refs/heads/main\nref: refs/heads/other\n".write(
+            to: head, atomically: true, encoding: .utf8)
+        #expect(CLISourceOrigin.branch(atRepositoryRoot: directory) == "main")
+        try "ref: refs/heads/.invalid\n".write(to: head, atomically: true, encoding: .utf8)
+        #expect(CLISourceOrigin.branch(atRepositoryRoot: directory) == nil)
+        try ("ref: refs/heads/" + String(repeating: "b", count: 5000)).write(
+            to: head, atomically: true, encoding: .utf8)
+        #expect(CLISourceOrigin.branch(atRepositoryRoot: directory) == nil)
+
+        try FileManager.default.removeItem(at: head)
+        #expect(mkfifo(head.path, 0o600) == 0)
+        #expect(CLISourceOrigin.firstLine(of: head) == nil)
+        #expect(CLISourceOrigin.branch(atRepositoryRoot: directory) == nil)
+        #expect(CLISourceOrigin.firstLine(of: gitDirectory) == nil)
+    }
+
+    @Test func secretWarningsNameFileLinesAndOutOfSpanRedactionsAreRefused() throws {
+        let secret = "let token = \"" + "sk-" + String(repeating: "a", count: 24) + "\""
+        let options = try CLIArguments.parse([
+            "render", "in.swift", "--out", "o.png", "--lines", "142-143",
+        ])
+        let config = options.makeConfig(code: "let a = 1\n" + secret, language: .swift)
+        let message = try #require(CLIPreflightNotice.message(for: config))
+        #expect(message.contains("line 143"))
+
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--redact-lines 300-300 is outside --lines 142-146; use file line numbers.")
+        ) {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "o.png", "--lines", "142-146",
+                "--redact-lines", "143, 300",
+            ])
+        }
+        #expect(throws: CLIError.incompatibleOptions("Cannot combine --lines with --format-code."))
+        {
+            try CLIArguments.parse([
+                "render", "in.swift", "--out", "o.png", "--lines", "1-2", "--format-code",
+            ])
+        }
+    }
 }

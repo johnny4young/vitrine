@@ -148,6 +148,18 @@ struct CLIRunCommandTests: CLITestSupport {
         (["curl", "--header", "X-Api-Key: k1"], "curl --header 'X-Api-Key: ••••'"),
         (["curl", "--header=Proxy-Authorization: x"], "curl '--header=Proxy-Authorization: ••••'"),
         (["curl", "-HX-Auth-Token: t"], "curl '-HX-Auth-Token: ••••'"),
+        (
+            ["curl", "https://api.example.com/v1?api_key=abc&page=2"],
+            "curl 'https://api.example.com/v1?api_key=••••&page=2'"
+        ),
+        (
+            ["open", "https://x.test/a?SESSION=1;lang=es"],
+            "open 'https://x.test/a?SESSION=••••;lang=es'"
+        ),
+        (
+            ["open", "https://x.test/cb#access_token=abc&state=1"],
+            "open 'https://x.test/cb#access_token=••••&state=1'"
+        ),
         // Plain arguments stay readable.
         (
             ["git", "log", "--author", "alice", "-n", "5", "-H", "Accept: text/html", "a b"],
@@ -219,5 +231,51 @@ struct CLIRunCommandTests: CLITestSupport {
             environment: path)
         #expect(status == 4)
         #expect(try String(contentsOf: capture, encoding: .utf8).contains("ran"))
+
+        // `script -e` reports a signal as its number, which the CLI passes on.
+        let signaled = try CLIRunCommand.runUnderPseudoTerminal(
+            capture: capture, command: ["/bin/sh", "-c", "kill -TERM $$"], environment: path)
+        #expect(signaled == SIGTERM)
+    }
+
+    @Test func aFailedRenderKeepsTheCommandStatus() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let outcome = try CLIRunCommand.perform(
+            invocation(["ls"]), directory: directory, environment: path,
+            execute: { _, _, _ in 7 },
+            render: { options in throw CLIError.inputTooLarge(path: options.inputPath) })
+        #expect(outcome.status == 7)
+        #expect(outcome.renderError?.contains("too large") == true)
+        #expect(outcome.summary.isEmpty)
+    }
+
+    @Test func theCaptureLivesInAPrivateFolderThatIsRemoved() throws {
+        let scratch = try CLIRunScratch(onSignal: { _ in })
+        let manager = FileManager.default
+        let folderMode = try manager.attributesOfItem(atPath: scratch.directory.path)[
+            .posixPermissions]
+        let fileMode = try manager.attributesOfItem(atPath: scratch.capture.path)[.posixPermissions]
+        #expect((folderMode as? NSNumber)?.intValue == 0o700)
+        #expect((fileMode as? NSNumber)?.intValue == 0o600)
+        scratch.finish()
+        #expect(!manager.fileExists(atPath: scratch.directory.path))
+    }
+
+    @Test func aTerminationSignalRemovesTheCapture() async throws {
+        let scratch = try CLIRunScratch(onSignal: { _ in })
+        defer { scratch.finish() }
+        kill(getpid(), SIGTERM)
+        for _ in 0..<100 where FileManager.default.fileExists(atPath: scratch.directory.path) {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(!FileManager.default.fileExists(atPath: scratch.directory.path))
+    }
+
+    @Test func theProjectLabelNeverNamesTheHomeFolderOrRoot() {
+        let home = URL(fileURLWithPath: NSHomeDirectory())
+        let label = CLISourceOrigin.projectLabel(directory: home) ?? ""
+        #expect(!label.split(separator: " ").contains { $0 == home.lastPathComponent })
+        #expect(CLISourceOrigin.projectLabel(directory: URL(fileURLWithPath: "/")) == nil)
     }
 }

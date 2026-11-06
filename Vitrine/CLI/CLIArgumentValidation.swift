@@ -202,6 +202,17 @@ extension CLIArgumentParser {
             if languageID == Language.terminal.rawValue {
                 throw CLIError.incompatibleOptions("--lines does not apply to terminal output.")
             }
+            // Tidying moves lines, so the gutter and redacted rows would no longer match the file.
+            if formatCode {
+                throw CLIError.incompatibleOptions("Cannot combine --lines with --format-code.")
+            }
+            if let span = sourceLines,
+                let outside = redactedLineRanges?.first(where: { !$0.overlaps(span) })
+            {
+                throw CLIError.incompatibleOptions(
+                    "--redact-lines \(outside.lowerBound)-\(outside.upperBound) is outside --lines "
+                        + "\(span.lowerBound)-\(span.upperBound); use file line numbers.")
+            }
         }
         if gitDiffSource != nil, !openInEditor, diffDecorations == nil {
             diffDecorations = true

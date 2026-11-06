@@ -67,7 +67,7 @@ enum CLIRunHeader {
         case .header: return maskingHeader(argument)
         default: break
         }
-        let text = maskingURLUserinfo(argument)
+        let text = maskingQueryValues(maskingURLUserinfo(argument))
         if text.hasPrefix("-"), !text.hasPrefix("--"), text.count > 2 {
             let flag = String(text.prefix(2))
             let rest = text.dropFirst(2)
@@ -107,6 +107,15 @@ enum CLIRunHeader {
         text.replacingOccurrences(
             of: #"([A-Za-z][A-Za-z0-9+.-]*://)[^/\s@]*@"#, with: "$1\(mask)@",
             options: .regularExpression)
+    }
+
+    /// `?api_key=…&page=2` becomes `?api_key=••••&page=2`, whatever the value's length. The
+    /// fragment counts too, since the OAuth implicit flow puts tokens there.
+    private static func maskingQueryValues(_ text: String) -> String {
+        text.replacing(#/([?&;#])([^=&#;\s]+)=([^&#;\s]*)/#) { match in
+            let (_, separator, name, value) = match.output
+            return "\(separator)\(name)=\(isSensitive(name) ? mask : String(value))"
+        }
     }
 
     /// Quotes as the reproduction command does, treating the mask and a non-leading `=` as

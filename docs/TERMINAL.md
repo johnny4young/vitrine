@@ -172,18 +172,21 @@ vitrine run --title-from-command -- make lint  # show the arguments, masked
 
 It runs only the command you typed, locally, under the system `script` pseudo-terminal, so
 the program keeps its colors and you still see its output as it runs. The output goes to a
-private temporary file that is removed once the image is copied; nothing leaves your Mac. It
-exits with the command's own status. Options go before the command, and `--` ends them. The
-command runs directly, so shell aliases and functions don't resolve; a name that isn't on
-`PATH` is reported without running anything.
+private temporary folder that is removed once the image is copied, or when the CLI is
+interrupted; nothing leaves your Mac. It exits with the command's own status, even when the
+image can't be made (the reason goes to stderr). A command killed by a signal exits with the
+signal's number, as `script` reports it, so `kill -TERM` shows as 15 rather than 143. Options
+go before the command, and `--` ends them. The command runs directly, so shell aliases and
+functions don't resolve; a name that isn't on `PATH` is reported without running anything.
 
 Like `vgrab`, it is free and accepts only the terminal-capture options (`--copy`, `--edit`,
 `--terminal-width`, `--filename`, `--title`, `--conceal-clipboard`, `--redact-secrets`).
 The sandboxed app never runs commands; only the CLI does.
 
-**Header and secrets.** Unlike `vgrab`, the header shows only the program: `vitrine run --
-mysql -u root -phunter2 app` is titled `$ mysql …`, because arguments can hold credentials in
-shapes no rule foresees. `--title-from-command` shows the arguments too, with `••••` in place
+**Header and secrets.** Unlike `vgrab`, the header shows only the program, next to the
+project and branch (the project is left out when its only name is your home folder's or `/`):
+`vitrine run -- mysql -u root -phunter2 app` is titled `$ mysql …`, because arguments can hold
+credentials in shapes no rule foresees. `--title-from-command` shows the arguments too, with `••••` in place
 of anything that may be a credential, whatever it looks like:
 
 - the value of an option or `NAME=` assignment whose name contains password, passwd, pass,
@@ -191,7 +194,8 @@ of anything that may be a credential, whatever it looks like:
   even when that value starts with `-`;
 - the word after `-p`, `-P`, `-a` or `-k`, a value attached to `-p` or `-P`, the value of
   `-u`/`--user` when it holds a `:`, the whole user information of a URL
-  (`https://••••@host`), and an `-H`/`--header` whose name is one of those words, such as
+  (`https://••••@host`), a URL query or fragment value whose name is one of those words
+  (`?api_key=••••`), and an `-H`/`--header` whose name is one of those words, such as
   `Authorization`, `Cookie` or `X-Api-Key`;
 - anything else the secret scanner flags.
 
