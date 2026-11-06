@@ -142,7 +142,8 @@ CI is a release gate, not just a compile check.
   `Reuse pull request evidence` job (`scripts/ci-reuse-pr-evidence.py`) skips the build,
   UI and visual-tour jobs on the push only when the push added that single merge commit,
   its tree equals the pull request head's, and the newest run of every required check on
-  that head succeeded, read with the release gate's rules. A commit that changes
+  that head succeeded, read with the release gate's rules, without a `Golden baseline image`
+  warning (see *Strict export-image comparisons*). A commit that changes
   `project.yml` always runs them, because a release tags the version bump and its gate
   reads that commit's own checks. Any other doubt, or an API error, runs the full gate;
   scheduled and manual runs never reuse.
@@ -1203,7 +1204,12 @@ CI's Tahoe build runs strict comparisons with the Xcode build recorded in the
 golden manifest, selected for that step only; every other step uses the latest
 stable Xcode. A missing Xcode build fails the lane and records review candidates on
 the default Xcode. The runner OS image can still change: that is a qualification
-failure requiring baseline review, not permission to skip pixels. Ordinary unit tests run render smoke;
+failure requiring baseline review, not permission to skip pixels. The one exception is
+a pull request on a macOS build the baselines do not pin: it cannot choose its image, so
+it renders in smoke mode and the run carries a `Golden baseline image` warning. Pushes
+to `main` never reuse such a pull request's evidence, and they, the weekly drift run,
+manual runs and releases stay strict, so the new image still fails there until the
+baseline is reviewed. Ordinary unit tests run render smoke;
 `make test-goldens GOLDEN_MODE=smoke` requests that contract explicitly. Smoke is not
 visual regression certification. Result bundles and logs identify each comparison.
 

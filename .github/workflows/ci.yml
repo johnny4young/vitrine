@@ -493,12 +493,25 @@ jobs:
           echo "::error title=Baseline Xcode unavailable::No installed Xcode has build ${build}; record and review a baseline on an available Xcode."
           exit 1
 
+      # A pull request cannot choose its runner image, so on a macOS build the baselines do
+      # not pin it renders without comparing and says so. Every other event stays strict, so
+      # main, the weekly drift run and a release fail until the baseline is reviewed.
       - name: Golden-image suite
         id: goldens
         if: ${{ !cancelled() && steps.golden-xcode.outcome != 'failure' }}
         env:
           GOLDEN_DEVELOPER_DIR: ${{ steps.golden-xcode.outputs.developer-dir }}
-        run: make test-goldens GOLDEN_MODE=strict RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult" DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          mode=strict
+          host="$(sysctl -n kern.osversion)"
+          pinned="$(python3 -c 'import json; print(json.load(open("Tests/Fixtures/Golden/manifest.json"))["pinnedImage"]["osBuild"])')"
+          if [ "${EVENT_NAME}" = pull_request ] && [ "${host}" != "${pinned}" ]; then
+            mode=smoke
+            echo "::warning title=Golden baseline image::This runner is macOS build ${host} and the baselines pin ${pinned}, so this pull request rendered the goldens without comparing pixels. Pushes to main and the weekly run stay strict until the baseline is reviewed."
+          fi
+          make test-goldens GOLDEN_MODE="${mode}" RESULT_BUNDLE="${RUNNER_TEMP}/goldens.xcresult" DEVELOPER_DIR="${GOLDEN_DEVELOPER_DIR:-${DEVELOPER_DIR}}"
 
       - name: Upload golden evidence
         if: ${{ !cancelled() }}
