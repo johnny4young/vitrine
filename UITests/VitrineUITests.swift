@@ -872,7 +872,10 @@ final class VitrineUITests: XCTestCase {
         element("workspace-recipe-card-0", in: app).click()
         let enabled = expectation(
             for: NSPredicate(format: "isEnabled == true"), evaluatedWith: apply)
-        wait(for: [enabled], timeout: 3)
+        let pickerShowsCard = expectation(
+            for: NSPredicate(format: "value CONTAINS %@", "pr-review.vitrine-recipe.json"),
+            evaluatedWith: element("workspace-recipe-picker", in: app))
+        wait(for: [enabled, pickerShowsCard], timeout: 3)
     }
 
     /// Deletion, default replacement and reload are unit-tested in `LibraryDeletionTests`;

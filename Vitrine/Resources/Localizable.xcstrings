@@ -23,17 +23,6 @@
         }
       }
     },
-    "A file in a nested folder uses that folder's recipe." : {
-      "comment" : "Workspace recipe gallery tooltip on the folder line.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Un archivo en una carpeta anidada usa la receta de esa carpeta."
-          }
-        }
-      }
-    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {

@@ -42,7 +42,7 @@ struct RecipeGalleryTests {
         #expect(config.background == .gradient(.forest))
     }
 
-    @Test func nestedFoldersNameWhichRecipeWins() throws {
+    @Test func nestedFoldersNameWhichRecipeWins() async throws {
         let fixture = try Fixture()
         defer { fixture.remove() }
         let store = WorkspaceRecipeStore(defaults: testDefaults())
@@ -59,19 +59,113 @@ struct RecipeGalleryTests {
             workspaceURL: try fixture.folder("notes"),
             recipeURL: try fixture.recipe("notes.json", name: "Notes"))
 
-        #expect(
-            store.enclosingAssociationIDs() == [nested.id: parent.id, deeper.id: nested.id])
-
         let model = RecipeGalleryModel(render: { _ in nil })
-        model.reload(from: store)
+        await model.reload(RecipeGalleryModel.entries(store.associations))
         let cards = Dictionary(uniqueKeysWithValues: model.cards.map { ($0.id, $0) })
         #expect(model.cards.map(\.name) == ["PR review", "Documentation", "API", "Notes"])
         #expect(cards[parent.id]?.overrides == nil)
         #expect(cards[parent.id]?.nested == ["Documentation"])
         #expect(cards[nested.id]?.overrides == "PR review")
         #expect(cards[nested.id]?.nested == ["API"])
+        #expect(cards[deeper.id]?.overrides == "Documentation")
         #expect(cards[sibling.id]?.overrides == nil)
         #expect(cards[sibling.id]?.nested == [])
+    }
+
+    /// A drop skips a broken nested recipe for its parent, so the cards mustn't claim it wins.
+    @Test func aBrokenNestedRecipeNeitherOverridesNorIsOverridden() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = WorkspaceRecipeStore(defaults: testDefaults())
+        let parent = try store.associate(
+            workspaceURL: try fixture.folder("app"),
+            recipeURL: try fixture.recipe("parent.json", name: "PR review"))
+        let brokenFile = try fixture.recipe("docs.json", name: "Documentation")
+        let broken = try store.associate(
+            workspaceURL: try fixture.folder("app/docs"), recipeURL: brokenFile)
+        let deeper = try store.associate(
+            workspaceURL: try fixture.folder("app/docs/api"),
+            recipeURL: try fixture.recipe("api.json", name: "API"))
+        try Data("{}".utf8).write(to: brokenFile)
+
+        let model = RecipeGalleryModel(render: { _ in nil })
+        await model.reload(RecipeGalleryModel.entries(store.associations))
+        let cards = Dictionary(uniqueKeysWithValues: model.cards.map { ($0.id, $0) })
+        #expect(cards[broken.id]?.recipe == nil)
+        #expect(cards[broken.id]?.overrides == nil)
+        #expect(cards[broken.id]?.nested == [])
+        #expect(cards[parent.id]?.nested == ["API"])
+        #expect(cards[deeper.id]?.overrides == "PR review")
+    }
+
+    /// Names follow the bookmark through a rename, and loading never writes to the store.
+    @Test func cardsShowRenamedItemsWithoutWritingToTheStore() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let defaults = testDefaults()
+        let store = WorkspaceRecipeStore(defaults: defaults)
+        let folder = try fixture.folder("app")
+        let file = try fixture.recipe("old.json", name: "Docs")
+        try store.associate(workspaceURL: folder, recipeURL: file)
+        try FileManager.default.moveItem(at: folder, to: try fixture.path("renamed-app"))
+        try FileManager.default.moveItem(at: file, to: try fixture.path("new.json"))
+        let before = store.associations
+        let persisted = defaults.data(forKey: WorkspaceRecipeStore.storageKey)
+
+        let model = RecipeGalleryModel(render: { _ in nil })
+        await model.reload(RecipeGalleryModel.entries(store.associations))
+
+        #expect(model.cards.first?.workspaceName == "renamed-app")
+        #expect(model.cards.first?.recipeFilename == "new.json")
+        #expect(model.cards.first?.name == "Docs")
+        #expect(store.associations == before)
+        #expect(defaults.data(forKey: WorkspaceRecipeStore.storageKey) == persisted)
+    }
+
+    @Test func aCancelledReloadAppliesNothing() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = WorkspaceRecipeStore(defaults: testDefaults())
+        try store.associate(
+            workspaceURL: try fixture.folder("app"),
+            recipeURL: try fixture.recipe("docs.json", name: "Docs"))
+        let model = RecipeGalleryModel(render: { _ in nil })
+
+        let entries = RecipeGalleryModel.entries(store.associations)
+        let reload = Task { await model.reload(entries) }
+        reload.cancel()
+        await reload.value
+        #expect(model.cards.isEmpty)
+    }
+
+    @Test func aPreviewForACardRemovedMidRenderIsDropped() async throws {
+        let fixture = try Fixture()
+        defer { fixture.remove() }
+        let store = WorkspaceRecipeStore(defaults: testDefaults())
+        try store.associate(
+            workspaceURL: try fixture.folder("first"),
+            recipeURL: try fixture.recipe("first.json", name: "First"))
+        try store.associate(
+            workspaceURL: try fixture.folder("second"),
+            recipeURL: try fixture.recipe("second.json", name: "Second"))
+        let image = try #require(Self.pixel())
+        var model: RecipeGalleryModel?
+        var renders = 0
+        model = RecipeGalleryModel(frameGap: .zero) { _ in
+            renders += 1
+            // The list empties while the first preview is still rendering.
+            model?.update([])
+            return image
+        }
+        let gallery = try #require(model)
+        await gallery.reload(RecipeGalleryModel.entries(store.associations))
+        #expect(gallery.cards.count == 2)
+
+        await gallery.renderPreviews()
+        #expect(renders == 1)
+        #expect(gallery.cards.isEmpty)
+        #expect(gallery.images.isEmpty)
+        model = nil
     }
 
     @Test func aMissingRecipeFileShowsUnavailableAndRendersNothing() async throws {
@@ -87,7 +181,7 @@ struct RecipeGalleryTests {
             renders += 1
             return nil
         }
-        model.reload(from: store)
+        await model.reload(RecipeGalleryModel.entries(store.associations))
         await model.renderPreviews()
 
         #expect(model.cards.first?.recipe == nil)
@@ -112,12 +206,12 @@ struct RecipeGalleryTests {
             rendered.append(config.theme.id)
             return image
         }
-        model.reload(from: store)
+        await model.reload(RecipeGalleryModel.entries(store.associations))
         await model.renderPreviews()
         #expect(rendered.count == 2)
         #expect(model.images.count == 2)
 
-        model.reload(from: store)
+        await model.reload(RecipeGalleryModel.entries(store.associations))
         await model.renderPreviews()
         #expect(rendered.count == 2)
 
@@ -125,12 +219,12 @@ struct RecipeGalleryTests {
             name: "First",
             style: StyleSnapshot(themeID: Theme.dracula.id, background: .gradient(.night)))
         try WorkspaceRecipeDocument(recipe: restyled).jsonData().write(to: first)
-        model.reload(from: store)
+        await model.reload(RecipeGalleryModel.entries(store.associations))
         await model.renderPreviews()
         #expect(rendered == [Theme.nord.id, Theme.nord.id, Theme.dracula.id])
 
         #expect(store.remove(id: association.id))
-        model.reload(from: store)
+        await model.reload(RecipeGalleryModel.entries(store.associations))
         await model.renderPreviews()
         #expect(model.images.count == 1)
         #expect(model.images[association.id] == nil)
@@ -156,6 +250,8 @@ struct RecipeGalleryTests {
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
             return url
         }
+
+        func path(_ name: String) throws -> URL { root.appendingPathComponent(name) }
 
         func recipe(_ filename: String, name: String) throws -> URL {
             let url = root.appendingPathComponent(filename)
