@@ -36,6 +36,7 @@ final class PresetThumbnailModel {
     @ObservationIgnored private var renderedConfigs: [String: SnapshotConfig] = [:]
     @ObservationIgnored private var shownRedactions: [ClosedRange<Int>] = []
     @ObservationIgnored private var shownMasked = false
+    @ObservationIgnored private var shownCrop = TerminalCrop()
     @ObservationIgnored var quietWindow: Duration
     private let frameGap: Duration
     private let render: (SnapshotConfig) -> CGImage?
@@ -65,6 +66,7 @@ final class PresetThumbnailModel {
         source.code = code
         source.language = style.language
         source.terminalColumns = style.terminalColumns
+        source.terminalCrop = style.terminalCrop
         source.highlightedLineRanges = style.highlightedLineRanges
         source.redactedLineRanges = style.redactedLineRanges
         source.focusHighlightedLines = style.focusHighlightedLines
@@ -113,19 +115,25 @@ final class PresetThumbnailModel {
         func clip(_ ranges: [ClosedRange<Int>]) -> [ClosedRange<Int>] {
             ranges.filter { $0.overlaps(1...rows.count) }.map { $0.clamped(to: 1...rows.count) }
         }
+        // The rows are already cropped, so marks are renumbered to them.
+        let crop = source.activeTerminalCrop
         excerpt.code = rows.joined(separator: "\n")
-        excerpt.highlightedLineRanges = clip(source.highlightedLineRanges)
-        excerpt.redactedLineRanges = clip(LineHighlight.normalize(source.redactedLineRanges))
+        excerpt.terminalCrop = TerminalCrop()
+        excerpt.highlightedLineRanges = clip(crop.localRanges(source.highlightedLineRanges))
+        excerpt.redactedLineRanges = clip(
+            crop.localRanges(LineHighlight.normalize(source.redactedLineRanges)))
         return excerpt
     }
 
     func refresh(source: SnapshotConfig, tiles: [Tile]) async {
-        // A row just hidden must leave the tiles now, not after the quiet window.
-        let redactions = LineHighlight.normalize(source.redactedLineRanges)
+        // A row just hidden or cropped out must leave the tiles now, not after the quiet window.
+        let crop = source.activeTerminalCrop
+        let redactions = crop.localRanges(LineHighlight.normalize(source.redactedLineRanges))
             .filter { $0.lowerBound <= Self.maximumLines }
         let isMasked = !source.annotations.isEmpty
-        if shownRedactions != redactions || shownMasked != isMasked {
+        if shownRedactions != redactions || shownMasked != isMasked || shownCrop != crop {
             releaseImages()
+            shownCrop = crop
             shownRedactions = redactions
             shownMasked = isMasked
         }

@@ -378,6 +378,20 @@ struct CLIReproductionCommandTests: CLITestSupport {
         try inDirectory(directory) { try expectRoundTrip(overriding, recipe: file) }
     }
 
+    @Test func aTerminalCropRoundTripsThroughTheCopiedLine() throws {
+        var style = SnapshotConfig(code: "", language: .terminal)
+        style.terminalCrop = TerminalCrop(rows: 6...18, columns: 3...3)
+        style.redactedLineRanges = [7...7]
+        let copied = try line(command(style).outcome())
+        #expect(copied.contains("--terminal-crop-rows 6-18 --terminal-crop-columns 3"))
+        try expectRoundTrip(command(style))
+
+        style.terminalCrop = TerminalCrop(rows: 2...4)
+        #expect(try !line(command(style).outcome()).contains("--terminal-crop-columns"))
+        style.language = .swift
+        #expect(try !line(command(style).outcome()).contains("--terminal-crop"))
+    }
+
     @Test func aMatchingRecipeNeedsOnlyItsPathAndFlagsOverrideTheRest() throws {
         let directory = try makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

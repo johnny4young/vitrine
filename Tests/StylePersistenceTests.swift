@@ -57,6 +57,7 @@ struct StyleCodecCompletenessTests {
         config.altText = try! SnapshotAltText.normalized("This document only")
         config.code = "print('hello')"
         config.redactedLineRanges = [2...3]
+        config.terminalCrop = TerminalCrop(rows: 2...4)
         config.watermark = Watermark(text: "@vitrine")
         config.foregroundImage = ImageReference(fileName: "beautified.png")
         config.imageFrame = .macOSWindow
@@ -88,6 +89,7 @@ struct StyleCodecCompletenessTests {
         expected.altText = nil  // authored document description, never style
         expected.code = ""  // document text, never style
         expected.redactedLineRanges = []  // secret marks on a specific document (see persistStyle)
+        expected.terminalCrop = TerminalCrop()  // bound to one document, like redactions
         expected.watermark = nil  // Brand Kit owns its own persistence
         expected.foregroundImage = nil  // per-capture beautified image, not a default
         expected.imageFrame = .none  // frame of that image, travels with it

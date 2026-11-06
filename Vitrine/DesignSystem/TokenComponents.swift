@@ -267,6 +267,8 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
 struct TokenTextField: View {
     let prompt: Text
     @Binding var text: String
+    var width: CGFloat = 160
+    var onEndEditing: () -> Void = {}
 
     @FocusState private var isFocused: Bool
 
@@ -274,12 +276,15 @@ struct TokenTextField: View {
         TextField("", text: $text, prompt: prompt.foregroundStyle(VitrineTokens.Text.tertiary))
             .textFieldStyle(.plain)
             .focused($isFocused)
+            .onChange(of: isFocused) { _, focused in
+                if !focused { onEndEditing() }
+            }
             .multilineTextAlignment(.trailing)
             .font(.system(size: VitrineTokens.FontSize.subhead))
             .foregroundStyle(VitrineTokens.Text.primary)
             .padding(.vertical, 5)
             .padding(.horizontal, 10)
-            .frame(width: 160)
+            .frame(width: width)
             .background(
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(VitrineTokens.Chrome.fieldFill)

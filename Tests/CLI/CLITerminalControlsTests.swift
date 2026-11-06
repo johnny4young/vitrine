@@ -87,6 +87,49 @@ struct CLITerminalPaletteTests {
         }
     }
 
+    @Test func theCropFlagsReachTheConfigAndRefuseWhatTheyCannotMean() throws {
+        let flagged = try CLIArguments.parse([
+            "render", "in.log", "--out", "o.png", "--terminal-crop-rows", "18-6",
+            "--terminal-crop-columns", "4",
+        ])
+        let crop = flagged.makeConfig(code: "x", language: .terminal).terminalCrop
+        #expect(crop == TerminalCrop(rows: 6...18, columns: 4...4))
+        let bare = try CLIArguments.parse(["render", "in.log", "--out", "o.png"])
+        #expect(bare.makeConfig(code: "x", language: .terminal).terminalCrop.isEmpty)
+
+        for value in ["3,7", "0-4", "x", "1-100001"] {
+            #expect(throws: CLIError.invalidValue(flag: "--terminal-crop-rows", value: value)) {
+                try CLIArguments.parse([
+                    "render", "in.log", "--out", "o.png", "--terminal-crop-rows", value,
+                ])
+            }
+        }
+        #expect(throws: CLIError.unknownFlag("--terminal-crop-columns")) {
+            try CLIArguments.parse([
+                "terminal-capture", "in.log", "--copy", "--terminal-crop-columns", "1-4",
+            ])
+        }
+        #expect(throws: CLIError.self) {
+            try CLIArguments.parse(["render", "in.log", "--edit", "--terminal-crop-rows", "1-2"])
+        }
+        #expect(throws: CLIError.self) {
+            try CLIArguments.parse([
+                "render", "--image", "a.png", "--out", "o.png", "--terminal-crop-rows", "1-2",
+            ])
+        }
+    }
+
+    @Test func redactSecretsNumbersTheWholeScreenUnderACrop() throws {
+        let token = "gh" + "p_" + String(repeating: "x", count: 36)
+        let options = try CLIArguments.parse([
+            "render", "in.log", "--out", "o.png", "--terminal-crop-rows", "2-3",
+            "--redact-secrets",
+        ])
+        let config = options.makeConfig(code: "ok\nok\n\(token)", language: .terminal)
+        #expect(config.redactedLineRanges == [3...3])
+        #expect(config.sidecarText == "ok\n[redacted]")
+    }
+
     @Test func theCopiedCommandCarriesTheCursorOnlyWhereItApplies() {
         func line(_ style: SnapshotConfig) -> String {
             let command = CLIReproductionCommand(

@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Crop a terminal capture to some rows and columns of its final screen from the inspector's
+  Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
+  and redacted rows keep counting the whole screen, and text exports and share links carry only
+  the kept cells. Clearing the fields restores the rest.
 - The carousel export sheet shows a filmstrip of the real slides before writing files, with
   redactions in place, a flag on a last slide that came out short, and the slide size. PRO
   users opening it on a terminal capture or one with blur boxes now see why it can't export.

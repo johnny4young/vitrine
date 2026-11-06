@@ -301,7 +301,8 @@ public enum RichPasteboard {
                 config.code, font: font,
                 palette: .resolved(for: config.theme, mode: config.terminalPalette),
                 columns: config.terminalColumns, redacting: config.redactedLineRanges,
-                cursor: config.code.isEmpty ? .hidden : config.terminalCursor)
+                cursor: config.code.isEmpty ? .hidden : config.terminalCursor,
+                crop: config.terminalCrop)
         }
         return HighlightManager.shared.attributedString(
             for: config.richClipboardText, language: config.language, theme: config.theme,

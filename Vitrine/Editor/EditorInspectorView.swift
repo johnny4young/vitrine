@@ -417,6 +417,12 @@ struct EditorInspectorView: View {
                 .accessibilityLabel("Cursor")
                 .accessibilityIdentifier("terminal-cursor-picker")
             }
+            InspectorRow(label: Text("Crop rows")) {
+                TerminalCropField(settings: settings, axis: .rows)
+            }
+            InspectorRow(label: Text("Crop columns")) {
+                TerminalCropField(settings: settings, axis: .columns)
+            }
         }
     }
 
@@ -424,7 +430,8 @@ struct EditorInspectorView: View {
     /// screen, so raw line numbers would redact the wrong rows.
     private func scanForSecrets() {
         let report = SecretScanReport(
-            scanning: settings.config.sidecarText, keeping: settings.style.redactedLineRanges)
+            scanning: settings.config.uncroppedSidecarText,
+            keeping: settings.style.redactedLineRanges)
         settings.style.redactedLineRanges = report.ranges
         secretScan = report
     }

@@ -1,6 +1,61 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "All" : {
+      "comment" : "Placeholder of a terminal crop field when every row or column is kept",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas"
+          }
+        }
+      }
+    },
+    "Crop rows" : {
+      "comment" : "Inspector label: rows of a terminal capture's final screen to keep",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortar filas"
+          }
+        }
+      }
+    },
+    "Crop columns" : {
+      "comment" : "Inspector label: columns of a terminal capture's final screen to keep",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortar columnas"
+          }
+        }
+      }
+    },
+    "Rows to keep, e.g. 6-18" : {
+      "comment" : "Tooltip of the terminal crop rows field",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filas que se conservan, p. ej. 6-18"
+          }
+        }
+      }
+    },
+    "Columns to keep, e.g. 1-80" : {
+      "comment" : "Tooltip of the terminal crop columns field",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Columnas que se conservan, p. ej. 1-80"
+          }
+        }
+      }
+    },
     "Don't warn for this theme" : {
       "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
       "localizations" : {
