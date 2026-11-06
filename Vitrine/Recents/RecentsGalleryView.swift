@@ -393,10 +393,12 @@ struct RecentsGalleryView: View {
         // the PRO Brand Kit watermark is applied at the export seam.
         var config = recents.document(for: capture, over: settings.exportConfig)
         preset.apply(to: &config)
+        var pngBytes: Int?
         let outcome = RenderedImageCopy.copy(
             config, output: settings.export, behavior: settings.outputBehavior,
-            scale: CGFloat(preset.scale), fixedSize: preset.sizing.fixedSize)
-        feedback(ExportFeedback.copyOutcome(outcome))
+            scale: CGFloat(preset.scale), fixedSize: preset.sizing.fixedSize
+        ) { pngBytes = $0 }
+        feedback(ExportFeedback.copyOutcome(outcome, pngBytes: pngBytes))
     }
 
     private func copySource(_ capture: Capture) {

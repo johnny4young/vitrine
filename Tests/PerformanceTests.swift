@@ -124,6 +124,11 @@ struct PerformanceTests {
         /// fixture is the first record of what typing costs, and a target chosen before
         /// that evidence would either warn on every run or mean nothing.
         static let keystrokeHardCeiling: Duration = .milliseconds(1000)
+
+        /// One preset thumbnail. The model renders one per frame after a quiet window, so this
+        /// is what each of those frames pays.
+        static let presetThumbnailTarget: Duration = .milliseconds(30)
+        static let presetThumbnailHardCeiling: Duration = .milliseconds(500)
     }
 
     /// How many timed renders each case samples (after the discarded warm-up).
@@ -541,6 +546,89 @@ struct PerformanceTests {
             "recents-add exceeded the Recents hard ceiling")
     }
 
+    @Test func presetThumbnailsMeetBudget() {
+        // One settle's work on the main actor, split across frames by the model. Each sample
+        // is a distinct excerpt, or the highlight cache would answer instead of the work.
+        let tiles = StylePreset.builtIns
+        let lines = Self.defaultConfig().code.split(separator: "\n").prefix(8)
+            .joined(separator: "\n")
+        func thumbnail(_ preset: StylePreset, _ sample: Int) -> Duration {
+            var config = SnapshotConfig()
+            config.code = "\(lines)\n// sample \(sample)"
+            preset.style.apply(to: &config)
+            var image: CGImage?
+            let elapsed = ContinuousClock().measure {
+                image = ExportManager.renderThumbnail(
+                    config, pixels: PresetThumbnailModel.pixelSize)
+            }
+            if image == nil { Issue.record("thumbnail render produced no image") }
+            return elapsed
+        }
+        for preset in tiles { _ = thumbnail(preset, -1) }
+        let durations = (0..<Self.sampleCount).flatMap { sample in
+            tiles.map { thumbnail($0, sample) }
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "preset-thumbnail", target: PerfBudget.presetThumbnailTarget)
+        #expect(
+            stats.p95 <= PerfBudget.presetThumbnailHardCeiling,
+            "preset-thumbnail exceeded its hard ceiling")
+    }
+
+    @Test func presetThumbnailOfA4KImageMeetsBudget() throws {
+        // The largest common screenshot, so its draw into a tile is what this measures. The
+        // decode is shared with the stage, so the warm-up pass pays it.
+        let store = BackgroundImageStore(
+            directory: URL(fileURLWithPath: NSTemporaryDirectory())
+                .appendingPathComponent("perf-thumbnail-\(UUID().uuidString)", isDirectory: true))
+        defer { try? FileManager.default.removeItem(at: store.directory) }
+        let bitmap = try #require(
+            NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: 3_840, pixelsHigh: 2_160, bitsPerSample: 8,
+                samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        let png = try #require(bitmap.representation(using: .png, properties: [:]))
+        var config = SnapshotConfig()
+        config.foregroundImage = try store.importImage(data: png, preferredExtension: "png")
+        StylePreset.aurora.style.apply(to: &config)
+        func render() -> CGImage? {
+            ExportManager.renderThumbnail(
+                config, pixels: PresetThumbnailModel.pixelSize, foregroundImageStore: store)
+        }
+        _ = render()
+        let clock = ContinuousClock()
+        let durations = (0..<Self.sampleCount).map { _ in
+            clock.measure { #expect(render() != nil) }
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "preset-thumbnail-4k-image", target: nil)
+        #expect(stats.p95 <= PerfBudget.presetThumbnailHardCeiling)
+    }
+
+    @Test func presetThumbnailOfA32KBTerminalMeetsBudget() {
+        // The largest terminal capture that gets an excerpt, parse included, which is why the
+        // model waits for the quiet window before doing this.
+        let row = "\u{1B}[32mok\u{1B}[0m \u{1B}[1mTest\u{1B}[0m \u{1B}[2mpassed in 12 ms\u{1B}[0m\n"
+        let rows = (HighlightPolicy.maximumCacheableByteCount - 64) / row.utf8.count
+        let code = String(repeating: row, count: rows)
+        func sample(_ index: Int) -> Duration {
+            let source = PresetThumbnailModel.source(
+                style: SnapshotConfig(code: "", language: .terminal), code: code + "sample \(index)"
+            )
+            return ContinuousClock().measure {
+                var config = PresetThumbnailModel.excerpt(of: source)
+                StylePreset.aurora.style.apply(to: &config)
+                #expect(
+                    ExportManager.renderThumbnail(config, pixels: PresetThumbnailModel.pixelSize)
+                        != nil)
+            }
+        }
+        _ = sample(-1)
+        let stats = Statistics((0..<Self.sampleCount).map(sample))
+        report(stats, label: "preset-thumbnail-terminal-32kb", target: nil)
+        #expect(stats.p95 <= PerfBudget.presetThumbnailHardCeiling)
+    }
+
     @Test func typingInTheEditorMeetsBudget() throws {
         // A keystroke is not a render: the text view takes the edit, the editor's SwiftUI
         // hierarchy updates, and AppKit runs a layout pass before the next frame. The
@@ -719,6 +807,7 @@ struct PerformanceTests {
         #expect(PerfBudget.remoteChunkTarget < PerfBudget.remoteChunkHardCeiling)
         #expect(PerfBudget.remoteChunkHardCeiling < PerfBudget.hardCeiling)
         #expect(PerfBudget.keystrokeHardCeiling < PerfBudget.hardCeiling)
+        #expect(PerfBudget.presetThumbnailTarget < PerfBudget.presetThumbnailHardCeiling)
     }
 }
 

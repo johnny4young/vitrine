@@ -129,6 +129,7 @@ enum SettingsCodec {
             // Written by the inspector's @AppStorage toggle, not by this codec — listed so
             // "Reset All Settings" actually clears it.
             SafeAreaGuide.storageKey,
+            PresetThumbnailModel.expandedStorageKey,
         ]
     }
 

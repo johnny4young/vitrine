@@ -143,8 +143,9 @@ struct EditorSessionCopyTests {
 
         #expect(session.copyImage(closing: nil, pasteboard: pasteboard) == nil)
 
-        #expect(pasteboard.data(forType: .png) != nil)
-        #expect(spy.received == [ExportFeedback.copyOutcome(.copied)])
+        let png = try #require(pasteboard.data(forType: .png))
+        // The HUD reports the bytes that reached the clipboard.
+        #expect(spy.received == [ExportFeedback.copyOutcome(.copied, pngBytes: png.count)])
         #expect(session.copyConfirmation.isShowing)
     }
 

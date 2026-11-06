@@ -6,10 +6,15 @@ import VitrineRendering
 /// Callers present the returned feedback themselves; keeping the mapping here keeps
 /// the localized strings and the cancelled-save-is-silent rule in one spot.
 enum ExportFeedback {
-    static func copyOutcome(_ outcome: ExportManager.CopyOutcome) -> Notifier.CaptureFeedback {
+    /// `pngBytes` is the size of the PNG that reached the clipboard, when the caller knows it.
+    static func copyOutcome(
+        _ outcome: ExportManager.CopyOutcome, pngBytes: Int? = nil
+    ) -> Notifier.CaptureFeedback {
         switch outcome {
         case .copied:
-            Notifier.confirmation(String(localized: "Image copied to clipboard"))
+            Notifier.confirmation(
+                String(localized: "Image copied to clipboard"),
+                detail: pngBytes.map(Notifier.Detail.copiedPNG(bytes:)))
         case .failed:
             Notifier.failure(String(localized: "Couldn't copy the image"))
         case .renderFailed(let error):

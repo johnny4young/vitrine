@@ -736,6 +736,33 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testPresetThumbnailApplies() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.emptyEditor)
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        let disclosure = element("inspector-disclosure-presets", in: app)
+        assertExists(disclosure, in: app)
+        XCTAssertFalse(element("inspector-preset-thumbnails", in: app).exists)
+
+        // The section sits last, so scroll to it before opening it.
+        let inspector = element("editor-inspector", in: app)
+        for _ in 0..<5 where !disclosure.isHittable {
+            inspector.swipeUp()
+        }
+        disclosure.click()
+        assertExists(element("inspector-preset-thumbnails", in: app), in: app, timeout: 3)
+        assertHittable(
+            "preset-thumbnail-builtin.sunset", in: app, "A preset tile must be reachable")
+        element("preset-thumbnail-builtin.sunset", in: app).click()
+        let theme = element("inspector-value-theme", in: app)
+        let applied = NSPredicate(format: "value == %@", "Dracula")
+        wait(for: [expectation(for: applied, evaluatedWith: theme)], timeout: 3)
+    }
+
+    @MainActor
     func testStylePaneShowsDestinationPresetPicker() {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.settings)
@@ -910,6 +937,29 @@ final class VitrineUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [switchedOff], timeout: 3), .completed)
         element("carousel-cancel", in: app).click()
         XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testMultiSizeSheetEstimatesTheSelectedSizes() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-multi-size-export"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+        assertExists(element("multi-size-export-sheet", in: app), in: app, timeout: 8)
+
+        // A static text exposes what VoiceOver reads as its value, once every size is measured.
+        let estimate = element("multi-size-size-estimate", in: app)
+        let measured = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value CONTAINS %@", "about"), object: estimate)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [measured], timeout: 20), .completed,
+            "It reads \(String(describing: estimate.value))")
+
+        // With nothing selected there is nothing to estimate.
+        element("multi-size-select-none", in: app).click()
+        XCTAssertTrue(estimate.waitForNonExistence(timeout: 3))
     }
 
     /// One license round trip: activation dismisses the paywall and unlocks Brand Kit,
@@ -1546,6 +1596,31 @@ final class VitrineUITests: XCTestCase {
         let board = try XCTUnwrap(copied, "Comparison board did not copy a PNG")
         XCTAssertGreaterThan(board.pixelsWide, 1_000)
         XCTAssertGreaterThan(board.pixelsHigh, 500)
+
+        // Two captures offer the slider: its divider has a real value and captions still open.
+        element("comparison-board-layout-slider", in: app).click()
+        let divider = element("comparison-board-divider", in: app)
+        assertExists(divider, in: app, timeout: 5)
+        let dividerSlider = element("comparison-board-divider-slider", in: app)
+        assertExists(dividerSlider, in: app)
+        func position() -> String { String(describing: dividerSlider.value) }
+        let centered = position()
+        XCTAssertFalse(element("comparison-board-gap-slider", in: app).exists)
+        divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
+        XCTAssertEqual(position(), centered, "A plain click should not move it")
+        dividerSlider.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).click()
+        XCTAssertNotEqual(position(), centered, "The inspector slider should move the divider")
+
+        assertHittable(
+            "comparison-board-caption-1", in: app, "A slider caption should stay clickable",
+            timeout: 5)
+        element("comparison-board-caption-1", in: app).click()
+        let sliderCaption = element("comparison-board-inline-label-1", in: app)
+        assertExists(sliderCaption, in: app, timeout: 3)
+        let settled = position()
+        divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
+        XCTAssertTrue(sliderCaption.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(position(), settled, "That click only closes the caption")
     }
 
     @MainActor
@@ -1670,6 +1745,27 @@ final class VitrineUITests: XCTestCase {
         let summary = element("menu-capture-summary", in: app)
         XCTAssertTrue(summary.waitForExistence(timeout: 3), "A copied image should be summarized")
         XCTAssertEqual(summary.label, "Image")
+    }
+
+    /// UI tests run with the app at the default clipboard access, so the contents stay
+    /// unread. A Mac that granted the build Always Allow would fail this.
+    @MainActor
+    func testEmptyEditorMakesNoClaimUnderDefaultClipboardAccess() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setString("let answer = 42", forType: .string))
+
+        let app = launch(arguments: VitrineLaunchArguments.emptyEditorTour)
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        assertExists(element("empty-state", in: app), in: app, timeout: 8)
+        XCTAssertFalse(
+            element("empty-stage-clipboard", in: app).waitForExistence(timeout: 2),
+            "Default access must not name the clipboard's contents")
     }
 
     @MainActor
@@ -2157,8 +2253,10 @@ final class VitrineUITests: XCTestCase {
             return false
         }
 
-        // The sign of a horizontal delta follows the system's scroll direction.
+        // The sign of a horizontal delta follows the system's scroll direction. Wheel events
+        // go where the pointer is, so bring it over the row first.
         let start = chip.frame.minX
+        row.hover()
         row.scroll(byDeltaX: -120, deltaY: 0)
         if !moved(from: start) { row.scroll(byDeltaX: 120, deltaY: 0) }
         XCTAssertTrue(moved(from: start), "A pointer scroll did not move the row")
