@@ -915,6 +915,29 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
     }
 
+    @MainActor
+    func testMultiSizeSheetEstimatesTheSelectedSizes() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-multi-size-export"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+        assertExists(element("multi-size-export-sheet", in: app), in: app, timeout: 8)
+
+        // A static text exposes what VoiceOver reads as its value, once every size is measured.
+        let estimate = element("multi-size-size-estimate", in: app)
+        let measured = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value CONTAINS %@", "about"), object: estimate)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [measured], timeout: 20), .completed,
+            "It reads \(String(describing: estimate.value))")
+
+        // With nothing selected there is nothing to estimate.
+        element("multi-size-select-none", in: app).click()
+        XCTAssertTrue(estimate.waitForNonExistence(timeout: 3))
+    }
+
     /// One license round trip: activation dismisses the paywall and unlocks Brand Kit,
     /// then deactivation relocks it in the same running app without a network. The
     /// partial-activation failure is unit-tested in `EntitlementsTests`.

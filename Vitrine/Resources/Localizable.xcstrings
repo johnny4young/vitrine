@@ -1062,6 +1062,28 @@
         }
       }
     },
+    "about %@" : {
+      "comment" : "VoiceOver: an estimated file size, read in place of the tilde mark.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "alrededor de %@"
+          }
+        }
+      }
+    },
+    "%@ to %@" : {
+      "comment" : "VoiceOver: the first and last file names of a carousel export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ a %2$@"
+          }
+        }
+      }
+    },
     "%lld by %lld" : {
       "comment" : "Menu bar capture summary, read aloud: output width by height in pixels.",
       "localizations" : {
