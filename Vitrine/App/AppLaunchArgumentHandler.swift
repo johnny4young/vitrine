@@ -70,6 +70,7 @@ import VitrineRendering
         /// quick-start as seen; `--open-second-editor` drives the multi-window UI smoke; `--demo-brand-kit-free`
         /// seeds a PRO Brand Kit watermark in free-placement mode for UI smoke tests;
         /// `--demo-hotkey-conflict` stores a menu-taken hotkey, in an isolated suite only;
+        /// `--demo-recipe-gallery` associates sample recipes and selects Library, likewise;
         /// `--web-snapshot-ui-test-renderer` keeps that strict UI journey deterministic
         /// when XCTest cannot launch WebKit's out-of-process renderer;
         /// the `--memory-*` hooks run bounded lifecycle evidence journeys and terminate
@@ -250,6 +251,12 @@ import VitrineRendering
             {
                 KeyboardShortcuts.setShortcut(
                     .init(.s, modifiers: [.command, .shift]), for: .quickCapture)
+            }
+            if arguments.contains("--demo-recipe-gallery"),
+                ProcessInfo.processInfo.environment["VITRINE_USER_DEFAULTS_SUITE"]?.isEmpty == false
+            {
+                RecipeGalleryModel.seedDemo(in: environment.workspaceRecipes)
+                SettingsTab.library.select()
             }
             if arguments.contains("--open-settings") {
                 SettingsWindowManager.shared.show()

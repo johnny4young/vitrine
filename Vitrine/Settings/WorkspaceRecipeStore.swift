@@ -150,6 +150,22 @@ final class WorkspaceRecipeStore {
         return nil
     }
 
+    /// Each association's closest enclosing association. Inside the nested folder, the
+    /// nested recipe wins, as `resolvedRecipe(for:)` resolves it.
+    func enclosingAssociationIDs() -> [UUID: UUID] {
+        let folders = associations.compactMap { association -> (id: UUID, url: URL)? in
+            guard let url = try? resolve(association.workspaceBookmark).url else { return nil }
+            return (association.id, canonicalURL(url))
+        }
+        var parents: [UUID: UUID] = [:]
+        for folder in folders {
+            let closest = folders.filter { contains(folder.url, within: $0.url) }
+                .max { $0.url.pathComponents.count < $1.url.pathComponents.count }
+            if let closest { parents[folder.id] = closest.id }
+        }
+        return parents
+    }
+
     /// Applies the most-specific association for one explicit file input. Keeping
     /// this policy in the store makes editor drag-and-drop a thin adapter and keeps
     /// automatic application independently testable.

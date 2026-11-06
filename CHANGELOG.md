@@ -21,6 +21,10 @@ can never drift.
 - When a dropped file picks up a workspace recipe, a bar over the stage names the recipe and
   its folder and counts the style fields you've changed since. Revert restores the recipe's
   look and can be undone; closing the bar keeps the style.
+- Settings ▸ Library shows workspace recipes as a gallery. Each card renders the recipe's
+  style on the same snippet, with its theme and output values as the file spells them, its
+  folder, and which recipe wins where one folder sits inside another. Choosing a card selects
+  it for Apply to Default and Remove.
 - The carousel export sheet shows a filmstrip of the real slides before writing files, with
   redactions in place, a flag on a last slide that came out short, and the slide size. A new
   switch draws slide dividers in the code editor while you edit; they never touch the text. PRO

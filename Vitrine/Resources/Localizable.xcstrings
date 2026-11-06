@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "· overrides %@" : {
+      "comment" : "Workspace recipe gallery: this nested folder's recipe wins over the named parent recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· reemplaza a %@"
+          }
+        }
+      }
+    },
+    "· parent of %@" : {
+      "comment" : "Workspace recipe gallery: the named recipes of nested folders win over this one inside them.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· contiene %@"
+          }
+        }
+      }
+    },
+    "A file in a nested folder uses that folder's recipe." : {
+      "comment" : "Workspace recipe gallery tooltip on the folder line.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un archivo en una carpeta anidada usa la receta de esa carpeta."
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
