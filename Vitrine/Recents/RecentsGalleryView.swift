@@ -224,16 +224,19 @@ struct RecentsGalleryView: View {
         if isSelectingForComparison {
             Button("Cancel") { endComparisonSelection() }
                 .accessibilityIdentifier("recents-compare-cancel")
-            Button("Create Board (\(comparisonSelection.count))") {
-                createComparisonBoard()
+            // One slot: a single selection makes variants, so the row fits a narrow window.
+            if comparisonSelection.count == 1 {
+                Button("Theme Variants") { createThemeVariantsBoard() }
+                    .accentProminentButtonStyle()
+                    .accessibilityIdentifier("recents-theme-variants-button")
+            } else {
+                Button("Create Board (\(comparisonSelection.count))") {
+                    createComparisonBoard()
+                }
+                .disabled(!comparisonSelection.canCreateBoard)
+                .accentProminentButtonStyle()
+                .accessibilityIdentifier("recents-create-comparison-button")
             }
-            .disabled(!comparisonSelection.canCreateBoard)
-            .accentProminentButtonStyle()
-            .accessibilityIdentifier("recents-create-comparison-button")
-            Button("Theme Variants") { createThemeVariantsBoard() }
-                .disabled(comparisonSelection.count != 1)
-                .help("Show one capture in several themes on a board")
-                .accessibilityIdentifier("recents-theme-variants-button")
         } else {
             Button {
                 beginComparisonSelection()

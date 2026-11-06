@@ -19,12 +19,14 @@ final class ComparisonBoardDraft {
     }
 
     /// One theme of a single capture, rendered when the board opened. Only these pixels and
-    /// names stay, so adding a variant back never re-reads the source.
+    /// captions stay, so adding a variant back never re-reads the source.
     struct Variant: Identifiable {
         let id: UUID
         let theme: Theme
         let asset: RenderedAsset
-        let detail: String
+        /// The caption it had when it last left the board.
+        var label: String
+        var detail: String
     }
 
     enum CreationError: Error, Equatable {
@@ -105,7 +107,7 @@ final class ComparisonBoardDraft {
             return Variant(
                 id: UUID(), theme: theme,
                 asset: try Self.render(themed, at: index, renderScale, profile, render),
-                detail: detail)
+                label: Self.label(for: theme), detail: detail)
         }
         items = rendered.prefix(ComparisonBoard.itemCountRange.upperBound).map(Self.item)
         variants = rendered
@@ -138,9 +140,14 @@ final class ComparisonBoardDraft {
     }
 
     private static func item(_ variant: Variant) -> Item {
-        Item(
-            id: variant.id, asset: variant.asset, label: variant.theme.displayName,
-            detail: variant.detail)
+        Item(id: variant.id, asset: variant.asset, label: variant.label, detail: variant.detail)
+    }
+
+    /// A custom theme's name can be any length, but a caption must pass board validation.
+    static func label(for theme: Theme) -> String {
+        let name = theme.displayName.split(whereSeparator: \.isNewline).joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        return String((name.isEmpty ? theme.id : name).prefix(ComparisonBoard.maximumLabelLength))
     }
 
     func isOnBoard(_ variant: Variant) -> Bool {
@@ -161,7 +168,10 @@ final class ComparisonBoardDraft {
         if isOnBoard(variant) {
             removeItem(id: id)
         } else {
-            items.append(Self.item(variant))
+            let order = { (id: Item.ID) in self.variants.firstIndex { $0.id == id } ?? .max }
+            let rank = order(id)
+            let slot = items.firstIndex { order($0.id) > rank } ?? items.count
+            items.insert(Self.item(variant), at: slot)
             // The slider compares exactly two, so a third capture returns to Auto.
             if layout == .slider { layout = .automatic }
         }
@@ -258,6 +268,12 @@ final class ComparisonBoardDraft {
 
     func removeItem(id: Item.ID) {
         guard items.count > ComparisonBoard.itemCountRange.lowerBound else { return }
+        if let item = items.first(where: { $0.id == id }),
+            let index = variants.firstIndex(where: { $0.id == id })
+        {
+            variants[index].label = item.label
+            variants[index].detail = item.detail
+        }
         items.removeAll { $0.id == id }
     }
 

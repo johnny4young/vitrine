@@ -264,6 +264,48 @@ struct ComparisonBoardDraftTests {
         #expect(draft.items.count == 3)
     }
 
+    @Test func longOrMultilineThemeNamesStillMakeAValidBoard() throws {
+        let long = Theme(
+            id: "mine", displayName: "My team's\nvery long custom theme name for the docs site",
+            hlJsTheme: "github")
+        let blank = Theme(id: "blank", displayName: " \n ", hlJsTheme: "github")
+        let draft = try ComparisonBoardDraft(
+            variantsOf: SnapshotConfig(), themes: [long, blank], profile: .sRGB,
+            render: { _, _, _ in solidImage() })
+
+        #expect(draft.items[0].label.count == ComparisonBoard.maximumLabelLength)
+        #expect(draft.items[0].label.hasPrefix("My team's very long"))
+        #expect(draft.items[1].label == "blank")
+        #expect(draft.isValid)
+    }
+
+    @Test func aVariantAddedBackKeepsItsCaptionAndThemeOrder() throws {
+        let draft = try ComparisonBoardDraft(
+            variantsOf: SnapshotConfig(),
+            themes: ComparisonBoardDraft.variantThemes(startingWith: .oneDark),
+            profile: .sRGB, render: { _, _, _ in solidImage() })
+        let variants = draft.variants
+        draft.items[1].label = "Light option"
+        draft.items[1].detail = "For docs"
+
+        draft.toggleVariant(id: variants[1].id)
+        draft.toggleVariant(id: variants[4].id)
+        #expect(draft.items.map(\.id) == [0, 2, 3, 4].map { variants[$0].id })
+        draft.toggleVariant(id: variants[4].id)
+        draft.toggleVariant(id: variants[1].id)
+
+        #expect(draft.items.map(\.id) == [0, 1, 2, 3].map { variants[$0].id })
+        #expect(draft.items[1].label == "Light option")
+        #expect(draft.items[1].detail == "For docs")
+
+        // The captures list's remove button keeps the caption too.
+        draft.items[2].label = "Vampire"
+        draft.removeItem(id: variants[2].id)
+        draft.toggleVariant(id: variants[2].id)
+        #expect(draft.items[2].id == variants[2].id)
+        #expect(draft.items[2].label == "Vampire")
+    }
+
     @Test func boardsFromSeveralCapturesOfferNoVariants() throws {
         let draft = try makeDraft(captures: [capture("one"), capture("two")])
         #expect(draft.variants.isEmpty)

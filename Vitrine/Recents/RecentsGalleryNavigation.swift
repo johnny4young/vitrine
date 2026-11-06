@@ -12,7 +12,7 @@ struct RecentsGalleryNavigation {
         presentEditor: @escaping () -> Void,
         loadPrimaryEditor: @escaping (SnapshotConfig) -> Void,
         presentComparisonBoard: @escaping ([Capture]) -> Void,
-        presentThemeVariants: @escaping (Capture) -> Void = { _ in }
+        presentThemeVariants: @escaping (Capture) -> Void
     ) {
         self.presentEditor = presentEditor
         self.loadPrimaryEditor = loadPrimaryEditor
@@ -47,5 +47,6 @@ struct RecentsGalleryNavigation {
     static let noOp = RecentsGalleryNavigation(
         presentEditor: {},
         loadPrimaryEditor: { _ in },
-        presentComparisonBoard: { _ in })
+        presentComparisonBoard: { _ in },
+        presentThemeVariants: { _ in })
 }

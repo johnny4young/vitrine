@@ -39,9 +39,14 @@ To compare themes without capturing again, choose **Compare** in Recents, select
 and choose **Theme Variants**. The capture is rendered once in its own theme and in One Dark,
 One Light, Dracula, GitHub, and GitHub Dark. The first four go on the board, each captioned
 with its theme name. **Theme variants** in the inspector adds or removes a theme within the
-board's two to four captures; adding a third capture to a **Slider** board returns it to
-**Auto**. The board keeps the rendered pixels of every variant, not the capture's source,
-so a variant added back is the same image it was when the board opened.
+board's two to four captures. A variant added back returns to its place in that theme order
+with the label and detail it had, and adding a third capture to a **Slider** board returns
+it to **Auto**. A theme name longer than a label allows is shortened to fit.
+
+The board keeps the rendered pixels of every variant, not the capture's source, so a
+variant added back is the same image it was when the board opened. That costs memory while
+the board is open: up to six images of width × height × 4 bytes in pixels at the export
+scale, so about 8 MB each for a 1000 × 500 pt capture at 2×. Closing the board releases them.
 
 Every card receives the same image area and preserves its aspect ratio. Labels are
 single-line and bounded so a board cannot grow unpredictably from pasted text.
@@ -77,7 +82,8 @@ Comparison mode is explicit and temporary:
 - entering it freezes the current gallery search, filter, and sort controls while the
   numbered badges make selection order explicit;
 - selection identifiers exist only in that open Recents view;
-- creating the board renders each selected capture once;
+- creating the board renders each selected capture once, or, for theme variants, the one
+  selected capture once per theme;
 - the editor draft retains only those finished pixels, visible captions, and the
   layout options above;
 - it stores no source path, security-scoped bookmark, source text, or durable Recents

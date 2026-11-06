@@ -23,17 +23,6 @@
         }
       }
     },
-    "Show one capture in several themes on a board" : {
-      "comment" : "Help for the Recents Theme Variants button.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Muestra una captura en varios temas en un tablero"
-          }
-        }
-      }
-    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
