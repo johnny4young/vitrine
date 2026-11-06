@@ -403,7 +403,10 @@ Composing or exporting a board therefore cannot trigger an implicit file read.
 `ComparisonBoardComposer` resolves row and column counts before rendering and gives
 every item an equal, aspect-fit image area. Automatic layout keeps two or three items
 in one row and uses a two-by-two grid for four; explicit horizontal, vertical, and grid
-layouts are deterministic alternatives. The finished image goes through the same color
+layouts are deterministic alternatives. The slider layout resolves two items into one
+card through `Metrics.wipe`, whose whole-point geometry the composer draws and the
+editor's divider control reads; each capture is clipped to its side, never stacked, and
+any other item count draws as automatic. The finished image goes through the same color
 normalization and PNG/PDF encoders as every other capture. This generic core remains
 separate from `ResponsiveBoardComposer`, whose variable-width cards and viewport labels
 are specialized for web snapshots.
@@ -958,6 +961,7 @@ Vitrine/
 │   ├── ComparisonBoardDraft.swift # rendered pixels + editable session captions
 │   ├── ComparisonBoardPreview.swift # debounced preview phase and failure state
 │   ├── ComparisonBoardEditorView.swift # preview, layout, captions, export controls
+│   ├── ComparisonBoardDividerHandle.swift # slider divider: pointer, keyboard, VoiceOver
 │   └── ComparisonBoardPresentation.swift # injected share operation
 ├── Settings/
 │   ├── AppSettings.swift      # UserDefaults-backed settings store (injectable)

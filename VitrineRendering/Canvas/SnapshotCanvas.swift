@@ -436,6 +436,11 @@ public struct SnapshotCanvas: View, Equatable {
         ANSIPalette.resolved(for: config.theme, mode: config.terminalPalette)
     }
 
+    /// An empty capture shows the placeholder, which is not output a cursor could follow.
+    private var terminalCursor: TerminalCursorStyle {
+        config.code.isEmpty ? .hidden : config.terminalCursor
+    }
+
     /// The card fill: the syntax theme's background, or the terminal palette's
     /// background (theme-matched) when rendering ANSI terminal output.
     private var cardBackgroundColor: Color {
@@ -453,7 +458,8 @@ public struct SnapshotCanvas: View, Equatable {
         if config.language == .terminal {
             return HighlightManager.shared.terminalAttributedString(
                 for: source, theme: config.theme, font: codeFont,
-                columns: config.terminalColumns, palette: config.terminalPalette)
+                columns: config.terminalColumns, palette: config.terminalPalette,
+                cursor: terminalCursor)
         }
         return HighlightManager.shared.swiftUIAttributedString(
             for: source,
@@ -471,9 +477,20 @@ public struct SnapshotCanvas: View, Equatable {
         let placeholder = "// Paste or type code…"
         let source = config.code.isEmpty ? placeholder : config.code
         if config.language == .terminal {
-            return HighlightManager.shared.terminalAttributedLines(
+            var rows = HighlightManager.shared.terminalAttributedLines(
+                for: source, theme: config.theme, font: codeFont,
+                columns: config.terminalColumns, palette: config.terminalPalette,
+                cursor: terminalCursor)
+            guard terminalCursor != .hidden, !config.redactedLineRanges.isEmpty else { return rows }
+            // A mask takes its length from its row, so a cursor must not reach a redacted one.
+            let bare = HighlightManager.shared.terminalAttributedLines(
                 for: source, theme: config.theme, font: codeFont,
                 columns: config.terminalColumns, palette: config.terminalPalette)
+            let redactions = LineHighlight.normalize(config.redactedLineRanges)
+            for index in rows.indices where LineHighlight.contains(redactions, line: index + 1) {
+                rows[index] = index < bare.count ? bare[index] : AttributedString()
+            }
+            return rows
         }
         return HighlightManager.shared.swiftUIAttributedLines(
             for: source, language: config.language, theme: config.theme, font: codeFont)

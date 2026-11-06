@@ -460,28 +460,33 @@ extension EditorView {
                 // scales with it — a pointer drag maps straight to normalized
                 // annotation coordinates. Top-aligned, because a legend band extends
                 // the card below that coordinate space.
+                let destination = settings.effectiveFixedSize
+                let document = settings.documentGeneration
                 ZStack(alignment: .top) {
-                    SnapshotCanvas(config: previewConfig, fixedSize: settings.effectiveFixedSize)
-                        .equatable()
-                        .fixedSize()
-                        .onGeometryChange(for: CGSize.self, of: \.size) {
-                            cardGeometry.size = $0
+                    ThemeFadingCanvas(
+                        canvas: SnapshotCanvas(config: previewConfig, fixedSize: destination)
+                    )
+                    .fixedSize()
+                    .onGeometryChange(for: PreviewCardGeometry.Measurement.self) {
+                        .init(size: $0.size, destination: destination, document: document)
+                    } action: {
+                        cardGeometry.record($0)
+                    }
+                    .onPreferenceChange(CounterLegendReportKey.self) {
+                        cardGeometry.legendHeight = $0.height
+                        cardGeometry.legendDropped = $0.dropped
+                    }
+                    // Marks the export's transparent pixels, and only those.
+                    .background {
+                        if case .transparent = settings.style.background {
+                            TransparencyGrid()
                         }
-                        .onPreferenceChange(CounterLegendReportKey.self) {
-                            cardGeometry.legendHeight = $0.height
-                            cardGeometry.legendDropped = $0.dropped
-                        }
-                        // Marks the export's transparent pixels, and only those.
-                        .background {
-                            if case .transparent = settings.style.background {
-                                TransparencyGrid()
-                            }
-                        }
-                        .compositingGroup()
-                        .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
-                        // Expose the canvas text as children: as one aggregate element,
-                        // automated drags on annotation endpoint handles stop landing.
-                        .accessibilityElement(children: .contain)
+                    }
+                    .compositingGroup()
+                    .shadow(color: ambientShadowColor, radius: 24, x: 0, y: 24)
+                    // Expose the canvas text as children: as one aggregate element,
+                    // automated drags on annotation endpoint handles stop landing.
+                    .accessibilityElement(children: .contain)
                     AnnotationEditingOverlay(
                         settings: settings, selection: $selectedAnnotationID,
                         editingAnnotationID: $editingAnnotationID,
@@ -546,6 +551,7 @@ extension EditorView {
         .background {
             PreviewCodeSynchronizer(settings: settings) { code in
                 stagedPreviewCode = code
+                legibility.stagedCode = code
                 session.presetThumbnails.stagedCode = code
                 session.presetThumbnails.stagedGeneration = settings.documentGeneration
             }
@@ -619,7 +625,7 @@ extension EditorView {
     var inspectorColumn: some View {
         EditorInspectorView(
             settings: settings, themes: themes, presets: presets, entitlements: entitlements,
-            presetThumbnails: session.presetThumbnails)
+            legibility: legibility, presetThumbnails: session.presetThumbnails)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a
@@ -684,9 +690,15 @@ extension EditorView {
         let intake = beginPastedDocument(text)
         // Tidy the indentation on paste when the user opts in; the global
         // preference (not the per-window session) owns this behavior.
-        settings.documentCode =
-            environment.appSettings.reindentOnPaste
-            ? CodeFormatter.tidy(intake.code, language: intake.language) : intake.code
+        settings.documentCode = Self.pastedCode(
+            intake, reindents: environment.appSettings.reindentOnPaste)
+    }
+
+    /// The document text that Paste Code produces.
+    static func pastedCode(
+        _ intake: LanguageDetector.Interpretation, reindents: Bool
+    ) -> String {
+        reindents ? CodeFormatter.tidy(intake.code, language: intake.language) : intake.code
     }
 
     /// Pasting a whole document is a new capture: it stops the live file, drops marks
@@ -716,6 +728,32 @@ final class PreviewCardGeometry {
     /// Legend entries a fixed frame had no room for.
     var legendDropped = 0
 
+    /// The latest destination change that moved the card.
+    private(set) var morph = StageFitMorph()
+    private var destination: CGSize?
+    private var document = 0
+
+    /// A size and what it was measured under, read together so a destination that leaves
+    /// the size alone cannot pass for one still on its way.
+    nonisolated struct Measurement: Equatable, Sendable {
+        let size: CGSize
+        let destination: CGSize?
+        let document: Int
+    }
+
+    /// A loaded document can move the destination too, but it is new content, not the same
+    /// card reshaped.
+    func record(_ measurement: Measurement) {
+        if measurement.destination != destination, measurement.document == document,
+            measurement.size != size, size.width > 0, size.height > 0
+        {
+            morph = StageFitMorph(generation: morph.generation + 1, previousCard: size)
+        }
+        destination = measurement.destination
+        document = measurement.document
+        size = measurement.size
+    }
+
     /// The space normalized annotations are placed in.
     var canvasSize: CGSize {
         CGSize(width: size.width, height: max(size.height - legendHeight, 0))
@@ -724,15 +762,36 @@ final class PreviewCardGeometry {
 
 /// Scales the preview card to fit the stage and pins its layout footprint to the scaled
 /// size, handing `content` the annotation canvas's size, without any legend band.
-private struct PreviewCardStage<Content: View>: View {
+struct PreviewCardStage<Content: View>: View {
     let geometry: PreviewCardGeometry
     let stageSize: CGSize
-    @ViewBuilder let content: (CGSize) -> Content
+    let fitAnimation: Animation
+    let morphSpring: Spring
+    let content: (CGSize) -> Content
+
+    @ReducesMotion private var reduceMotion
+    @State private var settledMorph = 0
+
+    init(
+        geometry: PreviewCardGeometry, stageSize: CGSize,
+        fitAnimation: Animation = .easeInOut(duration: 0.25),
+        morphSpring: Spring = StageFitMorph.spring,
+        @ViewBuilder content: @escaping (CGSize) -> Content
+    ) {
+        self.geometry = geometry
+        self.stageSize = stageSize
+        self.fitAnimation = fitAnimation
+        self.morphSpring = morphSpring
+        self.content = content
+    }
 
     var body: some View {
         let cardSize = geometry.size
         let scale = EditorView.fitScale(card: cardSize, in: stageSize)
+        let morph = geometry.morph
         content(geometry.canvasSize)
+            // A drag on a card still changing shape would place a mark away from the pointer.
+            .allowsHitTesting(reduceMotion || settledMorph == morph.generation)
             .scaleEffect(scale)
             // `scaleEffect` does not shrink the layout footprint, so without this the
             // unscaled (often very wide) card stays full-width in layout and its
@@ -740,8 +799,23 @@ private struct PreviewCardStage<Content: View>: View {
             // *scaled* size centers the card on its visible bounds and keeps it fully
             // inside the stage at every window size (usability fix).
             .frame(width: cardSize.width * scale, height: cardSize.height * scale)
+            // Inside the animations, or the card's position is not animated with its size.
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .motionSensitiveAnimation(.easeInOut(duration: 0.25), value: scale)
+            // A morph animates the frame through its effect, so the fit itself lands at once.
+            .transaction(value: morph.generation) { $0.animation = nil }
+            .motionSensitiveAnimation(fitAnimation, value: scale)
+            .modifier(
+                StageFitMorphEffect(
+                    generation: morph.generation,
+                    startingScale: morph.startingScale(to: cardSize, in: stageSize))
+            )
+            .motionSensitiveAnimation(.spring(morphSpring), value: morph.generation)
+            .task(id: morph.generation) {
+                guard settledMorph != morph.generation else { return }
+                try? await Task.sleep(for: .seconds(morphSpring.settlingDuration))
+                guard !Task.isCancelled else { return }
+                settledMorph = morph.generation
+            }
     }
 }
 
@@ -756,17 +830,29 @@ private struct StageStatusCapsule: View {
     let stageSize: CGSize
 
     var body: some View {
-        let line = line
+        let destinationName = destinationName
+        let details = details
+        let line = destinationName + details
         Menu {
             DestinationMenuOptions(settings: settings)
         } label: {
             HStack(spacing: 7) {
-                Text(verbatim: line)
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .monospacedDigit()
-                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                HStack(spacing: 0) {
+                    // Only the numbers roll. A name rolling through its letters is noise.
+                    Text(verbatim: destinationName)
+                        .contentTransition(.identity)
+                        // The new name is drawn at once, inside its width as it eases, so it
+                        // cannot run over the numbers on their way to their new place.
+                        .clipped()
+                    Text(verbatim: details)
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .layoutPriority(1)
+                }
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .lineLimit(1)
+                .truncationMode(.middle)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 8, weight: .bold))
                     .foregroundStyle(VitrineTokens.Text.secondary)
@@ -775,6 +861,12 @@ private struct StageStatusCapsule: View {
             .padding(.horizontal, VitrineTokens.Spacing.sm)
             .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
             .contentShape(Capsule(style: .continuous))
+            // For a destination change and not for the card growing with typing.
+            .motionSensitiveAnimation(
+                .easeOut(duration: 0.24),
+                value: StageFitReadout(
+                    destination: settings.effectiveFixedSize,
+                    morph: geometry.morph.generation))
         }
         .customLabelMenu(cornerRadius: 14)
         .frame(maxWidth: stageSize.width > 24 ? stageSize.width - 24 : nil)
@@ -785,13 +877,17 @@ private struct StageStatusCapsule: View {
         .padding(.bottom, 14)
     }
 
-    private var line: String {
-        let destination = settings.selectedPreset?.displayName ?? String(localized: "Custom")
+    private var destinationName: String {
+        settings.selectedPreset?.displayName ?? String(localized: "Custom")
+    }
+
+    /// Everything after the name, with its leading separator.
+    private var details: String {
         let cardSize = geometry.size
         let size = settings.effectiveFixedSize ?? cardSize
         let dimensions = "\(Int(size.width.rounded())) × \(Int(size.height.rounded()))"
         let output = "\(settings.export.format.displayName) \(settings.effectiveExportScale)×"
-        var line = "\(destination) · \(dimensions) · \(output)"
+        var line = " · \(dimensions) · \(output)"
         if stageSize.width > 0 {
             let zoom = Int((EditorView.fitScale(card: cardSize, in: stageSize) * 100).rounded())
             if zoom < 100 { line += " · \(zoom)%" }
@@ -801,6 +897,11 @@ private struct StageStatusCapsule: View {
         }
         return line
     }
+}
+
+private struct StageFitReadout: Equatable {
+    let destination: CGSize?
+    let morph: Int
 }
 
 /// Every destination by its full name. A view of its own so the capsule's size changes
@@ -856,7 +957,12 @@ private struct CodeDocumentEditor: View {
                         "Paste code or terminal output, or open a live file to turn it into a beautiful image.",
                     actionTitle: "Paste Code",
                     action: pasteFromClipboard,
-                    compact: true
+                    compact: true,
+                    // A new identity measures again when the preference changes.
+                    footer: {
+                        EmptyStageClipboardLine(reindentsOnPaste: reindentOnPaste)
+                            .id(reindentOnPaste)
+                    }
                 )
             }
         }

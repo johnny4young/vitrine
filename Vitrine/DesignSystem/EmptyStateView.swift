@@ -8,7 +8,7 @@ import VitrineRendering
 /// optional primary action, and washes the background with the signature
 /// gradient so empty states feel like part of the display case rather than a
 /// blank rectangle.
-struct EmptyStateView: View {
+struct EmptyStateView<Footer: View>: View {
     // `LocalizedStringKey`-typed so callers pass plain string literals that flow
     // through the String Catalog automatically, and `Text`/`Button` below
     // render them localized.
@@ -19,6 +19,7 @@ struct EmptyStateView: View {
     /// The editor's narrow code column uses the compact metrics; full windows
     /// (the recents gallery) use the regular ones.
     var compact = false
+    @ViewBuilder let footer: Footer
 
     var body: some View {
         VStack(spacing: Brand.Spacing.md) {
@@ -46,6 +47,7 @@ struct EmptyStateView: View {
             }
             .accessibilityElement(children: .combine)
             .allowsHitTesting(false)
+            .accessibilityIdentifier("empty-state")
 
             // The action stays a discrete, focusable button with its
             // `.isButton` trait intact — never folded into the text blob. It
@@ -56,10 +58,22 @@ struct EmptyStateView: View {
                     .accentProminentButtonStyle()
                     .padding(.top, Brand.Spacing.xxs)
             }
+
+            footer
         }
         .padding(Brand.Spacing.xxl)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Brand.Gradient.signatureWash().allowsHitTesting(false))
-        .accessibilityIdentifier("empty-state")
+    }
+}
+
+extension EmptyStateView where Footer == EmptyView {
+    init(
+        title: LocalizedStringKey, message: LocalizedStringKey,
+        actionTitle: LocalizedStringKey? = nil, action: (() -> Void)? = nil, compact: Bool = false
+    ) {
+        self.init(
+            title: title, message: message, actionTitle: actionTitle, action: action,
+            compact: compact, footer: { EmptyView() })
     }
 }

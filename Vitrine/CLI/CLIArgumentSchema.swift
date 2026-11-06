@@ -36,6 +36,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case shadowRadius
     case terminalWidth
     case terminalPalette
+    case terminalCursor
     case wrapColumns
     case formatCode
     case format
@@ -269,6 +270,12 @@ nonisolated enum CLIArgumentSchema {
             synopsis: "--terminal-palette <theme|raw>",
             description:
                 "Color terminal output with the theme's palette or legible xterm colors. Only affects --language terminal."
+        ),
+        definition(
+            .terminalCursor, ["--terminal-cursor"], .value("hidden|block|bar"),
+            synopsis: "--terminal-cursor <hidden|block|bar>",
+            description:
+                "Draw the terminal cursor where the output left it, unless the program hid it or a full-screen app already exited. Only affects --language terminal."
         ),
         definition(
             .wrapColumns, ["--wrap-columns", "--wrap"], .value("n"), synopsis: "--wrap-columns <n>",

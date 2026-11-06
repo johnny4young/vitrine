@@ -86,6 +86,29 @@ struct ComparisonBoardPreviewTests {
         #expect(preview.captionFrames.isEmpty)
     }
 
+    @Test func theDividerArrivesWithItsAssetAndLeavesWithIt() async {
+        enum Failure: Error { case expected }
+        let preview = ComparisonBoardPreview()
+        let wipe = ComparisonBoardComposer.Wipe(
+            area: CGRect(x: 1, y: 2, width: 3, height: 4), pointsPerPixel: 1, sharedWidth: 3,
+            dividerX: 2)
+
+        await preview.refresh(
+            isValid: true, debounce: .zero, wipe: { wipe }, render: { asset() })
+        #expect(preview.wipe == wipe)
+
+        await preview.refresh(isValid: false, keepsLastFrame: true, debounce: .zero) { asset() }
+        #expect(preview.wipe == wipe, "the kept frame still draws this divider")
+
+        await preview.refresh(isValid: true, debounce: .zero, render: { asset() })
+        #expect(preview.wipe == nil, "another layout draws no divider")
+
+        await preview.refresh(
+            isValid: true, debounce: .zero, wipe: { wipe }, render: { asset() })
+        await preview.refresh(isValid: true, debounce: .zero) { throw Failure.expected }
+        #expect(preview.wipe == nil)
+    }
+
     private func asset() -> RenderedAsset {
         let context = CGContext(
             data: nil,

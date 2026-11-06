@@ -23,6 +23,7 @@ struct EditorInspectorView: View {
     var themes: CustomThemeStore
     var presets: PresetStore
     var entitlements: Entitlements
+    var legibility: LegibilityModel
     var presetThumbnails: PresetThumbnailModel
 
     /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
@@ -343,7 +344,8 @@ struct EditorInspectorView: View {
     private var themeSection: some View {
         InspectorSection(
             title: Text("Theme"),
-            value: (settings.style.theme.displayName, "inspector-value-theme")
+            value: (settings.style.theme.displayName, "inspector-value-theme"),
+            accessory: { LegibilityBadge(settings: settings, model: legibility) }
         ) {
             ThemeChipPicker(
                 settings: settings, themes: themes,
@@ -352,6 +354,7 @@ struct EditorInspectorView: View {
             )
             .accessibilityIdentifier("style-theme-picker")
         }
+        .background { LegibilityMeter(settings: settings, model: legibility) }
     }
 
     private var typographySection: some View {
@@ -398,6 +401,21 @@ struct EditorInspectorView: View {
                 .help("Raw uses the standard xterm colors, lifted only where they would vanish.")
                 .accessibilityLabel("ANSI palette")
                 .accessibilityIdentifier("terminal-palette-picker")
+            }
+            InspectorRow(label: Text("Cursor")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (TerminalCursorStyle.hidden, Text("Hidden")),
+                        (TerminalCursorStyle.block, Text("Block")),
+                        (TerminalCursorStyle.bar, Text("Bar")),
+                    ],
+                    selection: $settings.style.terminalCursor
+                )
+                .help(
+                    "Drawn where the output left it, unless the program hid it or a full-screen app already exited."
+                )
+                .accessibilityLabel("Cursor")
+                .accessibilityIdentifier("terminal-cursor-picker")
             }
         }
     }

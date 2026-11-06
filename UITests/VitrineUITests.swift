@@ -197,6 +197,7 @@ final class VitrineUITests: XCTestCase {
         defer { app.terminate() }
 
         assertExists(element("terminal-palette-picker", in: app), in: app, timeout: 8)
+        assertExists(element("terminal-cursor-picker", in: app), in: app)
 
         let header = element("inspector-disclosure-header", in: app)
         assertExists(header, in: app)
@@ -685,6 +686,30 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
     }
 
+    /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.
+    @MainActor
+    func testLegibilityBadgeWarnsAndItsFixSwitchesTheTheme() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.emptyEditor)
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        let badge = element("theme-legibility-badge", in: app)
+        XCTAssertFalse(badge.exists, "An empty document has nothing to warn about")
+
+        editor.click()
+        editor.typeText("// a capture that holds nothing but a comment")
+        assertExists(badge, in: app, timeout: 5)
+        badge.click()
+        assertExists(element("theme-legibility-details", in: app), in: app, timeout: 3)
+        let fix = element("theme-legibility-fix-button", in: app)
+        assertExists(fix, in: app, timeout: 3)
+        assertExists(element("theme-legibility-dismiss-button", in: app), in: app)
+        fix.click()
+        XCTAssertTrue(badge.waitForNonExistence(timeout: 5))
+    }
+
     /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and
     /// never switch tools, while ⌘2 (Arrow) still selects its tool with code focused.
     @MainActor
@@ -931,6 +956,29 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(element("carousel-export-sheet", in: app).waitForNonExistence(timeout: 3))
     }
 
+    @MainActor
+    func testMultiSizeSheetEstimatesTheSelectedSizes() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-multi-size-export"],
+            environment: ["VITRINE_PRO_UNLOCK": "1"])
+        defer { app.terminate() }
+        assertExists(element("multi-size-export-sheet", in: app), in: app, timeout: 8)
+
+        // A static text exposes what VoiceOver reads as its value, once every size is measured.
+        let estimate = element("multi-size-size-estimate", in: app)
+        let measured = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value CONTAINS %@", "about"), object: estimate)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [measured], timeout: 20), .completed,
+            "It reads \(String(describing: estimate.value))")
+
+        // With nothing selected there is nothing to estimate.
+        element("multi-size-select-none", in: app).click()
+        XCTAssertTrue(estimate.waitForNonExistence(timeout: 3))
+    }
+
     /// One license round trip: activation dismisses the paywall and unlocks Brand Kit,
     /// then deactivation relocks it in the same running app without a network. The
     /// partial-activation failure is unit-tested in `EntitlementsTests`.
@@ -1046,6 +1094,7 @@ final class VitrineUITests: XCTestCase {
         let background = element("style-subtab-background", in: app)
         assertExists(appearance, in: app, timeout: 3)
         assertExists(element("settings-terminal-palette-picker", in: app), in: app)
+        assertExists(element("settings-terminal-cursor-picker", in: app), in: app)
         lines.click()
         XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(appearance.isSelected)
@@ -1056,6 +1105,7 @@ final class VitrineUITests: XCTestCase {
         background.click()
         XCTAssertTrue(background.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(lines.isSelected)
+        assertExists(element("background-kind-picker", in: app), in: app, timeout: 3)
         appearance.click()
         XCTAssertTrue(appearance.wait(for: \.isSelected, toEqual: true, timeout: 3))
     }
@@ -1565,6 +1615,31 @@ final class VitrineUITests: XCTestCase {
         let board = try XCTUnwrap(copied, "Comparison board did not copy a PNG")
         XCTAssertGreaterThan(board.pixelsWide, 1_000)
         XCTAssertGreaterThan(board.pixelsHigh, 500)
+
+        // Two captures offer the slider: its divider has a real value and captions still open.
+        element("comparison-board-layout-slider", in: app).click()
+        let divider = element("comparison-board-divider", in: app)
+        assertExists(divider, in: app, timeout: 5)
+        let dividerSlider = element("comparison-board-divider-slider", in: app)
+        assertExists(dividerSlider, in: app)
+        func position() -> String { String(describing: dividerSlider.value) }
+        let centered = position()
+        XCTAssertFalse(element("comparison-board-gap-slider", in: app).exists)
+        divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
+        XCTAssertEqual(position(), centered, "A plain click should not move it")
+        dividerSlider.coordinate(withNormalizedOffset: CGVector(dx: 0.85, dy: 0.5)).click()
+        XCTAssertNotEqual(position(), centered, "The inspector slider should move the divider")
+
+        assertHittable(
+            "comparison-board-caption-1", in: app, "A slider caption should stay clickable",
+            timeout: 5)
+        element("comparison-board-caption-1", in: app).click()
+        let sliderCaption = element("comparison-board-inline-label-1", in: app)
+        assertExists(sliderCaption, in: app, timeout: 3)
+        let settled = position()
+        divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
+        XCTAssertTrue(sliderCaption.waitForNonExistence(timeout: 3))
+        XCTAssertEqual(position(), settled, "That click only closes the caption")
     }
 
     @MainActor
@@ -1689,6 +1764,31 @@ final class VitrineUITests: XCTestCase {
         let summary = element("menu-capture-summary", in: app)
         XCTAssertTrue(summary.waitForExistence(timeout: 3), "A copied image should be summarized")
         XCTAssertEqual(summary.label, "Image")
+    }
+
+    /// UI tests run with the app at the default clipboard access, so the contents stay
+    /// unread. A Mac that granted the build Always Allow would fail this.
+    @MainActor
+    func testEmptyEditorMakesNoClaimUnderDefaultClipboardAccess() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        XCTAssertTrue(pasteboard.setString("let answer = 42", forType: .string))
+
+        let app = launch(arguments: VitrineLaunchArguments.emptyEditorTour)
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        assertExists(element("empty-state", in: app), in: app, timeout: 8)
+        // The row is reserved and hidden while unread; some macOS builds still expose it, so
+        // check what it says rather than whether it exists.
+        let line = element("empty-stage-clipboard", in: app)
+        Thread.sleep(forTimeInterval: 2)
+        XCTAssertFalse(
+            line.exists && line.label.contains("Clipboard holds"),
+            "Default access must not name the clipboard's contents")
     }
 
     @MainActor
