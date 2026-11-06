@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Marks snap while you draw, drag or resize them: box edges to code rows, token edges and the
+  card, arrow ends and placed marks to row centers and tokens, with a magenta guide on the
+  target. Hold ⌘ to place freely. Blur boxes only snap outward, so a snap never uncovers text,
+  and arrow-key nudges, opened documents and exports are unchanged.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.

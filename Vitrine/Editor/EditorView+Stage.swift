@@ -501,6 +501,7 @@ extension EditorView {
                         canvasSize: canvasSize, activeTool: activeTool,
                         drawColor: newDrawColor, drawThickness: newDrawThickness,
                         stickerGlyph: newStickerGlyph,
+                        snapper: cardGeometry.snapper,
                         onBeginEdit: beginAnnotationEdit,
                         onEndEdit: endAnnotationEdit)
                     // Free-placement: drag the brand mark anywhere on the canvas. The
@@ -520,6 +521,15 @@ extension EditorView {
                             code: previewConfig.sidecarText,
                             showsGuideRect: settings.effectiveFixedSize != nil)
                     }
+                }
+                // The canvas shares this stack's origin, so its anchors resolve to canvas points.
+                .backgroundPreferenceValue(CanvasSnapAnchorsKey.self) { anchors in
+                    GeometryReader { proxy in
+                        Color.clear.onChange(of: anchors.resolved(in: proxy), initial: true) {
+                            cardGeometry.snapper.layout = $1
+                        }
+                    }
+                    .accessibilityHidden(true)
                 }
                 // Route arrow keys to a selected mark without competing with code-editor
                 // navigation when the annotation canvas has no selection.
@@ -785,6 +795,8 @@ final class PreviewCardGeometry {
     var legendHeight: CGFloat = 0
     /// Legend entries a fixed frame had no room for.
     var legendDropped = 0
+    /// Where the card and code landed, for snapping marks while they are dragged.
+    @ObservationIgnored let snapper = AnnotationSnapper()
 
     /// The latest destination change that moved the card.
     private(set) var morph = StageFitMorph()

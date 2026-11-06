@@ -115,9 +115,9 @@ public struct SnapshotCanvas: View, Equatable {
     @ViewBuilder
     private var contentCard: some View {
         if config.usesImageContent, let reference = config.foregroundImage {
-            imageCard(reference)
+            imageCard(reference).reportsSnapCard()
         } else {
-            codeCard
+            codeCard.reportsSnapCard()
         }
     }
 
@@ -293,6 +293,9 @@ public struct SnapshotCanvas: View, Equatable {
                             .opacity(0.12))
             }
             codeBody
+                .reportsSnapCode {
+                    config.snapCodeMetrics(font: codeFont, lineSpacing: Self.codeLineSpacing)
+                }
             if let cue = config.slideCue, cue.rangeLabel != nil || cue.continuationLabel != nil {
                 slideCueFooter(cue)
             }
