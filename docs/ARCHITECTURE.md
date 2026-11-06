@@ -952,6 +952,7 @@ Vitrine/
 │   ├── ShareManager.swift     # NSSharingService
 │   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
 │   ├── CarouselExportView.swift # multi-slide export sheet
+│   ├── CarouselFilmstrip.swift # slide tiles shown before writing files
 │   ├── ComparisonBoard.swift # path-free validated 2–4 item value
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
 │   └── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding

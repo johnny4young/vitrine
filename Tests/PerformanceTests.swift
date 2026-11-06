@@ -629,6 +629,69 @@ struct PerformanceTests {
         #expect(stats.p95 <= PerfBudget.presetThumbnailHardCeiling)
     }
 
+    // One tile is one main-actor stretch, which the filmstrip's model spaces out by frames.
+    private func carouselTile(code: (Int) -> String, label: String) {
+        func sample(_ index: Int) -> Duration {
+            let slide = CarouselPaginator.Slide(text: code(index), firstLine: 1, lineCount: 1)
+            let config = CarouselPaginator.slideConfig(
+                SnapshotConfig(), slide: slide, at: 0, of: 2, cues: .none)
+            return ContinuousClock().measure {
+                #expect(CarouselFilmstripModel.renderTile(config, profile: .sRGB) != nil)
+            }
+        }
+        _ = sample(-1)
+        let stats = Statistics((0..<Self.sampleCount).map(sample))
+        report(stats, label: label, target: nil)
+        #expect(stats.p95 <= PerfBudget.presetThumbnailHardCeiling)
+    }
+
+    @Test func carouselTileOfAFullSlideMeetsBudget() {
+        let lines = (1...CarouselPaginator.linesPerSlideRange.upperBound)
+            .map { "let value\($0) = compute(input, \($0))" }.joined(separator: "\n")
+        carouselTile(code: { "\(lines)\n// sample \($0)" }, label: "carousel-tile")
+    }
+
+    @Test func carouselTileAtTheLongLineLimitMeetsBudget() {
+        // Tokens, not one word: highlighting is most of what a long line costs.
+        let line = String(
+            repeating: "let a = foo(1); ",
+            count: CarouselPaginator.Slide.maximumPreviewBytes / 16 - 1)
+        carouselTile(code: { "\(line)// \($0)" }, label: "carousel-tile-long-line")
+    }
+
+    @Test func theFilmstripOfManySlidesLaysOutOnlyWhatItShows() {
+        let slides = (0..<25_000).map {
+            CarouselPaginator.Slide(text: "line", firstLine: $0 * 4 + 1, lineCount: 4)
+        }
+        let input = CarouselFilmstripModel.Input(
+            base: SnapshotConfig(), slides: slides, cues: .none, profile: .sRGB)
+        let durations = (0..<Self.sampleCount).map { _ in
+            let hosting = NSHostingView(
+                rootView: CarouselFilmstrip(
+                    input: input, hasShortTail: false,
+                    model: CarouselFilmstripModel(quietWindow: .seconds(30))))
+            hosting.frame = NSRect(x: 0, y: 0, width: 392, height: 150)
+            return ContinuousClock().measure { hosting.layoutSubtreeIfNeeded() }
+        }
+        let stats = Statistics(durations)
+        report(stats, label: "carousel-strip-25k-slides", target: nil)
+        #expect(stats.p95 <= PerfBudget.hardCeiling)
+    }
+
+    @Test func splittingALongDocumentMeasuresWhatLeavesTheMainActor() {
+        let code = (1...100_000).map { "let value\($0) = compute(input)" }
+            .joined(separator: "\n")
+        let split = CarouselSplit()
+        let stats = Statistics(
+            (0..<Self.sampleCount).map { _ in
+                ContinuousClock().measure {
+                    _ = CarouselPaginator.Outcome(split: split, code: code)
+                }
+            })
+        report(stats, label: "carousel-split-100k-lines", target: nil)
+        #expect(stats.p95 <= PerfBudget.hardCeiling)
+    }
+
     @Test func typingInTheEditorMeetsBudget() throws {
         // A keystroke is not a render: the text view takes the edit, the editor's SwiftUI
         // hierarchy updates, and AppKit runs a layout pass before the next frame. The

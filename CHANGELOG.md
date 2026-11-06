@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- The carousel export sheet shows a filmstrip of the real slides before writing files, with
+  redactions in place, a flag on a last slide that came out short, and the slide size. PRO
+  users opening it on a terminal capture or one with blur boxes now see why it can't export.
 - Warn in the inspector's Theme header when a capture's code text has low measured contrast
   on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
   stock theme only when it measures better, and can be dismissed for a theme until you quit.

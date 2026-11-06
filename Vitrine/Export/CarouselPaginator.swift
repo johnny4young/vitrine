@@ -2,6 +2,25 @@ import Foundation
 import VitrineDomain
 import VitrineRendering
 
+/// How a document splits into slides. The sheet, the filmstrip and the export all ask this
+/// value, so they can't disagree about where a slide breaks.
+nonisolated struct CarouselSplit: Equatable, Sendable {
+    /// The default reads well on a 1080×1350 slide at the default font size.
+    var linesPerSlide = 12
+    var prefersBlankLineBreaks = true
+
+    func slides(of code: String) -> [CarouselPaginator.Slide] {
+        CarouselPaginator.slides(
+            for: code, maxLinesPerSlide: linesPerSlide,
+            preferBlankLineBreaks: prefersBlankLineBreaks)
+    }
+
+    /// Off the main actor: a pass over a long document outlasts a frame.
+    @concurrent func outcome(of code: String) async -> CarouselPaginator.Outcome {
+        CarouselPaginator.Outcome(split: self, code: code)
+    }
+}
+
 /// Splits a long snippet into the pages of a carousel export: N slides
 /// of consecutive lines, balanced so the last slide never trails with a line or two.
 /// Pure and deterministic, so the split is unit-testable and a re-export produces the
@@ -10,8 +29,6 @@ enum CarouselPaginator {
     /// The lines-per-slide bounds offered by the export sheet. The floor keeps a slide
     /// from degenerating into a caption; the ceiling keeps 4:5 slides legible.
     static let linesPerSlideRange: ClosedRange<Int> = 4...30
-    /// The default that reads well on a 1080×1350 slide at the default font size.
-    static let defaultLinesPerSlide = 12
 
     /// Splits `code` into slides of at most `maxLinesPerSlide` consecutive lines,
     /// **balanced**: the slide count is fixed by the cap, then lines are distributed
@@ -23,10 +40,27 @@ enum CarouselPaginator {
 
     /// One slide's text and the 1-based document line it starts at, so line marks can
     /// follow their lines onto the slide.
-    struct Slide: Equatable {
+    nonisolated struct Slide: Equatable, Sendable {
         var text: String
         var firstLine: Int
         var lineCount: Int
+
+        /// The document lines this slide holds, as the editor counts them.
+        var lineRange: String {
+            lineCount > 1 ? "\(firstLine)–\(firstLine + lineCount - 1)" : "\(firstLine)"
+        }
+
+        /// Split as `slides` splits: `"\r\n"` is one `Character`, so a `Character` split sees
+        /// a CRLF slide as a single line.
+        fileprivate var visibleLineCount: Int {
+            text.components(separatedBy: "\n").count { !$0.allSatisfy(\.isWhitespace) }
+        }
+
+        /// Thirty 80-column lines stay well under this. Highlighting a slide past it would hold
+        /// the main actor for several frames, so it isn't rendered until the export asks.
+        static let maximumPreviewBytes = 8 * 1_024
+
+        var canPreview: Bool { text.utf8.count <= Self.maximumPreviewBytes }
 
         /// Document line ranges clipped to this slide and renumbered from 1.
         func localRanges(_ ranges: [ClosedRange<Int>]) -> [ClosedRange<Int>] {
@@ -40,10 +74,39 @@ enum CarouselPaginator {
         }
     }
 
+    /// One split of one document, with what can only be read off all of its slides.
+    nonisolated struct Outcome: Equatable, Sendable {
+        var split: CarouselSplit
+        var code: String
+        var slides: [Slide]
+        var hasShortTail: Bool
+
+        init(split: CarouselSplit, code: String) {
+            self.split = split
+            self.code = code
+            slides = split.slides(of: code)
+            hasShortTail = CarouselPaginator.hasShortTail(slides)
+        }
+
+        /// Empty until the split of `code` has finished: another document's slides with this
+        /// document's marks could put a redaction on the wrong row.
+        func slides(for code: String) -> [Slide] {
+            self.code == code ? slides : []
+        }
+    }
+
+    /// Balancing keeps counts close, but a blank-line break or trailing blank rows can still
+    /// leave a last slide with under half the visible lines of the fullest one.
+    nonisolated static func hasShortTail(_ slides: [Slide]) -> Bool {
+        guard slides.count > 1, let last = slides.last else { return false }
+        let fullest = slides.dropLast().map(\.visibleLineCount).max() ?? 0
+        return last.visibleLineCount * 2 < fullest
+    }
+
     /// With `preferBlankLineBreaks`, each boundary moves to a nearby blank line and that
     /// separator is left out of both slides, so a snippet without usable blank lines splits
     /// exactly as the balanced default. The cap always holds, and an all-blank slide is dropped.
-    static func slides(
+    nonisolated static func slides(
         for code: String, maxLinesPerSlide: Int, preferBlankLineBreaks: Bool = false
     ) -> [Slide] {
         let cap = max(1, maxLinesPerSlide)
@@ -80,7 +143,7 @@ enum CarouselPaginator {
     /// The blank run nearest the balanced boundary (earliest on a tie): where this slide
     /// ends and where the next starts. A run is only taken within a third of a slide of
     /// the boundary, so the balance survives and no thin slide is left behind.
-    private static func blankLineBreak(
+    nonisolated private static func blankLineBreak(
         from start: Int, balanced: Int, slidesAfter: Int, cap: Int, isBlank: [Bool]
     ) -> (end: Int, next: Int)? {
         guard !isBlank.isEmpty, slidesAfter > 0 else { return nil }
@@ -162,6 +225,17 @@ enum CarouselPaginator {
         }
         config.slideCue = cue
         return config
+    }
+
+    /// `1080 × 1350`, read off the frame the export renders.
+    static func slideSizeLabel(_ size: CGSize) -> String {
+        "\(Int(size.width)) × \(Int(size.height))"
+    }
+
+    /// The text a capture may split: none for one the carousel refuses, so nothing of it can
+    /// reach a tile, an estimate or a file.
+    static func splittableCode(of config: SnapshotConfig) -> String {
+        EditorView.carouselAccepts(config) ? config.code : ""
     }
 
     /// Two-digit numbering keeps the files sorted everywhere.
