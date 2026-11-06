@@ -39,6 +39,14 @@ enum CopyPreview {
     }
 
     /// The bottom-trailing corner of `visible`, far from the HUD and the menu bar above.
+    /// The screen under the pointer, where the copy was just asked for; `NSScreen.main`
+    /// can name another display once the copying window has closed.
+    static func visibleFrame(
+        containing point: CGPoint, screens: [(frame: CGRect, visible: CGRect)]
+    ) -> CGRect? {
+        screens.first { $0.frame.contains(point) }?.visible ?? screens.first?.visible
+    }
+
     static func frame(for size: CGSize, in visible: CGRect) -> CGRect {
         let margin = Brand.Spacing.md
         return CGRect(
@@ -311,7 +319,10 @@ final class CopyPreviewController {
         let panel = reusablePanel()
         panel.contentViewController = hosting
         let size = hosting.view.fittingSize
-        if let visible = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame {
+        let screens = NSScreen.screens.map { (frame: $0.frame, visible: $0.visibleFrame) }
+        if let visible = CopyPreview.visibleFrame(
+            containing: NSEvent.mouseLocation, screens: screens)
+        {
             panel.setFrame(CopyPreview.frame(for: size, in: visible), display: false)
         } else {
             panel.setContentSize(size)
