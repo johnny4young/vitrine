@@ -231,7 +231,8 @@ Open **Recents**, choose **Compare**, then select two to four captures in the or
 want to explain them. Vitrine renders each selection once into a temporary board where
 you can edit labels and details, reorder or remove items, and choose automatic, row,
 column, grid, or (for two captures) slider layout before copying, saving, or sharing the
-finished image. The board
+finished image. Select one capture and choose **Theme Variants** instead to see it in up
+to four themes on one board. The board
 is session-only and path-free: it stores neither source-file locations nor references
 back into Recents. See [Comparison boards](docs/COMPARISON-BOARDS.md).
 

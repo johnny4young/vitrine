@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Theme Variants" : {
+      "comment" : "Recents comparison button that opens one capture in several themes on a board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variantes de tema"
+          }
+        }
+      }
+    },
+    "Theme variants" : {
+      "comment" : "Comparison board inspector section listing the themes one capture was rendered in.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variantes de tema"
+          }
+        }
+      }
+    },
+    "Show one capture in several themes on a board" : {
+      "comment" : "Help for the Recents Theme Variants button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muestra una captura en varios temas en un tablero"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
@@ -15125,13 +15158,13 @@
         }
       }
     },
-    "Select two to four captures for one comparison board" : {
+    "Select one capture for theme variants, or two to four for a board" : {
       "comment" : "Help for the Recents comparison action.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Selecciona de dos a cuatro capturas para un tablero comparativo"
+            "value" : "Selecciona una captura para ver variantes de tema, o de dos a cuatro para un tablero"
           }
         }
       }

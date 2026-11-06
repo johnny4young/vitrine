@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
+  to see it in up to four themes on a comparison board, each captioned with its theme. The
+  board's inspector adds or removes themes without capturing again.
 - Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
   hides the code and inspector columns. A dock on the stage shows the current theme,
   typography, background and padding, and opens the inspector's section for each in a

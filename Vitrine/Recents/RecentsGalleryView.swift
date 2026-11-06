@@ -230,14 +230,18 @@ struct RecentsGalleryView: View {
             .disabled(!comparisonSelection.canCreateBoard)
             .accentProminentButtonStyle()
             .accessibilityIdentifier("recents-create-comparison-button")
+            Button("Theme Variants") { createThemeVariantsBoard() }
+                .disabled(comparisonSelection.count != 1)
+                .help("Show one capture in several themes on a board")
+                .accessibilityIdentifier("recents-theme-variants-button")
         } else {
             Button {
                 beginComparisonSelection()
             } label: {
                 Label("Compare", systemImage: "rectangle.on.rectangle.angled")
             }
-            .disabled(recents.captures.count < ComparisonBoard.itemCountRange.lowerBound)
-            .help("Select two to four captures for one comparison board")
+            .disabled(recents.captures.isEmpty)
+            .help("Select one capture for theme variants, or two to four for a board")
             .accessibilityIdentifier("recents-compare-button")
         }
     }
@@ -382,6 +386,13 @@ struct RecentsGalleryView: View {
         let selected = comparisonSelection.resolved(in: recents.captures)
         guard ComparisonBoard.itemCountRange.contains(selected.count) else { return }
         navigation.showComparisonBoard(selected)
+        endComparisonSelection()
+    }
+
+    private func createThemeVariantsBoard() {
+        let selected = comparisonSelection.resolved(in: recents.captures)
+        guard selected.count == 1, let capture = selected.first else { return }
+        navigation.showThemeVariants(of: capture)
         endComparisonSelection()
     }
 

@@ -33,6 +33,16 @@ the inspector row. Return, Escape, a click on the board or its stage, or moving 
 inspector field closes it. Other inspector controls leave it open, so a size or
 background can be tried while the caption is being written.
 
+## Theme variants
+
+To compare themes without capturing again, choose **Compare** in Recents, select one card,
+and choose **Theme Variants**. The capture is rendered once in its own theme and in One Dark,
+One Light, Dracula, GitHub, and GitHub Dark. The first four go on the board, each captioned
+with its theme name. **Theme variants** in the inspector adds or removes a theme within the
+board's two to four captures; adding a third capture to a **Slider** board returns it to
+**Auto**. The board keeps the rendered pixels of every variant, not the capture's source,
+so a variant added back is the same image it was when the board opened.
+
 Every card receives the same image area and preserves its aspect ratio. Labels are
 single-line and bounded so a board cannot grow unpredictably from pasted text.
 

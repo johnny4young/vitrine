@@ -18,6 +18,15 @@ final class ComparisonBoardDraft {
         var detail: String
     }
 
+    /// One theme of a single capture, rendered when the board opened. Only these pixels and
+    /// names stay, so adding a variant back never re-reads the source.
+    struct Variant: Identifiable {
+        let id: UUID
+        let theme: Theme
+        let asset: RenderedAsset
+        let detail: String
+    }
+
     enum CreationError: Error, Equatable {
         case invalidSelection(Int)
         case invalidRenderScale(CGFloat)
@@ -44,6 +53,8 @@ final class ComparisonBoardDraft {
     var showsFooter = false
     var dividerPercent = ComparisonBoard.defaultDividerPercent
     let exportScale: CGFloat
+    /// Empty unless the board was made from one capture's theme variants.
+    private(set) var variants: [Variant] = []
 
     init(
         captures: [Capture],
@@ -59,24 +70,100 @@ final class ComparisonBoardDraft {
         guard ComparisonBoard.itemCountRange.contains(captures.count) else {
             throw CreationError.invalidSelection(captures.count)
         }
-        guard renderScale.isFinite, (1...3).contains(renderScale) else {
-            throw CreationError.invalidRenderScale(renderScale)
-        }
-
-        exportScale = renderScale
+        exportScale = try Self.validated(renderScale)
         items = try captures.enumerated().map { index, capture in
             let config = capture.applying(to: baseConfig, themes: themes)
-            let image: CGImage
-            do throws(RenderBudgetError) {
-                image = try render(config, renderScale, profile)
-            } catch let error {
-                throw CreationError.renderFailure(index: index, error)
-            }
             return Item(
                 id: UUID(),
-                asset: RenderedAsset(cgImage: image, profile: profile),
+                asset: try Self.render(config, at: index, renderScale, profile, render),
                 label: Self.defaultLabel(index: index, count: captures.count),
                 detail: "\(capture.language.displayName) · \(config.theme.displayName)")
+        }
+    }
+
+    /// Renders one capture in each theme up front and puts the first four on the board.
+    init(
+        variantsOf config: SnapshotConfig,
+        themes: [Theme],
+        profile: ColorProfile,
+        renderScale: CGFloat = 1,
+        render: (SnapshotConfig, CGFloat, ColorProfile) throws(RenderBudgetError) -> CGImage = {
+            config, scale, profile in
+            try ExportManager.renderCGImageChecked(config, scale: scale, profile: profile)
+        }
+    ) throws {
+        var seen = Set<String>()
+        let unique = themes.filter { seen.insert($0.id).inserted }
+        guard unique.count >= ComparisonBoard.itemCountRange.lowerBound else {
+            throw CreationError.invalidSelection(unique.count)
+        }
+        exportScale = try Self.validated(renderScale)
+        let detail = config.language.displayName
+        let rendered = try unique.enumerated().map { index, theme in
+            var themed = config
+            themed.theme = theme
+            return Variant(
+                id: UUID(), theme: theme,
+                asset: try Self.render(themed, at: index, renderScale, profile, render),
+                detail: detail)
+        }
+        items = rendered.prefix(ComparisonBoard.itemCountRange.upperBound).map(Self.item)
+        variants = rendered
+    }
+
+    /// The capture's own theme leads, then a fixed dark and light spread to compare it with.
+    static func variantThemes(startingWith source: Theme) -> [Theme] {
+        [source]
+            + [Theme.oneDark, .oneLight, .dracula, .github, .githubDark].filter {
+                $0.id != source.id
+            }
+    }
+
+    private static func validated(_ scale: CGFloat) throws -> CGFloat {
+        guard scale.isFinite, (1...3).contains(scale) else {
+            throw CreationError.invalidRenderScale(scale)
+        }
+        return scale
+    }
+
+    private static func render(
+        _ config: SnapshotConfig, at index: Int, _ scale: CGFloat, _ profile: ColorProfile,
+        _ render: (SnapshotConfig, CGFloat, ColorProfile) throws(RenderBudgetError) -> CGImage
+    ) throws -> RenderedAsset {
+        do throws(RenderBudgetError) {
+            return RenderedAsset(cgImage: try render(config, scale, profile), profile: profile)
+        } catch let error {
+            throw CreationError.renderFailure(index: index, error)
+        }
+    }
+
+    private static func item(_ variant: Variant) -> Item {
+        Item(
+            id: variant.id, asset: variant.asset, label: variant.theme.displayName,
+            detail: variant.detail)
+    }
+
+    func isOnBoard(_ variant: Variant) -> Bool {
+        items.contains { $0.id == variant.id }
+    }
+
+    /// A variant joins or leaves within the board's two-to-four range.
+    func canToggle(_ variant: Variant) -> Bool {
+        isOnBoard(variant)
+            ? items.count > ComparisonBoard.itemCountRange.lowerBound
+            : items.count < ComparisonBoard.itemCountRange.upperBound
+    }
+
+    func toggleVariant(id: Variant.ID) {
+        guard let variant = variants.first(where: { $0.id == id }), canToggle(variant) else {
+            return
+        }
+        if isOnBoard(variant) {
+            removeItem(id: id)
+        } else {
+            items.append(Self.item(variant))
+            // The slider compares exactly two, so a third capture returns to Auto.
+            if layout == .slider { layout = .automatic }
         }
     }
 
@@ -97,7 +184,8 @@ final class ComparisonBoardDraft {
         (try? board()) != nil
     }
 
-    /// A draft only ever loses captures and cannot drop below two, so a chosen slider stays valid.
+    /// Removing cannot drop below two and adding a variant leaves the slider, so a chosen
+    /// slider stays valid.
     var availableLayouts: [ComparisonBoard.Layout] {
         ComparisonBoard.Layout.allCases.filter {
             $0 != .slider || $0.wipes(itemCount: items.count)
