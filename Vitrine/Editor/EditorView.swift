@@ -319,6 +319,13 @@ struct EditorView: View {
                     {
                         presentCarouselExport()
                     }
+                    if ProcessInfo.processInfo.arguments.contains("--demo-recipe-bar") {
+                        var baseline = settings.style
+                        baseline.showLineNumbers.toggle()
+                        session.appliedRecipe = AppliedRecipe(
+                            associationID: UUID(), name: "Documentation", workspaceName: "docs",
+                            baseline: baseline, documentGeneration: settings.documentGeneration)
+                    }
                     if ProcessInfo.processInfo.arguments.contains("--open-multi-size-export"),
                         settings.hasRenderableContent
                     {

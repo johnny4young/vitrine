@@ -1,6 +1,91 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld changes" : {
+      "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld change"
+                  }
+                },
+              "other" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld changes"
+                  }
+                }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld cambio"
+                  }
+                },
+              "other" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld cambios"
+                  }
+                }
+            }
+          }
+        }
+      }
+    },
+    "%@ recipe" : {
+      "comment" : "Editor recipe bar tooltip and VoiceOver label: the workspace recipe a dropped file applied.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta %@"
+          }
+        }
+      }
+    },
+    "Folder %@" : {
+      "comment" : "Editor recipe bar, VoiceOver: the associated folder whose recipe applied.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carpeta %@"
+          }
+        }
+      }
+    },
+    "Revert" : {
+      "comment" : "Editor recipe bar button: restore the recipe's style.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revertir"
+          }
+        }
+      }
+    },
+    "Revert to Recipe" : {
+      "comment" : "Undo action name for restoring the recipe's style.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revertir a la receta"
+          }
+        }
+      }
+    },
     "Canvas Mode" : {
       "comment" : "View menu command that hides the code and inspector columns",
       "localizations" : {

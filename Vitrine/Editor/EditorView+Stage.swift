@@ -568,6 +568,9 @@ extension EditorView {
         )
         .overlay { if isCanvasMode { dropAffordance } }
         .background(stageBackground)
+        .overlay(alignment: .top) {
+            RecipeAppliedBar(session: session, settings: settings)
+        }
         .layoutPriority(EditorLayout.stageLayoutPriority)
         // A container, so the canvas text and the inline callout field keep their own ids.
         .accessibilityElement(children: .contain)
