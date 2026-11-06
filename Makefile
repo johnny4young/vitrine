@@ -135,11 +135,14 @@ cli: project
 ## passed. Keep the default developer loop deterministic by disabling coverage
 ## explicitly; `test-coverage` is the CI parity lane that retains it.
 ## Set RESULT_BUNDLE=<path> to also write an .xcresult bundle.
+## Set TEST_SKIP="<bundle/suite/test()> ..." to skip named tests, or TEST_ONLY to run only them.
+TEST_SELECTION_FLAGS = $(foreach t,$(TEST_SKIP),'-skip-testing:$(t)') $(foreach t,$(TEST_ONLY),'-only-testing:$(t)')
 test: project
 	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
 	env SWT_EXPERIMENTAL_MAXIMUM_PARALLELIZATION_WIDTH=1 \
 		$(XCODEBUILD) -project $(PROJECT) -scheme $(SCHEME) -configuration Debug \
-		-destination 'platform=macOS' -enableCodeCoverage NO $(RESULT_BUNDLE_FLAG) test
+		-destination 'platform=macOS' -enableCodeCoverage NO $(RESULT_BUNDLE_FLAG) \
+		$(TEST_SELECTION_FLAGS) test
 
 ## test-coverage: run the complete suite and enforce fail-closed coverage policy
 ## This intentionally uses the same serial scheduling as `test`, but overrides

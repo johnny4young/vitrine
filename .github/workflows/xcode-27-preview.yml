@@ -38,5 +38,29 @@ jobs:
       - name: Build
         run: make build
 
+      # The preview image cannot compile Vision's on-device text-recognition model
+      # (e5rt_e5_compiler_compile fails), so these cases fail there on every run while they
+      # pass on macos-26 and on Apple-silicon Macs with Xcode 27. They run apart and only warn.
       - name: Unit tests
-        run: make test
+        env:
+          TEST_SKIP: >-
+            VitrineTests/ImageTextExtractorTests/realRecognitionPreservesReadingOrderAndNormalizedBoxes()
+            VitrineTests/ImageTextExtractorTests/blankImageReturnsNoText()
+            VitrineTests/SmartInputTests/recognizesRenderedCodeText()
+            VitrineTests/SmartInputTests/blankImageYieldsEmptyText()
+        run: make test TEST_SKIP="${TEST_SKIP}"
+
+      - name: On-device text recognition (informational)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        env:
+          TEST_ONLY: >-
+            VitrineTests/ImageTextExtractorTests/realRecognitionPreservesReadingOrderAndNormalizedBoxes()
+            VitrineTests/ImageTextExtractorTests/blankImageReturnsNoText()
+            VitrineTests/SmartInputTests/recognizesRenderedCodeText()
+            VitrineTests/SmartInputTests/blankImageYieldsEmptyText()
+        run: |
+          if ! make test TEST_ONLY="${TEST_ONLY}"; then
+            echo "::warning title=On-device text recognition::Vision OCR failed on this preview image. The unit gate above excludes these cases; they still gate on macos-26."
+            exit 1
+          fi

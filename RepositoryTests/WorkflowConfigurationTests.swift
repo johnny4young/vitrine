@@ -701,6 +701,44 @@ struct WorkflowConfigurationTests {
         }
     }
 
+    /// The preview image cannot compile Vision's on-device text-recognition model, so its
+    /// unit gate skips exactly those cases and runs them apart, warning without failing the
+    /// job. Each skipped identifier must name a real recognition test, so a rename cannot
+    /// turn the skip into a no-op or hide anything else.
+    @Test func xcode27PreviewSetsAsideOnlyTheOnDeviceRecognitionCases() throws {
+        let workflow = try Self.xcode27Preview()
+        let gateStart = try #require(workflow.range(of: "      - name: Unit tests\n"))
+        let asideStart = try #require(
+            workflow.range(of: "      - name: On-device text recognition (informational)\n"))
+        let gate = String(workflow[gateStart.lowerBound..<asideStart.lowerBound])
+        let aside = String(workflow[asideStart.lowerBound...])
+        func cases(_ text: String) throws -> [String] {
+            try text.matches(of: Regex(#"VitrineTests/\w+/\w+\(\)"#)).map {
+                String(text[$0.range])
+            }
+        }
+
+        let skipped = try cases(gate)
+        #expect(skipped.count == 4)
+        #expect(try cases(aside) == skipped, "the informational step runs what the gate skips")
+        #expect(gate.contains(#"make test TEST_SKIP="${TEST_SKIP}""#))
+        #expect(aside.contains("continue-on-error: true"))
+        #expect(aside.contains(#"make test TEST_ONLY="${TEST_ONLY}""#))
+        for identifier in skipped {
+            let parts = identifier.split(separator: "/").map(String.init)
+            let source = try Self.text("Tests", "\(parts[1]).swift")
+            #expect(source.contains("struct \(parts[1])"), "\(identifier) names no suite")
+            let test = parts[2].dropLast(2)
+            #expect(source.contains("@Test func \(test)("), "\(identifier) names no test")
+            #expect(source.contains("ImageTextExtractor."), "\(identifier) must exercise OCR")
+        }
+
+        let make = try Self.makefile()
+        #expect(make.contains("$(foreach t,$(TEST_SKIP),'-skip-testing:$(t)')"))
+        #expect(make.contains("$(TEST_SELECTION_FLAGS) test"))
+        #expect(try Self.releasingDoc().contains("on-device text-recognition model"))
+    }
+
     @Test func sanitizersAreFocusedWeeklyManualEarlyWarnings() throws {
         let workflow = try Self.sanitizers()
         let make = try Self.makefile()
