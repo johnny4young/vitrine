@@ -25,6 +25,8 @@ struct EditorInspectorView: View {
     var entitlements: Entitlements
     var legibility: LegibilityModel
     var presetThumbnails: PresetThumbnailModel
+    /// Shows only this section, for canvas mode's popovers; `nil` is the full column.
+    var pane: InspectorPane? = nil
 
     /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
     @AppStorage(PresetThumbnailModel.expandedStorageKey, store: AppDefaults.current)
@@ -44,6 +46,31 @@ struct EditorInspectorView: View {
     @State private var secretScan: SecretScanReport?
 
     var body: some View {
+        if let pane {
+            section(pane)
+                .padding(VitrineTokens.Spacing.md)
+                .frame(width: EditorLayout.inspectorMaxWidth)
+                .tint(VitrineTokens.Accent.systemText)
+                .sheet(isPresented: $showingFramePaywall) {
+                    PaywallSheet(feature: .advancedFrames, entitlements: entitlements)
+                }
+        } else {
+            column
+        }
+    }
+
+    /// The same section views the column stacks, so a popover cannot drift from it.
+    @ViewBuilder private func section(_ pane: InspectorPane) -> some View {
+        switch pane {
+        case .background: backgroundSection
+        case .frame: frameSection
+        case .theme: themeSection
+        case .typography: typographySection
+        case .canvas: canvasSection
+        }
+    }
+
+    private var column: some View {
         ScrollViewReader { proxy in
             inspectorScrollView
                 .onChange(of: showLines) { _, open in

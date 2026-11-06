@@ -47,6 +47,8 @@ enum VitrineCommand: String, CaseIterable {
     // Editor-scoped and code-requiring; mirrors the editor toolbar's Format
     // button so the menu command and the button stay in lockstep.
     case formatCode
+    // Hides the code and inspector columns so the stage takes the whole window.
+    case toggleCanvasMode
 
     // Editor copy-submenu options (rich export): reached from the editor's
     // copy-options menu; no global key equivalent.
@@ -81,6 +83,7 @@ enum VitrineCommand: String, CaseIterable {
         case .shareImage: String(localized: "Share Image…")
         case .makeDefault: String(localized: "Make This Window the Default")
         case .formatCode: String(localized: "Format Code")
+        case .toggleCanvasMode: String(localized: "Canvas Mode")
         case .copyDataURI: String(localized: "Copy as Data URI")
         case .copyMarkdown: String(localized: "Copy as Markdown")
         case .copyHighlightedCode: String(localized: "Copy Highlighted Code")
@@ -106,6 +109,7 @@ enum VitrineCommand: String, CaseIterable {
         case .shareImage: "square.and.arrow.up"
         case .makeDefault: "star"
         case .formatCode: "text.alignleft"
+        case .toggleCanvasMode: "arrow.up.left.and.arrow.down.right"
         case .copyDataURI: "curlybraces"
         case .copyMarkdown: "text.badge.plus"
         case .copyHighlightedCode: "chevron.left.forwardslash.chevron.right"
@@ -127,6 +131,7 @@ enum VitrineCommand: String, CaseIterable {
         case .saveImage: "s"  // ⌘S — save the rendered image
         case .shareImage: nil  // Share opens a picker; no reserved shortcut
         case .formatCode: "f"  // ⌥⌘F — tidy the code (⌘F stays free for find)
+        case .toggleCanvasMode: "f"  // ⇧⌘F — ⌃⌘F is the system full-screen shortcut
         // Submenu/window/explicit-action commands with no reserved shortcut.
         case .copyDataURI, .copyMarkdown, .copyHighlightedCode, .whatsNew, .makeDefault,
             .checkForUpdates, .newSocialCard, .newWebSnapshot:
@@ -143,6 +148,7 @@ enum VitrineCommand: String, CaseIterable {
         case .newCapture: [.command, .shift]
         case .copyImage: [.command, .shift]
         case .formatCode: [.command, .option]
+        case .toggleCanvasMode: [.command, .shift]
         case .openEditor, .newEditorWindow, .settings, .help, .saveImage: [.command]
         case .about, .shareImage, .makeDefault, .copyDataURI, .copyMarkdown,
             .copyHighlightedCode, .whatsNew, .checkForUpdates, .newSocialCard, .newWebSnapshot:
@@ -175,6 +181,7 @@ enum VitrineCommand: String, CaseIterable {
         case .shareImage: String(localized: "Share image")
         case .makeDefault: String(localized: "Make this window's style the default")
         case .formatCode: String(localized: "Format the code")
+        case .toggleCanvasMode: String(localized: "Toggle canvas mode")
         case .copyDataURI: String(localized: "Copy image as a base64 data URI")
         case .copyMarkdown: String(localized: "Copy image and source as Markdown")
         case .copyHighlightedCode: String(localized: "Copy syntax-highlighted code")
@@ -198,7 +205,7 @@ extension VitrineCommand {
     /// "Make Default" is editor-scoped but code-independent: adopting a window's style
     /// as the app default is meaningful even before any code is typed.
     static let editorCommands: [VitrineCommand] =
-        editorRenderCommands + codeRequiringCommands + [.makeDefault]
+        editorRenderCommands + codeRequiringCommands + [.makeDefault, .toggleCanvasMode]
 
     /// Whether this command acts on the editor and so is enabled only when an editor is
     /// the key window.

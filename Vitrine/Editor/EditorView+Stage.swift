@@ -537,10 +537,22 @@ extension EditorView {
         }
         .onGeometryChange(for: CGSize.self, of: \.size) { stageSize = $0 }
         .clipped()
-        .background(stageBackground)
         .overlay(alignment: .bottom) {
             StageStatusCapsule(settings: settings, geometry: cardGeometry, stageSize: stageSize)
         }
+        .overlay(alignment: .topTrailing) {
+            CanvasModeButton(isCanvasMode: isCanvasMode) { session.isCanvasMode.toggle() }
+        }
+        // An inset, not an overlay, so the card fits above the dock instead of under it.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isCanvasMode {
+                CanvasDock(
+                    settings: settings, themes: themes, presets: presets,
+                    entitlements: entitlements, legibility: legibility,
+                    presetThumbnails: session.presetThumbnails)
+            }
+        }
+        .background(stageBackground)
         .layoutPriority(EditorLayout.stageLayoutPriority)
         // A container, so the canvas text and the inline callout field keep their own ids.
         .accessibilityElement(children: .contain)

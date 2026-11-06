@@ -218,6 +218,45 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testCanvasModeHidesColumnsAndRestoresThemByKeyboardAndPalette() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        let editor = EditorRobot(testCase: self, app: app)
+        assertExists(editor.codeTextView, in: app, timeout: 8)
+
+        assertHittable("canvas-mode-button", in: app, "Canvas mode must be reachable")
+        element("canvas-mode-button", in: app).click()
+        XCTAssertTrue(element("editor-inspector", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(editor.codeTextView.waitForNonExistence(timeout: 3))
+        for pane in ["theme", "typography", "background"] {
+            assertExists(element("canvas-dock-\(pane)", in: app), in: app)
+        }
+        // The dock opens the inspector's own section, not a copy of its controls.
+        assertHittable("canvas-dock-canvas", in: app, "The dock must be reachable")
+        element("canvas-dock-canvas", in: app).click()
+        assertExists(element("padding-slider", in: app), in: app, timeout: 3)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("padding-slider", in: app).waitForNonExistence(timeout: 3))
+
+        app.typeKey("f", modifierFlags: [.command, .shift])
+        assertExists(element("editor-inspector", in: app), in: app, timeout: 3)
+        assertExists(editor.codeTextView, in: app)
+        XCTAssertTrue(element("canvas-dock", in: app).waitForNonExistence(timeout: 3))
+
+        app.typeKey("k", modifierFlags: .command)
+        let field = element("command-palette-field", in: app)
+        assertExists(field, in: app, timeout: 3)
+        field.typeText("canvas")
+        let command = element("command-palette-command-view.canvasMode", in: app)
+        XCTAssertTrue(command.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        app.typeKey(.return, modifierFlags: [])
+        assertExists(element("canvas-dock", in: app), in: app, timeout: 3)
+        XCTAssertTrue(element("editor-inspector", in: app).waitForNonExistence(timeout: 3))
+    }
+
+    @MainActor
     func testEditorLaunchesWithPrimaryControls() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()

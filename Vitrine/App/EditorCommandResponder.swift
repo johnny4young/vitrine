@@ -84,6 +84,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
         case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
         case #selector(formatCode(_:)): canPerform(.formatCode)
+        case #selector(toggleCanvasMode(_:)):
+            validateCanvasMode(menuItem, session: EditorWindowController.shared.keyWindowSession)
         case #selector(selectAnnotationTool(_:)), #selector(performAnnotationMarkAction(_:)):
             isEditorKey
         default: true
@@ -137,6 +139,20 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             let session = EditorWindowController.shared.keyWindowSession
         else { return }
         session.makeDefault()
+    }
+
+    /// Shows or hides the key editor's code and inspector columns.
+    @objc func toggleCanvasMode(_ sender: Any?) {
+        guard canPerform(.toggleCanvasMode),
+            let session = EditorWindowController.shared.keyWindowSession
+        else { return }
+        session.isCanvasMode.toggle()
+    }
+
+    /// The check mark follows the key editor, so each window reports its own mode.
+    func validateCanvasMode(_ menuItem: NSMenuItem, session: EditorSession?) -> Bool {
+        menuItem.state = session?.isCanvasMode == true ? .on : .off
+        return session != nil && canPerform(.toggleCanvasMode)
     }
 
     /// Routes a tool command to the key editor window. The window is the
