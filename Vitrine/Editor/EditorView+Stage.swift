@@ -690,7 +690,7 @@ extension EditorView {
         EditorInspectorView(
             settings: settings, themes: themes, presets: presets, entitlements: entitlements,
             legibility: legibility, presetThumbnails: session.presetThumbnails,
-            stageRegions: stageRegions)
+            stageRegions: stageRegions, isCanvasMode: isCanvasMode)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a

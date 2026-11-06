@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import VitrineDomain
 import VitrineRendering
@@ -109,18 +108,14 @@ final class StageRegionModel {
     /// Read only by gestures, so a layout pass invalidates nothing.
     @ObservationIgnored var layout = StageRegionLayout()
     var hovered: StageRegion?
-    /// The last region clicked, which Reduce Motion still outlines.
-    private(set) var clicked: StageRegion?
     private(set) var reveal: InspectorReveal?
 
     func hover(_ region: StageRegion?) {
         guard region != hovered else { return }
         hovered = region
-        if region != clicked { clicked = nil }
     }
 
     func route(_ region: StageRegion, usesImageContent: Bool) {
-        clicked = region
         reveal = InspectorReveal(
             target: region.target(usesImageContent: usesImageContent),
             generation: (reveal?.generation ?? 0) + 1)
@@ -129,7 +124,8 @@ final class StageRegionModel {
 
 /// Routes clicks, hovers and accessibility actions on the canvas to the inspector. The
 /// canvas sits below the annotation overlay, so marks, handles and an active selection or
-/// draw tool take their clicks first.
+/// draw tool take their clicks first. Selectable code text keeps its own clicks; the code
+/// region routes from the card around it.
 struct StageRegionRouting: ViewModifier {
     let model: StageRegionModel
     let config: SnapshotConfig
@@ -174,15 +170,6 @@ struct StageRegionRouting: ViewModifier {
                 },
                 including: isEnabled ? .all : .subviews
             )
-            .background {
-                GeometryReader { proxy in
-                    SelectableTextClicks(size: proxy.size) { point in
-                        guard isEnabled, routableRegion(at: point) == .content else { return }
-                        model.route(.content, usesImageContent: usesImage)
-                    }
-                }
-                .accessibilityHidden(true)
-            }
             .onChange(of: isEnabled) { if !isEnabled { model.hover(nil) } }
             .accessibilityActions {
                 ForEach(StageRegion.drawn(by: config)) { region in
@@ -210,20 +197,15 @@ struct StageRegionRouting: ViewModifier {
     }
 }
 
-/// A dashed outline on the hovered region, kept a constant width on screen. Under Reduce
-/// Motion it appears only after a click.
+/// A static dashed outline on the hovered region, kept a constant width on screen.
 private struct StageRegionOutline: View {
     let model: StageRegionModel
     let layout: StageRegionLayout
     let isEnabled: Bool
     let scale: CGFloat
 
-    @ReducesMotion private var reduceMotion
-
     var body: some View {
-        if isEnabled, let region = model.hovered, !reduceMotion || model.clicked == region,
-            let rect = layout.rect(for: region)
-        {
+        if isEnabled, let region = model.hovered, let rect = layout.rect(for: region) {
             let unit = 1 / max(scale, 0.01)
             RoundedRectangle(cornerRadius: 4 * unit, style: .continuous)
                 .strokeBorder(
@@ -232,70 +214,6 @@ private struct StageRegionOutline: View {
                 )
                 .frame(width: rect.width, height: rect.height)
                 .position(x: rect.midX, y: rect.midY)
-        }
-    }
-}
-
-/// Selectable code text is an AppKit field that tracks the mouse itself, so SwiftUI never sees
-/// a click on it. This view reports one that ended where it began, in the canvas's coordinates.
-private struct SelectableTextClicks: NSViewRepresentable {
-    let size: CGSize
-    let onClick: (CGPoint) -> Void
-
-    func makeNSView(context: Context) -> WatcherView { WatcherView() }
-
-    func updateNSView(_ view: WatcherView, context: Context) {
-        view.size = size
-        view.onClick = onClick
-    }
-
-    static func dismantleNSView(_ view: WatcherView, coordinator: ()) { view.stopMonitoring() }
-
-    final class WatcherView: NSView {
-        var size: CGSize = .zero
-        var onClick: ((CGPoint) -> Void)?
-        private var monitor: Any?
-
-        override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            stopMonitoring()
-            guard window != nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] in
-                self?.mouseDownSeen($0)
-                return $0
-            }
-        }
-
-        func stopMonitoring() {
-            if let monitor { NSEvent.removeMonitor(monitor) }
-            monitor = nil
-        }
-
-        private func mouseDownSeen(_ event: NSEvent) {
-            guard event.window === window, event.clickCount == 1,
-                let content = window?.contentView, let frame = content.superview,
-                content.hitTest(frame.convert(event.locationInWindow, from: nil)) is NSTextField
-            else { return }
-            let point = convert(event.locationInWindow, from: nil)
-            guard bounds.contains(point), bounds.width > 0, bounds.height > 0 else { return }
-            let local = CGPoint(
-                x: point.x / bounds.width * size.width,
-                y: (isFlipped ? point.y : bounds.height - point.y) / bounds.height * size.height)
-            let down = event.locationInWindow
-            // Default mode runs only once the field's tracking loop has taken the mouse-up.
-            CFRunLoopPerformBlock(CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue) {
-                [weak self] in
-                MainActor.assumeIsolated {
-                    guard let self, let up = NSApp.currentEvent, up.type == .leftMouseUp,
-                        up.window === self.window,
-                        hypot(up.locationInWindow.x - down.x, up.locationInWindow.y - down.y) < 4
-                    else { return }
-                    self.onClick?(local)
-                }
-            }
-            CFRunLoopWakeUp(CFRunLoopGetMain())
         }
     }
 }

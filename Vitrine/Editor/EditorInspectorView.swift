@@ -32,6 +32,8 @@ struct EditorInspectorView: View {
     var windowUndoManager: UndoManager? = nil
     /// Stage clicks that open and scroll to a section of the column.
     var stageRegions: StageRegionModel? = nil
+    /// Canvas mode collapses the column, which must stay where the user left it.
+    var isCanvasMode = false
 
     /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
     @AppStorage(PresetThumbnailModel.expandedStorageKey, store: AppDefaults.current)
@@ -88,6 +90,7 @@ struct EditorInspectorView: View {
                     reveal("inspector-disclosure-presets", when: open, proxy)
                 }
                 .onChange(of: stageRegions?.reveal) { _, request in
+                    guard !isCanvasMode else { return }
                     switch request?.target {
                     case .header where !showHeader: showHeader = true
                     case .header: reveal("inspector-disclosure-header", when: true, proxy)

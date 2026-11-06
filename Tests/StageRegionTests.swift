@@ -92,18 +92,30 @@ struct StageRegionTests {
             StageRegion.drawn(by: config) == [.chrome, .header, .content, .shadow, .background])
     }
 
-    @Test func theModelRepeatsARequestAndOutlinesTheClickedRegionUntilThePointerMoves() {
+    @Test func theModelRepeatsARequestForTheSameRegion() {
         let model = StageRegionModel()
         model.route(.background, usesImageContent: false)
         let first = model.reveal
         model.route(.background, usesImageContent: false)
         #expect(model.reveal?.target == .pane(.background))
         #expect(model.reveal != first, "A second click on the same region must still reveal")
-        model.hover(.background)
-        #expect(model.clicked == .background)
         model.hover(.content)
         #expect(model.hovered == .content)
-        #expect(model.clicked == nil)
+    }
+
+    @Test func aStageClickThatClosedAPopoverOpensNoOther() {
+        let closed = DockPopoverClose(pane: .typography, uptime: 100)
+        #expect(
+            DockPopoverClose.pane(
+                afterStageReveal: .background, open: nil, lastClose: closed, now: 100.1) == nil)
+        #expect(
+            DockPopoverClose.pane(
+                afterStageReveal: .background, open: nil, lastClose: closed, now: 100.6)
+                == .background)
+        #expect(
+            DockPopoverClose.pane(
+                afterStageReveal: .background, open: .typography, lastClose: nil, now: 100)
+                == .background)
     }
 
     // MARK: - Real clicks
@@ -114,8 +126,12 @@ struct StageRegionTests {
         let model: StageRegionModel
     }
 
-    private func makeHarness(_ config: SnapshotConfig, isEnabled: Bool = true) -> Harness {
+    /// Scaled and pinned to the scaled size, as the stage fits a card.
+    private func makeHarness(
+        _ config: SnapshotConfig, isEnabled: Bool = true, scale: CGFloat = 1
+    ) -> Harness {
         let size = NSHostingView(rootView: SnapshotCanvas(config: config)).fittingSize
+        let scaled = CGSize(width: size.width * scale, height: size.height * scale)
         let model = StageRegionModel()
         let hosting = FirstMouseHostingView(
             rootView: SnapshotCanvas(config: config)
@@ -125,8 +141,9 @@ struct StageRegionTests {
                         model: model, config: config, canvasSize: size, isCanvasMode: false,
                         isEnabled: isEnabled)
                 )
-                .frame(width: size.width, height: size.height, alignment: .topLeading))
-        hosting.frame = NSRect(origin: .zero, size: size)
+                .scaleEffect(scale)
+                .frame(width: scaled.width, height: scaled.height))
+        hosting.frame = NSRect(origin: .zero, size: scaled)
         let window = NSWindow(
             contentRect: hosting.frame, styleMask: [.titled], backing: .buffered, defer: false)
         window.contentView = hosting
@@ -169,8 +186,9 @@ struct StageRegionTests {
         return config
     }
 
-    @Test func clicksOnTheRenderedPartsReachTheirSections() async throws {
-        let harness = makeHarness(codeConfig())
+    @Test(arguments: [1.0, 0.5])
+    func clicksOnTheRenderedPartsReachTheirSections(scale: Double) async throws {
+        let harness = makeHarness(codeConfig(), scale: scale)
         defer { harness.window.orderOut(nil) }
         try await settle()
         let layout = harness.model.layout
@@ -180,24 +198,24 @@ struct StageRegionTests {
         ]
         for (region, target) in expected {
             let rect = try #require(layout.rect(for: region), "\(region) was laid out")
-            // The background's corner, clear of the card; every other region's middle,
-            // which for the code is selectable text.
-            let point =
+            // Corners clear of the card and of text: the code region routes from the card's
+            // inset beside the code.
+            let local =
                 region == .background
-                ? CGPoint(x: rect.minX + 4, y: rect.minY + 4) : CGPoint(x: rect.midX, y: rect.midY)
-            try click(harness, at: point)
+                ? CGPoint(x: rect.minX + 4, y: rect.minY + 4)
+                : CGPoint(x: rect.minX + 6, y: rect.midY)
+            try click(harness, at: CGPoint(x: local.x * scale, y: local.y * scale))
             try await settle()
-            #expect(harness.model.reveal?.target == target, "\(region)")
+            #expect(harness.model.reveal?.target == target, "\(region) at \(scale)")
         }
     }
 
-    @Test func aDragAcrossTheCodeSelectsTextWithoutRouting() async throws {
+    @Test func aClickOnTheCodeTextKeepsSelectingWithoutRouting() async throws {
         let harness = makeHarness(codeConfig())
         defer { harness.window.orderOut(nil) }
         try await settle()
         let code = try #require(harness.model.layout.rect(for: .content))
-        let start = CGPoint(x: code.midX - 30, y: code.midY)
-        try click(harness, at: start, releasingAt: CGPoint(x: start.x + 60, y: start.y))
+        try click(harness, at: CGPoint(x: code.midX, y: code.midY))
         try await settle()
         #expect(harness.model.reveal == nil)
     }

@@ -266,21 +266,79 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: VitrineLaunchArguments.editor + ["--canvas-mode"])
         defer { app.terminate() }
         assertExists(element("canvas-dock", in: app), in: app, timeout: 8)
-        let code = element("editor-preview-stage", in: app).staticTexts.matching(
-            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
-        ).firstMatch
+        let code = renderedCode(in: app)
         assertExists(code, in: app, timeout: 3)
+        let scale = previewScale(in: app)
 
-        code.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).click()
-        assertExists(element("font-size-slider", in: app), in: app, timeout: 3)
+        stageRegionPoint(.chrome, of: code, scale: scale).click()
+        assertExists(element("padding-slider", in: app), in: app, timeout: 3)
         app.typeKey(.escape, modifierFlags: [])
-        XCTAssertTrue(element("font-size-slider", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(element("padding-slider", in: app).waitForNonExistence(timeout: 3))
+        // A stage click right after a popover closes only closes it.
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
 
-        // Past the card's 26 pt inset and its shadow, inside the default 32 pt padding.
-        code.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5))
-            .withOffset(CGVector(dx: -47, dy: 0)).click()
+        stageRegionPoint(.background, of: code, scale: scale).click()
         assertExists(
             element("inspector-background-gradient-preset", in: app), in: app, timeout: 3)
+    }
+
+    /// With the column scrolled to its end, a click on the window chrome brings the Canvas
+    /// section back into view.
+    @MainActor
+    func testStageRegionScrollsTheInspectorToItsSection() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        let code = renderedCode(in: app)
+        assertExists(code, in: app, timeout: 8)
+        // Opening the last section scrolls the column to its end, past the Canvas section.
+        let disclosure = element("inspector-disclosure-presets", in: app)
+        let inspector = element("editor-inspector", in: app)
+        for _ in 0..<5 where !disclosure.isHittable {
+            inspector.swipeUp()
+        }
+        disclosure.click()
+        assertExists(element("inspector-preset-thumbnails", in: app), in: app, timeout: 3)
+        let chromeToggle = element("window-chrome-toggle", in: app)
+        for _ in 0..<5 where chromeToggle.isHittable {
+            inspector.swipeUp()
+        }
+        try XCTSkipIf(chromeToggle.isHittable, "The whole inspector fits on this display")
+        stageRegionPoint(.chrome, of: code, scale: previewScale(in: app)).click()
+        assertHittable(
+            "window-chrome-toggle", in: app, "The chrome opens the Canvas section", timeout: 3)
+    }
+
+    private enum StageRegionTarget { case chrome, background }
+
+    @MainActor private func renderedCode(in app: XCUIApplication) -> XCUIElement {
+        element("editor-preview-stage", in: app).staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
+    }
+
+    /// The status capsule prints the fit percentage once the card is scaled down.
+    @MainActor private func previewScale(in app: XCUIApplication) -> CGFloat {
+        let value = element("editor-status-capsule", in: app).value as? String ?? ""
+        guard let match = value.firstMatch(of: /(\d+)\s?%/), let zoom = Double(match.1) else {
+            return 1
+        }
+        return zoom / 100
+    }
+
+    /// Measured from the demo's code, at the default 26 pt card inset and 32 pt padding: the
+    /// chrome sits above the code, and the background starts past the shadow's 10 pt ring.
+    private func stageRegionPoint(
+        _ target: StageRegionTarget, of code: XCUIElement, scale: CGFloat
+    ) -> XCUICoordinate {
+        let origin = code.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+        switch target {
+        case .chrome:
+            return origin.withOffset(CGVector(dx: code.frame.width / 2, dy: -24 * scale))
+        case .background:
+            return origin.withOffset(CGVector(dx: -47 * scale, dy: code.frame.height / 2))
+        }
     }
 
     @MainActor
