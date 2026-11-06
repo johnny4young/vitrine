@@ -29,6 +29,11 @@ final class OutputBehavior {
         didSet { defaults.set(concealClipboard, forKey: Keys.concealClipboard) }
     }
 
+    /// Save the editable project inside PNG files. Off by default: it carries the source.
+    var embedsEditableProject: Bool {
+        didSet { defaults.set(embedsEditableProject, forKey: Keys.embedEditableProject) }
+    }
+
     private let defaults: UserDefaults
 
     /// A missing or garbage value falls back to the documented default.
@@ -38,6 +43,8 @@ final class OutputBehavior {
         alsoSaveToFile = defaults.object(forKey: Keys.alsoSaveToFile) as? Bool ?? false
         closeAfterCopy = defaults.object(forKey: Keys.closeAfterCopy) as? Bool ?? true
         concealClipboard = defaults.object(forKey: Keys.concealClipboard) as? Bool ?? false
+        embedsEditableProject =
+            defaults.object(forKey: Keys.embedEditableProject) as? Bool ?? false
     }
 
     /// Resets the live state; `AppSettings.resetToDefaults()` clears the persisted keys.
@@ -46,5 +53,6 @@ final class OutputBehavior {
         alsoSaveToFile = false
         closeAfterCopy = true
         concealClipboard = false
+        embedsEditableProject = false
     }
 }

@@ -63,9 +63,11 @@ struct EditorPresentation {
         settings.export.richClipboard || settings.export.textSidecar ? .text : .image
     }
 
-    /// A PDF keeps its text selectable; bitmap formats hold pixels only.
+    /// A PDF keeps its text selectable and an embedded project carries a share link;
+    /// otherwise bitmap formats hold pixels only.
     static func savePayload(of settings: AppSettings) -> ExportPreflight.Payload {
-        settings.export.format == .pdf ? .text : .image
+        if settings.export.format == .pdf { return .text }
+        return EditorImageSave.embeddingPlan(settings).link == nil ? .image : .transcript
     }
 
     static let live = EditorPresentation(

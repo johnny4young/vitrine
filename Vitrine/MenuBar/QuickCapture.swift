@@ -125,7 +125,8 @@ enum QuickCapture {
         // leaves the app, and history keeps its own consent below.
         let behavior = settings.outputBehavior
         if let preflight, behavior.autoCopy || behavior.alsoSaveToFile {
-            let report = ExportPreflight(config, payload: .text)
+            let embeds = embeddedProject(for: config, settings: settings) != nil
+            let report = ExportPreflight(config, payload: embeds ? .transcript : .text)
             if !report.isClean {
                 let action: ExportPreflight.Action =
                     behavior.autoCopy ? (behavior.alsoSaveToFile ? .copyAndSave : .copy) : .save
@@ -261,7 +262,8 @@ enum QuickCapture {
             } else if let cgImage {
                 let outcome = ExportManager.saveToFile(
                     cgImage: cgImage, format: settings.export.format,
-                    suggestedName: SuggestedFilename.basename(for: plan.config))
+                    suggestedName: SuggestedFilename.basename(for: plan.config),
+                    embeddedProject: embeddedProject(for: plan.config, settings: settings))
                 didSave = outcome == .saved
                 if case .renderFailed(let error) = outcome {
                     deferredRenderFailure = deferredRenderFailure ?? error
@@ -272,6 +274,15 @@ enum QuickCapture {
             return .renderFailed(deferredRenderFailure)
         }
         return .completed(didCopy: didCopy, didSave: didSave, copiedPNGBytes: copiedPNGBytes)
+    }
+
+    /// The project link an also-saved PNG carries, when the user opted in.
+    static func embeddedProject(for config: SnapshotConfig, settings: AppSettings) -> String? {
+        EmbeddedProject.plan(
+            for: config, format: settings.export.format,
+            enabled: settings.outputBehavior.alsoSaveToFile
+                && settings.outputBehavior.embedsEditableProject
+        ).link
     }
 
     /// Resolves a one-off destination preset without changing the user's saved default.

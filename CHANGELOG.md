@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Settings ▸ Output ▸ Embed editable project in PNG files (off by default) stores the code,
+  style, header and marks inside saved PNGs, as the same payload a share link carries. Dropping
+  such a PNG on the editor asks whether to open it as an editable project or use it as an image.
+  It is never added to clipboard copies, or when the capture has redacted lines or blur boxes.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.

@@ -41,16 +41,23 @@ enum ExportFeedback {
     }
 
     static func saveOutcome(
-        _ outcome: ExportManager.SaveOutcome
+        _ outcome: ExportManager.SaveOutcome, embedding plan: EmbeddedProject.Plan = .off
     ) -> Notifier.CaptureFeedback? {
-        switch outcome {
-        case .saved:
+        switch (outcome, plan) {
+        case (.saved, .withheld(.redactions)):
+            Notifier.confirmation(
+                String(localized: "Image saved without the editable project: something is redacted")
+            )
+        case (.saved, .withheld(.tooLarge)):
+            Notifier.confirmation(
+                String(localized: "Image saved without the editable project: it's too large"))
+        case (.saved, _):
             Notifier.confirmation(String(localized: "Image saved"))
-        case .failed:
+        case (.failed, _):
             Notifier.failure(String(localized: "Couldn't save the image"))
-        case .renderFailed(let error):
+        case (.renderFailed(let error), _):
             renderFailure(error)
-        case .cancelled:
+        case (.cancelled, _):
             nil
         }
     }

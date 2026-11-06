@@ -28,6 +28,20 @@ struct OutputSettingsView: View {
                         .toggleStyle(.switch)
                         .labelsHidden()
                 }
+                TokenRow(
+                    label: Text("Embed editable project in PNG files"),
+                    caption: Text(
+                        "Saved PNGs include the code so Vitrine can reopen them. Left out when anything is redacted."
+                    )
+                ) {
+                    Toggle(
+                        "Embed editable project in PNG files",
+                        isOn: behavior.embedsEditableProject
+                    )
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("embed-project-toggle")
+                }
                 TokenRow(label: Text("Close the editor after copying")) {
                     Toggle("Close the editor after copying", isOn: behavior.closeAfterCopy)
                         .toggleStyle(.switch)

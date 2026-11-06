@@ -62,6 +62,9 @@ struct EditorView: View {
     /// pending.
     @State var pendingDrop: PendingDrop?
 
+    /// A dropped image that carries an editable project, waiting on open-or-beautify.
+    @State var pendingProject: PendingEmbeddedProject?
+
     /// The natural (unscaled) size of the preview card, measured so the stage
     /// can scale it to always fit (the shared scale-to-fit rule). Never read in this
     /// view's body; see ``PreviewCardGeometry``.
@@ -149,6 +152,11 @@ struct EditorView: View {
     /// destination owns multi-size, carousel, and their paywalls so separate toolbar
     /// branches cannot compete to present sibling sheets.
     @State var exportSheet: EditorExportSheet?
+
+    struct PendingEmbeddedProject {
+        var image: ImageReference
+        var snapshot: SharedSnapshot
+    }
 
     /// A loaded drop awaiting the user's replace-vs-append choice, kept so the
     /// confirmation dialog can apply exactly what was dropped.
@@ -269,6 +277,7 @@ struct EditorView: View {
                 selectedAnnotationID = nil
                 editingAnnotationID = nil
                 pendingDrop = nil
+                pendingProject = nil
                 session.copyConfirmation.clear()
             }
             .onChange(of: session.isCanvasMode) { _, isCanvasMode in
@@ -332,6 +341,9 @@ struct EditorView: View {
                         settings.hasRenderableContent
                     {
                         presentMultiSizeExport()
+                    }
+                    if ProcessInfo.processInfo.arguments.contains("--demo-embedded-project") {
+                        await offerEmbeddedProjectDemo()
                     }
                 #endif
             }
@@ -430,6 +442,21 @@ struct EditorView: View {
                 Button("Cancel", role: .cancel) { pendingDrop = nil }
             } message: {
                 Text(pendingDrop?.promptMessage ?? "")
+            }
+            .confirmationDialog(
+                "Open This Image as a Project?",
+                isPresented: Binding(
+                    get: { pendingProject != nil },
+                    set: { if !$0 { pendingProject = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button("Open Editable") { resolvePendingProject(editable: true) }
+                    .accessibilityIdentifier("embedded-project-open-button")
+                Button("Use as Image") { resolvePendingProject(editable: false) }
+                    .accessibilityIdentifier("embedded-project-image-button")
+                Button("Cancel", role: .cancel) { pendingProject = nil }
+            } message: {
+                Text("It was saved with its code, style and marks.")
             }
     }
 }

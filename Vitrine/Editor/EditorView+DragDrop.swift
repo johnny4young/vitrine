@@ -25,7 +25,7 @@ extension EditorView {
         for provider in providers {
             do {
                 if let reference = try await readImageReference(from: provider) {
-                    applyImage(reference)
+                    offerImage(reference)
                     return
                 }
             } catch is CancellationError {
@@ -264,6 +264,44 @@ extension EditorView {
         settings.noteDocumentReplaced()
         Log.capture.info("Editor drop loaded a foreground image")
     }
+
+    /// A PNG saved with an embedded project asks whether to reopen it as code; any other
+    /// image, or one whose project is missing or invalid, is beautified as before.
+    func offerImage(_ reference: ImageReference) {
+        guard let url = foregroundImageStore.url(for: reference),
+            let snapshot = EmbeddedProject.snapshot(inPNGAt: url)
+        else { return applyImage(reference) }
+        pendingProject = PendingEmbeddedProject(image: reference, snapshot: snapshot)
+    }
+
+    func resolvePendingProject(editable: Bool) {
+        guard let pending = pendingProject else { return }
+        pendingProject = nil
+        guard editable else { return applyImage(pending.image) }
+        // A fresh config, like a share link, so nothing from the current document leaks in.
+        var config = SnapshotConfig()
+        pending.snapshot.apply(to: &config)
+        session.livingSnapshot.stop()
+        settings.config = config
+        settings.noteDocumentReplaced()
+        Log.capture.info("Editor drop opened an embedded project")
+    }
+
+    #if DEBUG
+        /// Dev hook: offers a generated PNG with an embedded project through the drop path.
+        func offerEmbeddedProjectDemo() async {
+            var demo = SnapshotConfig()
+            demo.code = "let greeting = \"Hello, Vitrine\""
+            demo.language = .swift
+            guard let link = EmbeddedProject.plan(for: demo, format: .png, enabled: true).link,
+                let image = ExportManager.renderCGImage(demo, scale: 1),
+                let data = EmbeddedProject.pngData(from: image, embedding: link),
+                let reference = try? await foregroundImageStore.importImageConcurrently(
+                    data: data, preferredExtension: "png")
+            else { return }
+            offerImage(reference)
+        }
+    #endif
 
     /// Reads a dropped file's URL from a provider, or `nil` when it carries none.
     /// The coerced item is a `URL` (or URL bytes), which `FileInputLoader` then

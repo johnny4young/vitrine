@@ -1,6 +1,94 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Embed editable project in PNG files" : {
+      "comment" : "Settings › Output toggle that stores the code and style inside saved PNG files",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incrustar el proyecto editable en archivos PNG"
+          }
+        }
+      }
+    },
+    "Saved PNGs include the code so Vitrine can reopen them. Left out when anything is redacted." : {
+      "comment" : "Caption under the embed-project toggle",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los PNG guardados incluyen el código para que Vitrine pueda reabrirlos. Se omite si hay algo oculto."
+          }
+        }
+      }
+    },
+    "Image saved without the editable project: something is redacted" : {
+      "comment" : "Save confirmation when the embed option is on but redactions block it",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen guardada sin el proyecto editable: hay algo oculto"
+          }
+        }
+      }
+    },
+    "Image saved without the editable project: it's too large" : {
+      "comment" : "Save confirmation when the embedded project would exceed the share-link size limit",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen guardada sin el proyecto editable: es demasiado grande"
+          }
+        }
+      }
+    },
+    "Open This Image as a Project?" : {
+      "comment" : "Dialog title after dropping a PNG that carries an editable Vitrine project",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Abrir esta imagen como proyecto?"
+          }
+        }
+      }
+    },
+    "It was saved with its code, style and marks." : {
+      "comment" : "Dialog message after dropping a PNG that carries an editable Vitrine project",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se guardó con su código, estilo y marcas."
+          }
+        }
+      }
+    },
+    "Open Editable" : {
+      "comment" : "Dialog button that reopens the dropped image's embedded project as code",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir editable"
+          }
+        }
+      }
+    },
+    "Use as Image" : {
+      "comment" : "Dialog button that beautifies the dropped image instead of opening its project",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar como imagen"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
