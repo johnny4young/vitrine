@@ -16,7 +16,11 @@ can never drift.
 
 - The code editor has a line-number gutter that shows each line's highlight and redaction.
   Click a number to highlight, redact or clear that line, or to turn on Focus highlighted;
-  ⇧-click marks a range. Selecting code offers Highlight and Redact for the lines it covers.
+  ⇧-click marks a range. Selecting code offers Highlight and Redact for the lines it covers,
+  also in Edit ▸ Highlight Selected Lines / Redact Selected Lines and the editor's context
+  menu. Mark edits can be undone, and highlights and redactions now stay on their text when
+  you add or remove lines above them. Terminal captures keep their row-based redaction and
+  show no gutter.
 - Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
   hides the code and inspector columns. A dock on the stage shows the current theme,
   typography, background and padding, and opens the inspector's section for each in a

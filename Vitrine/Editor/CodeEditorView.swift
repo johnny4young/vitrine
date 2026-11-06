@@ -90,7 +90,7 @@ struct CodeEditorView: NSViewRepresentable {
         context.coordinator.configureIfFontChanged(textView)
         context.coordinator.applyHighlight(to: textView)
         context.coordinator.syncLanes(textView, settings: settings)
-        context.coordinator.refreshLanes(textView)
+        context.coordinator.refreshLanes(textView, recount: true)
         return scrollView
     }
 
@@ -106,8 +106,9 @@ struct CodeEditorView: NSViewRepresentable {
             // Typing undo recorded against the previous text would edit the new one.
             textView.string = text
             textView.undoManager?.removeAllActions()
+            coordinator.gutter.documentReplaced()
             coordinator.applyHighlight(to: textView)
-            coordinator.refreshLanes(textView)
+            coordinator.refreshLanes(textView, recount: true)
         } else if coordinator.styleChanged {
             // Theme/language/font changed: recolor now (text edits are debounced).
             coordinator.applyHighlight(to: textView)
@@ -125,6 +126,7 @@ struct CodeEditorView: NSViewRepresentable {
         textView.delegate = nil
         textView.onPaste = nil
         coordinator.gutter.onAction = nil
+        textView.onLineEdit = nil
         textView.undoManager?.removeAllActions()
         nsView.documentView = nil
     }
@@ -289,35 +291,79 @@ struct CodeEditorView: NSViewRepresentable {
             gutter.ink = textView.insertionPointColor
             gutter.highlightTint = NSColor(
                 HighlightManager.shared.lineHighlightColor(for: parent.theme))
-            (textView as? CodeTextView)?.showsGutter = hasContent
+            (textView as? CodeTextView)?.showsGutter = hasContent && lanesApply
             textView.setNeedsDisplay(textView.visibleRect)
         }
 
+        /// A terminal capture redacts rows of its reconstructed screen, not transcript lines,
+        /// so a line number in the editor would point at a different row.
+        private var lanesApply: Bool { parent.language != .terminal }
+
         /// Pushes the current marks into the gutter and the selection actions.
         func syncLanes(_ textView: NSTextView, settings: AppSettings?) {
+            let codeView = textView as? CodeTextView
             let style = settings?.style
             let marks = style?.lineMarks ?? LineMarks()
             let focus = style?.focusHighlightedLines ?? false
-            let changed = marks != gutter.marks || focus != gutter.focusesHighlighted
+            let enabled = settings != nil && lanesApply
+            let changed =
+                marks != gutter.marks || focus != gutter.focusesHighlighted
+                || enabled != (gutter.onAction != nil)
             gutter.marks = marks
             gutter.focusesHighlighted = focus
-            performLaneAction = { [weak settings] action in settings?.style.apply(action) }
-            gutter.onAction = settings == nil ? nil : { [weak self] in self?.performLaneAction($0) }
-            let resized = gutter.fit(codeFontSize: parent.fontSize, lineCount: lineCount)
-            if resized { (textView as? CodeTextView)?.updateGutterInset() }
+            performLaneAction = { [weak settings, weak textView] action in
+                guard let settings else { return }
+                Self.apply(action, to: settings, undoManager: textView?.undoManager)
+            }
+            gutter.onAction = enabled ? { [weak self] in self?.performLaneAction($0) } : nil
+            // Only while there are marks to move: the edit's line costs a count from the top.
+            codeView?.onLineEdit =
+                enabled && !marks.isEmpty
+                ? { [weak settings] edit in settings?.style.shiftLineMarks(for: edit) } : nil
+            let resized = gutter.fit(
+                codeFontSize: parent.fontSize, lineCount: codeView?.lineCount ?? 1)
+            if resized { codeView?.updateGutterInset() }
             if changed || resized {
-                textView.setNeedsDisplay(textView.visibleRect)
+                codeView?.setGutterNeedsDisplay()
                 refreshSelectionBar(textView)
             }
         }
 
-        private var lineCount = 1
+        /// Applies a gutter or selection edit as one undoable step.
+        static func apply(
+            _ action: CodeLaneAction, to settings: AppSettings, undoManager: UndoManager?
+        ) {
+            var updated = settings.style
+            updated.apply(action)
+            guard
+                updated.lineMarks != settings.style.lineMarks
+                    || updated.focusHighlightedLines != settings.style.focusHighlightedLines
+            else { return }
+            setLineMarks(from: updated, on: settings, undoManager: undoManager)
+        }
 
-        /// Runs per text change, so it counts lines once and redraws only the gutter.
-        func refreshLanes(_ textView: NSTextView) {
-            lineCount = LineSplitter.lineCount(of: textView.string)
-            if gutter.fit(codeFontSize: parent.fontSize, lineCount: lineCount) {
-                (textView as? CodeTextView)?.updateGutterInset()
+        private static func setLineMarks(
+            from source: SnapshotConfig, on settings: AppSettings, undoManager: UndoManager?
+        ) {
+            let previous = settings.style
+            undoManager?.registerUndo(withTarget: settings) { settings in
+                setLineMarks(from: previous, on: settings, undoManager: undoManager)
+            }
+            undoManager?.setActionName(String(localized: "Mark Lines"))
+            var style = previous
+            style.highlightedLineRanges = source.highlightedLineRanges
+            style.redactedLineRanges = source.redactedLineRanges
+            style.focusHighlightedLines = source.focusHighlightedLines
+            settings.style = style
+        }
+
+        /// Runs per text change; the text view keeps the line count, so this never walks
+        /// the document unless `recount` asks it to.
+        func refreshLanes(_ textView: NSTextView, recount: Bool = false) {
+            guard let codeView = textView as? CodeTextView else { return }
+            if recount { codeView.recountLines() }
+            if gutter.fit(codeFontSize: parent.fontSize, lineCount: codeView.lineCount) {
+                codeView.updateGutterInset()
             }
             refreshSelectionBar(textView)
         }
@@ -330,11 +376,15 @@ struct CodeEditorView: NSViewRepresentable {
         /// Shows the selection actions while a selection spans text, pinned to the
         /// pane's bottom edge.
         private func refreshSelectionBar(_ textView: NSTextView) {
+            let selection = textView.selectedRange()
             guard let scrollView = textView.enclosingScrollView else { return }
+            // An empty selection, the case on every keystroke, never reads the text.
             let lines =
-                gutter.onAction == nil
+                gutter.onAction == nil || selection.length == 0
                 ? nil
-                : CodeLines.lines(of: textView.selectedRange(), in: textView.string as NSString)
+                : textView.textStorage.flatMap {
+                    CodeLines.lines(of: selection, in: $0.mutableString)
+                }
             guard let lines else {
                 selectionBar?.isHidden = true
                 selectionBarContent = nil
@@ -391,6 +441,7 @@ struct CodeEditorView: NSViewRepresentable {
                 [weak self, weak textView] in
                 guard let self, let textView else { return }
                 self.applyHighlight(to: textView)
+                self.refreshLanes(textView, recount: true)
             }
         }
 
@@ -468,6 +519,96 @@ final class CodeTextView: NSTextView {
     /// How much of the base inset the gutter reuses, so the code sits a short gap after it.
     static let gutterOverlap: CGFloat = 6
     var laneGutter: CodeLaneGutter? { didSet { updateGutterInset() } }
+    /// Set while there are marks to move, and told about each edit that adds or removes a
+    /// line break, before the edit lands.
+    var onLineEdit: ((LineEdit) -> Void)?
+    /// Kept in step by each edit, so a keystroke never recounts the document.
+    private(set) var lineCount = 1
+
+    func recountLines() {
+        let text = textStorage?.mutableString ?? (string as NSString)
+        lineCount = CodeLines.breaks(in: text, range: NSRange(location: 0, length: text.length)) + 1
+    }
+
+    /// The visible slice of the gutter, which is all a keystroke or a mark change repaints.
+    func setGutterNeedsDisplay() {
+        guard showsGutter else { return }
+        let visible = visibleRect
+        setNeedsDisplay(
+            NSRect(
+                x: visible.minX, y: visible.minY, width: textContainerOrigin.x,
+                height: visible.height))
+    }
+
+    /// The gutter and selection actions can edit marks: off for terminal captures.
+    var laneActionsEnabled: Bool { showsGutter && laneGutter?.onAction != nil }
+
+    private var selectedLines: ClosedRange<Int>? {
+        guard laneActionsEnabled, let text = textStorage?.mutableString else { return nil }
+        return CodeLines.lines(of: selectedRange(), in: text)
+    }
+
+    @objc func highlightSelectedLines(_ sender: Any?) { markSelectedLines(.highlight) }
+    @objc func redactSelectedLines(_ sender: Any?) { markSelectedLines(.redact) }
+
+    private func markSelectedLines(_ mark: LineMark) {
+        guard let lines = selectedLines else { return }
+        laneGutter?.onAction?(.toggle(mark, lines))
+    }
+
+    override func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        let mark: LineMark
+        switch menuItem.action {
+        case #selector(highlightSelectedLines(_:)): mark = .highlight
+        case #selector(redactSelectedLines(_:)): mark = .redact
+        default: return super.validateMenuItem(menuItem)
+        }
+        guard let lines = selectedLines, let laneGutter else { return false }
+        menuItem.state = laneGutter.marks.covers(lines, with: mark) ? .on : .off
+        return true
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        let menu = super.menu(for: event)
+        guard laneActionsEnabled, let menu else { return menu }
+        menu.insertItem(.separator(), at: 0)
+        for (title, action, id) in Self.selectionCommands.reversed() {
+            let item = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            item.target = self
+            item.setAccessibilityIdentifier("code-context-\(id)")
+            menu.insertItem(item, at: 0)
+        }
+        return menu
+    }
+
+    /// The selection commands, shared by the context menu, the Edit menu and VoiceOver.
+    static var selectionCommands: [(title: String, action: Selector, id: String)] {
+        [
+            (
+                String(localized: "Highlight Selected Lines"),
+                #selector(highlightSelectedLines(_:)), "highlight-selected-lines"
+            ),
+            (
+                String(localized: "Redact Selected Lines"),
+                #selector(redactSelectedLines(_:)), "redact-selected-lines"
+            ),
+        ]
+    }
+
+    override func accessibilityCustomActions() -> [NSAccessibilityCustomAction]? {
+        let inherited = super.accessibilityCustomActions() ?? []
+        guard selectedLines != nil else { return inherited }
+        return inherited + [
+            NSAccessibilityCustomAction(name: Self.selectionCommands[0].title) { [weak self] in
+                self?.markSelectedLines(.highlight)
+                return true
+            },
+            NSAccessibilityCustomAction(name: Self.selectionCommands[1].title) { [weak self] in
+                self?.markSelectedLines(.redact)
+                return true
+            },
+        ]
+    }
     var showsGutter = false { didSet { if showsGutter != oldValue { updateGutterInset() } } }
     /// Half the gutter: the inset adds it on both sides and the origin once more on the left,
     /// so the gutter takes room from the code's left edge only.
@@ -569,14 +710,51 @@ final class CodeTextView: NSTextView {
                 $0.shifted(replacing: range, with: replacementString)
             }
         }
+        if let replacementString { noteLineEdit(in: range, replacement: replacementString) }
         return true
+    }
+
+    /// Keeps the line count and the gutter's cached position in step with an edit, and
+    /// tells `onLineEdit` how its line breaks moved.
+    private func noteLineEdit(in range: NSRange, replacement: String) {
+        guard let text = textStorage?.mutableString else { return }
+        let inserted = replacement as NSString
+        let removedBreaks = CodeLines.breaks(in: text, range: range)
+        let insertedBreaks = CodeLines.breaks(
+            in: inserted, range: NSRange(location: 0, length: inserted.length))
+        lineCount += insertedBreaks - removedBreaks
+        // A whole-document replacement is a new capture, whose marks stay as they are.
+        if range.location == 0, range.length == text.length {
+            laneGutter?.documentReplaced()
+            return
+        }
+        laneGutter?.noteEdit(
+            in: range, replacementLength: inserted.length,
+            breakDelta: insertedBreaks - removedBreaks)
+        guard removedBreaks + insertedBreaks > 0, let onLineEdit else { return }
+        let end = NSMaxRange(range)
+        let endsAtLineEnd =
+            end == text.length || text.character(at: end) == 0x0A
+            || (text.character(at: end) == 0x0D && end + 1 < text.length
+                && text.character(at: end + 1) == 0x0A)
+        onLineEdit(
+            LineEdit(
+                line: CodeLines.line(atUTF16Offset: range.location, in: text),
+                removedBreaks: removedBreaks, insertedBreaks: insertedBreaks,
+                startsAtLineStart: range.location == 0
+                    || text.character(at: range.location - 1) == 0x0A,
+                endsAtLineEnd: endsAtLineEnd))
     }
 
     override func didChangeText() {
         super.didChangeText()
         // A new line moves every divider and line number below it, past the rect the edit
         // redraws.
-        if !slideDividers.isEmpty || showsGutter { setNeedsDisplay(visibleRect) }
+        if !slideDividers.isEmpty {
+            setNeedsDisplay(visibleRect)
+        } else {
+            setGutterNeedsDisplay()
+        }
     }
 
     override func paste(_ sender: Any?) {

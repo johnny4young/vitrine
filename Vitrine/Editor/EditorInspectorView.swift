@@ -198,6 +198,12 @@ struct EditorInspectorView: View {
                                     if !settings.style.redactedLineRanges.isEmpty {
                                         Button("Clear") { settings.style.redactedLineRanges = [] }
                                             .accessibilityLabel("Clear redactions")
+                                            // Names the redacted lines for VoiceOver.
+                                            .accessibilityValue(
+                                                Text(
+                                                    verbatim: LineHighlight.describe(
+                                                        settings.style.redactedLineRanges))
+                                            )
                                             .accessibilityIdentifier("clear-redactions-button")
                                     }
                                 }

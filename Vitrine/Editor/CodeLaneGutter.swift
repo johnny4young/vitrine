@@ -25,6 +25,13 @@ extension SnapshotConfig {
         highlightedLineRanges = marks.highlighted
         redactedLineRanges = marks.redacted
     }
+
+    /// Moves the marks with the text an edit moved.
+    mutating func shiftLineMarks(for edit: LineEdit) {
+        let shifted = lineMarks.adjusted(for: edit)
+        highlightedLineRanges = shifted.highlighted
+        redactedLineRanges = shifted.redacted
+    }
 }
 
 /// Maps UTF-16 offsets in the editor text to the 1-based lines the stage numbers.
@@ -46,6 +53,20 @@ enum CodeLines {
         }
     }
 
+    /// The `\n`s in `range`.
+    static func breaks(in text: NSString, range: NSRange) -> Int {
+        var count = 0
+        var search = range
+        while search.length > 0 {
+            let found = text.range(of: "\n", options: .literal, range: search)
+            guard found.location != NSNotFound else { break }
+            count += 1
+            search = NSRange(
+                location: found.location + 1, length: NSMaxRange(search) - found.location - 1)
+        }
+        return count
+    }
+
     /// The lines a non-empty selection touches; a trailing newline stays on its own line.
     static func lines(of selection: NSRange, in text: NSString) -> ClosedRange<Int>? {
         guard selection.length > 0, selection.location != NSNotFound else { return nil }
@@ -65,7 +86,29 @@ final class CodeLaneGutter {
     var onAction: ((CodeLaneAction) -> Void)?
     private(set) var numberFont = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
     private var digits = 2
-    private var anchorLine: Int?
+    /// The line a plain click chose, which a ⇧-click extends from.
+    private(set) var anchorLine: Int?
+    /// The first visible paragraph's offset and line, so a redraw counts breaks from there
+    /// instead of from the top of the document.
+    private var visibleStart: (offset: Int, line: Int)?
+
+    /// A replaced document has no line to extend a range from.
+    func documentReplaced() {
+        anchorLine = nil
+        visibleStart = nil
+    }
+
+    /// Keeps `visibleStart` valid across an edit, or drops it when the edit reaches past it.
+    func noteEdit(in range: NSRange, replacementLength: Int, breakDelta: Int) {
+        guard let start = visibleStart else { return }
+        if NSMaxRange(range) <= start.offset {
+            visibleStart = (
+                start.offset - range.length + replacementLength, start.line + breakDelta
+            )
+        } else if range.location < start.offset {
+            visibleStart = nil
+        }
+    }
 
     var width: CGFloat {
         let digitWidth = CodeFont.advance(of: "0", in: numberFont)
@@ -92,8 +135,8 @@ final class CodeLaneGutter {
         var previousLine: Int?
         for lane in visibleLanes(of: textView) {
             defer { previousLine = lane.line }
-            guard lane.row.intersects(dirtyRect) else { continue }
-            drawCell(line: lane.line, in: lane.row, showsNumber: lane.line != previousLine)
+            guard lane.paragraph.intersects(dirtyRect) else { continue }
+            drawCell(lane, showsNumber: lane.line != previousLine)
         }
     }
 
@@ -114,9 +157,15 @@ final class CodeLaneGutter {
         let visible = textView.visibleRect
         let top = CGPoint(x: 0, y: max(0, visible.minY - origin.y))
         guard let first = manager.textLayoutFragment(for: top) else { return [] }
-        let text = textView.string as NSString
+        let text = textView.textStorage?.mutableString ?? (textView.string as NSString)
         let documentStart = content.documentRange.location
+        let firstOffset = content.offset(from: documentStart, to: first.rangeInElement.location)
         var previous = (offset: 0, line: 1)
+        if let visibleStart, visibleStart.offset <= firstOffset { previous = visibleStart }
+        previous = (
+            firstOffset, CodeLines.line(atUTF16Offset: firstOffset, in: text, from: previous)
+        )
+        visibleStart = previous
         let width = width
         var result: [Lane] = []
         manager.enumerateTextLayoutFragments(from: first.rangeInElement.location) { fragment in
@@ -138,11 +187,16 @@ final class CodeLaneGutter {
         return result
     }
 
-    private func drawCell(line: Int, in cell: NSRect, showsNumber: Bool) {
+    private func drawCell(_ lane: Lane, showsNumber: Bool) {
+        let line = lane.line
+        let cell = lane.row
         let isHighlighted = marks.contains(.highlight, line: line)
         if isHighlighted {
+            // Every row a wrapped line takes, as the stage bands it.
             highlightTint.setFill()
-            NSBezierPath(roundedRect: cell.insetBy(dx: 3, dy: 0), xRadius: 3, yRadius: 3).fill()
+            NSBezierPath(
+                roundedRect: lane.paragraph.insetBy(dx: 3, dy: 0), xRadius: 3, yRadius: 3
+            ).fill()
         }
         guard showsNumber else { return }
         let dimmed = focusesHighlighted && !marks.highlighted.isEmpty && !isHighlighted
@@ -173,18 +227,25 @@ final class CodeLaneGutter {
     /// Opens the lane menu for the clicked line; `point` is in text view coordinates.
     func click(at point: NSPoint, with event: NSEvent, in textView: NSTextView) {
         guard
+            let range = lines(
+                at: point, extending: event.modifierFlags.contains(.shift),
+                in: textView)
+        else { return }
+        menu(for: range).popUp(positioning: nil, at: point, in: textView)
+    }
+
+    /// The line under `point`, or the run from the last plain click when `extending`.
+    func lines(at point: NSPoint, extending: Bool, in textView: NSTextView) -> ClosedRange<Int>? {
+        guard
             let line = visibleLanes(of: textView).first(where: {
                 $0.paragraph.minY <= point.y && point.y < $0.paragraph.maxY
             })?.line
-        else { return }
-        let range: ClosedRange<Int>
-        if event.modifierFlags.contains(.shift), let anchorLine {
-            range = min(anchorLine, line)...max(anchorLine, line)
-        } else {
-            anchorLine = line
-            range = line...line
+        else { return nil }
+        if extending, let anchorLine {
+            return min(anchorLine, line)...max(anchorLine, line)
         }
-        menu(for: range).popUp(positioning: nil, at: point, in: textView)
+        anchorLine = line
+        return line...line
     }
 
     func menu(for range: ClosedRange<Int>) -> NSMenu {
@@ -205,7 +266,10 @@ final class CodeLaneGutter {
                 isOn: marks.covers(range, with: .redact), action: .toggle(.redact, range)))
         menu.addItem(
             item(
-                String(localized: "None"), id: "code-lane-clear",
+                String(
+                    localized: "line-mark.none", defaultValue: "None",
+                    comment: "Line-mark menu item that removes every mark from the line"),
+                id: "code-lane-clear",
                 isEnabled: marks.touches(range), action: .clear(range)))
         menu.addItem(.separator())
         menu.addItem(

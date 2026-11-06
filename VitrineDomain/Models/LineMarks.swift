@@ -88,3 +88,83 @@ extension LineHighlight {
         range.count == 1 ? "\(range.lowerBound)" : "\(range.lowerBound)–\(range.upperBound)"
     }
 }
+
+/// Where a text edit removed and inserted line breaks, so line marks can follow their text.
+public struct LineEdit: Equatable, Sendable {
+    /// The 1-based line the edit starts on.
+    public var line: Int
+    public var removedBreaks: Int
+    public var insertedBreaks: Int
+    /// Nothing precedes the edit on its line, so the line's remaining text moves with the edit.
+    public var startsAtLineStart: Bool
+    /// Nothing but the line break follows the edit on its line.
+    public var endsAtLineEnd: Bool
+
+    public init(
+        line: Int, removedBreaks: Int, insertedBreaks: Int, startsAtLineStart: Bool,
+        endsAtLineEnd: Bool
+    ) {
+        self.line = line
+        self.removedBreaks = removedBreaks
+        self.insertedBreaks = insertedBreaks
+        self.startsAtLineStart = startsAtLineStart
+        self.endsAtLineEnd = endsAtLineEnd
+    }
+}
+
+extension LineMarks {
+    /// The marks after `edit`, each on the text it was put on. A highlight on a deleted line
+    /// goes away; a redaction on one moves to the line its text joins, so a merge never
+    /// leaves a secret showing.
+    public func adjusted(for edit: LineEdit) -> LineMarks {
+        LineMarks(
+            highlighted: Self.adjust(highlighted, for: edit, conservative: false),
+            redacted: Self.adjust(redacted, for: edit, conservative: true))
+    }
+
+    private static func adjust(
+        _ ranges: [ClosedRange<Int>], for edit: LineEdit, conservative: Bool
+    ) -> [ClosedRange<Int>] {
+        let line = edit.line
+        let removed = edit.removedBreaks
+        let inserted = edit.insertedBreaks
+        var result: [ClosedRange<Int>] = []
+        for range in ranges {
+            var low = range.lowerBound
+            var high = range.upperBound
+            if removed > 0 {
+                if conservative {
+                    // Every touched line folds into the edit's line.
+                    let fold = { (x: Int) in
+                        x <= line ? x : x <= line + removed ? line : x - removed
+                    }
+                    low = fold(low)
+                    high = fold(high)
+                } else {
+                    // The lines whose text is gone: the edit's own line when it starts there.
+                    let gone =
+                        edit.startsAtLineStart
+                        ? line...(line + removed - 1) : (line + 1)...(line + removed)
+                    let shift = { (x: Int) in x < gone.lowerBound ? x : x - removed }
+                    low = gone.contains(low) ? gone.upperBound + 1 - removed : shift(low)
+                    high = gone.contains(high) ? gone.lowerBound - 1 : shift(high)
+                    guard low <= high else { continue }
+                }
+            }
+            if inserted > 0, high >= line {
+                if low > line {
+                    low += inserted
+                    high += inserted
+                } else {
+                    // The range holds the edit's line, whose text after the edit moves down.
+                    if low == line, edit.startsAtLineStart { low += inserted }
+                    if high > line || edit.startsAtLineStart || !edit.endsAtLineEnd {
+                        high += inserted
+                    }
+                }
+            }
+            result.append(low...high)
+        }
+        return LineHighlight.normalize(result)
+    }
+}

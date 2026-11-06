@@ -738,12 +738,18 @@ final class VitrineUITests: XCTestCase {
         // The gutter is the text view's leading inset; line 1 sits just below the top inset.
         editor.coordinate(withNormalizedOffset: .zero)
             .withOffset(CGVector(dx: 20, dy: 20)).click()
-        chooseMenuItem(app.menuItems["code-lane-highlight"])
+        let highlight = app.menuItems["code-lane-highlight"]
+        assertExists(highlight, in: app, timeout: 3)
+        for id in ["code-lane-redact", "code-lane-clear", "code-lane-focus"] {
+            assertExists(app.menuItems[id], in: app)
+        }
+        chooseMenuItem(highlight)
 
         editor.click()
         editor.typeKey("a", modifierFlags: .command)
+        assertExists(element("code-selection-actions", in: app), in: app, timeout: 3)
         let redact = element("code-selection-redact", in: app)
-        assertExists(redact, in: app, timeout: 3)
+        assertExists(redact, in: app)
         assertExists(element("code-selection-highlight", in: app), in: app)
         redact.click()
 
@@ -751,7 +757,10 @@ final class VitrineUITests: XCTestCase {
         let field = element("highlight-lines-field", in: app)
         assertExists(field, in: app, timeout: 3)
         XCTAssertEqual(field.value as? String, "1")
-        assertExists(element("clear-redactions-button", in: app), in: app)
+        // The demo capture has 12 lines, all selected.
+        let clearRedactions = element("clear-redactions-button", in: app)
+        assertExists(clearRedactions, in: app)
+        XCTAssertEqual(clearRedactions.value as? String, "1-12")
     }
 
     /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.

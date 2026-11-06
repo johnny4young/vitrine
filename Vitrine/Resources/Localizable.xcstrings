@@ -1,6 +1,47 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "line-mark.none" : {
+      "comment" : "Line-mark menu item that removes every mark from the line",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "None" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ninguna" } }
+      }
+    },
+    "Mark Lines" : {
+      "comment" : "Undo action name for a line highlight or redaction edit",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcar líneas"
+          }
+        }
+      }
+    },
+    "Highlight Selected Lines" : {
+      "comment" : "Edit and context menu command that highlights the lines the selection touches",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar líneas seleccionadas"
+          }
+        }
+      }
+    },
+    "Redact Selected Lines" : {
+      "comment" : "Edit and context menu command that redacts the lines the selection touches",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar líneas seleccionadas"
+          }
+        }
+      }
+    },
     "Line %lld" : {
       "comment" : "Gutter menu header naming one line",
       "localizations" : {
