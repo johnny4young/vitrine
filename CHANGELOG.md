@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- When a dropped file picks up a workspace recipe, a bar over the stage names the recipe and
+  its folder and counts the style fields you've changed since. Revert restores the recipe's
+  look and can be undone; closing the bar keeps the style.
 - The carousel export sheet shows a filmstrip of the real slides before writing files, with
   redactions in place, a flag on a last slide that came out short, and the slide size. A new
   switch draws slide dividers in the code editor while you edit; they never touch the text. PRO

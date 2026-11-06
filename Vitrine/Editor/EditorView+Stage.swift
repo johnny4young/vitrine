@@ -544,6 +544,9 @@ extension EditorView {
         .overlay(alignment: .bottom) {
             StageStatusCapsule(settings: settings, geometry: cardGeometry, stageSize: stageSize)
         }
+        .overlay(alignment: .top) {
+            RecipeAppliedBar(session: session, settings: settings)
+        }
         .layoutPriority(EditorLayout.stageLayoutPriority)
         // A container, so the canvas text and the inline callout field keep their own ids.
         .accessibilityElement(children: .contain)

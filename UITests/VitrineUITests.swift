@@ -710,6 +710,28 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(badge.waitForNonExistence(timeout: 5))
     }
 
+    /// The recipe bar counts a style change, reverts it, and closes without restyling.
+    @MainActor
+    func testRecipeBarRevertsAndCloses() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--demo-recipe-bar"])
+        defer { app.terminate() }
+
+        let bar = element("recipe-applied-bar", in: app)
+        assertExists(bar, in: app, timeout: 8)
+        assertExists(element("recipe-bar-summary", in: app), in: app)
+        let revert = element("recipe-bar-revert", in: app)
+        assertHittable("recipe-bar-revert", in: app, "Revert should be reachable on the stage")
+        XCTAssertTrue(revert.isEnabled, "The demo baseline differs by one style field")
+        revert.click()
+        let disabled = NSPredicate(format: "isEnabled == false")
+        expectation(for: disabled, evaluatedWith: revert)
+        waitForExpectations(timeout: 3)
+
+        element("recipe-bar-close", in: app).click()
+        XCTAssertTrue(bar.waitForNonExistence(timeout: 3))
+    }
+
     /// Tool shortcuts are ⌘-digit, so plain letters always type in the code editor and
     /// never switch tools, while ⌘2 (Arrow) still selects its tool with code focused.
     @MainActor
