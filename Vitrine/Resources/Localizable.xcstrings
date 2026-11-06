@@ -1,6 +1,72 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Add the current code as a step." : {
+      "comment" : "Help for the code column button that stores the current code as an animation step.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agrega el código actual como un paso."
+          }
+        }
+      }
+    },
+    "Steps can't be used with redactions, blur boxes or terminal output." : {
+      "comment" : "Help for the disabled add-step button: steps would show what redactions and blur boxes hide.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los pasos no funcionan con redacciones, cuadros de desenfoque ni salida de terminal."
+          }
+        }
+      }
+    },
+    "Add Step" : {
+      "comment" : "Accessibility label of the button that stores the current code as an animation step.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar paso"
+          }
+        }
+      }
+    },
+    "Code Steps" : {
+      "comment" : "Accessibility label of the row of numbered code steps the preview animates between.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pasos de código"
+          }
+        }
+      }
+    },
+    "Remove Step" : {
+      "comment" : "Button that deletes the selected code step.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar paso"
+          }
+        }
+      }
+    },
+    "This code has a secret. Steps can't redact it yet." : {
+      "comment" : "Error shown when adding a code step whose text contains a detected secret.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este código tiene un secreto. Los pasos aún no pueden ocultarlo."
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {

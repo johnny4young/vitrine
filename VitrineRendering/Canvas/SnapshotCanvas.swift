@@ -17,9 +17,16 @@ public struct SnapshotCanvas: View, Equatable {
     /// card is centered and the background fills the frame.
     public var fixedSize: CGSize?
 
-    public init(config: SnapshotConfig, fixedSize: CGSize? = nil) {
+    /// The stage's step change in flight, drawn in place of the plain code text.
+    public var codeStepAnimation: CodeStepAnimation?
+
+    public init(
+        config: SnapshotConfig, fixedSize: CGSize? = nil,
+        codeStepAnimation: CodeStepAnimation? = nil
+    ) {
         self.config = config
         self.fixedSize = fixedSize
+        self.codeStepAnimation = codeStepAnimation
     }
 
     public var body: some View {
@@ -384,6 +391,14 @@ public struct SnapshotCanvas: View, Equatable {
                 diffDecorations: config.diffDecorations
             )
             .textSelection(.enabled)
+        } else if let animation = codeStepAnimation, animation.to == config.code,
+            config.language != .terminal, wrapWidth == nil
+        {
+            CodeStepMorphView(
+                animation: animation, language: config.language, theme: config.theme,
+                font: codeFont, lineSpacing: Self.codeLineSpacing
+            )
+            .id(animation.id)
         } else {
             let code = highlightedCode
             Text(code)

@@ -425,6 +425,40 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testCodeStepsSwitchTheDocumentBetweenStates() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        let editor = EditorRobot(testCase: self, app: app)
+        assertExists(editor.codeTextView, in: app, timeout: 8)
+
+        let first = try XCTUnwrap(editor.codeTextView.value as? String)
+        assertHittable("code-step-add", in: app, "Add Step is not reachable")
+        element("code-step-add", in: app).click()
+        assertExists(element("code-steps", in: app), in: app, timeout: 3)
+
+        let second = "struct Step {\n    let answer = 42\n}"
+        editor.codeTextView.click()
+        editor.codeTextView.typeKey("a", modifierFlags: .command)
+        editor.codeTextView.typeText(second)
+        element("code-step-add", in: app).click()
+        assertHittable("code-step-2", in: app, "The second step is not reachable")
+
+        element("code-step-1", in: app).click()
+        let deadline = Date().addingTimeInterval(3)
+        while editor.codeTextView.value as? String != first, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertEqual(editor.codeTextView.value as? String, first)
+
+        assertHittable("code-step-remove", in: app, "Remove Step is not reachable")
+        element("code-step-remove", in: app).click()
+        XCTAssertTrue(element("code-step-2", in: app).waitForNonExistence(timeout: 3))
+        assertExists(element("code-step-1", in: app), in: app)
+    }
+
+    @MainActor
     func testEditorPrettyPrintsCompactHTML() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()

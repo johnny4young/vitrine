@@ -14,6 +14,12 @@ can never drift.
 
 ### Added
 
+- Code steps: the stack button in the code header stores the current code as a step, and
+  choosing a numbered step loads it and animates the preview to it. Tokens both steps share
+  glide to their new places, removed ones fade out and new ones fade in; with Reduce Motion
+  on, the steps cross-fade instead. Steps stay with the window's document, a step can't hold
+  a detected secret, and steps are off while a capture has redactions, blur boxes or
+  terminal output. Exports show the current code only.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.

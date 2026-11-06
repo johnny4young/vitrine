@@ -64,6 +64,7 @@ struct StyleCodecCompletenessTests {
         config.terminalColumns = 100
         config.firstLineNumber = 9
         config.slideCue = SlideCue(pageLabel: "2 / 4")
+        config.codeSteps = ["print('hi')", "print('hello')"]
         return config
     }
 
@@ -95,6 +96,7 @@ struct StyleCodecCompletenessTests {
         expected.terminalColumns = nil  // measured from the capture, not a preference
         expected.firstLineNumber = 1  // derived per carousel slide at export
         expected.slideCue = nil  // derived per carousel slide at export
+        expected.codeSteps = []  // states of one document's code, like its text
         return expected
     }
 

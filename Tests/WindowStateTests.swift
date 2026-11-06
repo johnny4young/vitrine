@@ -120,6 +120,7 @@ struct EditorWindowStateTests {
         config.foregroundImage = ImageReference(fileName: "beautified.png")
         config.imageFrame = .macOSWindow
         config.imageFrameAppearance = .dark
+        config.codeSteps = ["let answer = 41", "let answer = 42\nprint(answer)"]
         // Not carried by the bridge. They hold non-default values so `expectedAfterRestore`
         // actually asserts the omission instead of comparing two type defaults.
         config.watermark = Watermark(text: "@vitrine")
@@ -166,6 +167,7 @@ struct EditorWindowStateTests {
         #expect(restored.focusHighlightedLines == original.focusHighlightedLines)
         #expect(restored.diffDecorations == original.diffDecorations)
         #expect(restored.annotations == original.annotations)
+        #expect(restored.codeSteps == original.codeSteps)
     }
 
     /// Restoration is wholesale — `config()` starts from a fresh `SnapshotConfig` — so a
@@ -333,6 +335,14 @@ struct EditorWindowStateTests {
         #expect(config.fontName == fallback.fontName)
         #expect(config.padding == fallback.padding)
         #expect(config.background == fallback.background)
+        #expect(config.codeSteps.isEmpty)
+    }
+
+    @Test func aMalformedStepListRestoresWithoutSteps() throws {
+        let state = try #require(
+            EditorWindowState.decoded(from: Data(#"{"code":"x","codeSteps":"x"}"#.utf8)))
+        #expect(state.config().code == "x")
+        #expect(state.config().codeSteps.isEmpty)
     }
 
     @Test func anUnknownThemeIDFallsBackToTheDefaultTheme() {
