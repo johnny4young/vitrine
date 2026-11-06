@@ -19,7 +19,8 @@ can never drift.
   and redacted rows keep counting the whole screen, and text exports and share links carry only
   the kept cells. Clearing the fields restores the rest.
 - The carousel export sheet shows a filmstrip of the real slides before writing files, with
-  redactions in place, a flag on a last slide that came out short, and the slide size. PRO
+  redactions in place, a flag on a last slide that came out short, and the slide size. A new
+  switch draws slide dividers in the code editor while you edit; they never touch the text. PRO
   users opening it on a terminal capture or one with blur boxes now see why it can't export.
 - Warn in the inspector's Theme header when a capture's code text has low measured contrast
   on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a

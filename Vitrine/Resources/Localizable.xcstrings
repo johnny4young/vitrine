@@ -284,6 +284,17 @@
         }
       }
     },
+    "slide %lld · line %@" : {
+      "comment" : "Label on the boundary of a one-line slide drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · línea %2$@"
+          }
+        }
+      }
+    },
     "Slide %lld of %lld, line %@" : {
       "comment" : "Accessibility label of a one-line slide tile in the carousel filmstrip.",
       "localizations" : {
@@ -306,6 +317,17 @@
         }
       }
     },
+    "Show dividers in the code" : {
+      "comment" : "Switch in the carousel export sheet that draws slide boundaries in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar divisiones en el código"
+          }
+        }
+      }
+    },
     "short" : {
       "comment" : "Badge on the last slide of a carousel when it holds few lines compared with the others.",
       "localizations" : {
@@ -324,6 +346,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diapositiva %1$lld de %2$lld, líneas %3$@"
+          }
+        }
+      }
+    },
+    "slide %lld · lines %@" : {
+      "comment" : "Label on a slide boundary drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · líneas %2$@"
           }
         }
       }

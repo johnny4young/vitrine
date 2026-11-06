@@ -692,18 +692,48 @@ struct PerformanceTests {
         #expect(stats.p95 <= PerfBudget.hardCeiling)
     }
 
-    @Test func typingInTheEditorMeetsBudget() throws {
+    @Test func typingInTheEditorMeetsBudget() async throws {
+        try await measureTyping(label: "editor-keystroke", showsSlideDividers: false)
+    }
+
+    @Test func typingWithSlideDividersOnMeetsBudget() async throws {
+        try await measureTyping(label: "editor-keystroke-slide-dividers", showsSlideDividers: true)
+    }
+
+    private func spinRunLoop() { RunLoop.main.run(until: Date().addingTimeInterval(1)) }
+
+    // The worst case for the shifted copy: every divider below the caret, on a long document.
+    @Test func typingAtTheTopOfALongDocumentMeetsBudget() async throws {
+        try await measureTyping(
+            label: "editor-keystroke-top-long", showsSlideDividers: false, typesAtTheTop: true)
+    }
+
+    @Test func typingAtTheTopWithSlideDividersOnMeetsBudget() async throws {
+        try await measureTyping(
+            label: "editor-keystroke-top-long-slide-dividers", showsSlideDividers: true,
+            typesAtTheTop: true)
+    }
+
+    private func measureTyping(
+        label: String, showsSlideDividers: Bool, typesAtTheTop: Bool = false
+    ) async throws {
         // A keystroke is not a render: the text view takes the edit, the editor's SwiftUI
         // hierarchy updates, and AppKit runs a layout pass before the next frame. The
         // window hosts the editor through the same factory as the real editor window, so
         // its sizing configuration is part of what this measures.
-        let environment = AppEnvironment(defaults: testDefaults())
+        let environment = AppEnvironment(
+            defaults: testDefaults(),
+            entitlements: showsSlideDividers ? Entitlements(provider: DebugUnlockProvider()) : nil)
         let session = EditorSession(
             identity: EditorWindowIdentity(index: 97), environment: environment,
             feedback: .noOp, presentation: .noOp)
         defer { session.discard() }
-        session.settings.documentCode = Self.largeConfig().code
-            .split(separator: "\n").prefix(60).joined(separator: "\n")
+        session.settings.documentCode =
+            typesAtTheTop
+            ? (1...5_000).map { "let value\($0) = compute(input)" }.joined(separator: "\n")
+            : Self.largeConfig().code.split(separator: "\n").prefix(60).joined(separator: "\n")
+        session.carouselSplit.showsDividers = showsSlideDividers
+        session.carouselSplit.split.linesPerSlide = typesAtTheTop ? 4 : 12
 
         let hosting = EditorWindowController.makeHostingController(
             environment: environment, session: session)
@@ -720,10 +750,17 @@ struct PerformanceTests {
         root.layoutSubtreeIfNeeded()
         // Let the preview's first handoff and the other appearance tasks run, as they do
         // once a real window is open, so the samples time typing rather than opening.
-        RunLoop.main.run(until: Date().addingTimeInterval(1))
+        spinRunLoop()
 
-        let textView = try #require(Self.firstTextView(in: root))
-        let end = (textView.string as NSString).length
+        let textView = try #require(Self.firstTextView(in: root) as? CodeTextView)
+        if showsSlideDividers {
+            // Awaited here: a resumed task doesn't run inside the nested run loop above.
+            await session.carouselSplit.refreshDividers(code: session.settings.documentCode)
+            root.needsLayout = true
+            root.layoutSubtreeIfNeeded()
+        }
+        #expect(textView.slideDividers.isEmpty != showsSlideDividers)
+        let end = typesAtTheTop ? 0 : (textView.string as NSString).length
         textView.setSelectedRange(NSRange(location: end, length: 0))
         let typed = Array("\nlet typed = compute(input)")
         var next = 0
@@ -747,10 +784,18 @@ struct PerformanceTests {
         }
         #expect(session.settings.documentCode.contains("let typed"))
         let stats = Statistics(durations)
-        report(stats, label: "editor-keystroke", target: nil)
+        report(stats, label: label, target: nil)
         #expect(
             stats.p95 <= PerfBudget.keystrokeHardCeiling,
-            "editor-keystroke exceeded the keystroke hard ceiling")
+            "\(label) exceeded the keystroke hard ceiling")
+
+        // Drawing belongs to the frame, not the layout pass the samples above time.
+        let bitmap = try #require(
+            textView.bitmapImageRepForCachingDisplay(in: textView.visibleRect))
+        let draws = (0..<Self.sampleCount).map { _ in
+            clock.measure { textView.cacheDisplay(in: textView.visibleRect, to: bitmap) }
+        }
+        report(Statistics(draws), label: "\(label)-draw", target: nil)
     }
 
     private static func firstTextView(in view: NSView) -> NSTextView? {

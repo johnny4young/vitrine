@@ -30,6 +30,8 @@ final class PresetThumbnailModel {
     var stagedCode: String?
     /// The document generation `stagedCode` was handed off in.
     var stagedGeneration = 0
+    /// Counts handoffs, because the text can settle back to what it already was.
+    private(set) var stagedHandoffs = 0
     var selectedPresetIDs: Set<String> = []
     private(set) var images: [String: CGImage] = [:]
 
@@ -50,6 +52,12 @@ final class PresetThumbnailModel {
         self.quietWindow = quietWindow
         self.frameGap = frameGap
         self.render = render
+    }
+
+    func stage(_ code: String, generation: Int) {
+        stagedCode = code
+        stagedGeneration = generation
+        stagedHandoffs += 1
     }
 
     /// The source for the current style, or `nil` while the staged code still belongs to a
