@@ -20,9 +20,13 @@ struct BackgroundControls: View {
     var imageStore: BackgroundImageStore = .container
     /// Keeps each surface's accessibility identifiers distinct (e.g. "social-card-").
     var identifierPrefix = ""
+    /// Derives gradients from the capture; `nil` hides the Magic swatch.
+    var magic: (() async -> [CustomGradient])? = nil
 
     /// The preset to return to when the Gradient kind is chosen again.
     @State private var lastPreset: GradientPreset?
+    @State private var magicGradients: [CustomGradient] = []
+    @State private var magicTask: Task<Void, Never>?
 
     var body: some View {
         switch layout {
@@ -31,6 +35,7 @@ struct BackgroundControls: View {
             if selectedPreset != nil { presetSwatches }
         case .inspector:
             presetSwatches
+            if magicIndex != nil { magicRow }
             if selectedPreset == nil { kindRow }
         }
         if selectedPreset == nil { detail }
@@ -45,6 +50,13 @@ struct BackgroundControls: View {
                     background = .gradient(preset)
                 }
                 .chipScrollItem(id: preset.id, isSelected: selectedPreset == preset)
+            }
+            if magic != nil {
+                MagicBackgroundSwatch(isSelected: magicIndex != nil, size: swatchSize) {
+                    applyMagic(advancing: false)
+                }
+                .accessibilityIdentifier("\(identifierPrefix)background-magic")
+                .chipScrollItem(id: "magic", isSelected: magicIndex != nil)
             }
             if layout == .inspector {
                 CustomBackgroundSwatch(size: swatchSize) { switchKind(to: .solid) }
@@ -124,6 +136,36 @@ struct BackgroundControls: View {
         switch layout {
         case .settings: TokenRow(label: label, content: content)
         case .inspector: InspectorRow(label: label, content: content)
+        }
+    }
+
+    private var magicRow: some View {
+        InspectorRow(label: Text("Magic")) {
+            Button {
+                applyMagic(advancing: true)
+            } label: {
+                Label("Shuffle", systemImage: "shuffle")
+            }
+            .accessibilityIdentifier("\(identifierPrefix)background-magic-shuffle")
+        }
+    }
+
+    /// The derived gradient on the canvas, if the background is still one of them.
+    private var magicIndex: Int? {
+        guard case .customGradient(let gradient) = background else { return nil }
+        return magicGradients.firstIndex(of: gradient)
+    }
+
+    /// Derives again on every press, so Shuffle follows content edited since.
+    private func applyMagic(advancing: Bool) {
+        guard let magic else { return }
+        let next = advancing ? (magicIndex ?? -1) + 1 : 0
+        magicTask?.cancel()
+        magicTask = Task {
+            let gradients = await magic()
+            guard !Task.isCancelled, !gradients.isEmpty else { return }
+            magicGradients = gradients
+            background = .customGradient(gradients[next % gradients.count])
         }
     }
 

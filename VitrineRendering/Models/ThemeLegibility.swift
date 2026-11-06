@@ -137,7 +137,7 @@ public struct ThemeLegibility: Equatable {
     }
 
     /// The card fill the canvas draws, in sRGB.
-    fileprivate static func cardColor(
+    static func cardColor(
         theme: Theme, language: Language, palette: TerminalPaletteMode
     ) -> NSColor? {
         (language == .terminal

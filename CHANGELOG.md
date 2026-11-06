@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- A Magic swatch beside the editor's background presets builds a gradient from the capture
+  itself: the syntax colors the code uses, or the main colors of a beautified image. Shuffle
+  steps through its variants. Each stop keeps the code card distinct, and the result is an
+  ordinary custom gradient, so presets, recipes, share links and the CLI reproduce it.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.

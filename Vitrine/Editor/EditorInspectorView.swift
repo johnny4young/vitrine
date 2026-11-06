@@ -47,6 +47,7 @@ struct EditorInspectorView: View {
     @State private var showingFramePaywall = false
     /// The last scan's outcome, so a scan that finds nothing still answers.
     @State private var secretScan: SecretScanReport?
+    @Environment(\.foregroundImageStore) private var foregroundImageStore
 
     var body: some View {
         if let pane {
@@ -306,8 +307,17 @@ struct EditorInspectorView: View {
         ) {
             BackgroundControls(
                 background: $settings.style.background, layout: .inspector,
-                identifierPrefix: "inspector-")
+                identifierPrefix: "inspector-", magic: magicGradients)
         }
+    }
+
+    /// Read at the press, not in `body`, so the inspector never observes the document text.
+    private func magicGradients() async -> [CustomGradient] {
+        guard let reference = settings.style.foregroundImage else {
+            return MagicBackground.gradients(for: settings.config)
+        }
+        guard let url = foregroundImageStore.url(for: reference) else { return [] }
+        return await MagicBackground.gradients(forImageAt: url)
     }
 
     /// The frame for a beautified image — none, a macOS window, a browser window, or a
