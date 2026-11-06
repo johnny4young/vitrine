@@ -297,6 +297,11 @@ struct EditorView: View {
                     {
                         presentCarouselExport()
                     }
+                    if ProcessInfo.processInfo.arguments.contains("--open-multi-size-export"),
+                        settings.hasRenderableContent
+                    {
+                        presentMultiSizeExport()
+                    }
                 #endif
             }
     }

@@ -184,6 +184,10 @@ struct StyleCodecCompletenessTests {
     @Test func resetListCoversTheSafeAreaGuidesPreference() {
         #expect(SettingsCodec.Keys.all.contains(SafeAreaGuide.storageKey))
     }
+
+    @Test func resetListCoversThePresetThumbnailsDisclosure() {
+        #expect(SettingsCodec.Keys.all.contains(PresetThumbnailModel.expandedStorageKey))
+    }
 }
 
 @Suite("Style preset carries the shadow depth")

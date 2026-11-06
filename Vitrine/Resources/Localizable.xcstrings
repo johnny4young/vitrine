@@ -1,6 +1,124 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Divider" : {
+      "comment" : "Comparison board inspector row: where the divider splits two captures, in percent",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divisor"
+          }
+        }
+      }
+    },
+    "Slider" : {
+      "comment" : "Comparison board layout: two captures in one frame, split at a divider",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cortina"
+          }
+        }
+      }
+    },
+    "Divider position" : {
+      "comment" : "Comparison board: where the divider splits two captures, as a percentage",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Posición del divisor"
+          }
+        }
+      }
+    },
+    "Drag, or use the arrow keys, to move the divider" : {
+      "comment" : "VoiceOver hint on the comparison board's divider",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra o usa las flechas para mover el divisor"
+          }
+        }
+      }
+    },
+    "Clipboard holds %@" : {
+      "comment" : "Empty editor: what the clipboard holds. The argument is a measurement such as 14 lines of Swift.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El portapapeles tiene %@"
+          }
+        }
+      }
+    },
+    "%lld lines of %@" : {
+      "comment" : "Empty editor: how much the clipboard holds and its language, as in 14 lines of Swift.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld line of %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld lines of %@"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld línea de %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld líneas de %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "about %@" : {
+      "comment" : "VoiceOver: an estimated file size, read in place of the tilde mark.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "alrededor de %@"
+          }
+        }
+      }
+    },
+    "%@ to %@" : {
+      "comment" : "VoiceOver: the first and last file names of a carousel export.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ a %2$@"
+          }
+        }
+      }
+    },
     "Cursor" : {
       "comment" : "Row that picks the cursor style of a terminal capture",
       "localizations" : {

@@ -423,8 +423,9 @@ struct MenuBarContent: View {
         // `exportConfig`, not `config`: every export surface renders through it so
         // the PRO Brand Kit watermark is applied at the export seam.
         let config = recents.document(for: capture, over: settings.exportConfig)
-        let outcome = RenderedImageCopy.copy(config, settings: settings)
-        feedback.present(ExportFeedback.copyOutcome(outcome))
+        var pngBytes: Int?
+        let outcome = RenderedImageCopy.copy(config, settings: settings) { pngBytes = $0 }
+        feedback.present(ExportFeedback.copyOutcome(outcome, pngBytes: pngBytes))
     }
 
     private func copySource(_ capture: Capture) {

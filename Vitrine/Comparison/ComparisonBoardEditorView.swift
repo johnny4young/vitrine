@@ -38,7 +38,9 @@ struct ComparisonBoardEditorView: View {
             await preview.refresh(
                 isValid: draft.isValid,
                 keepsLastFrame: editingCaption != nil,
+                debounce: preview.debounce(dividerPercent: draft.dividerPercent),
                 captionFrames: { draft.captionFrames },
+                wipe: { draft.wipe },
                 render: { try draft.composePreview(profile: settings.export.colorProfile) })
         }
     }
@@ -152,6 +154,11 @@ struct ComparisonBoardEditorView: View {
 
     private func captionLayer(scale: CGFloat, canvas: CGSize) -> some View {
         ZStack {
+            if let wipe = preview.wipe {
+                ComparisonBoardDividerHandle(
+                    percent: $draft.dividerPercent, wipe: wipe, scale: scale,
+                    isEditingCaption: editingCaption != nil, onEndEditing: endEditing)
+            }
             ForEach(Array(draft.items.enumerated()), id: \.element.id) { index, item in
                 if let frame = preview.captionFrames[item.id] {
                     CaptionHotspot(index: index, label: item.label) {
@@ -215,13 +222,15 @@ struct ComparisonBoardEditorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.lg) {
                 inspectorSection("Layout") {
-                    Picker("Layout", selection: $draft.layout) {
-                        ForEach(ComparisonBoard.Layout.allCases, id: \.self) { layout in
-                            Text(layout.title).tag(layout)
+                    // Wraps rather than overflows when five labels outgrow the column.
+                    TokenSegmentedPicker(
+                        options: draft.availableLayouts.map { ($0, Text($0.title)) },
+                        selection: $draft.layout,
+                        optionIdentifiers: draft.availableLayouts.map {
+                            "comparison-board-layout-\($0.rawValue)"
                         }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
+                    )
+                    .accessibilityLabel("Layout")
                     .accessibilityIdentifier("comparison-board-layout-picker")
                 }
 
@@ -236,17 +245,33 @@ struct ComparisonBoardEditorView: View {
                     .accessibilityIdentifier("comparison-board-size-picker")
                 }
 
-                InspectorRow(label: Text("Gap")) {
-                    ValueSlider(
-                        label: "Gap",
-                        value: Binding(
-                            get: { Double(draft.gap) },
-                            set: { draft.gap = CGFloat($0) }),
-                        range: Double(
-                            ComparisonBoard.gapRange.lowerBound)...Double(
-                                ComparisonBoard.gapRange.upperBound),
-                        step: 2,
-                        identifier: "comparison-board-gap-slider")
+                // A wipe has one card and no gap, so the divider takes this row.
+                if draft.metrics.isWipe {
+                    InspectorRow(label: Text("Divider")) {
+                        ValueSlider(
+                            label: "Divider position",
+                            value: Binding(
+                                get: { Double(draft.dividerPercent) },
+                                set: { draft.dividerPercent = Int($0.rounded()) }),
+                            range: Double(
+                                ComparisonBoard.dividerRange.lowerBound)...Double(
+                                    ComparisonBoard.dividerRange.upperBound),
+                            step: 1,
+                            identifier: "comparison-board-divider-slider")
+                    }
+                } else {
+                    InspectorRow(label: Text("Gap")) {
+                        ValueSlider(
+                            label: "Gap",
+                            value: Binding(
+                                get: { Double(draft.gap) },
+                                set: { draft.gap = CGFloat($0) }),
+                            range: Double(
+                                ComparisonBoard.gapRange.lowerBound)...Double(
+                                    ComparisonBoard.gapRange.upperBound),
+                            step: 2,
+                            identifier: "comparison-board-gap-slider")
+                    }
                 }
 
                 InspectorRow(label: Text("Board background")) {
@@ -429,6 +454,7 @@ extension ComparisonBoard.Layout {
         case .horizontal: "Row"
         case .vertical: "Column"
         case .grid: "Grid"
+        case .slider: "Slider"
         }
     }
 }

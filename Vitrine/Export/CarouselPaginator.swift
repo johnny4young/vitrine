@@ -182,11 +182,26 @@ enum CarouselPaginator {
     /// `carousel-01.png … 04.png · ~1.4 MB`; the size is left out until it is known.
     static func outputSummary(filenames: [String], estimatedBytes: Int?) -> String {
         var names = filenames.first ?? ""
-        if filenames.count > 1, let last = filenames.last {
-            names += " … " + last.replacingOccurrences(of: "carousel-", with: "")
+        if let last = lastFilenameSuffix(filenames) { names += " … " + last }
+        guard let estimatedBytes else { return names }
+        return "\(names) · \(ExportSizeEstimate.shown(estimatedBytes))"
+    }
+
+    /// The same summary as VoiceOver should read it, without the ellipsis and the tilde.
+    static func spokenOutputSummary(
+        filenames: [String], estimatedBytes: Int?, bundle: Bundle = .main
+    ) -> String {
+        var names = filenames.first ?? ""
+        if let last = lastFilenameSuffix(filenames) {
+            names = String(localized: "\(names) to \(last)", bundle: bundle)
         }
         guard let estimatedBytes else { return names }
-        return "\(names) · ~\(Int64(estimatedBytes).formatted(.byteCount(style: .file)))"
+        return "\(names), \(ExportSizeEstimate.spoken(estimatedBytes, bundle: bundle))"
+    }
+
+    private static func lastFilenameSuffix(_ filenames: [String]) -> String? {
+        guard filenames.count > 1 else { return nil }
+        return filenames.last?.replacingOccurrences(of: "carousel-", with: "")
     }
 
     /// A chosen folder as the user reads it, with their home folder shortened to `~`.
