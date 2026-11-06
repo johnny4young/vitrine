@@ -121,6 +121,7 @@ struct EditorWindowStateTests {
         config.imageFrame = .macOSWindow
         config.imageFrameAppearance = .dark
         config.codeSteps = ["let answer = 41", "let answer = 42\nprint(answer)"]
+        config.activeCodeStep = 0
         // Not carried by the bridge. They hold non-default values so `expectedAfterRestore`
         // actually asserts the omission instead of comparing two type defaults.
         config.watermark = Watermark(text: "@vitrine")
@@ -168,6 +169,7 @@ struct EditorWindowStateTests {
         #expect(restored.diffDecorations == original.diffDecorations)
         #expect(restored.annotations == original.annotations)
         #expect(restored.codeSteps == original.codeSteps)
+        #expect(restored.activeCodeStep == original.activeCodeStep)
     }
 
     /// Restoration is wholesale — `config()` starts from a fresh `SnapshotConfig` — so a
@@ -343,6 +345,16 @@ struct EditorWindowStateTests {
             EditorWindowState.decoded(from: Data(#"{"code":"x","codeSteps":"x"}"#.utf8)))
         #expect(state.config().code == "x")
         #expect(state.config().codeSteps.isEmpty)
+    }
+
+    @Test func aMissingOrStaleActiveStepPicksTheStepTheTextCameFrom() {
+        var config = SnapshotConfig(code: "b", language: .swift)
+        config.codeSteps = ["a", "b", "c"]
+        config.activeCodeStep = 7
+        #expect(EditorWindowState(config: config).config().activeCodeStep == 1)
+        config.code = "edited"
+        config.activeCodeStep = nil
+        #expect(EditorWindowState(config: config).config().activeCodeStep == 2)
     }
 
     @Test func anUnknownThemeIDFallsBackToTheDefaultTheme() {

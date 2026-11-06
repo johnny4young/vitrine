@@ -146,6 +146,8 @@ public struct SnapshotConfig: Equatable {
     /// Earlier and later states of the code, in order, which the editor's stage animates
     /// between. Content-bound like redactions, and never drawn by an export.
     public var codeSteps: [String] = []
+    /// The step the editor text was loaded from, which a step change saves edits back into.
+    public var activeCodeStep: Int?
 
     /// Whether soft-wrap is on — the single source of truth for the optional→Bool mapping
     /// shared by the wrap toggle's binding and the wrap-width control's visibility, so the
@@ -235,6 +237,7 @@ public struct SnapshotConfig: Equatable {
         redactedLineRanges = []
         foregroundImage = nil
         codeSteps = []
+        activeCodeStep = nil
     }
 
     private func replacingRedactedLines(in text: String) -> String {

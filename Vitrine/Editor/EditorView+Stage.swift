@@ -480,7 +480,8 @@ extension EditorView {
                     ThemeFadingCanvas(
                         canvas: SnapshotCanvas(
                             config: previewConfig, fixedSize: destination,
-                            codeStepAnimation: codeStepAnimation)
+                            codeStepAnimation: codeStepAnimation),
+                        fadeGeneration: codeStepFade
                     )
                     .fixedSize()
                     .onGeometryChange(for: PreviewCardGeometry.Measurement.self) {
@@ -772,8 +773,8 @@ extension EditorView {
     func beginPastedDocument(_ text: String) -> LanguageDetector.Interpretation {
         let intake = LanguageDetector.interpret(text)
         session.livingSnapshot.stop()
-        settings.style.resetForNewContent()
-        settings.style.language = intake.language
+        settings.style = CodeStepRules.pastingDocument(
+            over: settings.style, language: intake.language)
         settings.noteDocumentReplaced()
         return intake
     }

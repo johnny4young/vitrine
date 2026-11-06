@@ -133,6 +133,7 @@ struct EditorWindowState: Codable, Equatable {
     var diffDecorations: Bool
     var annotations: [Annotation]
     var codeSteps: [String]
+    var activeCodeStep: Int?
     /// The window's destination and per-capture output, absent in older archives.
     var destinationID: String?
     var exportScale: Int?
@@ -171,6 +172,7 @@ struct EditorWindowState: Codable, Equatable {
         diffDecorations = config.diffDecorations
         annotations = config.annotations
         codeSteps = config.codeSteps
+        activeCodeStep = config.activeCodeStep
     }
 
     /// Captures a window's document together with its destination and output choices.
@@ -236,6 +238,10 @@ struct EditorWindowState: Codable, Equatable {
         config.diffDecorations = diffDecorations
         config.annotations = annotations
         config.codeSteps = codeSteps
+        // Older or damaged archives get the step the text came from, else the last one.
+        config.activeCodeStep =
+            activeCodeStep.flatMap { codeSteps.indices.contains($0) ? $0 : nil }
+            ?? codeSteps.firstIndex(of: code) ?? codeSteps.indices.last
         return config
     }
 
@@ -245,7 +251,7 @@ struct EditorWindowState: Codable, Equatable {
         case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
-        case codeSteps
+        case codeSteps, activeCodeStep
         case terminalPalette, terminalCursor
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
@@ -310,6 +316,7 @@ struct EditorWindowState: Codable, Equatable {
             (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
             .compactMap(\.value) ?? fallback.annotations
         codeSteps = (try? container.decode([String].self, forKey: .codeSteps)) ?? fallback.codeSteps
+        activeCodeStep = try? container.decodeIfPresent(Int.self, forKey: .activeCodeStep)
         destinationID = try? container.decodeIfPresent(String.self, forKey: .destinationID)
         exportScale = try? container.decodeIfPresent(Int.self, forKey: .exportScale)
         exportFormatID = try? container.decodeIfPresent(String.self, forKey: .exportFormatID)

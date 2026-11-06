@@ -395,8 +395,8 @@ public struct SnapshotCanvas: View, Equatable {
             config.language != .terminal, wrapWidth == nil
         {
             CodeStepMorphView(
-                animation: animation, language: config.language, theme: config.theme,
-                font: codeFont, lineSpacing: Self.codeLineSpacing
+                animation: animation, text: highlightedCode, font: codeFont,
+                lineSpacing: Self.codeLineSpacing
             )
             .id(animation.id)
         } else {

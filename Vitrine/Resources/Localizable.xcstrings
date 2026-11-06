@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Show Step" : {
+      "comment" : "Undo action name for switching the editor to another code step.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar paso"
+          }
+        }
+      }
+    },
     "Add the current code as a step." : {
       "comment" : "Help for the code column button that stores the current code as an animation step.",
       "localizations" : {
@@ -12,19 +23,19 @@
         }
       }
     },
-    "Steps can't be used with redactions, blur boxes or terminal output." : {
+    "Steps can't be used with redactions, blur boxes, terminal output or images." : {
       "comment" : "Help for the disabled add-step button: steps would show what redactions and blur boxes hide.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los pasos no funcionan con redacciones, cuadros de desenfoque ni salida de terminal."
+            "value" : "Los pasos no funcionan con redacciones, cuadros de desenfoque, salida de terminal ni imágenes."
           }
         }
       }
     },
     "Add Step" : {
-      "comment" : "Accessibility label of the button that stores the current code as an animation step.",
+      "comment" : "Accessibility label and undo action name for storing the current code as an animation step.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -46,7 +57,7 @@
       }
     },
     "Remove Step" : {
-      "comment" : "Button that deletes the selected code step.",
+      "comment" : "Button and undo action name that delete the selected code step.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -56,13 +67,13 @@
         }
       }
     },
-    "This code has a secret. Steps can't redact it yet." : {
-      "comment" : "Error shown when adding a code step whose text contains a detected secret.",
+    "Steps can't hold a secret." : {
+      "comment" : "Error shown when a code step would store text that contains a detected secret.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este código tiene un secreto. Los pasos aún no pueden ocultarlo."
+            "value" : "Los pasos no pueden guardar un secreto."
           }
         }
       }
