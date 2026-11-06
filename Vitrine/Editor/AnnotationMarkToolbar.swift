@@ -17,6 +17,15 @@ struct MarkToolbarAnchorsKey: PreferenceKey {
     }
 }
 
+extension View {
+    /// Keeps the selected mark's toolbar off this stage chrome.
+    func markToolbarAvoids() -> some View {
+        anchorPreference(key: MarkToolbarAnchorsKey.self, value: .bounds) {
+            MarkToolbarAnchors(avoiding: [$0])
+        }
+    }
+}
+
 /// Where the selected mark's toolbar sits on the stage. Nonisolated, as `Layout` calls it.
 nonisolated enum AnnotationMarkToolbarPlacement {
     enum Side { case above, below, after, before, overlapping }

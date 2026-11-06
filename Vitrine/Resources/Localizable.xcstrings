@@ -1,6 +1,146 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld changes" : {
+      "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld change"
+                  }
+                },
+              "other" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld changes"
+                  }
+                }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld cambio"
+                  }
+                },
+              "other" : {
+                  "stringUnit" : {
+                    "state" : "translated",
+                    "value" : "%lld cambios"
+                  }
+                }
+            }
+          }
+        }
+      }
+    },
+    "%@ recipe" : {
+      "comment" : "Editor recipe bar tooltip and VoiceOver label: the workspace recipe a dropped file applied.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receta %@"
+          }
+        }
+      }
+    },
+    "Folder %@" : {
+      "comment" : "Editor recipe bar, VoiceOver: the associated folder whose recipe applied.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carpeta %@"
+          }
+        }
+      }
+    },
+    "Revert" : {
+      "comment" : "Editor recipe bar button: restore the recipe's style.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revertir"
+          }
+        }
+      }
+    },
+    "Revert to Recipe" : {
+      "comment" : "Undo action name for restoring the recipe's style.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revertir a la receta"
+          }
+        }
+      }
+    },
+    "Canvas Mode" : {
+      "comment" : "View menu command that hides the code and inspector columns",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo lienzo"
+          }
+        }
+      }
+    },
+    "Enter Canvas Mode" : {
+      "comment" : "Button and command palette action that hides the code and inspector columns",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrar al modo lienzo"
+          }
+        }
+      }
+    },
+    "Exit Canvas Mode" : {
+      "comment" : "Button and command palette action that shows the code and inspector columns again",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir del modo lienzo"
+          }
+        }
+      }
+    },
+    "Toggle canvas mode" : {
+      "comment" : "VoiceOver label for the canvas mode menu command",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activar o desactivar el modo lienzo"
+          }
+        }
+      }
+    },
+    "Canvas dock" : {
+      "comment" : "VoiceOver label for the row of style values shown in canvas mode",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra del lienzo"
+          }
+        }
+      }
+    },
     "Selected mark" : {
       "comment" : "Accessibility label for the toolbar shown beside the selected annotation.",
       "localizations" : {

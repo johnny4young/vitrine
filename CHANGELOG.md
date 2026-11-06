@@ -17,6 +17,13 @@ can never drift.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.
+- Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
+  hides the code and inspector columns. A dock on the stage shows the current theme,
+  typography, background and padding, and opens the inspector's section for each in a
+  popover. Each window has its own mode, and leaving it restores both columns as they were.
+- When a dropped file picks up a workspace recipe, a bar over the stage names the recipe and
+  its folder and counts the style fields you've changed since. Revert restores the recipe's
+  look and can be undone; closing the bar keeps the style.
 - The carousel export sheet shows a filmstrip of the real slides before writing files, with
   redactions in place, a flag on a last slide that came out short, and the slide size. A new
   switch draws slide dividers in the code editor while you edit; they never touch the text. PRO

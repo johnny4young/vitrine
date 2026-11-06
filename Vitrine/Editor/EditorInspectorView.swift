@@ -25,6 +25,11 @@ struct EditorInspectorView: View {
     var entitlements: Entitlements
     var legibility: LegibilityModel
     var presetThumbnails: PresetThumbnailModel
+    /// Shows only this section, for canvas mode's popovers; `nil` is the full column.
+    var pane: InspectorPane? = nil
+    /// A popover cannot host the paywall sheet, so it asks the editor window to.
+    var presentFramePaywall: (() -> Void)? = nil
+    var windowUndoManager: UndoManager? = nil
 
     /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
     @AppStorage(PresetThumbnailModel.expandedStorageKey, store: AppDefaults.current)
@@ -44,6 +49,28 @@ struct EditorInspectorView: View {
     @State private var secretScan: SecretScanReport?
 
     var body: some View {
+        if let pane {
+            section(pane)
+                .padding(VitrineTokens.Spacing.md)
+                .frame(width: EditorLayout.inspectorMaxWidth)
+                .tint(VitrineTokens.Accent.systemText)
+        } else {
+            column
+        }
+    }
+
+    /// The same section views the column stacks, so a popover cannot drift from it.
+    @ViewBuilder private func section(_ pane: InspectorPane) -> some View {
+        switch pane {
+        case .background: backgroundSection
+        case .frame: frameSection
+        case .theme: themeSection
+        case .typography: typographySection
+        case .canvas: canvasSection
+        }
+    }
+
+    private var column: some View {
         ScrollViewReader { proxy in
             inspectorScrollView
                 .onChange(of: showLines) { _, open in
@@ -303,7 +330,11 @@ struct EditorInspectorView: View {
                         get: { settings.style.imageFrame },
                         set: { newFrame in
                             if newFrame.isPro, !entitlements.isUnlocked(.advancedFrames) {
-                                showingFramePaywall = true
+                                if let presentFramePaywall {
+                                    presentFramePaywall()
+                                } else {
+                                    showingFramePaywall = true
+                                }
                             } else {
                                 settings.style.imageFrame = newFrame
                             }
@@ -345,7 +376,10 @@ struct EditorInspectorView: View {
         InspectorSection(
             title: Text("Theme"),
             value: (settings.style.theme.displayName, "inspector-value-theme"),
-            accessory: { LegibilityBadge(settings: settings, model: legibility) }
+            accessory: {
+                LegibilityBadge(
+                    settings: settings, model: legibility, windowUndoManager: windowUndoManager)
+            }
         ) {
             ThemeChipPicker(
                 settings: settings, themes: themes,
