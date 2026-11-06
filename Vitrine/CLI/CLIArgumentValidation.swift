@@ -359,6 +359,11 @@ extension CLIArgumentParser {
             resolvedOutput = outputPath
         }
 
+        if paddingMode == .balanced, !annotations.blurBoxes.points.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --padding-mode balanced with --blur-box.")
+        }
+
         let resolvedFormat = try resolveFormat(
             explicitFormat, fallback: recipe?.output.format, command: mode,
             outputPath: resolvedOutput)

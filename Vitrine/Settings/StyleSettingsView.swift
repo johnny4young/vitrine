@@ -208,8 +208,14 @@ struct StyleSettingsView: View {
                 Toggle("Balance", isOn: $settings.config.balancesPadding)
                     .toggleStyle(.switch)
                     .labelsHidden()
+                    .disabled(settings.config.locksPaddingMode)
                     .help(
-                        "Counts the shadow in the padding and sets the card a little above center."
+                        settings.config.locksPaddingMode
+                            ? Text(
+                                "Remove the blur boxes first: they would slide off what they hide.")
+                            : Text(
+                                "Counts the shadow in the padding and sets the card a little above center."
+                            )
                     )
                     .accessibilityIdentifier("settings-padding-balance-toggle")
             }

@@ -475,8 +475,14 @@ struct EditorInspectorView: View {
                 Toggle("Balance", isOn: $settings.style.balancesPadding)
                     .toggleStyle(.switch)
                     .labelsHidden()
+                    .disabled(settings.style.locksPaddingMode)
                     .help(
-                        "Counts the shadow in the padding and sets the card a little above center."
+                        settings.style.locksPaddingMode
+                            ? Text(
+                                "Remove the blur boxes first: they would slide off what they hide.")
+                            : Text(
+                                "Counts the shadow in the padding and sets the card a little above center."
+                            )
                     )
                     .accessibilityIdentifier("padding-balance-toggle")
             }

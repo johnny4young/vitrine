@@ -32,8 +32,15 @@ public struct SnapshotConfig: Equatable {
     /// The on/off view of `paddingMode` that the Balance switches bind to.
     public var balancesPadding: Bool {
         get { paddingMode == .balanced }
-        set { paddingMode = newValue ? .balanced : .manual }
+        set {
+            guard !locksPaddingMode else { return }
+            paddingMode = newValue ? .balanced : .manual
+        }
     }
+
+    /// Blur boxes sit at canvas coordinates, and a new mode resizes the canvas and moves the
+    /// card, so it would slide them off the code they hide.
+    public var locksPaddingMode: Bool { annotations.contains { $0.kind == .blur } }
     public var background: BackgroundStyle = .gradient(.aurora)
     public var showChrome: Bool = true
 

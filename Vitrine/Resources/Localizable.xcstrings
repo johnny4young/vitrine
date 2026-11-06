@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Remove the blur boxes first: they would slide off what they hide." : {
+      "comment" : "Help for the padding Balance switch while blur boxes lock it",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quita primero las cajas de desenfoque: se saldrían de lo que ocultan."
+          }
+        }
+      }
+    },
     "Balance" : {
       "comment" : "Switch that measures the canvas padding to the card and its shadow",
       "localizations" : {

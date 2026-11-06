@@ -18,7 +18,12 @@ can never drift.
   card and the visible part of its shadow, and sets the card a little above center, in the
   window and in fixed-size destinations. `vitrine render --padding-mode balanced` does the
   same. Off by default, so existing styles and exports render as before; presets, recipes,
-  restored windows and share links carry it.
+  restored windows and share links carry it. Blur boxes sit at canvas coordinates, so the
+  switch is disabled while a capture has any, a preset or recipe leaves the mode as it is,
+  and the CLI refuses `--padding-mode balanced` with `--blur-box`. Earlier builds reject a
+  recipe that sets `paddingMode`, since they refuse unknown recipe fields; a recipe with
+  Balance off writes no `paddingMode` and stays readable. Share links keep schema version 1,
+  so an earlier build opens a balanced link with manual padding.
 - Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
   hides the code and inspector columns. A dock on the stage shows the current theme,
   typography, background and padding, and opens the inspector's section for each in a

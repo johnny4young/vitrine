@@ -77,20 +77,29 @@ struct OpticalMarginsTests {
                         width: 10, height: 300,
                         alignment: Alignment(horizontal: .center, vertical: .opticalCenter))
             ).cgImage)
-        let rows = try opaqueRows(image)
-        #expect(rows == 92...191)
+        let bitmap = try rgba(image)
+        let rows = (0..<bitmap.height).filter { bitmap.bytes[($0 * bitmap.width) * 4 + 3] > 128 }
+        #expect(rows.first == 92)
+        #expect(rows.last == 191)
+    }
+
+    private let frame = CGSize(width: 600, height: 600)
+
+    /// Rows holding the opaque card on a transparent canvas; the shadow stays under the cut.
+    private func cardRows(_ mode: PaddingMode, shadow: Bool) throws -> ClosedRange<Int> {
+        var style = config(mode, shadow: shadow)
+        style.background = .transparent
+        let image = try #require(ExportManager.renderCGImage(style, scale: 1, fixedSize: frame))
+        let bitmap = try rgba(image)
+        let rows = (0..<bitmap.height).filter { row in
+            (0..<bitmap.width).contains { bitmap.bytes[(row * bitmap.width + $0) * 4 + 3] > 128 }
+        }
+        return try #require(rows.first)...#require(rows.last)
     }
 
     @Test func aFixedFrameLiftsTheBalancedCard() throws {
-        func cardRows(_ mode: PaddingMode) throws -> ClosedRange<Int> {
-            var style = config(mode, shadow: false)
-            style.background = .transparent
-            let size = CGSize(width: 600, height: 600)
-            let image = try #require(ExportManager.renderCGImage(style, scale: 1, fixedSize: size))
-            return try opaqueRows(image)
-        }
-        let manual = try cardRows(.manual)
-        let balanced = try cardRows(.balanced)
+        let manual = try cardRows(.manual, shadow: false)
+        let balanced = try cardRows(.balanced, shadow: false)
         #expect(manual.count == balanced.count)
         #expect(abs(manual.lowerBound - (599 - manual.upperBound)) <= 1)
         let above = Double(balanced.lowerBound)
@@ -98,7 +107,72 @@ struct OpticalMarginsTests {
         #expect(abs(above / (above + below) - Double(OpticalMargins.topShare)) < 0.01)
     }
 
-    private func opaqueRows(_ image: CGImage) throws -> ClosedRange<Int> {
+    /// The shadow falls below the card, so its padded block reaches lower and the card rises.
+    @Test func aFixedFrameCountsTheShadowBelowTheCard() throws {
+        let card = try cardRows(.balanced, shadow: true)
+        let insets = config(.balanced).canvasInsets
+        let block = CGFloat(card.count) + insets.top + insets.bottom
+        let top =
+            (frame.height * OpticalMargins.topShare).rounded()
+            - (block * OpticalMargins.topShare).rounded() + insets.top
+        #expect(abs(card.lowerBound - Int(top)) <= 1)
+        #expect(card.lowerBound < (try cardRows(.balanced, shadow: false)).lowerBound)
+    }
+
+    // MARK: Blur boxes
+
+    private func blurred(_ mode: PaddingMode) -> SnapshotConfig {
+        var style = config(mode)
+        style.code = (1...8).map { "let value\($0) = \"item-\($0 * 7919)\"" }
+            .joined(separator: "\n")
+        style.annotations = [
+            Annotation(kind: .blur, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.7, y: 0.6))
+        ]
+        return style
+    }
+
+    /// The blurred pixels, measured from the card's top-leading corner.
+    private func blurredRegion(_ style: SnapshotConfig) throws -> CGRect {
+        var sharp = style
+        sharp.annotations = []
+        let a = try rgba(try #require(ExportManager.renderCGImage(style, scale: 1)))
+        let b = try rgba(try #require(ExportManager.renderCGImage(sharp, scale: 1)))
+        try #require(a.width == b.width && a.height == b.height)
+        var region = CGRect.null
+        for index in stride(from: 0, to: a.bytes.count, by: 4) {
+            let delta = (0..<3).map { abs(Int(a.bytes[index + $0]) - Int(b.bytes[index + $0])) }
+            guard delta.contains(where: { $0 > 8 }) else { continue }
+            let pixel = index / 4
+            region = region.union(
+                CGRect(x: pixel % a.width, y: pixel / a.width, width: 1, height: 1))
+        }
+        let insets = style.canvasInsets
+        return region.offsetBy(dx: -insets.leading, dy: -insets.top)
+    }
+
+    @Test func blurBoxesKeepTheModeSoTheyCoverTheSameCode() throws {
+        let manual = blurred(.manual)
+        var document = manual
+        document.balancesPadding = true
+        StyleSnapshot(capturing: blurred(.balanced)).apply(to: &document)
+        #expect(document.locksPaddingMode)
+        #expect(document.paddingMode == .manual)
+        let covered = try blurredRegion(manual)
+        #expect(!covered.isNull)
+        #expect(try blurredRegion(document) == covered)
+
+        // Without the lock the same normalized box lands on different code.
+        #expect(try blurredRegion(blurred(.balanced)) != covered)
+    }
+
+    @Test func aBalancedDocumentKeepsItsModeUnderNewBlurBoxes() {
+        var document = blurred(.balanced)
+        StyleSnapshot(capturing: config(.manual)).apply(to: &document)
+        document.balancesPadding = false
+        #expect(document.paddingMode == .balanced)
+    }
+
+    private func rgba(_ image: CGImage) throws -> (bytes: [UInt8], width: Int, height: Int) {
         var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
         let space = try #require(CGColorSpace(name: CGColorSpace.sRGB))
         let drawn = bytes.withUnsafeMutableBytes { buffer -> Bool in
@@ -112,10 +186,7 @@ struct OpticalMarginsTests {
             return true
         }
         try #require(drawn)
-        let rows = (0..<image.height).filter { row in
-            (0..<image.width).contains { bytes[(row * image.width + $0) * 4 + 3] > 128 }
-        }
-        return try #require(rows.first)...#require(rows.last)
+        return (bytes, image.width, image.height)
     }
 
     // MARK: Persistence

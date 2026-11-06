@@ -491,6 +491,8 @@ struct CLIOptions: Equatable {
         config.annotations.append(
             contentsOf: highlighters.map { $0.modelValue(kind: .highlighter) })
         config.annotations.append(contentsOf: blurBoxes.map { $0.modelValue(kind: .blur) })
+        // Matches the app: a recipe or preset can't balance a canvas that has blur boxes.
+        if config.locksPaddingMode { config.paddingMode = .manual }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
         config.terminalColumns = terminalColumns

@@ -34,7 +34,7 @@ extension StyleSnapshot {
         config.fontSize = SettingsDefaults.clampFontSize(fontSize)
         config.fontLigatures = fontLigatures
         config.padding = SettingsDefaults.clampPadding(padding)
-        config.paddingMode = paddingMode ?? .manual
+        if !config.locksPaddingMode { config.paddingMode = paddingMode ?? .manual }
         config.cornerRadius = SettingsDefaults.clampCornerRadius(cornerRadius)
         config.showChrome = showChrome
         config.showShadow = showShadow

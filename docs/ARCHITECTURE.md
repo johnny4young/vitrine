@@ -684,7 +684,9 @@ the same POSIX single-quote encoder. Command-generation tests inspect strings on
 base64url representation. The decoder rejects padding, whitespace, standard base64
 characters, impossible lengths, non-ASCII input, and non-zero unused tail bits before
 bounded zlib expansion and JSON decoding. A deterministic seeded adversarial corpus guards
-that contract against future normalization or Foundation decoder changes.
+that contract against future normalization or Foundation decoder changes. The schema
+version stays 1 when a style field is added, so an earlier build drops fields it does not
+know: a link with balanced padding (`paddingMode`) opens there with manual padding.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the capability
