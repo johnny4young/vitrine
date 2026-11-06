@@ -532,6 +532,14 @@ extension EditorView {
                 .onKeyPress(keys: [.delete, .deleteForward]) { _ in
                     deleteSelection() ? .handled : .ignored
                 }
+                // Buttons take focus only with macOS keyboard navigation on, as elsewhere.
+                .onKeyPress(keys: [.tab]) { press in
+                    guard press.modifiers.isEmpty, activeTool == .select,
+                        NSApp.isFullKeyboardAccessEnabled
+                    else { return .ignored }
+                    markToolbarFocused = true
+                    return .handled
+                }
                 .onExitCommand(perform: clearAnnotationSelection)
             }
         }
@@ -540,6 +548,22 @@ extension EditorView {
         .background(stageBackground)
         .overlay(alignment: .bottom) {
             StageStatusCapsule(settings: settings, geometry: cardGeometry, stageSize: stageSize)
+        }
+        // Outside the preview's scale, so it keeps its size and never reaches an export.
+        .overlayPreferenceValue(SelectedMarkChromeKey.self) { chrome in
+            if let chrome {
+                GeometryReader { proxy in
+                    MarkToolbarLayout(mark: proxy[chrome]) {
+                        AnnotationMarkToolbar(
+                            color: annotationStyleColor, thickness: annotationStyleThickness,
+                            showsColor: annotationStyleUsesColor,
+                            showsThickness: annotationStyleUsesThickness,
+                            focus: $markToolbarFocused, onStyleEditEnded: endAnnotationEdit,
+                            onDuplicate: duplicateSelection, onDelete: deleteSelection,
+                            onExit: { stageFocused = selectedAnnotationID != nil })
+                    }
+                }
+            }
         }
         .layoutPriority(EditorLayout.stageLayoutPriority)
         // A container, so the canvas text and the inline callout field keep their own ids.

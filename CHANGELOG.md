@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- A selected mark gets a small toolbar beside it on the stage with its color, size and
+  Duplicate. It sits clear of the mark's handles whenever the stage has room, hides while
+  you draw, drag or resize, and is never part of an export.
 - The carousel export sheet shows a filmstrip of the real slides before writing files, with
   redactions in place, a flag on a last slide that came out short, and the slide size. PRO
   users opening it on a terminal capture or one with blur boxes now see why it can't export.

@@ -148,18 +148,9 @@ struct AnnotationToolbar: View {
                 ColorSwatchButton(color: $color, onEditEnded: onStyleEditEnded)
             }
             if showsThickness {
-                HStack(spacing: 5) {
-                    Image(systemName: "lineweight")
-                        .font(.system(size: 11))
-                        .foregroundStyle(VitrineTokens.Text.tertiary)
-                    Slider(value: $thickness, in: Annotation.thicknessRange) { editing in
-                        if !editing { onStyleEditEnded() }
-                    }
-                    .frame(width: 84)
-                    .accessibilityLabel("Annotation size")
-                    .accessibilityIdentifier("annotation-thickness-slider")
-                }
-                .help("Stroke and badge size")
+                AnnotationSizeSlider(
+                    thickness: $thickness, identifier: "annotation-thickness-slider",
+                    onEditEnded: onStyleEditEnded)
             }
             if let legend {
                 CounterLegendField(
@@ -421,10 +412,33 @@ private struct StickerSwatchButton: View {
     }
 }
 
+/// The stroke and badge size slider, shared by the title bar and the selected mark's toolbar.
+struct AnnotationSizeSlider: View {
+    @Binding var thickness: Double
+    let identifier: String
+    let onEditEnded: () -> Void
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "lineweight")
+                .font(.system(size: 11))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+            Slider(value: $thickness, in: Annotation.thicknessRange) { editing in
+                if !editing { onEditEnded() }
+            }
+            .frame(width: 84)
+            .accessibilityLabel("Annotation size")
+            .accessibilityIdentifier(identifier)
+        }
+        .help("Stroke and badge size")
+    }
+}
+
 /// A color swatch that opens a vertical palette popover, with a custom-color
 /// well at the bottom.
-private struct ColorSwatchButton: View {
+struct ColorSwatchButton: View {
     @Binding var color: Color
+    var identifier = "annotation-color-swatch"
     let onEditEnded: () -> Void
     @State private var showsPalette = false
 
@@ -448,7 +462,7 @@ private struct ColorSwatchButton: View {
         .buttonStyle(.plain)
         .help("Color")
         .accessibilityLabel("Annotation color")
-        .accessibilityIdentifier("annotation-color-swatch")
+        .accessibilityIdentifier(identifier)
         .popover(isPresented: $showsPalette, arrowEdge: .bottom) {
             VStack(spacing: 7) {
                 ForEach(Array(Self.palette.enumerated()), id: \.offset) { _, swatch in

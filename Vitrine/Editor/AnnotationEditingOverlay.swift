@@ -87,7 +87,8 @@ struct AnnotationEditingOverlay: View {
                         onSelect: { selection = annotation.id },
                         onEdit: annotation.kind == .text
                             ? { beginTextEditing(annotation.id) } : nil,
-                        onDelete: { delete(annotation.id) })
+                        onDelete: { delete(annotation.id) },
+                        offersMarkToolbar: activeTool == .select)
                 }
             }
             // The focused inline field for the text callout being edited.
@@ -229,6 +230,8 @@ private struct AnnotationHandle: View {
     /// have no editable text.
     let onEdit: (() -> Void)?
     let onDelete: () -> Void
+    /// Whether the selected mark's toolbar may show beside this mark.
+    let offersMarkToolbar: Bool
 
     @State private var dragOrigin: Annotation?
     @State private var isResizing = false
@@ -254,6 +257,16 @@ private struct AnnotationHandle: View {
                 .accessibilityAction(named: Text("Delete")) { onDelete() }
             if isSelected && !annotation.kind.isPointPlaced { resizeHandles }
             if isSelected { deleteButton }
+            // Withdrawn while the mark is dragged or resized.
+            if isSelected, offersMarkToolbar, dragOrigin == nil, !isResizing {
+                let chrome = geometry.chromeBounds
+                Color.clear
+                    .frame(width: chrome.width, height: chrome.height)
+                    .anchorPreference(key: SelectedMarkChromeKey.self, value: .bounds) { $0 }
+                    .position(x: chrome.midX, y: chrome.midY)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
         }
     }
 
@@ -264,25 +277,12 @@ private struct AnnotationHandle: View {
             Image(systemName: "xmark.circle.fill")
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(.white, .red)
-                .font(.system(size: 17))
+                .font(.system(size: AnnotationInteractionGeometry.deleteBadgeSize))
         }
         .buttonStyle(.plain)
-        .position(deleteAnchor)
+        .position(geometry.deleteBadgeCenter)
         .accessibilityLabel("Delete annotation")
         .accessibilityIdentifier("annotation-delete")
-    }
-
-    private var deleteAnchor: CGPoint {
-        let box =
-            geometry.isLineLike
-            ? CGRect(
-                x: min(geometry.start.x, geometry.end.x), y: min(geometry.start.y, geometry.end.y),
-                width: abs(geometry.start.x - geometry.end.x),
-                height: abs(geometry.start.y - geometry.end.y))
-            : geometry.selectionRect
-        return CGPoint(
-            x: min(box.maxX + 4, canvasSize.width - 10),
-            y: max(box.minY - 4, 10))
     }
 
     // MARK: Grab / move
@@ -361,7 +361,10 @@ private struct AnnotationHandle: View {
         Circle()
             .fill(.white)
             .overlay(Circle().strokeBorder(accent, lineWidth: 2))
-            .frame(width: 12, height: 12)
+            .frame(
+                width: AnnotationInteractionGeometry.handleDiameter,
+                height: AnnotationInteractionGeometry.handleDiameter
+            )
             .shadow(color: .black.opacity(0.2), radius: 1, y: 0.5)
             .contentShape(Circle())
             .position(point)

@@ -55,6 +55,40 @@ struct AnnotationInteractionGeometry {
             width: hitSize.width, height: hitSize.height)
     }
 
+    /// The box the selection outline follows: a line's endpoints, or the selection rect.
+    var selectionBounds: CGRect {
+        guard isLineLike else { return selectionRect }
+        return CGRect(
+            x: min(start.x, end.x), y: min(start.y, end.y),
+            width: abs(start.x - end.x), height: abs(start.y - end.y))
+    }
+
+    static let handleDiameter: CGFloat = 12
+    static let deleteBadgeSize: CGFloat = 17
+    static let deleteBadgeOffset: CGFloat = 4
+
+    /// Just off the selection's top-right corner, pulled back onto the canvas.
+    var deleteBadgeCenter: CGPoint {
+        let box = selectionBounds
+        return CGPoint(
+            x: min(box.maxX + Self.deleteBadgeOffset, canvasSize.width - 10),
+            y: max(box.minY - Self.deleteBadgeOffset, 10))
+    }
+
+    /// The selection with its endpoint handles and delete badge, at the largest size, so a
+    /// toolbar placed beside it holds still while the size slider moves.
+    var chromeBounds: CGRect {
+        var largest = annotation
+        largest.thickness = Annotation.thicknessRange.upperBound
+        let reach = Self.deleteBadgeOffset + max(Self.handleDiameter, Self.deleteBadgeSize) / 2
+        let badge = Self.deleteBadgeSize / 2
+        return AnnotationInteractionGeometry(annotation: largest, canvasSize: canvasSize)
+            .selectionBounds.insetBy(dx: -reach, dy: -reach).union(
+                CGRect(
+                    x: deleteBadgeCenter.x - badge, y: deleteBadgeCenter.y - badge,
+                    width: Self.deleteBadgeSize, height: Self.deleteBadgeSize))
+    }
+
     static func normalize(_ point: CGPoint, in canvasSize: CGSize) -> CGPoint {
         Annotation.clampNormalized(
             CGPoint(x: point.x / max(canvasSize.width, 1), y: point.y / max(canvasSize.height, 1)))
