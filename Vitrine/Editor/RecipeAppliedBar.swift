@@ -101,8 +101,10 @@ struct RecipeAppliedBar: View {
         .frame(height: 26)
         .background(Capsule(style: .continuous).fill(VitrineTokens.Chrome.statusCapsule))
         .overlay(
+            // Drawn over the buttons, so it must not take their clicks.
             Capsule(style: .continuous)
                 .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+                .allowsHitTesting(false)
         )
         .padding(.horizontal, 12)
         // 6 + 26 stays inside the 36 pt the stage keeps above a height-fitted card.

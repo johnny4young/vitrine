@@ -1,4 +1,6 @@
+import AppKit
 import Foundation
+import SwiftUI
 import Testing
 import VitrineDomain
 import VitrineRendering
@@ -12,6 +14,49 @@ struct RecipeAppliedBarTests {
         AppliedRecipe(
             associationID: UUID(), name: "Docs", workspaceName: "docs",
             baseline: settings.style, documentGeneration: settings.documentGeneration)
+    }
+
+    /// Clicks along the bar's middle, where XCUITest clicks a button, until Revert answers.
+    @Test func revertTakesAClickAtItsCenter() async throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let settings = environment.makeEditorSessionSettings()
+        defer { settings.discardEphemeralStore() }
+        let session = EditorSession(
+            identity: EditorWindowIdentity(index: 72), environment: environment,
+            feedback: .noOp, presentation: .noOp, settings: settings)
+        var recipe = applied(settings)
+        recipe.baseline.showLineNumbers.toggle()
+        session.appliedRecipe = recipe
+        let host = NSHostingView(
+            rootView: RecipeAppliedBar(session: session, settings: settings)
+                .frame(width: 600, height: 80))
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 80), styleMask: [.titled],
+            backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.contentView = host
+        window.makeKeyAndOrderFront(nil)
+        defer { window.orderOut(nil) }
+        host.layoutSubtreeIfNeeded()
+        try await Task.sleep(for: .milliseconds(200))
+
+        // The close button is AppKit-backed, so it gives the row's middle and right end.
+        func views(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(views) }
+        let close = try #require(views(host).compactMap { $0 as? NSButton }.first)
+        let middle = close.convert(NSPoint(x: close.bounds.midX, y: close.bounds.midY), to: nil)
+        for x in stride(from: 12, to: middle.x - close.bounds.width, by: 4) {
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                let event = try #require(
+                    NSEvent.mouseEvent(
+                        with: type, location: NSPoint(x: x, y: middle.y), modifierFlags: [],
+                        timestamp: 0, windowNumber: window.windowNumber, context: nil,
+                        eventNumber: 0, clickCount: 1, pressure: 1))
+                window.sendEvent(event)
+            }
+            if recipe.changedFields(in: settings.style).isEmpty { break }
+        }
+        #expect(recipe.changedFields(in: settings.style).isEmpty)
+        #expect(session.appliedRecipe != nil)
     }
 
     @Test func changedFieldsNameOnlyWhatDiffers() {
