@@ -40,6 +40,8 @@ enum QuickCapture {
         var savedToFile: Bool
         /// The size of the PNG that reached the clipboard.
         var copiedPNGBytes: Int? = nil
+        /// Why an opted-in also-saved PNG went out without its editable project.
+        var withheldProject: EmbeddedProject.Withheld? = nil
         /// The document to open when the capture defers to the editor. It carries the
         /// one-off destination framing without writing it into the app-wide default.
         var editorDocument: SnapshotConfig? = nil
@@ -54,7 +56,9 @@ enum QuickCapture {
     /// from ordinary pasteboard or save-panel failures. The public `Outcome` exposes
     /// only the render category needed for actionable feedback.
     private enum ExportAttempt {
-        case completed(didCopy: Bool, didSave: Bool, copiedPNGBytes: Int?)
+        case completed(
+            didCopy: Bool, didSave: Bool, copiedPNGBytes: Int?,
+            withheldProject: EmbeddedProject.Withheld?)
         case renderFailed(RenderBudgetError)
     }
 
@@ -125,8 +129,7 @@ enum QuickCapture {
         // leaves the app, and history keeps its own consent below.
         let behavior = settings.outputBehavior
         if let preflight, behavior.autoCopy || behavior.alsoSaveToFile {
-            let embeds = embeddedProject(for: config, settings: settings) != nil
-            let report = ExportPreflight(config, payload: embeds ? .transcript : .text)
+            let report = ExportPreflight(config, payload: .text)
             if !report.isClean {
                 let action: ExportPreflight.Action =
                     behavior.autoCopy ? (behavior.alsoSaveToFile ? .copyAndSave : .copy) : .save
@@ -149,11 +152,13 @@ enum QuickCapture {
         let didCopy: Bool
         let didSave: Bool
         let copiedPNGBytes: Int?
+        let withheldProject: EmbeddedProject.Withheld?
         switch attempt {
-        case .completed(let copied, let saved, let bytes):
+        case .completed(let copied, let saved, let bytes, let withheld):
             didCopy = copied
             didSave = saved
             copiedPNGBytes = bytes
+            withheldProject = withheld
         case .renderFailed(let error):
             Log.capture.error("Quick capture stopped: render failed safely")
             return .nonProducing(.renderFailed(error))
@@ -167,7 +172,8 @@ enum QuickCapture {
             outcome: didCopy ? .copied : .rendered,
             copiedToClipboard: didCopy,
             savedToFile: didSave,
-            copiedPNGBytes: copiedPNGBytes)
+            copiedPNGBytes: copiedPNGBytes,
+            withheldProject: didSave ? withheldProject : nil)
     }
 
     /// Renders `config` once and applies the requested clipboard copy and file save from
@@ -250,6 +256,7 @@ enum QuickCapture {
         }
 
         var didSave = false
+        let projectPlan = embeddingPlan(for: plan.config, settings: settings)
         if settings.outputBehavior.alsoSaveToFile {
             if settings.export.format == .pdf {
                 let outcome = ExportManager.saveToFile(
@@ -263,7 +270,7 @@ enum QuickCapture {
                 let outcome = ExportManager.saveToFile(
                     cgImage: cgImage, format: settings.export.format,
                     suggestedName: SuggestedFilename.basename(for: plan.config),
-                    embeddedProject: embeddedProject(for: plan.config, settings: settings))
+                    embeddedProject: projectPlan.link)
                 didSave = outcome == .saved
                 if case .renderFailed(let error) = outcome {
                     deferredRenderFailure = deferredRenderFailure ?? error
@@ -273,16 +280,21 @@ enum QuickCapture {
         if !didCopy, !didSave, let deferredRenderFailure {
             return .renderFailed(deferredRenderFailure)
         }
-        return .completed(didCopy: didCopy, didSave: didSave, copiedPNGBytes: copiedPNGBytes)
+        var withheld: EmbeddedProject.Withheld?
+        if case .withheld(let reason) = projectPlan { withheld = reason }
+        return .completed(
+            didCopy: didCopy, didSave: didSave, copiedPNGBytes: copiedPNGBytes,
+            withheldProject: withheld)
     }
 
-    /// The project link an also-saved PNG carries, when the user opted in.
-    static func embeddedProject(for config: SnapshotConfig, settings: AppSettings) -> String? {
+    /// What an also-saved PNG embeds, when the user opted in.
+    static func embeddingPlan(
+        for config: SnapshotConfig, settings: AppSettings
+    ) -> EmbeddedProject.Plan {
         EmbeddedProject.plan(
             for: config, format: settings.export.format,
             enabled: settings.outputBehavior.alsoSaveToFile
-                && settings.outputBehavior.embedsEditableProject
-        ).link
+                && settings.outputBehavior.embedsEditableProject)
     }
 
     /// Resolves a one-off destination preset without changing the user's saved default.
@@ -370,11 +382,13 @@ enum QuickCapture {
         let didCopy: Bool
         let didSave: Bool
         let copiedPNGBytes: Int?
+        let withheldProject: EmbeddedProject.Withheld?
         switch attempt {
-        case .completed(let copied, let saved, let bytes):
+        case .completed(let copied, let saved, let bytes, let withheld):
             didCopy = copied
             didSave = saved
             copiedPNGBytes = bytes
+            withheldProject = withheld
         case .renderFailed(let error):
             Log.capture.error("Text capture stopped: render failed safely")
             return .nonProducing(.renderFailed(error))
@@ -387,7 +401,8 @@ enum QuickCapture {
             outcome: didCopy ? .copied : .rendered,
             copiedToClipboard: didCopy,
             savedToFile: didSave,
-            copiedPNGBytes: copiedPNGBytes)
+            copiedPNGBytes: copiedPNGBytes,
+            withheldProject: didSave ? withheldProject : nil)
     }
 
     /// Runs a quick capture and applies its user-facing side effects: opens the

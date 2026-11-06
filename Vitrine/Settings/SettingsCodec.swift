@@ -50,6 +50,7 @@ enum SettingsCodec {
         static let richClipboard = "richClipboard"
         static let concealClipboard = "concealClipboard"
         static let embedEditableProject = "embedEditableProject"
+        static let askToOpenEmbeddedProjects = "askToOpenEmbeddedProjects"
         static let textSidecar = "textSidecar"
         static let hotkeyAction = "hotkeyAction"
         static let acknowledgedMacOSHotkey = "acknowledgedMacOSHotkey"
@@ -118,6 +119,7 @@ enum SettingsCodec {
             diffDecorations, annotations, metadata, gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
             colorProfile, richClipboard, textSidecar, concealClipboard, embedEditableProject,
+            askToOpenEmbeddedProjects,
             hotkeyAction,
             acknowledgedMacOSHotkey, appLanguage,
             treatURLs,

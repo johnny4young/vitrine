@@ -406,27 +406,24 @@ final class VitrineUITests: XCTestCase {
         let toggle = element("embed-project-toggle", in: settings)
         assertExists(toggle, in: settings, timeout: 3)
         XCTAssertEqual(toggle.value as? Int, 0, "Embedding the source must be opt-in")
+        let ask = element("ask-embedded-project-toggle", in: settings)
+        assertExists(ask, in: settings)
+        XCTAssertEqual(ask.value as? Int, 1, "A dropped project asks by default")
         settings.terminate()
 
-        // Dialog buttons may surface by title rather than identifier inside the sheet.
-        func choice(_ identifier: String, _ title: String, in app: XCUIApplication) -> XCUIElement {
-            app.buttons.matching(
-                NSPredicate(format: "identifier == %@ OR title == %@", identifier, title)
-            ).firstMatch
-        }
         try skipUnlessADisplayFitsTheEditor()
         let asImage = launch(arguments: ["--open-editor", "--demo-embedded-project"])
-        let useImage = choice("embedded-project-image-button", "Use as Image", in: asImage)
+        let useImage = element("embedded-project-image-button", in: asImage)
         assertExists(useImage, in: asImage, timeout: 8)
-        assertExists(
-            choice("embedded-project-open-button", "Open Editable", in: asImage), in: asImage)
+        assertExists(element("embedded-project-open-button", in: asImage), in: asImage)
+        assertExists(element("embedded-project-dont-ask-button", in: asImage), in: asImage)
         useImage.click()
         assertExists(element("copy-image-text-button", in: asImage), in: asImage, timeout: 5)
         asImage.terminate()
 
         let editable = launch(arguments: ["--open-editor", "--demo-embedded-project"])
         defer { editable.terminate() }
-        let open = choice("embedded-project-open-button", "Open Editable", in: editable)
+        let open = element("embedded-project-open-button", in: editable)
         assertExists(open, in: editable, timeout: 8)
         open.click()
         let editor = element("code-editor-text-view", in: editable)

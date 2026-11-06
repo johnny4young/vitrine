@@ -34,6 +34,13 @@ final class OutputBehavior {
         didSet { defaults.set(embedsEditableProject, forKey: Keys.embedEditableProject) }
     }
 
+    /// Ask before a dropped PNG with a project opens as code; off beautifies it as an image.
+    var asksToOpenEmbeddedProjects: Bool {
+        didSet {
+            defaults.set(asksToOpenEmbeddedProjects, forKey: Keys.askToOpenEmbeddedProjects)
+        }
+    }
+
     private let defaults: UserDefaults
 
     /// A missing or garbage value falls back to the documented default.
@@ -45,6 +52,8 @@ final class OutputBehavior {
         concealClipboard = defaults.object(forKey: Keys.concealClipboard) as? Bool ?? false
         embedsEditableProject =
             defaults.object(forKey: Keys.embedEditableProject) as? Bool ?? false
+        asksToOpenEmbeddedProjects =
+            defaults.object(forKey: Keys.askToOpenEmbeddedProjects) as? Bool ?? true
     }
 
     /// Resets the live state; `AppSettings.resetToDefaults()` clears the persisted keys.
@@ -54,5 +63,6 @@ final class OutputBehavior {
         closeAfterCopy = true
         concealClipboard = false
         embedsEditableProject = false
+        asksToOpenEmbeddedProjects = true
     }
 }

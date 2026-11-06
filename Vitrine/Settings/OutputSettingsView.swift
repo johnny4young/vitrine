@@ -31,7 +31,7 @@ struct OutputSettingsView: View {
                 TokenRow(
                     label: Text("Embed editable project in PNG files"),
                     caption: Text(
-                        "Saved PNGs include the code so Vitrine can reopen them. Left out when anything is redacted."
+                        "Saved PNGs include the source code, and anyone with the file can extract it. Left out for redactions, terminal captures and possible secrets."
                     )
                 ) {
                     Toggle(
@@ -41,6 +41,15 @@ struct OutputSettingsView: View {
                     .toggleStyle(.switch)
                     .labelsHidden()
                     .accessibilityIdentifier("embed-project-toggle")
+                }
+                TokenRow(label: Text("Ask to open dropped PNGs as projects")) {
+                    Toggle(
+                        "Ask to open dropped PNGs as projects",
+                        isOn: behavior.asksToOpenEmbeddedProjects
+                    )
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .accessibilityIdentifier("ask-embedded-project-toggle")
                 }
                 TokenRow(label: Text("Close the editor after copying")) {
                     Toggle("Close the editor after copying", isOn: behavior.closeAfterCopy)

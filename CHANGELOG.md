@@ -14,10 +14,14 @@ can never drift.
 
 ### Added
 
-- Settings ▸ Output ▸ Embed editable project in PNG files (off by default) stores the code,
-  style, header and marks inside saved PNGs, as the same payload a share link carries. Dropping
-  such a PNG on the editor asks whether to open it as an editable project or use it as an image.
-  It is never added to clipboard copies, or when the capture has redacted lines or blur boxes.
+- Settings ▸ Output ▸ Embed editable project in PNG files (off by default) stores the source
+  code, style, header, marks and alt text inside PNGs written by the editor's Save Image and
+  quick capture's Also save to a file, as the same payload a share link carries. Anyone with
+  the file can extract the source. Clipboard copies, multi-size and carousel exports, boards,
+  Recents, Services, App Intents and the CLI never embed it, and redacted lines, blur boxes,
+  terminal captures or a secret-check finding leave it out with a note in the save
+  confirmation. Dropping such a PNG on the editor asks whether to open it as an editable
+  project, undoable in one step, or use it as an image.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.
