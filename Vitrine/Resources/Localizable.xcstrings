@@ -152,6 +152,94 @@
         }
       }
     },
+    "slide %lld · line %@" : {
+      "comment" : "Label on the boundary of a one-line slide drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · línea %2$@"
+          }
+        }
+      }
+    },
+    "Show dividers in the code" : {
+      "comment" : "Switch in the carousel export sheet that draws slide boundaries in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar divisiones en el código"
+          }
+        }
+      }
+    },
+    "slide %lld · lines %@" : {
+      "comment" : "Label on a slide boundary drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · líneas %2$@"
+          }
+        }
+      }
+    },
+    "Vitrine %@ at %@.png" : {
+      "comment" : "File name of a copied image dropped from the copy preview: date, time",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine %1$@ a las %2$@.png"
+          }
+        }
+      }
+    },
+    "Show a preview after copying" : {
+      "comment" : "Output settings toggle: float a draggable thumbnail of each copied image",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar una vista previa al copiar"
+          }
+        }
+      }
+    },
+    "Copied image" : {
+      "comment" : "VoiceOver label of the floating preview of the image just copied",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen copiada"
+          }
+        }
+      }
+    },
+    "Dismiss" : {
+      "comment" : "VoiceOver action and button label that hides the floating copy preview",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descartar"
+          }
+        }
+      }
+    },
+    "Copied image preview" : {
+      "comment" : "VoiceOver announcement when the floating copy preview appears",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa de la imagen copiada"
+          }
+        }
+      }
+    },
     "Don't warn for this theme" : {
       "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
       "localizations" : {
@@ -380,17 +468,6 @@
         }
       }
     },
-    "slide %lld · line %@" : {
-      "comment" : "Label on the boundary of a one-line slide drawn in the code editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "diapositiva %1$lld · línea %2$@"
-          }
-        }
-      }
-    },
     "Slide %lld of %lld, line %@" : {
       "comment" : "Accessibility label of a one-line slide tile in the carousel filmstrip.",
       "localizations" : {
@@ -413,17 +490,6 @@
         }
       }
     },
-    "Show dividers in the code" : {
-      "comment" : "Switch in the carousel export sheet that draws slide boundaries in the code editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar divisiones en el código"
-          }
-        }
-      }
-    },
     "short" : {
       "comment" : "Badge on the last slide of a carousel when it holds few lines compared with the others.",
       "localizations" : {
@@ -442,17 +508,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diapositiva %1$lld de %2$lld, líneas %3$@"
-          }
-        }
-      }
-    },
-    "slide %lld · lines %@" : {
-      "comment" : "Label on a slide boundary drawn in the code editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "diapositiva %1$lld · líneas %2$@"
           }
         }
       }
