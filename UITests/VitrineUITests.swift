@@ -2045,6 +2045,42 @@ final class VitrineUITests: XCTestCase {
         XCTAssertEqual(recents.cards.count, 0)
     }
 
+    /// The launch flag holds the preview until it is dismissed, so no step races its lifetime.
+    @MainActor
+    func testCopyPreviewReopensTheEditorAndDismisses() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--copy-preview-stays"])
+        defer { app.terminate() }
+        assertHittable("copy-button", in: app, "Copy image is not reachable")
+
+        element("copy-button", in: app).click()
+        let preview = element("copy-preview-image", in: app)
+        assertExists(preview, in: app, timeout: 5)
+        assertExists(element("copy-preview-window", in: app), in: app)
+        // Close-after-copy is on by default, so the click has a closed editor to bring back.
+        preview.click()
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3), "Opening must hide the preview")
+        assertHittable("copy-button", in: app, "The preview must reopen the editor", timeout: 5)
+
+        element("copy-button", in: app).click()
+        assertExists(preview, in: app, timeout: 5)
+        element("copy-preview-dismiss", in: app).click()
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3), "Dismiss must hide the preview")
+    }
+
+    @MainActor
+    func testCopyPreviewSettingIsOnByDefault() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.settings)
+        defer { app.terminate() }
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-output", in: app).click()
+        let toggle = element("copy-preview-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 1, "The copy preview must start on")
+    }
+
     @MainActor
     func testExportPreflightAsksBeforeCopyingAndCanCancelOrRedact() throws {
         continueAfterFailure = false

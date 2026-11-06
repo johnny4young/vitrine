@@ -354,7 +354,7 @@ public enum RichPasteboard {
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         to pasteboard: NSPasteboard = .general,
-        onCopied: (_ pngBytes: Int) -> Void = { _ in }
+        onCopied: (_ png: Data) -> Void = { _ in }
     ) throws(RenderBudgetError) -> Bool {
         let payload = try makePayloadChecked(
             for: config, scale: scale, fixedSize: fixedSize, profile: profile,
@@ -362,7 +362,7 @@ public enum RichPasteboard {
             backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore)
         guard write(payload, concealed: concealed, to: pasteboard) else { return false }
-        onCopied(payload.png.count)
+        onCopied(payload.png)
         return true
     }
 
@@ -376,7 +376,7 @@ public enum RichPasteboard {
         includePlainText: Bool = false,
         concealed: Bool = false,
         to pasteboard: NSPasteboard = .general,
-        onCopied: (_ pngBytes: Int) -> Void = { _ in }
+        onCopied: (_ png: Data) -> Void = { _ in }
     ) -> ExportManager.CopyOutcome {
         guard
             let payload = makePayload(
@@ -384,7 +384,7 @@ public enum RichPasteboard {
                 includePlainText: includePlainText)
         else { return .renderFailed(.encodingFailed) }
         guard write(payload, concealed: concealed, to: pasteboard) else { return .failed }
-        onCopied(payload.png.count)
+        onCopied(payload.png)
         return .copied
     }
 

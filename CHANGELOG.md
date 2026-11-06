@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- A preview of the copied image floats in the bottom corner of the screen after Copy image,
+  a quick capture or a copy from Recents. Drag it into another app or into Finder, click it
+  to go back to the editor or Recents, or dismiss it. It skips copies marked confidential and
+  can be turned off in Settings › Output.
 - The carousel export sheet shows a filmstrip of the real slides before writing files, with
   redactions in place, a flag on a last slide that came out short, and the slide size. PRO
   users opening it on a terminal capture or one with blur boxes now see why it can't export.

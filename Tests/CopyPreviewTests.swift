@@ -1,0 +1,182 @@
+import AppKit
+import Testing
+import VitrineRendering
+
+@testable import Vitrine
+
+@MainActor
+@Suite("Copy preview", .serialized)
+struct CopyPreviewTests {
+    private final class PreviewSpy {
+        var items: [CopyPreview.Item] = []
+        var display: FeedbackDisplay {
+            FeedbackDisplay({ _, _ in }, preview: { [weak self] in self?.items.append($0) })
+        }
+    }
+
+    private func makeSession(_ settings: AppSettings, display: FeedbackDisplay) -> EditorSession {
+        settings.config.code = "let x = 1"
+        settings.outputBehavior.closeAfterCopy = false
+        return EditorSession(
+            identity: EditorWindowIdentity(index: 62),
+            environment: AppEnvironment(defaults: testDefaults()),
+            feedback: display, presentation: .noOp, settings: settings)
+    }
+
+    private func samplePNG(width: Int = 40, height: Int = 20) throws -> Data {
+        let rep = try #require(
+            NSBitmapImageRep(
+                bitmapDataPlanes: nil, pixelsWide: width, pixelsHigh: height,
+                bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        return try #require(rep.representation(using: .png, properties: [:]))
+    }
+
+    @Test func aConcealedOrDisabledCopyShowsNoPreview() {
+        let behavior = AppSettings(defaults: testDefaults()).outputBehavior
+        #expect(CopyPreview.isShown(for: behavior))
+        behavior.concealClipboard = true
+        #expect(!CopyPreview.isShown(for: behavior))
+        behavior.concealClipboard = false
+        behavior.showsCopyPreview = false
+        #expect(!CopyPreview.isShown(for: behavior))
+    }
+
+    @Test func theSettingPersists() {
+        let defaults = testDefaults()
+        AppSettings(defaults: defaults).outputBehavior.showsCopyPreview = false
+        #expect(!OutputBehavior(defaults: defaults).showsCopyPreview)
+    }
+
+    @Test func anEditorCopyPreviewsTheExactBytesOnThePasteboard() throws {
+        let spy = PreviewSpy()
+        let session = makeSession(AppSettings(defaults: testDefaults()), display: spy.display)
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+
+        session.copyImage(closing: nil, pasteboard: pasteboard)
+
+        let copied = try #require(pasteboard.data(forType: .png))
+        #expect(spy.items.map(\.png) == [copied])
+    }
+
+    @Test func aConcealedEditorCopyIsNeverPreviewed() {
+        let spy = PreviewSpy()
+        let settings = AppSettings(defaults: testDefaults())
+        settings.outputBehavior.concealClipboard = true
+        let session = makeSession(settings, display: spy.display)
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+
+        session.copyImage(closing: nil, pasteboard: pasteboard)
+
+        #expect(pasteboard.data(forType: .png) != nil)
+        #expect(spy.items.isEmpty)
+    }
+
+    @Test(arguments: [true, false])
+    func aQuickCapturePreviewReopensRecentsOnlyWhenHistoryKeptIt(saved: Bool) throws {
+        let spy = PreviewSpy()
+        var routed: [String] = []
+        let presenter = CaptureFeedbackPresenter(
+            display: spy.display,
+            routing: CaptureRecoveryRouting(
+                loadPrimaryEditor: { _ in routed.append("load") },
+                presentEditor: { routed.append("editor") },
+                presentWebSnapshot: { _ in routed.append("web") },
+                presentRecents: { routed.append("recents") }))
+        let png = try samplePNG()
+        let result = QuickCapture.Result(
+            outcome: .copied, copiedToClipboard: true, savedToFile: false, copiedPNG: png,
+            savedToRecents: saved)
+
+        presenter.present(result, environment: AppEnvironment(defaults: testDefaults()))
+        presenter.present(
+            .nonProducing(.empty), environment: AppEnvironment(defaults: testDefaults()))
+
+        let item = try #require(spy.items.first)
+        #expect(spy.items.count == 1)
+        #expect(item.png == png)
+        item.reopen()
+        #expect(routed == [saved ? "recents" : "editor"])
+    }
+
+    @Test func theDraggedItemCarriesThePNGAndWritesItOnlyOnce() throws {
+        let png = try samplePNG()
+        let promise = CopiedImagePromise(png: png, fileName: "Copied.png")
+        let pasteboard = NSPasteboard.withUniqueName()
+        defer { pasteboard.releaseGlobally() }
+        #expect(promise.writableTypes(for: pasteboard).contains(.png))
+        #expect(promise.pasteboardPropertyList(forType: .png) as? Data == png)
+
+        let folder = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let url = folder.appending(path: promise.fileName)
+        var errors: [Error?] = []
+        promise.filePromiseProvider(promise, writePromiseTo: url) { errors.append($0) }
+        promise.filePromiseProvider(promise, writePromiseTo: url) { errors.append($0) }
+
+        #expect(try Data(contentsOf: url) == png)
+        #expect(errors.count == 2)
+        #expect(errors.first.map { $0 == nil } == true)
+        #expect(errors.last.map { $0 != nil } == true)
+    }
+
+    @Test func aNewCopyReplacesThePreviewAndStaleEventsAreIgnored() throws {
+        var announcements: [String] = []
+        let controller = CopyPreviewController(postAnnouncement: { announcements.append($0) })
+        controller.holdsUntilDismissed = true
+        defer { controller.dismiss() }
+        var reopened: [String] = []
+        let first = try samplePNG(width: 30)
+        let second = try samplePNG(width: 50)
+
+        controller.present(CopyPreview.Item(png: first) { reopened.append("first") })
+        let firstPanel = controller.panel
+        let stale = controller.events(for: controller.generation)
+        controller.present(CopyPreview.Item(png: second) { reopened.append("second") })
+        stale.dismiss()
+        stale.open()
+
+        #expect(controller.panel === firstPanel)
+        #expect(controller.item?.png == second)
+        #expect(reopened.isEmpty)
+        #expect(announcements.count == 2)
+
+        controller.events(for: controller.generation).open()
+        #expect(reopened == ["second"])
+        #expect(controller.item == nil)
+        #expect(controller.panel?.isVisible == false)
+    }
+
+    @Test func thePreviewFitsItsBoxAndSitsAtTheBottomOfTheScreen() {
+        let wide = CopyPreview.displaySize(for: CGSize(width: 2000, height: 500))
+        #expect(wide.width <= CopyPreview.maximumSize.width)
+        #expect(wide.height <= CopyPreview.maximumSize.height)
+        #expect(abs(wide.width / wide.height - 4) < 0.1)
+        let small = CGSize(width: 60, height: 40)
+        #expect(CopyPreview.displaySize(for: small) == small)
+
+        let visible = CGRect(x: 0, y: 40, width: 1440, height: 835)
+        let frame = CopyPreview.frame(for: CGSize(width: 252, height: 182), in: visible)
+        #expect(visible.contains(frame))
+        #expect(frame.maxY < visible.midY)
+        #expect(frame.maxX > visible.midX)
+    }
+
+    @Test func thePreviewOutlastsTheHUDAndWaitsLongerForVoiceOver() {
+        let regular = CopyPreview.lifetime(voiceOverRunning: false)
+        #expect(regular > CaptureHUD.displayDuration(hasActions: false))
+        #expect(CopyPreview.lifetime(voiceOverRunning: true) > regular)
+    }
+
+    @Test func droppedFileNamesAreDistinctAndFinderSafe() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let name = CopyPreview.fileName(at: now)
+        #expect(name.hasSuffix(".png"))
+        #expect(!name.contains("/") && !name.contains(":"))
+        #expect(name != CopyPreview.fileName(at: now.addingTimeInterval(1)))
+    }
+}

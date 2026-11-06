@@ -1,6 +1,50 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Show a preview after copying" : {
+      "comment" : "Output settings toggle: float a draggable thumbnail of each copied image",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar una vista previa al copiar"
+          }
+        }
+      }
+    },
+    "Copied image" : {
+      "comment" : "VoiceOver label of the floating preview of the image just copied",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imagen copiada"
+          }
+        }
+      }
+    },
+    "Dismiss" : {
+      "comment" : "VoiceOver action and button label that hides the floating copy preview",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descartar"
+          }
+        }
+      }
+    },
+    "Copied image preview" : {
+      "comment" : "VoiceOver announcement when the floating copy preview appears",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vista previa de la imagen copiada"
+          }
+        }
+      }
+    },
     "Don't warn for this theme" : {
       "comment" : "Legibility details: hide the low contrast warning for this theme until the app quits.",
       "localizations" : {
