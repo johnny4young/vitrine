@@ -1,6 +1,50 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Clear focal point" : {
+      "comment" : "Multi-size export sheet: button that removes the focal point shared by every size",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar punto focal"
+          }
+        }
+      }
+    },
+    "Drag to choose what stays in view." : {
+      "comment" : "Multi-size export sheet: tooltip on a size tile, which sets the focal point a smaller frame keeps in view",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrastra para elegir qué queda a la vista."
+          }
+        }
+      }
+    },
+    "Marks on the capture keep every size centered." : {
+      "comment" : "Multi-size export sheet: tooltip on a size tile when annotations prevent a focal point",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las marcas de la captura mantienen cada tamaño centrado."
+          }
+        }
+      }
+    },
+    "PDF exports keep every size centered." : {
+      "comment" : "Multi-size export sheet: tooltip on a size tile when the export format is PDF, which ignores the focal point",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las exportaciones en PDF mantienen cada tamaño centrado."
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {

@@ -55,14 +55,27 @@ public enum ExportManager {
             RenderSignpost.renderName, "scale=\(Double(scale)) length=\(config.code.count)")
         defer { signposter.endInterval(RenderSignpost.renderName, state) }
 
-        let normalizedImage = try renderCGImageChecked(
-            SnapshotCanvas(config: config, fixedSize: fixedSize)
-                .environment(\.backgroundImageStore, backgroundImageStore)
-                .environment(\.foregroundImageStore, foregroundImageStore),
-            proposedSize: fixedSize,
-            scale: scale,
-            profile: profile,
-            budget: budget)
+        let normalizedImage: CGImage
+        if let fixedSize,
+            let crop = focalCrop(
+                config, fixedSize: fixedSize, backgroundImageStore: backgroundImageStore,
+                foregroundImageStore: foregroundImageStore)
+        {
+            normalizedImage = try renderCGImageChecked(
+                FocalCroppedCanvas(config: config, frame: fixedSize, crop: crop)
+                    .environment(\.backgroundImageStore, backgroundImageStore)
+                    .environment(\.foregroundImageStore, foregroundImageStore),
+                proposedSize: fixedSize, scale: scale, profile: profile, budget: budget)
+        } else {
+            normalizedImage = try renderCGImageChecked(
+                SnapshotCanvas(config: config, fixedSize: fixedSize)
+                    .environment(\.backgroundImageStore, backgroundImageStore)
+                    .environment(\.foregroundImageStore, foregroundImageStore),
+                proposedSize: fixedSize,
+                scale: scale,
+                profile: profile,
+                budget: budget)
+        }
         if case .image = config.background {
             guard let opaque = compositedOverBlackChecked(normalizedImage) else {
                 throw .allocationFailed

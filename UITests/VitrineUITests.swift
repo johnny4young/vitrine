@@ -1105,6 +1105,16 @@ final class VitrineUITests: XCTestCase {
             XCTWaiter().wait(for: [measured], timeout: 20), .completed,
             "It reads \(String(describing: estimate.value))")
 
+        // A click on a tile sets the focal point every size shares; Clear removes it.
+        let clearFocalPoint = element("multi-size-focal-clear", in: app)
+        XCTAssertFalse(clearFocalPoint.exists)
+        let tile = element("multi-size-tile-linkedin", in: app)
+        assertExists(tile, in: app, timeout: 3)
+        tile.click()
+        assertExists(clearFocalPoint, in: app, timeout: 3)
+        clearFocalPoint.click()
+        XCTAssertTrue(clearFocalPoint.waitForNonExistence(timeout: 3))
+
         // With nothing selected there is nothing to estimate.
         element("multi-size-select-none", in: app).click()
         XCTAssertTrue(estimate.waitForNonExistence(timeout: 3))

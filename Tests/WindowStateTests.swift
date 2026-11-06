@@ -126,6 +126,7 @@ struct EditorWindowStateTests {
         config.terminalColumns = 100
         config.firstLineNumber = 9
         config.slideCue = SlideCue(pageLabel: "2 / 4")
+        config.focalPoint = CGPoint(x: 0.25, y: 0.75)
         return config
     }
 
@@ -138,6 +139,7 @@ struct EditorWindowStateTests {
         expected.terminalColumns = nil  // measured from the capture, not restored state
         expected.firstLineNumber = 1  // derived per carousel slide at export
         expected.slideCue = nil  // derived per carousel slide at export
+        expected.focalPoint = nil  // chosen on the multi-size board for its export
         return expected
     }
 
