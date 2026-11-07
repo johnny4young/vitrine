@@ -7,6 +7,8 @@ import VitrineDomain
 struct SplitDiffLinesView: View {
     let lines: CodeLinesView
     let rows: [DiffSplitRow]
+    /// `old` or `new` leaves the other side's gutter blank; `nil` and `both` number both.
+    var numbering: DiffLineNumbers?
 
     var body: some View {
         let metrics = GutterMetrics(font: lines.font, lineCount: highestNumber)
@@ -24,20 +26,26 @@ struct SplitDiffLinesView: View {
                 case .spanning(.fold):
                     lines.foldMarker(metrics: metrics)
                         .layoutValue(key: SplitColumnsLayout.Spans.self, value: true)
+                case .spanning(.hunk(let additions, let deletions)):
+                    lines.foldedHunk(additions: additions, deletions: deletions, metrics: metrics)
+                        .layoutValue(key: SplitColumnsLayout.Spans.self, value: true)
                 case .pair(let old, let new):
-                    cell(old, metrics: metrics)
-                    cell(new, metrics: metrics)
+                    cell(old, metrics: metrics, numbered: numbering != .new)
+                    cell(new, metrics: metrics, numbered: numbering != .old)
                 }
             }
         }
     }
 
     @ViewBuilder
-    private func cell(_ cell: DiffSplitCell?, metrics: GutterMetrics) -> some View {
+    private func cell(
+        _ cell: DiffSplitCell?, metrics: GutterMetrics, numbered: Bool
+    ) -> some View {
         if let cell, lines.rows.indices.contains(cell.row - 1) {
             lines.wrappingEachSide.row(
                 lines.rows[cell.row - 1], lineNumber: cell.row, metrics: metrics,
-                gutterLabel: cell.number.map { "\($0)" } ?? "", fillsHeight: true)
+                gutterLabel: numbered ? cell.number.map { "\($0)" } ?? "" : "",
+                fillsHeight: true)
         } else {
             // The side a change does not reach, shaded so the pair still reads as one row.
             Rectangle()

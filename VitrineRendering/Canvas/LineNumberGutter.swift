@@ -26,6 +26,11 @@ struct GutterMetrics {
         digitColumns = max(2, String(max(lineCount, 1)).count)
     }
 
+    init(font: NSFont, digitColumns: Int) {
+        digitWidth = CodeFont.advance(of: "0", in: font)
+        self.digitColumns = digitColumns
+    }
+
     /// The number column width: just the reserved digit columns. Right-aligning
     /// the number to exactly this width keeps every line number's units digit in
     /// the same place; the trailing gap before the code is applied separately.
@@ -80,19 +85,30 @@ struct CodeLinesView: View {
     /// Changed character spans inside paired diff lines, keyed by 1-based row and computed
     /// once per render by `DiffDocument.wordMarks`.
     var wordMarks: [Int: [Range<Int>]] = [:]
+    /// One gutter label per row in place of its number, and the digit columns they need.
+    var gutterLabels: [String]?
+    var gutterColumns: Int?
 
     var body: some View {
-        let metrics = GutterMetrics(font: font, lineCount: rows.count + firstLineNumber - 1)
+        let metrics =
+            gutterColumns.map { GutterMetrics(font: font, digitColumns: $0) }
+            ?? GutterMetrics(font: font, lineCount: rows.count + firstLineNumber - 1)
         VStack(alignment: .leading, spacing: lineSpacing) {
             let shown = displayRows ?? rows.indices.map { .line($0 + 1) }
             ForEach(Array(shown.enumerated()), id: \.offset) { _, shownRow in
                 switch shownRow {
                 case .line(let number) where rows.indices.contains(number - 1):
-                    row(rows[number - 1], lineNumber: number, metrics: metrics)
+                    row(
+                        rows[number - 1], lineNumber: number, metrics: metrics,
+                        gutterLabel: gutterLabels.flatMap {
+                            $0.indices.contains(number - 1) ? $0[number - 1] : nil
+                        })
                 case .line:
                     EmptyView()
                 case .fold:
                     foldMarker(metrics: metrics)
+                case .hunk(let additions, let deletions):
+                    foldedHunk(additions: additions, deletions: deletions, metrics: metrics)
                 }
             }
         }
@@ -111,6 +127,21 @@ struct CodeLinesView: View {
             )
             .padding(.vertical, lineSpacing / 2)
             .accessibilityHidden(true)
+    }
+
+    /// A hunk left out of the image, as its counts only, so none of its text shows.
+    func foldedHunk(additions: Int, deletions: Int, metrics: GutterMetrics) -> some View {
+        HStack(spacing: Brand.Spacing.xs) {
+            Text(verbatim: "⋯").foregroundStyle(textColor.opacity(0.4))
+            Text(verbatim: "+\(additions)").foregroundStyle(DiffColor.added)
+            Text(verbatim: "−\(deletions)").foregroundStyle(DiffColor.removed)
+        }
+        .font(Font(font))
+        .monospacedDigit()
+        .padding(.leading, showLineNumbers ? metrics.numberWidth + GutterMetrics.trailingGap : 0)
+        .padding(.vertical, lineSpacing / 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Added: \(additions), removed: \(deletions)"))
     }
 
     /// `gutterLabel` replaces the drawn number; the split layout numbers each side itself.

@@ -36,6 +36,8 @@ public struct SharedSnapshot: Codable, Equatable {
     /// Absent for unified, so links without a split layout encode as they did before.
     var diffView: DiffViewMode?
     var diffWordMarks: Bool?
+    var diffHunks: [Int]?
+    var diffLineNumbers: DiffLineNumbers?
     var terminalColumns: Int?
     var terminalCrop: TerminalCrop?
 
@@ -77,6 +79,8 @@ public struct SharedSnapshot: Codable, Equatable {
         self.diffContextLines = config.diffContextLines.map(SettingsDefaults.clampDiffContextLines)
         self.diffView = config.diffView == .unified ? nil : config.diffView
         self.diffWordMarks = config.diffWordMarks ? true : nil
+        self.diffHunks = config.diffHunks.flatMap(SettingsDefaults.normalizeDiffHunks)
+        self.diffLineNumbers = config.diffLineNumbers == .hidden ? nil : config.diffLineNumbers
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -100,6 +104,8 @@ public struct SharedSnapshot: Codable, Equatable {
         config.diffContextLines = diffContextLines
         config.diffView = diffView ?? .unified
         config.diffWordMarks = diffWordMarks ?? false
+        config.diffHunks = diffHunks
+        config.diffLineNumbers = diffLineNumbers
         config.terminalColumns = terminalColumns
         config.terminalCrop = terminalCrop ?? TerminalCrop()
     }
@@ -108,7 +114,7 @@ public struct SharedSnapshot: Codable, Equatable {
         case version, code, languageID, style, annotations, windowTitle, metadata
         case shadowRadius, highlightedLineRanges, focusHighlightedLines, diffDecorations
         case terminalColumns, altText, terminalCrop, showDiffStats, diffContextLines
-        case diffView, diffWordMarks
+        case diffView, diffWordMarks, diffHunks, diffLineNumbers
     }
 
     public init(from decoder: Decoder) throws {
@@ -142,6 +148,10 @@ public struct SharedSnapshot: Codable, Equatable {
             .map(SettingsDefaults.clampDiffContextLines)
         diffView = try? container.decode(DiffViewMode.self, forKey: .diffView)
         diffWordMarks = try? container.decode(Bool.self, forKey: .diffWordMarks)
+        diffHunks = (try? container.decode([Int].self, forKey: .diffHunks))
+            .flatMap(SettingsDefaults.normalizeDiffHunks)
+        diffLineNumbers = (try? container.decode(DiffLineNumbers.self, forKey: .diffLineNumbers))
+            .flatMap { $0 == .hidden ? nil : $0 }
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)

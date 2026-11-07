@@ -1,9 +1,11 @@
 import Foundation
 
-/// One row the diff layout draws: a source line (1-based) or a marker for folded lines.
+/// One row the diff layout draws: a source line (1-based), a marker for folded lines, or a
+/// folded hunk's counts.
 public enum DiffDisplayRow: Equatable, Sendable {
     case line(Int)
     case fold
+    case hunk(additions: Int, deletions: Int)
 }
 
 /// A unified or combined diff, read row by row. Hunk headers decide what a row means: inside

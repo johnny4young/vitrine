@@ -104,6 +104,15 @@ public struct SnapshotConfig: Equatable {
     /// Tint the words that changed inside paired removed and added lines. Off by default.
     public var diffWordMarks: Bool = false
 
+    /// The 1-based hunks a diff shows; the others fold to one row of counts. `nil` shows
+    /// every hunk (the default). Positions, not header text, so a refreshed patch whose line
+    /// numbers shifted keeps its choice.
+    public var diffHunks: [Int]?
+
+    /// The file lines a diff's gutter numbers, or `nil` for the patch's own rows (the
+    /// default). Never `.hidden`: no numbers is `showLineNumbers = false`.
+    public var diffLineNumbers: DiffLineNumbers?
+
     /// Freeform marks drawn over the snapshot — arrows, text callouts, and
     /// blur/redaction boxes. Empty by default, so the default render and
     /// every golden are unchanged until the user adds one. Stored in normalized
@@ -212,8 +221,37 @@ public struct SnapshotConfig: Equatable {
     /// as a single `Text`, so the default render is byte-for-byte unchanged.
     public var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
-            || diffDecorations || (diffOptionsApply && diffContextLines != nil)
+            || diffDecorations
+            || (diffOptionsApply && (diffContextLines != nil || diffHunks != nil))
             || diffUsesSplitView || diffUsesWordMarks
+    }
+
+    /// The file numbering the gutter draws, when it draws one for a diff.
+    public var diffFileNumbering: DiffLineNumbers? {
+        guard diffOptionsApply, showLineNumbers, diffLineNumbers != .hidden else { return nil }
+        return diffLineNumbers
+    }
+
+    /// The numbering the inspector shows as picked: `.hidden` without a gutter, and `nil`
+    /// while the unified layout numbers patch rows, which none of its choices names.
+    public var diffLineNumberChoice: DiffLineNumbers? {
+        guard showLineNumbers else { return .hidden }
+        return diffFileNumbering ?? (diffView == .split ? .both : nil)
+    }
+
+    public mutating func chooseDiffLineNumbers(_ choice: DiffLineNumbers) {
+        showLineNumbers = choice != .hidden
+        if choice != .hidden { diffLineNumbers = choice }
+    }
+
+    /// The diff rows to draw after the context and hunk folds, or `nil` for every row.
+    public func diffDisplayRows(of diff: DiffDocument) -> [DiffDisplayRow]? {
+        guard diffContextLines != nil || diffHunks != nil else { return nil }
+        let rows =
+            diffContextLines.map {
+                diff.displayRows(contextLines: $0, keeping: highlightedLineRanges)
+            } ?? diff.rowKinds.indices.map { .line($0 + 1) }
+        return diffHunks.map { diff.foldingHunks(rows, keeping: $0) } ?? rows
     }
 
     public var diffUsesSplitView: Bool { diffOptionsApply && diffView == .split }
@@ -232,6 +270,7 @@ public struct SnapshotConfig: Equatable {
     public var diffDocument: DiffDocument? {
         guard diffOptionsApply,
             showDiffStats || diffContextLines != nil || diffView == .split || diffWordMarks
+                || diffHunks != nil || diffFileNumbering != nil
         else { return nil }
         return DiffDocument(source: code)
     }

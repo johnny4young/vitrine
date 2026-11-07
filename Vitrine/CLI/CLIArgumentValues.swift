@@ -39,6 +39,28 @@ extension CLIArgumentParser {
         return value
     }
 
+    /// A comma-separated list of 1-based hunk positions, such as `1,3`.
+    func resolveDiffHunks(_ raw: String, flag: String) throws -> [Int] {
+        var hunks: [Int] = []
+        for part in raw.split(separator: ",", omittingEmptySubsequences: false) {
+            guard let value = Int(part.trimmingCharacters(in: .whitespaces)),
+                SettingsDefaults.diffHunkRange.contains(value)
+            else { throw CLIError.invalidValue(flag: flag, value: raw) }
+            hunks.append(value)
+        }
+        guard let normalized = SettingsDefaults.normalizeDiffHunks(hunks) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return normalized
+    }
+
+    func resolveDiffLineNumbers(_ raw: String, flag: String) throws -> DiffLineNumbers {
+        guard let value = DiffLineNumbers(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     func resolveDiffView(_ raw: String, flag: String) throws -> DiffViewMode {
         guard let value = DiffViewMode(rawValue: raw.lowercased()) else {
             throw CLIError.invalidValue(flag: flag, value: raw)

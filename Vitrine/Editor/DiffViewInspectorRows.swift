@@ -2,8 +2,8 @@ import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
-/// The inspector rows that shape a diff: its layout, word marks, stats header and how much
-/// context it keeps. Shown only for content that reads as a diff.
+/// The inspector rows that shape a diff: its layout, word marks, stats header, context,
+/// numbering and hunks. Shown only for content that reads as a diff.
 struct DiffViewInspectorRows: View {
     @Bindable var settings: AppSettings
 
@@ -56,6 +56,26 @@ struct DiffViewInspectorRows: View {
                         .frame(width: 36, alignment: .trailing)
                 }
             }
+            InspectorRow(label: Text("Numbering")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (DiffLineNumbers?.some(.old), Text("Old")),
+                        (.some(.new), Text("New")),
+                        (.some(.both), Text("Both")),
+                        (.some(.hidden), Text("None")),
+                    ],
+                    selection: settings.diffLineNumbersSelection,
+                    optionIdentifiers: [
+                        "diff-line-numbers-old", "diff-line-numbers-new", "diff-line-numbers-both",
+                        "diff-line-numbers-none",
+                    ]
+                )
+                .disabled(settings.style.diffLayoutIsLocked)
+                .opacity(settings.style.diffLayoutIsLocked ? 0.5 : 1)
+                .accessibilityLabel("Numbering")
+                .accessibilityIdentifier("diff-line-numbers-picker")
+            }
+            DiffHunkPicker(settings: settings)
             if settings.style.diffLayoutIsLocked {
                 Text("Locked while a blur box is on the canvas.")
                     .font(.system(size: VitrineTokens.FontSize.caption))
@@ -68,5 +88,56 @@ struct DiffViewInspectorRows: View {
     private var contextValue: Text {
         guard let lines = settings.style.diffContextLines else { return Text("All") }
         return Text(verbatim: "\(lines)")
+    }
+}
+
+/// One checkbox per hunk; an unchecked hunk folds to its counts on the card. Its own view
+/// because it reads the document text, so a keystroke redraws only this list.
+private struct DiffHunkPicker: View {
+    @Bindable var settings: AppSettings
+
+    var body: some View {
+        let code = settings.documentCode
+        let hunks = DiffDocument(source: code).hunks
+        if hunks.count > 1 {
+            let lines = code.split(
+                omittingEmptySubsequences: false, whereSeparator: { $0 == "\n" || $0 == "\r\n" })
+            let shownCount = (1...hunks.count).count(where: {
+                settings.style.diffHunks?.contains($0) ?? true
+            })
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Hunks")
+                    .font(.system(size: VitrineTokens.FontSize.body))
+                    .foregroundStyle(VitrineTokens.Text.primary)
+                ForEach(Array(hunks.enumerated()), id: \.offset) { offset, hunk in
+                    let header =
+                        lines.indices.contains(hunk.rows.lowerBound - 1)
+                        ? String(lines[hunk.rows.lowerBound - 1]) : ""
+                    let shown = settings.diffHunkShown(offset + 1, of: hunks.count)
+                    HStack(spacing: 6) {
+                        Toggle(isOn: shown) {
+                            Text(verbatim: header)
+                                .foregroundStyle(VitrineTokens.Text.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        }
+                        .toggleStyle(.checkbox)
+                        .disabled(
+                            settings.style.diffLayoutIsLocked
+                                || (shown.wrappedValue && shownCount == 1)
+                        )
+                        .accessibilityIdentifier("diff-hunk-toggle-\(offset + 1)")
+                        Spacer(minLength: 0)
+                        Text(verbatim: "+\(hunk.additions)")
+                            .foregroundStyle(Color(nsColor: .systemGreen))
+                        Text(verbatim: "−\(hunk.deletions)")
+                            .foregroundStyle(Color(nsColor: .systemRed))
+                    }
+                    .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("diff-hunk-picker")
+        }
     }
 }

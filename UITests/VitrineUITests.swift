@@ -648,6 +648,42 @@ final class VitrineUITests: XCTestCase {
         XCTAssertFalse(element("diff-stats-toggle", in: app).isEnabled)
         XCTAssertFalse(element("diff-view-split", in: app).isEnabled)
         XCTAssertFalse(element("diff-word-marks-toggle", in: app).isEnabled)
+        XCTAssertFalse(element("diff-line-numbers-old", in: app).isEnabled)
+    }
+
+    @MainActor
+    func testInspectorPicksDiffHunksAndNumbering() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--demo-showcase", "--demo-diff-hunks"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+        for _ in 0..<5 where !waitForHittableElement("diff-hunk-toggle-2", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+
+        assertExists(element("diff-line-numbers-picker", in: app), in: app)
+        let old = element("diff-line-numbers-old", in: app)
+        assertExists(old, in: app)
+        old.click()
+        XCTAssertTrue(old.wait(for: \.isSelected, toEqual: true, timeout: 3))
+
+        assertExists(element("diff-hunk-picker", in: app), in: app)
+        let first = element("diff-hunk-toggle-1", in: app)
+        let second = element("diff-hunk-toggle-2", in: app)
+        assertExists(first, in: app)
+        XCTAssertTrue(first.isEnabled)
+        second.click()
+        // The first hunk is now the only one shown, so it cannot be unchecked.
+        XCTAssertTrue(first.wait(for: \.isEnabled, toEqual: false, timeout: 3))
     }
 
     @MainActor

@@ -817,6 +817,33 @@ extension AppSettings {
         )
     }
 
+    var diffLineNumbersSelection: Binding<DiffLineNumbers?> {
+        Binding(
+            get: { self.style.diffLineNumberChoice },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked, let value else { return }
+                self.style.chooseDiffLineNumbers(value)
+            }
+        )
+    }
+
+    /// Whether hunk `position` of `count` shows. Checking every hunk again clears the pick.
+    func diffHunkShown(_ position: Int, of count: Int) -> Binding<Bool> {
+        Binding(
+            get: { self.style.diffHunks?.contains(position) ?? true },
+            set: { shown in
+                guard !self.style.diffLayoutIsLocked, count > 0 else { return }
+                var kept = Set(self.style.diffHunks ?? Array(1...count))
+                if shown { kept.insert(position) } else { kept.remove(position) }
+                // One hunk always shows, so the card never folds to counts alone.
+                guard !kept.isDisjoint(with: 1...count) else { return }
+                self.style.diffHunks =
+                    Set(1...count).isSubset(of: kept)
+                    ? nil : SettingsDefaults.normalizeDiffHunks(Array(kept))
+            }
+        )
+    }
+
     /// The context-lines slider's stops: each count, then one past the range for "All".
     static var diffContextSliderRange: ClosedRange<Double> {
         let range = SettingsDefaults.diffContextLinesRange

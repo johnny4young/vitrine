@@ -115,6 +115,8 @@ struct EditorWindowStateTests {
         config.diffContextLines = 2
         config.diffView = .split
         config.diffWordMarks = true
+        config.diffHunks = [1, 3]
+        config.diffLineNumbers = .old
         config.annotations = [
             Annotation(
                 kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),
@@ -179,6 +181,8 @@ struct EditorWindowStateTests {
         #expect(restored.diffContextLines == original.diffContextLines)
         #expect(restored.diffView == original.diffView)
         #expect(restored.diffWordMarks == original.diffWordMarks)
+        #expect(restored.diffHunks == original.diffHunks)
+        #expect(restored.diffLineNumbers == original.diffLineNumbers)
         #expect(restored.annotations == original.annotations)
         #expect(restored.codeSteps == original.codeSteps)
         #expect(restored.activeCodeStep == original.activeCodeStep)

@@ -375,10 +375,9 @@ public struct SnapshotCanvas: View, Equatable {
     @ViewBuilder
     private func codeRows(diff: DiffDocument?) -> some View {
         if config.usesLineRows {
-            let displayRows = config.diffContextLines.flatMap {
-                diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
-            }
+            let displayRows = diff.flatMap(config.diffDisplayRows(of:))
             let rows = highlightedCodeLines
+            let gutter = unifiedDiffGutter(diff: diff)
             let lines = CodeLinesView(
                 rows: rows,
                 displayRows: displayRows,
@@ -395,7 +394,9 @@ public struct SnapshotCanvas: View, Equatable {
                 highlightColor: HighlightManager.shared.lineHighlightColor(for: config.theme),
                 dimsUnfocused: config.focusHighlightedLines,
                 diffDecorations: config.diffDecorations,
-                wordMarks: wordMarks(rows: rows, diff: diff)
+                wordMarks: wordMarks(rows: rows, diff: diff),
+                gutterLabels: gutter?.labels,
+                gutterColumns: gutter?.columns
             )
             // An empty capture's placeholder is not a diff, so it shows once, full width.
             if config.diffUsesSplitView, !config.code.isEmpty, let diff {
@@ -404,7 +405,8 @@ public struct SnapshotCanvas: View, Equatable {
                     rows: diff.splitRows(
                         displayRows ?? diff.rowKinds.indices.map { .line($0 + 1) },
                         firstLineNumber: config.firstLineNumber,
-                        redacting: config.redactedLineRanges)
+                        redacting: config.redactedLineRanges),
+                    numbering: config.diffFileNumbering
                 )
                 .textSelection(.enabled)
             } else {
@@ -429,6 +431,16 @@ public struct SnapshotCanvas: View, Equatable {
                     Text(verbatim: String(code.characters))
                 }
         }
+    }
+
+    /// File line numbers for a unified diff, when the numbering asks for them.
+    private func unifiedDiffGutter(diff: DiffDocument?) -> (labels: [String], columns: Int)? {
+        guard let numbering = config.diffFileNumbering, !config.diffUsesSplitView,
+            !config.code.isEmpty, let diff
+        else { return nil }
+        return diff.gutterLabels(
+            numbering, firstLineNumber: config.firstLineNumber,
+            redacting: config.redactedLineRanges)
     }
 
     /// Computed from the drawn rows, so the offsets match their characters, and cached so

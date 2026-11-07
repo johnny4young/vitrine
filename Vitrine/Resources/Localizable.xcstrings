@@ -1,6 +1,61 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Numbering" : {
+      "comment" : "Editor lines: picker for which file lines a diff's gutter numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Numeración"
+          }
+        }
+      }
+    },
+    "Old" : {
+      "comment" : "Editor lines: diff numbering option, the old file's line numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anterior"
+          }
+        }
+      }
+    },
+    "New" : {
+      "comment" : "Editor lines: diff numbering option, the new file's line numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nuevo"
+          }
+        }
+      }
+    },
+    "Both" : {
+      "comment" : "Editor lines: diff numbering option, the old and new file's line numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambos"
+          }
+        }
+      }
+    },
+    "Hunks" : {
+      "comment" : "Editor lines: list of a diff's hunks, each with a checkbox that shows or folds it.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloques"
+          }
+        }
+      }
+    },
     "Word marks" : {
       "comment" : "Editor lines: switch that tints the changed words inside paired diff lines.",
       "localizations" : {

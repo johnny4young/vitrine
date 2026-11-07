@@ -226,6 +226,10 @@ import VitrineRendering
                 demo.showDiffStats = true
                 if arguments.contains("--demo-diff-split") { demo.diffView = .split }
                 if arguments.contains("--demo-diff-word-marks") { demo.diffWordMarks = true }
+                if arguments.contains("--demo-diff-hunks") {
+                    demo.code +=
+                        "\n@@ -20,3 +21,3 @@\n struct Greeter {\n-    let name = \"World\"\n+    let name = \"Vitrine\"\n }"
+                }
                 if arguments.contains("--demo-diff-blur") {
                     demo.annotations = [
                         Annotation(

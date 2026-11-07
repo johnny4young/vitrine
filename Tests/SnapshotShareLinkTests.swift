@@ -30,6 +30,8 @@ struct SnapshotShareLinkTests {
         config.showDiffStats = true
         config.diffContextLines = 2
         config.diffWordMarks = true
+        config.diffHunks = [2]
+        config.diffLineNumbers = .new
         config.terminalColumns = 96
         config.annotations = [
             Annotation(kind: .arrow, start: CGPoint(x: 0.1, y: 0.2), end: CGPoint(x: 0.6, y: 0.5))
@@ -71,6 +73,8 @@ struct SnapshotShareLinkTests {
         #expect(target.showDiffStats == source.showDiffStats)
         #expect(target.diffContextLines == source.diffContextLines)
         #expect(target.diffWordMarks == source.diffWordMarks)
+        #expect(target.diffHunks == source.diffHunks)
+        #expect(target.diffLineNumbers == source.diffLineNumbers)
         #expect(target.terminalColumns == source.terminalColumns)
         #expect(target.annotations == source.annotations)
     }

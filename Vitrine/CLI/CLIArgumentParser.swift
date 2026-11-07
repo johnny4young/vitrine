@@ -76,6 +76,8 @@ struct CLIArgumentParser {
     var diffContextLines: Int?
     var diffView: DiffViewMode?
     var diffWordMarks: Bool?
+    var diffHunks: [Int]?
+    var diffLineNumbers: DiffLineNumbers?
     var recursiveBatch = false
     var failOnSkipped = false
     var failOnEmpty = false
@@ -355,6 +357,10 @@ struct CLIArgumentParser {
             diffView = try resolveDiffView(value, flag: token)
         case .diffWordMarks:
             diffWordMarks = token == "--diff-word-marks"
+        case .diffHunks:
+            diffHunks = try resolveDiffHunks(value, flag: token)
+        case .diffLineNumbers:
+            diffLineNumbers = try resolveDiffLineNumbers(value, flag: token)
         case .recursive:
             recursiveBatch = true
         case .failOnSkipped:

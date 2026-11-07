@@ -104,6 +104,8 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case diffContext
     case diffView
     case diffWordMarks
+    case diffHunks
+    case diffLineNumbers
     case recursive
     case failOnSkipped
     case failOnEmpty
@@ -538,6 +540,13 @@ nonisolated enum CLIArgumentSchema {
             .diffWordMarks, ["--diff-word-marks", "--no-diff-word-marks"], .flag,
             synopsis: "--diff-word-marks / --no-diff-word-marks",
             description: "Mark or unmark the changed words inside paired diff lines."),
+        definition(
+            .diffHunks, ["--diff-hunks"], .value("list"), synopsis: "--diff-hunks <1,3,...>",
+            description: "Show only these diff hunks; the others fold to their +/- counts."),
+        definition(
+            .diffLineNumbers, ["--diff-line-numbers"], .value("old|new|both|none"),
+            synopsis: "--diff-line-numbers <old|new|both|none>",
+            description: "Number a diff by its old or new file lines, both, or not at all."),
         definition(
             .recursive, ["--recursive"], .flag, synopsis: "--recursive",
             description: "Batch only: include nested folders and preserve relative output paths.",
