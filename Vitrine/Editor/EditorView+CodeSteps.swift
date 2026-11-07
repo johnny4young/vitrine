@@ -143,7 +143,8 @@ extension EditorView {
             TokenSegmentedPicker(
                 options: steps.map { (value: $0, label: Text(verbatim: "\($0 + 1)")) },
                 selection: Binding(
-                    get: { settings.style.activeCodeStep ?? -1 }, set: showCodeStep),
+                    // A closure, not the method itself: Xcode 26.6 crashes building that thunk.
+                    get: { settings.style.activeCodeStep ?? -1 }, set: { showCodeStep($0) }),
                 optionIdentifiers: steps.map { "code-step-\($0 + 1)" }
             )
             .accessibilityLabel("Code Steps")
