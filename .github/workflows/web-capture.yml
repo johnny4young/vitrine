@@ -12,7 +12,7 @@ on:
       - 'Vitrine/Settings/WebCaptureSettings.swift'
       - 'Tests/URLRenderer/**'
       - 'Tests/WebSessionAvailabilityTests.swift'
-      - 'UITests/VitrineUITests.swift'
+      - 'UITests/WebSignInUITests.swift'
       - 'scripts/*web-capture*'
       - 'project.yml'
       - 'Makefile'
@@ -66,7 +66,7 @@ jobs:
           xcodebuild -project Vitrine.xcodeproj -scheme VitrineUITests \
             -configuration Debug -destination 'platform=macOS' \
             VITRINE_REQUIRE_DIRECT_WEB_SESSION=1 \
-            -only-testing:VitrineUITests/VitrineUITests/testWebSignInAffordanceRequiresExplicitSessionOptIn \
+            -only-testing:VitrineUITests/WebSignInUITests/testWebSignInAffordanceRequiresExplicitSessionOptIn \
             -resultBundlePath "$output/tests.xcresult" test > "$output/xcodebuild.log" 2>&1 || {
               tail -100 "$output/xcodebuild.log"
               exit 1

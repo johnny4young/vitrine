@@ -30,7 +30,7 @@ EXPECTED = {
 }
 PREFIX = "WebCaptureIntegrationTests/"
 DIRECT_ENTITLEMENTS = "Vitrine/Resources/Vitrine.DirectDownload.entitlements"
-DIRECT_UI_CASE = "VitrineUITests/testWebSignInAffordanceRequiresExplicitSessionOptIn()"
+DIRECT_UI_CASE = "WebSignInUITests/testWebSignInAffordanceRequiresExplicitSessionOptIn()"
 
 
 def validate(payload):

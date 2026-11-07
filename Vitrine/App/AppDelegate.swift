@@ -173,6 +173,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             && environment["XCTestConfigurationFilePath"] == nil
     }
 
+    /// Whether launch warms the highlighter: only when a global hotkey is set to quick
+    /// capture, the one path that renders before the user has opened anything.
+    static func prewarmsHighlighter(
+        shortcut: KeyboardShortcuts.Shortcut?, action: HotkeyAction
+    ) -> Bool {
+        shortcut != nil && action == .quickCapture
+    }
+
     /// Chooses the status-item owner without leaking helper processes into tests.
     /// Unit tests exercise `StatusItemController` explicitly, while UI tests keep the
     /// item in-process so XCUIAutomation can reach it through the launched app.
@@ -328,11 +336,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task(priority: .utility) { SoftwareUpdater.startBackgroundScheduler() }
         }
 
-        // Pay the syntax highlighter's one-time cold start now, off the render path, so
-        // a user whose first interaction is a quick capture doesn't eat the
-        // JavaScriptCore + theme-CSS warm-up inside the "instant" gesture. Low priority
-        // so it never contends with the menu bar coming up or a hotkey already firing.
-        Task(priority: .utility) { HighlightManager.shared.prewarm() }
+        // A quick-capture hotkey can render before any window has, so pay the syntax
+        // highlighter's JavaScriptCore cold start now when one is set. Without it the
+        // engine stays unloaded, about 16 MB at rest, until the first render needs it.
+        if Self.prewarmsHighlighter(
+            shortcut: KeyboardShortcuts.getShortcut(for: .quickCapture),
+            action: environment.appSettings.hotkeyAction)
+        {
+            Task(priority: .utility) { HighlightManager.shared.prewarm() }
+        }
 
         // Decode the persisted background and foreground before anything draws them. The
         // canvas resolves an image reference synchronously inside its `body` — it has to,

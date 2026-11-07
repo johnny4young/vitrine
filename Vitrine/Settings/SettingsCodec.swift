@@ -19,6 +19,7 @@ enum SettingsCodec {
         static let languageID = "languageID"
         static let fontSize = "fontSize"
         static let padding = "padding"
+        static let paddingMode = "paddingMode"
         static let cornerRadius = "cornerRadius"
         /// The drop-shadow blur radius ("Shadow depth" in the inspector). Added late:
         /// the slider shipped without a codec key, so the value silently reset to the
@@ -37,6 +38,7 @@ enum SettingsCodec {
         static let diffDecorations = "diffDecorations"
         static let showDiffStats = "showDiffStats"
         static let diffContextLines = "diffContextLines"
+        static let diffView = "diffView"
         /// Snapshot annotations, stored as a JSON-encoded `[Annotation]`.
         /// Part of the document/style, so it seeds new editor windows.
         static let annotations = "annotations"
@@ -115,11 +117,12 @@ enum SettingsCodec {
         /// store without an app reinstall. The schema version key is reset by
         /// the migration step that runs afterward.
         static let all = [
-            themeID, languageID, fontSize, padding, cornerRadius, shadowRadius, showChrome,
+            themeID, languageID, fontSize, padding, paddingMode, cornerRadius, shadowRadius,
+            showChrome,
             windowTitle,
             showShadow, showLineNumbers, wrapColumns, terminalPalette, terminalCursor,
             highlightedLines, focusHighlightedLines,
-            diffDecorations, showDiffStats, diffContextLines, annotations, metadata,
+            diffDecorations, showDiffStats, diffContextLines, diffView, annotations, metadata,
             gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, showsCopyPreview,
             exportScale, exportFormat,
@@ -171,6 +174,11 @@ enum SettingsCodec {
         if let value = defaults.object(forKey: Keys.padding) as? Double {
             config.padding = SettingsDefaults.clampPadding(value)
         }
+        if let value = defaults.string(forKey: Keys.paddingMode).flatMap(
+            PaddingMode.init(rawValue:))
+        {
+            config.paddingMode = value
+        }
         if let value = defaults.object(forKey: Keys.cornerRadius) as? Double {
             config.cornerRadius = SettingsDefaults.clampCornerRadius(value)
         }
@@ -217,6 +225,10 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.diffContextLines) as? Int {
             config.diffContextLines = SettingsDefaults.clampDiffContextLines(value)
+        }
+        if let raw = defaults.string(forKey: Keys.diffView), let view = DiffViewMode(rawValue: raw)
+        {
+            config.diffView = view
         }
         // Highlighted lines persist as the canonical spec string ("3, 7-9"); a
         // missing or malformed value parses to no highlight rather than trapping.
@@ -321,6 +333,7 @@ enum SettingsCodec {
         defaults.set(config.fontLigatures, forKey: Keys.fontLigatures)
         defaults.set(config.fontSize, forKey: Keys.fontSize)
         defaults.set(config.padding, forKey: Keys.padding)
+        defaults.set(config.paddingMode.rawValue, forKey: Keys.paddingMode)
         defaults.set(config.cornerRadius, forKey: Keys.cornerRadius)
         defaults.set(config.shadowRadius, forKey: Keys.shadowRadius)
         defaults.set(config.showChrome, forKey: Keys.showChrome)
@@ -344,6 +357,7 @@ enum SettingsCodec {
         } else {
             defaults.removeObject(forKey: Keys.diffContextLines)
         }
+        defaults.set(config.diffView.rawValue, forKey: Keys.diffView)
         defaults.set(
             LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
         // `redactedLineRanges` is deliberately NOT persisted here: redactions hide secrets

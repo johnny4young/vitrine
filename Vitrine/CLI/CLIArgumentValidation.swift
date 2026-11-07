@@ -194,6 +194,26 @@ extension CLIArgumentParser {
         if gitDiffSource != nil, imageInputPath != nil {
             throw CLIError.incompatibleOptions("Cannot combine a Git diff source with --image.")
         }
+        if sourceLines != nil {
+            if mode == .batch || gitDiffSource != nil || openInEditor {
+                throw CLIError.incompatibleOptions(
+                    "--lines needs one source file or --stdin, and an image output.")
+            }
+            if languageID == Language.terminal.rawValue {
+                throw CLIError.incompatibleOptions("--lines does not apply to terminal output.")
+            }
+            // Tidying moves lines, so the gutter and redacted rows would no longer match the file.
+            if formatCode {
+                throw CLIError.incompatibleOptions("Cannot combine --lines with --format-code.")
+            }
+            if let span = sourceLines,
+                let outside = redactedLineRanges?.first(where: { !$0.overlaps(span) })
+            {
+                throw CLIError.incompatibleOptions(
+                    "--redact-lines \(outside.lowerBound)-\(outside.upperBound) is outside --lines "
+                        + "\(span.lowerBound)-\(span.upperBound); use file line numbers.")
+            }
+        }
         if gitDiffSource != nil, !openInEditor, diffDecorations == nil {
             diffDecorations = true
         }
@@ -208,7 +228,7 @@ extension CLIArgumentParser {
             recipe != nil || stylePresetID != nil || canvasSize != nil || background != nil
             || backgroundImagePath != nil || transparent || fontName != nil
             || fontLigatures != nil
-            || fontSize != nil || padding != nil
+            || fontSize != nil || padding != nil || paddingMode != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
             || watermarkContentRequested
@@ -216,7 +236,7 @@ extension CLIArgumentParser {
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
-            || showDiffStats != nil || diffContextLines != nil
+            || showDiffStats != nil || diffContextLines != nil || diffView != nil
 
         // A blur box is placed on the whole canvas, so a crop would slide content out from under it.
         if terminalCrop != nil, !annotations.blurBoxes.points.isEmpty {
@@ -241,8 +261,8 @@ extension CLIArgumentParser {
                 || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
                 || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
-                || showDiffStats != nil || diffContextLines != nil
-                || textSidecar || markdownSidecar || htmlSidecar
+                || showDiffStats != nil || diffContextLines != nil || diffView != nil
+                || textSidecar || markdownSidecar || htmlSidecar || sourceLines != nil
             if codeOnlyOptionsRequested {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --image with code-only or sidecar options.")
@@ -371,6 +391,11 @@ extension CLIArgumentParser {
             resolvedOutput = outputPath
         }
 
+        if paddingMode == .balanced, !annotations.blurBoxes.points.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --padding-mode balanced with --blur-box.")
+        }
+
         let resolvedFormat = try resolveFormat(
             explicitFormat, fallback: recipe?.output.format, command: mode,
             outputPath: resolvedOutput)
@@ -408,6 +433,7 @@ extension CLIArgumentParser {
             fontLigatures: fontLigatures,
             fontSize: fontSize,
             padding: padding,
+            paddingMode: paddingMode,
             cornerRadius: cornerRadius,
             shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,
@@ -455,6 +481,9 @@ extension CLIArgumentParser {
             altText: altText,
             showLanguageBadge: resolvedLanguageBadge,
             showLineNumbers: showLineNumbers,
+            sourceLines: sourceLines,
+            sourceTitle: sourceLines != nil && !readStdin
+                ? inputPath.map(CLISourceOrigin.windowTitle(forFile:)) : nil,
             showChrome: showChrome,
             showShadow: showShadow,
             highlightedLineRanges: highlightedLineRanges,
@@ -464,6 +493,7 @@ extension CLIArgumentParser {
             diffDecorations: diffDecorations,
             showDiffStats: showDiffStats,
             diffContextLines: diffContextLines,
+            diffView: diffView,
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             failOnEmpty: failOnEmpty,

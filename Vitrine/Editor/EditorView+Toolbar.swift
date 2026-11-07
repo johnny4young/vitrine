@@ -346,7 +346,7 @@ extension EditorView {
     }
 
     /// The carousel export entry: split a long snippet into numbered
-    /// 4:5 slides for a LinkedIn/Instagram carousel. Same PRO gate as multi-size —
+    /// slides for a carousel post. Same PRO gate as multi-size —
     /// it is the same batch-export family.
     var carouselExportButton: some View {
         GlassIconButton(systemImage: "rectangle.stack", action: presentCarouselExport)
@@ -381,7 +381,7 @@ extension EditorView {
 
     private var carouselHelp: LocalizedStringKey {
         Self.carouselRule(for: settings.style)
-            ?? "Split the snippet into numbered carousel slides (4:5)"
+            ?? "Split the snippet into numbered carousel slides"
     }
 
     /// With PRO, a refused capture still opens the sheet, which says why. Without it the button

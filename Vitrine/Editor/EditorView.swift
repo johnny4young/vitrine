@@ -345,6 +345,14 @@ struct EditorView: View {
                     {
                         presentCarouselExport()
                     }
+                    if ProcessInfo.processInfo.arguments.contains("--demo-magic-background") {
+                        let settings = settings
+                        session.magicBackground.request(
+                            advancing: false, current: settings.style.background,
+                            input: { MagicBackgroundModel.Input(settings) },
+                            derive: { await MagicBackground.gradients(for: settings.config) },
+                            apply: { settings.style.background = .customGradient($0) })
+                    }
                     if ProcessInfo.processInfo.arguments.contains("--demo-recipe-bar") {
                         var baseline = settings.style
                         baseline.showLineNumbers.toggle()

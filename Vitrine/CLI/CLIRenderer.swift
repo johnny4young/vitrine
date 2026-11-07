@@ -70,10 +70,7 @@ enum CLIRenderer {
 
         switch options.inputKind {
         case .code:
-            let loaded = try loadInput(options, fileLoader: fileLoader)
-            // An explicit `--language` overrides the inferred one; otherwise the loader's
-            // extension/content inference wins, exactly as the editor does.
-            let language = options.language ?? loaded.language
+            let (loaded, language) = try loadCode(options, fileLoader: fileLoader)
             var config = options.makeConfig(
                 code: loaded.text, language: language,
                 backgroundImageReference: background.reference,
@@ -104,8 +101,7 @@ enum CLIRenderer {
         let background = try CLIRenderResources.prepareBackground(options)
         defer { background.removeTemporaryFiles() }
         let watermarkLogo = try CLIRenderResources.prepareWatermarkLogo(options)
-        let loaded = try loadInput(options, fileLoader: fileLoader)
-        let language = options.language ?? loaded.language
+        let (loaded, language) = try loadCode(options, fileLoader: fileLoader)
 
         let requestedIDs =
             options.multiSizePresetIDs.isEmpty
@@ -385,6 +381,20 @@ enum CLIRenderer {
         try CLIBatchRenderer.run(
             options, fileLoader: fileLoader, directoryLister: directoryLister)
     }
+    /// Loads code input and applies `--lines`. An explicit `--language` overrides the
+    /// inferred one; otherwise the loader's inference wins, exactly as the editor does.
+    private static func loadCode(
+        _ options: CLIOptions,
+        fileLoader: (URL) throws -> FileInputLoader.LoadedFile
+    ) throws -> (FileInputLoader.LoadedFile, Language) {
+        let loaded = try loadInput(options, fileLoader: fileLoader)
+        let language = options.language ?? loaded.language
+        if options.sourceLines != nil, language == .terminal {
+            throw CLIError.incompatibleOptions("--lines does not apply to terminal output.")
+        }
+        return (try CLISourceLines.slice(loaded, to: options.sourceLines), language)
+    }
+
     /// Loads a generated Git diff, stdin, or an input file and translates every
     /// low-level failure into the matching stable `CLIError`.
     private static func loadInput(
