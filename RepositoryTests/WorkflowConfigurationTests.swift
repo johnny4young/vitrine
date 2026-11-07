@@ -5,7 +5,7 @@ import Testing
 ///
 /// These tests assert that the committed GitHub Actions workflows, the `Makefile`,
 /// and `docs/RELEASING.md` retain the repository's release requirements,
-/// so a future edit that drops the weekly drift job, the release gate, the toolchain
+/// so a future edit that drops the nightly full run, the release gate, the toolchain
 /// logging, the SPM cache, the `.xcresult` upload, or the UI-test policy fails the
 /// unit suite rather than silently weakening CI.
 ///
@@ -346,15 +346,24 @@ struct WorkflowConfigurationTests {
         #expect(changes.contains("--event pull_request --base HEAD^1"))
         #expect(changes.contains("fetch-depth: 2"))
         // A failed or missing classification runs the gates instead of skipping them.
-        for name in ["build", "ui-test", "visual-tour"] {
+        let failOpen =
+            "!cancelled() && needs.changes.outputs.app != 'false' && needs.reuse.outputs.reuse != 'true'"
+        let conditions = [
+            "build": "",
+            "ui-test":
+                " && (github.event_name != 'push' || needs.reuse.outputs.version_bump != 'false')",
+            "visual-tour":
+                " && ((github.event_name == 'pull_request' && needs.changes.outputs.visual != 'false')"
+                + " || (github.event_name == 'push' && needs.reuse.outputs.version_bump != 'false')"
+                + " || (github.event_name != 'pull_request' && github.event_name != 'push'))",
+        ]
+        for (name, extra) in conditions {
             let job = try Self.job(name, in: ci)
             #expect(
                 job.contains("needs: [changes, reuse]"),
                 "\(name) must wait for the classification")
             #expect(
-                job.contains(
-                    "if: ${{ !cancelled() && needs.changes.outputs.app != 'false' && needs.reuse.outputs.reuse != 'true' }}"
-                ), "\(name) must fail open")
+                job.contains("\n    if: ${{ \(failOpen)\(extra) }}\n"), "\(name) must fail open")
         }
         // App, CLI and repository suites all read documentation, so every unit suite runs.
         let docs = try Self.job("docs-checks", in: ci)
@@ -423,8 +432,9 @@ struct WorkflowConfigurationTests {
         let required = Set(
             try reuse.matches(of: Regex(#"--required "([^"]+)""#))
                 .compactMap { $0.output[1].substring }.map(String.init))
-        let defined = try Self.ciCheckNames()
-        #expect(required == defined, "reuse must require ci.yml's checks")
+        // A push runs only these unless it bumps the version, so they are what it can reuse.
+        #expect(required == ["Static checks (Linux)", "Build & test · Tahoe 26"])
+        #expect(required.isSubset(of: try Self.ciCheckNames()))
 
         let script = try Self.text("scripts", "ci-reuse-pr-evidence.py")
         #expect(script.contains(#"ALWAYS_FULL = ("project.yml",)"#))
@@ -717,12 +727,14 @@ struct WorkflowConfigurationTests {
         #expect(!lane.contains("test-without-building"))
     }
 
-    // MARK: - Contract: weekly scheduled drift job
+    // MARK: - Contract: a nightly run covers what pull requests and pushes skip
 
-    @Test func ciHasAWeeklyScheduledDriftJob() throws {
+    /// Pull requests run a UI selection and skip the visual tour unless they touch it, and a
+    /// push runs both only for a version bump, so a daily scheduled run executes everything
+    /// and its result reaches one tracking issue.
+    @Test func ciRunsEverythingNightlyAndReportsTheResult() throws {
         let ci = try Self.ci()
         #expect(ci.contains("schedule:"), "CI must declare a schedule trigger")
-        // A weekly cron: 5 fields, day-of-week constrained (the 5th field is not "*").
         let cronLine = try #require(
             ci.components(separatedBy: .newlines).first { $0.contains("cron:") },
             "CI schedule must specify a cron expression")
@@ -732,8 +744,76 @@ struct WorkflowConfigurationTests {
         let fields = quoted.split(separator: " ").map(String.init)
         #expect(fields.count == 5, "cron must have five fields, got: \(quoted)")
         #expect(
-            fields.last != "*",
-            "a weekly drift job must constrain the day-of-week field, got: \(quoted)")
+            fields[2] == "*" && fields[3] == "*" && fields[4] == "*",
+            "the full run must happen every day, got: \(quoted)")
+
+        let report = try Self.text(".github", "workflows", "nightly-report.yml")
+        #expect(report.contains("workflow_run:") && report.contains("workflows: [CI]"))
+        #expect(report.contains("github.event.workflow_run.event == 'schedule'"))
+        #expect(report.contains("issues: write"))
+        #expect(
+            report.contains("group: nightly-report-${{ github.event.workflow_run.event }}"),
+            "a pull request's report run must not displace the nightly's")
+        #expect(
+            report.contains(#"!contains(fromJSON('["skipped", "neutral", "stale"]')"#),
+            "every nightly that did not pass, including a startup failure, is reported")
+        #expect(!report.contains("actions/checkout"), "the report never runs repository code")
+        #expect(!ci.contains("issues: write"), "CI itself stays read-only")
+    }
+
+    // MARK: - Contract: pull requests run a UI selection, pushes run the build
+
+    /// A pull request runs the smoke list plus the UI tests it edits, and the visual tour only
+    /// when it touches the tour; a push runs both only for a version bump, because the release
+    /// gate reads the tagged commit's own UI and tour checks. Every doubt runs them.
+    @Test func pullRequestsRunAUISelectionAndPushesRunTheBuild() throws {
+        let ci = try Self.ci()
+        let changes = try Self.job("changes", in: ci)
+        #expect(changes.contains("scripts/select-ui-tests.py --event pull_request --base HEAD^1"))
+        #expect(changes.contains("ui_tests: ${{ steps.select.outputs.ui_tests }}"))
+        #expect(changes.contains("visual: ${{ steps.select.outputs.visual }}"))
+
+        let ui = try Self.job("ui-test", in: ci)
+        #expect(ui.contains("UI_TESTS: ${{ needs.changes.outputs.ui_tests }}"))
+        #expect(ui.contains(#"TEST_UI_ONLY="${UI_TESTS}""#))
+        #expect(ui.contains("::notice title=UI test selection::"))
+        #expect(ui.contains("needs.reuse.outputs.version_bump != 'false'"))
+        #expect(
+            ui.contains(
+                "if: ${{ needs.changes.outputs.ui_tests == '' || contains(needs.changes.outputs.ui_tests, 'DocumentationExportUITests') }}"
+            ), "a selection that includes the documentation journey still exports its evidence")
+
+        let tour = try Self.job("visual-tour", in: ci)
+        #expect(tour.contains("needs.changes.outputs.visual != 'false'"))
+        #expect(tour.contains("needs.reuse.outputs.version_bump != 'false'"))
+
+        let reuse = try Self.job("reuse", in: ci)
+        #expect(reuse.contains("version_bump: ${{ steps.bump.outputs.version_bump }}"))
+        #expect(reuse.contains("grep -qx project.yml"))
+        #expect(
+            reuse.contains(#"[ "$(git rev-parse HEAD^ 2>/dev/null)" = "${BEFORE}" ]"#),
+            "a push of several commits counts as a version bump")
+
+        let make = try Self.makefile()
+        #expect(make.contains("$(foreach t,$(TEST_UI_ONLY),'-only-testing:VitrineUITests/$(t)')"))
+        #expect(make.contains("$(TEST_UI_ONLY_FLAGS) test"))
+        #expect(
+            make.contains("select-ui-tests.py --self-test") && make.contains(" ui-selection-check ")
+        )
+
+        let selector = try Self.text("scripts", "select-ui-tests.py")
+        #expect(selector.contains(#"PURGE = "ZZDefaultsSuitePurgeUITests""#))
+        let smoke = try Self.text("UITests", "SmokeTests.txt")
+            .split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+        #expect(!smoke.isEmpty)
+        for entry in smoke {
+            let parts = entry.split(separator: "/").map(String.init)
+            #expect(parts.count == 2, "\(entry) must be Class/testMethod")
+            guard parts.count == 2 else { continue }
+            let source = try Self.text("UITests", "\(parts[0]).swift")
+            #expect(source.contains("func \(parts[1])("), "\(entry) names no UI test")
+        }
     }
 
     @Test func xcode27PreviewIsWeeklyManualAndNeverARequiredRuntimeClaim() throws {
