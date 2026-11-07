@@ -92,15 +92,11 @@ struct ComparisonBoardCaptionEditorTests {
         container.addSubview(hosting)
         window.contentView = container
         window.makeKeyAndOrderFront(nil)
-        let harness = Harness(window: window, other: other, model: model)
-        // Focus arrives asynchronously, so every step waits for its outcome instead of a fixed pause.
-        try await waitUntil { harness.fieldEditor.map { $0 !== other } ?? false }
-        return harness
+        try await settle()
+        return Harness(window: window, other: other, model: model)
     }
 
-    private func waitUntil(_ condition: () -> Bool) async throws {
-        for _ in 0..<60 where !condition() { try await Task.sleep(for: .milliseconds(50)) }
-    }
+    private func settle() async throws { try await Task.sleep(for: .milliseconds(250)) }
 
     private func waitForFieldEditor(showing text: String, in harness: Harness) async throws {
         for _ in 0..<60 where harness.fieldEditor?.string != text {
@@ -114,7 +110,7 @@ struct ComparisonBoardCaptionEditorTests {
         let model = harness.model
 
         harness.replaceText(with: "Typed for first")
-        try await waitUntil { model.labels[model.first] == "Typed for first" }
+        try await settle()
         #expect(model.labels[model.first] == "Typed for first")
 
         model.editing = model.second
@@ -126,7 +122,7 @@ struct ComparisonBoardCaptionEditorTests {
         #expect(!model.ended.contains(model.second))
 
         harness.replaceText(with: "Typed for second")
-        try await waitUntil { model.labels[model.second] == "Typed for second" }
+        try await settle()
         #expect(model.labels[model.first] == "Typed for first")
         #expect(model.labels[model.second] == "Typed for second")
     }
@@ -138,7 +134,7 @@ struct ComparisonBoardCaptionEditorTests {
 
         harness.replaceText(with: "Typed for first")
         model.editing = model.second
-        try await waitForFieldEditor(showing: "Second", in: harness)
+        try await settle()
 
         #expect(model.labels[model.first] == "Typed for first")
         #expect(model.labels[model.second] == "Second")
@@ -152,9 +148,9 @@ struct ComparisonBoardCaptionEditorTests {
 
         let detail = try #require(harness.textField(placeholder: "Optional detail"))
         #expect(harness.window.makeFirstResponder(detail))
-        try await waitUntil { harness.fieldEditor?.delegate === detail }
+        try await settle()
         harness.replaceText(with: "Detail for first")
-        try await waitUntil { model.details[model.first] == "Detail for first" }
+        try await settle()
         #expect(model.details[model.first] == "Detail for first")
 
         model.editing = model.second
@@ -169,7 +165,7 @@ struct ComparisonBoardCaptionEditorTests {
         defer { harness.window.orderOut(nil) }
 
         try harness.press(characters: "\r", keyCode: 36)
-        try await waitUntil { harness.model.ended.contains(harness.model.first) }
+        try await settle()
 
         #expect(harness.model.ended.contains(harness.model.first))
     }
@@ -179,7 +175,7 @@ struct ComparisonBoardCaptionEditorTests {
         defer { harness.window.orderOut(nil) }
 
         try harness.press(characters: "\u{1B}", keyCode: 53)
-        try await waitUntil { harness.model.ended.contains(harness.model.first) }
+        try await settle()
 
         #expect(harness.model.ended.contains(harness.model.first))
     }
@@ -189,7 +185,7 @@ struct ComparisonBoardCaptionEditorTests {
         defer { harness.window.orderOut(nil) }
 
         #expect(harness.window.makeFirstResponder(harness.other))
-        try await waitUntil { harness.model.ended.contains(harness.model.first) }
+        try await settle()
 
         #expect(harness.model.ended.contains(harness.model.first))
     }
