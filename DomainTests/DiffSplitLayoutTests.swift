@@ -94,6 +94,30 @@ struct DiffSplitLayoutTests {
         #expect(masked[2] == .pair(old: cell(3, nil), new: nil))
     }
 
+    @Test(arguments: [Int.max, DiffDocument.maximumHunkStart + 1])
+    func hostileHunkStartsLeaveTheHunkUnnumbered(_ start: Int) {
+        let rows = split("@@ -\(start),2 +\(start),2 @@\n a\n-b\n+c")
+        #expect(DiffDocument(source: "@@ -\(start),2 +1,2 @@").hunkStarts.isEmpty)
+        #expect(rows[1] == .pair(old: cell(2, nil), new: cell(2, nil)))
+        #expect(rows[2] == .pair(old: cell(3, nil), new: cell(4, nil)))
+    }
+
+    @Test func theLargestAllowedStartStillCounts() {
+        let start = DiffDocument.maximumHunkStart
+        let rows = split("@@ -\(start),1 +\(start),1 @@\n a\n-b")
+        #expect(rows[1] == .pair(old: cell(2, start), new: cell(2, start)))
+        #expect(rows[2] == .pair(old: cell(3, start + 1), new: nil))
+    }
+
+    @Test func aFirstLineNumberAtTheLimitStopsNumberingInsteadOfTrapping() {
+        let rows = split(" a\n b", first: Int.max)
+        #expect(
+            rows == [
+                .pair(old: cell(1, Int.max), new: cell(1, Int.max)),
+                .pair(old: cell(2, nil), new: cell(2, nil)),
+            ])
+    }
+
     @Test func rowsOutsideTheDocumentSpan() {
         #expect(split("+a", rows: [.line(9), .fold]) == [.spanning(.line(9)), .spanning(.fold)])
     }

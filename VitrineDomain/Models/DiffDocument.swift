@@ -225,12 +225,19 @@ public struct DiffDocument: Equatable, Sendable {
         return (old, new)
     }
 
+    /// The highest start line a hunk header may name; pasted text is untrusted, and a larger
+    /// one leaves its hunk unnumbered rather than overflowing the count.
+    public static let maximumHunkStart = 10_000_000
+
     /// The first `-a` and the `+c` in a hunk header, which a combined diff also ends with.
     private static func hunkStart(_ header: Substring) -> DiffLinePair? {
         func start(_ marker: Character) -> Int? {
             let parts = header.split(separator: " ").dropFirst()
-            guard let range = parts.first(where: { $0.first == marker }) else { return nil }
-            return Int(range.dropFirst().prefix { $0 != "," }).flatMap { $0 >= 0 ? $0 : nil }
+            guard let range = parts.first(where: { $0.first == marker }),
+                let value = Int(range.dropFirst().prefix { $0 != "," }),
+                (0...maximumHunkStart).contains(value)
+            else { return nil }
+            return value
         }
         guard let old = start("-"), let new = start("+") else { return nil }
         return DiffLinePair(old: old, new: new)

@@ -88,10 +88,14 @@ extension DiffDocument {
                     ? nil : hunkStarts[index]
             }
             numbers.append(next)
-            guard var pair = next else { continue }
-            if kind == .context || kind == .deletion { pair.old += 1 }
-            if kind == .context || kind == .addition { pair.new += 1 }
-            next = pair
+            guard let pair = next else { continue }
+            let old = pair.old.addingReportingOverflow(
+                kind == .context || kind == .deletion ? 1 : 0)
+            let new = pair.new.addingReportingOverflow(
+                kind == .context || kind == .addition ? 1 : 0)
+            next =
+                old.overflow || new.overflow
+                ? nil : DiffLinePair(old: old.partialValue, new: new.partialValue)
         }
         return numbers
     }
