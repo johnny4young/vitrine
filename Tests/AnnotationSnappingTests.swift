@@ -179,7 +179,8 @@ struct AnnotationSnappingTests {
     }
 
     private func report(
-        _ code: String, lineNumbers: Bool = false, configure: (inout SnapshotConfig) -> Void = { _ in }
+        _ code: String, lineNumbers: Bool = false,
+        configure: (inout SnapshotConfig) -> Void = { _ in }
     ) throws -> CanvasSnapLayout {
         var config = SnapshotConfig()
         config.code = code
