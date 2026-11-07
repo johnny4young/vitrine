@@ -240,39 +240,6 @@
         }
       }
     },
-    "slide %lld · line %@" : {
-      "comment" : "Label on the boundary of a one-line slide drawn in the code editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "diapositiva %1$lld · línea %2$@"
-          }
-        }
-      }
-    },
-    "Show dividers in the code" : {
-      "comment" : "Switch in the carousel export sheet that draws slide boundaries in the code editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mostrar divisiones en el código"
-          }
-        }
-      }
-    },
-    "slide %lld · lines %@" : {
-      "comment" : "Label on a slide boundary drawn in the code editor.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "diapositiva %1$lld · líneas %2$@"
-          }
-        }
-      }
-    },
     "Vitrine %@ at %@.png" : {
       "comment" : "File name of a copied image dropped from the copy preview: date, time",
       "localizations" : {
@@ -324,6 +291,83 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vista previa de la imagen copiada"
+          }
+        }
+      }
+    },
+    "Invalid range" : {
+      "comment" : "Accessibility value of a terminal crop field whose text is not one first-last span",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rango no válido"
+          }
+        }
+      }
+    },
+    "Remove blur and spotlight boxes to crop" : {
+      "comment" : "Tooltip of the disabled terminal crop fields",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quita las cajas de desenfoque y de foco para recortar"
+          }
+        }
+      }
+    },
+    "All" : {
+      "comment" : "Placeholder of a terminal crop field when every row or column is kept",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas"
+          }
+        }
+      }
+    },
+    "Crop rows" : {
+      "comment" : "Inspector label: rows of a terminal capture's final screen to keep",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortar filas"
+          }
+        }
+      }
+    },
+    "Crop columns" : {
+      "comment" : "Inspector label: columns of a terminal capture's final screen to keep",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recortar columnas"
+          }
+        }
+      }
+    },
+    "Rows to keep, e.g. 6-18" : {
+      "comment" : "Tooltip of the terminal crop rows field",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filas que se conservan, p. ej. 6-18"
+          }
+        }
+      }
+    },
+    "Columns to keep, e.g. 1-80" : {
+      "comment" : "Tooltip of the terminal crop columns field",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Columnas que se conservan, p. ej. 1-80"
           }
         }
       }
@@ -556,6 +600,17 @@
         }
       }
     },
+    "slide %lld · line %@" : {
+      "comment" : "Label on the boundary of a one-line slide drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · línea %2$@"
+          }
+        }
+      }
+    },
     "Slide %lld of %lld, line %@" : {
       "comment" : "Accessibility label of a one-line slide tile in the carousel filmstrip.",
       "localizations" : {
@@ -578,6 +633,17 @@
         }
       }
     },
+    "Show dividers in the code" : {
+      "comment" : "Switch in the carousel export sheet that draws slide boundaries in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar divisiones en el código"
+          }
+        }
+      }
+    },
     "short" : {
       "comment" : "Badge on the last slide of a carousel when it holds few lines compared with the others.",
       "localizations" : {
@@ -596,6 +662,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Diapositiva %1$lld de %2$lld, líneas %3$@"
+          }
+        }
+      }
+    },
+    "slide %lld · lines %@" : {
+      "comment" : "Label on a slide boundary drawn in the code editor.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "diapositiva %1$lld · líneas %2$@"
           }
         }
       }
@@ -1506,6 +1583,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Los archivos existentes se conservan"
+          }
+        }
+      }
+    },
+    "Locked while a blur box is on the canvas." : {
+      "comment" : "Editor lines: why the diff stats and context controls are disabled.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloqueado mientras haya un cuadro de desenfoque en el lienzo."
+          }
+        }
+      }
+    },
+    "Stats header" : {
+      "comment" : "Editor lines: toggle for the file path and +/- counts above a diff.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encabezado de estadísticas"
+          }
+        }
+      }
+    },
+    "Context lines" : {
+      "comment" : "Editor lines: slider for unchanged lines kept around each diff change.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas de contexto"
+          }
+        }
+      }
+    },
+    "All" : {
+      "comment" : "Editor lines: context-lines slider value meaning every line is shown.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas"
+          }
+        }
+      }
+    },
+    "Added: %lld, removed: %lld" : {
+      "comment" : "Accessibility: added and removed line counts in a diff stats header.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregadas: %1$lld, eliminadas: %2$lld"
+          }
+        }
+      }
+    },
+    "Files: %lld" : {
+      "comment" : "Accessibility: number of changed files in a diff stats header.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivos: %lld"
           }
         }
       }

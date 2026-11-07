@@ -19,6 +19,14 @@ can never drift.
   code, or open a `vitrine://card?template=release&title=…` link from Shortcuts or a script.
   A link keeps the card it replaced: Undo in the confirmation or the restore button in the
   Social Card toolbar puts it back, even after a relaunch.
+- Add an optional stats header to diffs, with the file path, added and removed line counts
+  and a diffstat bar, and a context slider that folds unchanged lines around each change.
+  The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
+  links keep the full patch.
+- Crop a terminal capture to some rows and columns of its final screen from the inspector's
+  Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
+  and redacted rows keep counting the whole screen, and text exports and share links carry only
+  the kept cells. Clearing the fields restores the rest.
 - A preview of the copied image floats in the bottom corner of the screen after Copy image,
   a quick capture or a copy from Recents. Drag it into another app or into Finder, click it
   to go back to the editor or Recents, or dismiss it. It skips copies marked confidential and

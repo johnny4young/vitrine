@@ -173,13 +173,16 @@ struct CLIEntitlementTests: CLITestSupport {
         }
     }
 
-    @Test(arguments: ["--diff-bands", "--no-diff-bands"])
-    func explicitGitRenderStylesStillRejectHandoff(_ flag: String) {
+    @Test(arguments: [
+        ["--diff-bands"], ["--no-diff-bands"], ["--diff-stats"], ["--no-diff-stats"],
+        ["--diff-context", "1"],
+    ])
+    func explicitGitRenderStylesStillRejectHandoff(_ flags: [String]) {
         #expect(
             throws: CLIError.incompatibleOptions(
                 "Cannot combine --edit with render-only style options.")
         ) {
-            try CLIArguments.parse(["render", "--git-staged", "--edit", flag])
+            try CLIArguments.parse(["render", "--git-staged", "--edit"] + flags)
         }
     }
 
