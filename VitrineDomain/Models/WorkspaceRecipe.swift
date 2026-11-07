@@ -365,7 +365,7 @@ private enum RecipeJSONShape {
         if let field = unknownKey(
             in: object,
             allowing: [
-                "themeID", "fontName", "fontSize", "fontLigatures", "padding",
+                "themeID", "fontName", "fontSize", "fontLigatures", "padding", "paddingMode",
                 "cornerRadius", "shadowRadius", "showChrome", "showShadow", "showLineNumbers",
                 "wrapColumns", "terminalPalette", "terminalCursor",
                 "background",

@@ -25,11 +25,16 @@ struct EditorInspectorView: View {
     var entitlements: Entitlements
     var legibility: LegibilityModel
     var presetThumbnails: PresetThumbnailModel
+    var magicBackground: MagicBackgroundModel
     /// Shows only this section, for canvas mode's popovers; `nil` is the full column.
     var pane: InspectorPane? = nil
     /// A popover cannot host the paywall sheet, so it asks the editor window to.
     var presentFramePaywall: (() -> Void)? = nil
     var windowUndoManager: UndoManager? = nil
+    /// Stage clicks that open and scroll to a section of the column.
+    var stageRegions: StageRegionModel? = nil
+    /// Canvas mode collapses the column, which must stay where the user left it.
+    var isCanvasMode = false
 
     /// Persisted, so someone who uses the thumbnails keeps them; closed renders nothing.
     @AppStorage(PresetThumbnailModel.expandedStorageKey, store: AppDefaults.current)
@@ -47,6 +52,8 @@ struct EditorInspectorView: View {
     @State private var showingFramePaywall = false
     /// The last scan's outcome, so a scan that finds nothing still answers.
     @State private var secretScan: SecretScanReport?
+    @Environment(\.foregroundImageStore) private var foregroundImageStore
+    @Environment(\.undoManager) private var environmentUndoManager
 
     var body: some View {
         if let pane {
@@ -85,6 +92,16 @@ struct EditorInspectorView: View {
                 .onChange(of: showPresets) { _, open in
                     reveal("inspector-disclosure-presets", when: open, proxy)
                 }
+                .onChange(of: stageRegions?.reveal) { _, request in
+                    guard !isCanvasMode else { return }
+                    switch request?.target {
+                    case .header where !showHeader: showHeader = true
+                    case .header: reveal("inspector-disclosure-header", when: true, proxy)
+                    case .pane(let pane):
+                        reveal("inspector-section-\(pane.rawValue)", when: true, proxy)
+                    case nil: break
+                    }
+                }
         }
     }
 
@@ -101,20 +118,20 @@ struct EditorInspectorView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.xl - 12) {
                 scopeNote
-                backgroundSection
+                backgroundSection.id("inspector-section-background")
                 // A beautified image swaps the code-only style controls (theme, fonts)
                 // for the frame picker; everything else (background, canvas, header,
                 // output) applies to both.
                 if settings.style.usesImageContent {
-                    frameSection
+                    frameSection.id("inspector-section-frame")
                 } else {
                     themeSection
-                    typographySection
+                    typographySection.id("inspector-section-typography")
                     if settings.style.language == .terminal {
                         terminalSection
                     }
                 }
-                canvasSection
+                canvasSection.id("inspector-section-canvas")
 
                 VStack(alignment: .leading, spacing: 0) {
                     // The line gutter / highlight / redact controls only make sense for
@@ -199,6 +216,12 @@ struct EditorInspectorView: View {
                                     if !settings.style.redactedLineRanges.isEmpty {
                                         Button("Clear") { settings.style.redactedLineRanges = [] }
                                             .accessibilityLabel("Clear redactions")
+                                            // Names the redacted lines for VoiceOver.
+                                            .accessibilityValue(
+                                                Text(
+                                                    verbatim: LineHighlight.describe(
+                                                        settings.style.redactedLineRanges))
+                                            )
                                             .accessibilityIdentifier("clear-redactions-button")
                                     }
                                 }
@@ -307,8 +330,26 @@ struct EditorInspectorView: View {
         ) {
             BackgroundControls(
                 background: $settings.style.background, layout: .inspector,
-                identifierPrefix: "inspector-")
+                identifierPrefix: "inspector-", magic: magicControl)
         }
+    }
+
+    /// The closures read the document at the press, never in `body`, so typing can't reach here.
+    private var magicControl: MagicBackgroundControl {
+        let settings = settings
+        let store = foregroundImageStore
+        let undoManager = windowUndoManager ?? environmentUndoManager
+        return MagicBackgroundControl(
+            model: magicBackground,
+            input: { MagicBackgroundModel.Input(settings) },
+            derive: {
+                guard let reference = settings.style.foregroundImage else {
+                    return await MagicBackground.gradients(for: settings.config)
+                }
+                guard let url = store.url(for: reference) else { return [] }
+                return await MagicBackground.gradients(forImageAt: url)
+            },
+            apply: { MagicBackgroundModel.apply($0, to: settings, undoManager: undoManager) })
     }
 
     /// The frame for a beautified image — none, a macOS window, a browser window, or a
@@ -478,6 +519,21 @@ struct EditorInspectorView: View {
                     label: "Padding", value: $settings.style.padding,
                     range: SettingsDefaults.paddingRange,
                     step: 4, identifier: "padding-slider", width: 92)
+            }
+            InspectorRow(label: Text("Balance")) {
+                Toggle("Balance", isOn: $settings.style.balancesPadding)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .disabled(settings.style.locksPaddingMode)
+                    .help(
+                        settings.style.locksPaddingMode
+                            ? Text(
+                                "Remove the blur boxes first: they would slide off what they hide.")
+                            : Text(
+                                "Counts the shadow in the padding and sets the card a little above center."
+                            )
+                    )
+                    .accessibilityIdentifier("padding-balance-toggle")
             }
             InspectorRow(label: Text("Corner radius")) {
                 ValueSlider(

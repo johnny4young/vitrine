@@ -62,6 +62,11 @@ struct EditorView: View {
     /// pending.
     @State var pendingDrop: PendingDrop?
 
+    /// A dropped image that carries an editable project, waiting on open-or-beautify.
+    @State var pendingProject: PendingEmbeddedProject?
+    /// The document an opened project replaced, until its undo can be registered.
+    @State var pendingDocumentUndo: SnapshotConfig?
+
     /// The natural (unscaled) size of the preview card, measured so the stage
     /// can scale it to always fit (the shared scale-to-fit rule). Never read in this
     /// view's body; see ``PreviewCardGeometry``.
@@ -70,6 +75,10 @@ struct EditorView: View {
     /// The stage's current size, recorded so the capsule can report the live
     /// zoom percentage.
     @State var stageSize: CGSize = .zero
+
+    /// Stage clicks that open inspector sections; an observable box so hovering never
+    /// evaluates the editor's body.
+    @State var stageRegions = StageRegionModel()
 
     /// The currently selected annotation, shared between the preview's interactive
     /// overlay and the inspector's annotation controls. `nil` when nothing
@@ -155,6 +164,15 @@ struct EditorView: View {
     /// destination owns multi-size, carousel, and their paywalls so separate toolbar
     /// branches cannot compete to present sibling sheets.
     @State var exportSheet: EditorExportSheet?
+
+    struct PendingEmbeddedProject {
+        var image: ImageReference
+        var snapshot: SharedSnapshot
+    }
+
+    enum EmbeddedProjectChoice {
+        case image, imageFromNowOn, editable
+    }
 
     /// A loaded drop awaiting the user's replace-vs-append choice, kept so the
     /// confirmation dialog can apply exactly what was dropped.
@@ -275,7 +293,17 @@ struct EditorView: View {
                 selectedAnnotationID = nil
                 editingAnnotationID = nil
                 pendingDrop = nil
+                pendingProject = nil
                 session.copyConfirmation.clear()
+                if let previous = pendingDocumentUndo {
+                    pendingDocumentUndo = nil
+                    let undoManager = editorWindow.value?.undoManager
+                    // Runs after this update pass, once the code editor holds the new text.
+                    Task {
+                        Self.registerDocumentUndo(
+                            restoring: previous, in: settings, undoManager: undoManager)
+                    }
+                }
             }
             .onChange(of: session.isCanvasMode) { _, isCanvasMode in
                 // A collapsed column's field must not keep taking keystrokes.
@@ -327,6 +355,14 @@ struct EditorView: View {
                     {
                         presentCarouselExport()
                     }
+                    if ProcessInfo.processInfo.arguments.contains("--demo-magic-background") {
+                        let settings = settings
+                        session.magicBackground.request(
+                            advancing: false, current: settings.style.background,
+                            input: { MagicBackgroundModel.Input(settings) },
+                            derive: { await MagicBackground.gradients(for: settings.config) },
+                            apply: { settings.style.background = .customGradient($0) })
+                    }
                     if ProcessInfo.processInfo.arguments.contains("--demo-recipe-bar") {
                         var baseline = settings.style
                         baseline.showLineNumbers.toggle()
@@ -338,6 +374,9 @@ struct EditorView: View {
                         settings.hasRenderableContent
                     {
                         presentMultiSizeExport()
+                    }
+                    if ProcessInfo.processInfo.arguments.contains("--demo-embedded-project") {
+                        await offerEmbeddedProjectDemo()
                     }
                 #endif
             }
@@ -436,6 +475,22 @@ struct EditorView: View {
                 Button("Cancel", role: .cancel) { pendingDrop = nil }
             } message: {
                 Text(pendingDrop?.promptMessage ?? "")
+            }
+            .confirmationDialog(
+                "Open This Image as a Project?",
+                isPresented: Binding(
+                    get: { pendingProject != nil },
+                    set: { if !$0 { pendingProject = nil } }),
+                titleVisibility: .visible
+            ) {
+                Button("Use as Image") { resolvePendingProject(.image) }
+                    .keyboardShortcut(.defaultAction)
+                    .accessibilityIdentifier("embedded-project-image-button")
+                Button("Open Editable") { resolvePendingProject(.editable) }
+                    .accessibilityIdentifier("embedded-project-open-button")
+                Button("Don't Ask Again") { resolvePendingProject(.imageFromNowOn) }
+                    .accessibilityIdentifier("embedded-project-dont-ask-button")
+                Button("Cancel", role: .cancel) { pendingProject = nil }
             }
     }
 }

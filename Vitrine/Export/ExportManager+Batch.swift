@@ -159,25 +159,23 @@ extension ExportManager {
         }
     }
 
-    /// The carousel slide frame: 1080×1350 (4:5), the portrait card LinkedIn and
-    /// Instagram carousels share.
-    static let carouselSlideSize = CGSize(width: 1080, height: 1350)
+    /// The default slide frame, LinkedIn's 4:5 portrait card.
+    static let carouselSlideSize = CarouselSlideSize.linkedIn.pixels
 
-    /// The minimum font size a carousel slide renders at. The editor's default (~13 pt)
-    /// leaves a tiny card adrift in a 1080×1350 frame — illegible at feed size — so
-    /// slides bump up to this floor; a user style already at or above it is respected.
-    static let carouselMinimumFontSize: Double = 22
+    /// The smallest type a fitted slide gets: a line too wide even at this size overflows
+    /// rather than shrinking past legibility, and the sheet says so.
+    static let carouselMinimumFontSize: Double = 14
 
-    /// Renders one slide per page into `directory` as `carousel-01.png` … — the
-    /// carousel export. Each slide is `CarouselPaginator.slideConfig` rendered at the
-    /// fixed 4:5 slide frame through the standard pipeline. Pipelined like `exportPresetSizes`:
-    /// render on the main actor, PNG-encode + write off it, results drain in
-    /// completion order with count-based progress. Two-digit numbering keeps the
-    /// files sorted everywhere; only counts are logged.
+    /// Renders one slide per page into `directory` as `carousel-01.png` …, a `carousel.pdf`
+    /// with a page per slide, or both, every slide at the size's frame and `fit`'s type
+    /// size (fitted here when not given). PDF pages render first, releasing the main actor
+    /// between pages; PNGs render on the main actor and encode + write off it. Progress
+    /// counts PDF pages and PNG files; the result counts files. Only counts are logged.
     @discardableResult
     static func exportCarousel(
         _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
-        cues: CarouselPaginator.Cues = .none, to directory: URL,
+        cues: CarouselPaginator.Cues = .none, size: CarouselSlideSize = .linkedIn,
+        fit: CarouselFit? = nil, output: CarouselOutput = .pngSet, to directory: URL,
         profile: ColorProfile = .sRGB,
         onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil,
         writeFile: @escaping @Sendable (Data, URL) throws -> Void = {
@@ -187,44 +185,66 @@ extension ExportManager {
         var written = 0
         var failed = 0
         var firstRenderFailure: RenderBudgetError?
-        let total = slides.count
-        let outputs: [BatchOutputFiles.Item]
+        let requested = CarouselPaginator.requestedFilenames(
+            slideCount: slides.count, output: output)
+        let total = carouselProgressUnits(slideCount: slides.count, output: output)
+        var outputs: [BatchOutputFiles.Item]
         do {
-            outputs = try BatchOutputFiles.plan(
-                filenames: slides.indices.map(CarouselPaginator.outputFilename(forSlideAt:)),
-                in: directory)
+            outputs = try BatchOutputFiles.plan(filenames: requested, in: directory)
         } catch {
             onProgress?(total, total)
-            return BatchExportResult(written: 0, failed: total, firstRenderFailure: nil)
+            return BatchExportResult(written: 0, failed: requested.count, firstRenderFailure: nil)
         }
+        let fit = fit ?? CarouselPaginator.fit(baseConfig, slides: slides, cues: cues, size: size)
+        let configs = slides.indices.map { index in
+            CarouselPaginator.slideConfig(
+                baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues,
+                fontSize: fit.fontSize)
+        }
+        let pdfOutput = output.writesPDF ? outputs.popLast() : nil
         var completed = 0
-        await withTaskGroup(of: BatchItemOutcome.self) { group in
-            for (index, output) in outputs.enumerated() {
+        // Each outcome says whether it is the PDF, whose progress was counted by page.
+        await withTaskGroup(of: (BatchItemOutcome, Bool).self) { group in
+            if let pdfOutput {
+                let pdf = await pdfData(
+                    pages: configs, fixedSize: size.pixels, rasterized: fit.overflows,
+                    profile: profile,
+                    onPage: { _ in
+                        completed += 1
+                        onProgress?(completed, total)
+                    })
+                group.addTask {
+                    let outcome = await writePreset(
+                        raster: nil, pdf: pdf, format: .pdf, output: pdfOutput,
+                        sidecarText: "", writeFile: writeFile)
+                    return (outcome, true)
+                }
+            }
+            for (config, output) in zip(configs, outputs) {
                 guard !Task.isCancelled else {
-                    group.addTask { .failed }
+                    group.addTask { (.failed, false) }
                     continue
                 }
-                let config = CarouselPaginator.slideConfig(
-                    baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues)
                 let raster: CGImage?
                 do throws(RenderBudgetError) {
                     raster = try renderCGImageChecked(
-                        config, scale: 1, fixedSize: carouselSlideSize, profile: profile)
+                        config, scale: 1, fixedSize: size.pixels, profile: profile)
                 } catch let error {
                     Log.export.error(
                         "Carousel export rejected a slide before raster allocation")
                     raster = nil
-                    group.addTask { .renderFailed(error) }
+                    group.addTask { (.renderFailed(error), false) }
                     continue
                 }
                 group.addTask {
-                    await writePreset(
+                    let outcome = await writePreset(
                         raster: raster, pdf: nil, format: .png, output: output,
                         sidecarText: "", writeFile: writeFile)
+                    return (outcome, false)
                 }
                 await Task.yield()
             }
-            for await outcome in group {
+            for await (outcome, isPDF) in group {
                 switch outcome {
                 case .written:
                     written += 1
@@ -234,8 +254,10 @@ extension ExportManager {
                     failed += 1
                     if firstRenderFailure == nil { firstRenderFailure = error }
                 }
-                completed += 1
-                onProgress?(completed, total)
+                if !isPDF {
+                    completed += 1
+                    onProgress?(completed, total)
+                }
             }
         }
         Log.export.notice(
@@ -245,21 +267,47 @@ extension ExportManager {
             written: written, failed: failed, firstRenderFailure: firstRenderFailure)
     }
 
-    /// The encoded size of the first slide that can be previewed, the sample behind the sheet's
-    /// size estimate.
-    /// Renders on the main actor like the export itself and writes nothing.
-    static func estimatedCarouselSlideBytes(
+    /// The steps a carousel export reports: one per PNG and one per PDF page.
+    static func carouselProgressUnits(slideCount: Int, output: CarouselOutput) -> Int {
+        (output.writesPNG ? slideCount : 0) + (output.writesPDF ? slideCount : 0)
+    }
+
+    /// The bytes `output` should take, sampled from the slides that can be previewed: the
+    /// first one's PNG times the slide count, and a PDF of the first two, whose difference is
+    /// what a page adds once the fonts are embedded. Renders on the main actor and writes nothing.
+    static func estimatedCarouselBytes(
         _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
-        cues: CarouselPaginator.Cues, profile: ColorProfile = .sRGB
+        cues: CarouselPaginator.Cues, size: CarouselSlideSize = .linkedIn,
+        fit: CarouselFit? = nil, output: CarouselOutput = .pngSet, profile: ColorProfile = .sRGB
     ) async -> Int? {
-        guard let index = slides.firstIndex(where: \.canPreview) else { return nil }
-        let config = CarouselPaginator.slideConfig(
-            baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues)
-        guard
-            let raster = try? renderCGImageChecked(
-                config, scale: 1, fixedSize: carouselSlideSize, profile: profile)
-        else { return nil }
-        return await encodedByteCount(raster, format: .png)
+        let fit = fit ?? CarouselPaginator.fit(baseConfig, slides: slides, cues: cues, size: size)
+        let samples = slides.indices.filter { slides[$0].canPreview }.prefix(2).map { index in
+            CarouselPaginator.slideConfig(
+                baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues,
+                fontSize: fit.fontSize)
+        }
+        guard let first = samples.first else { return nil }
+        var total = 0
+        if output.writesPDF {
+            func pdfBytes(_ pages: [SnapshotConfig]) async -> Int? {
+                await pdfData(
+                    pages: pages, fixedSize: size.pixels, rasterized: fit.overflows,
+                    profile: profile)?.count
+            }
+            guard let one = await pdfBytes([first]), let both = await pdfBytes(samples)
+            else { return nil }
+            let perPage = samples.count > 1 ? both - one : one
+            total += one + (slides.count - 1) * perPage
+        }
+        if output.writesPNG {
+            guard
+                let raster = try? renderCGImageChecked(
+                    first, scale: 1, fixedSize: size.pixels, profile: profile),
+                let bytes = await encodedByteCount(raster, format: .png)
+            else { return nil }
+            total += bytes * slides.count
+        }
+        return total
     }
 
     /// The encoded size of one preset's file, rendered as `exportPresetSizes` renders it.

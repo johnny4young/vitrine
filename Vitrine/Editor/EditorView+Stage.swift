@@ -504,12 +504,19 @@ extension EditorView {
                     // Expose the canvas text as children: as one aggregate element,
                     // automated drags on annotation endpoint handles stop landing.
                     .accessibilityElement(children: .contain)
+                    .modifier(
+                        StageRegionRouting(
+                            model: stageRegions, config: previewConfig, canvasSize: canvasSize,
+                            isCanvasMode: isCanvasMode,
+                            isEnabled: activeTool == .select && selectedAnnotationID == nil
+                                && editingAnnotationID == nil))
                     AnnotationEditingOverlay(
                         settings: settings, selection: $selectedAnnotationID,
                         editingAnnotationID: $editingAnnotationID,
                         canvasSize: canvasSize, activeTool: activeTool,
                         drawColor: newDrawColor, drawThickness: newDrawThickness,
                         stickerGlyph: newStickerGlyph,
+                        snapper: cardGeometry.snapper,
                         onBeginEdit: beginAnnotationEdit,
                         onEndEdit: endAnnotationEdit)
                     // Free-placement: drag the brand mark anywhere on the canvas. The
@@ -529,6 +536,15 @@ extension EditorView {
                             code: previewConfig.sidecarText,
                             showsGuideRect: settings.effectiveFixedSize != nil)
                     }
+                }
+                // The canvas shares this stack's origin, so its anchors resolve to canvas points.
+                .backgroundPreferenceValue(CanvasSnapAnchorsKey.self) { anchors in
+                    GeometryReader { proxy in
+                        Color.clear.onChange(of: anchors.resolved(in: proxy), initial: true) {
+                            cardGeometry.snapper.layout = $1
+                        }
+                    }
+                    .accessibilityHidden(true)
                 }
                 // Route arrow keys to a selected mark without competing with code-editor
                 // navigation when the annotation canvas has no selection.
@@ -572,7 +588,8 @@ extension EditorView {
                 CanvasDock(
                     settings: settings, themes: themes, presets: presets,
                     entitlements: entitlements, legibility: legibility,
-                    presetThumbnails: session.presetThumbnails,
+                    presetThumbnails: session.presetThumbnails, stageRegions: stageRegions,
+                    magicBackground: session.magicBackground,
                     presentFramePaywall: { exportSheet = .framePaywall }
                 )
                 .markToolbarAvoids()
@@ -692,7 +709,9 @@ extension EditorView {
     var inspectorColumn: some View {
         EditorInspectorView(
             settings: settings, themes: themes, presets: presets, entitlements: entitlements,
-            legibility: legibility, presetThumbnails: session.presetThumbnails)
+            legibility: legibility, presetThumbnails: session.presetThumbnails,
+            magicBackground: session.magicBackground, stageRegions: stageRegions,
+            isCanvasMode: isCanvasMode)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a
@@ -794,6 +813,8 @@ final class PreviewCardGeometry {
     var legendHeight: CGFloat = 0
     /// Legend entries a fixed frame had no room for.
     var legendDropped = 0
+    /// Where the card and code landed, for snapping marks while they are dragged.
+    @ObservationIgnored let snapper = AnnotationSnapper()
 
     /// The latest destination change that moved the card.
     private(set) var morph = StageFitMorph()
@@ -860,6 +881,7 @@ struct PreviewCardStage<Content: View>: View {
             // A drag on a card still changing shape would place a mark away from the pointer.
             .allowsHitTesting(reduceMotion || settledMorph == morph.generation)
             .scaleEffect(scale)
+            .onChange(of: scale, initial: true) { geometry.snapper.scale = $1 }
             // `scaleEffect` does not shrink the layout footprint, so without this the
             // unscaled (often very wide) card stays full-width in layout and its
             // centered overflow is clipped on the right. Pinning the footprint to the

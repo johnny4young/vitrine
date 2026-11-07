@@ -38,6 +38,11 @@ struct WorkspaceRecipeSettingsSection: View {
                 .accessibilityIdentifier("workspace-recipe-picker")
             }
 
+            // Above Manage, so choosing a card leads into the actions that use it.
+            if !store.associations.isEmpty {
+                WorkspaceRecipeGallery(store: store, selection: $selectedID)
+            }
+
             TokenRow(
                 label: Text("Manage"),
                 caption: Text("No repository scanning or implicit recipe discovery")

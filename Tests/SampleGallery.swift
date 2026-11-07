@@ -339,7 +339,7 @@ enum SampleGallery {
         let highlight = LineHighlight.normalize(c.highlightedLineRanges)
             .map { "\($0.lowerBound)-\($0.upperBound)" }
             .joined(separator: ",")
-        let descriptor = [
+        let fields = [
             "id=\(sample.id)",
             "code=\(c.code)",
             "language=\(c.language.rawValue)",
@@ -354,7 +354,10 @@ enum SampleGallery {
             "highlight=[\(highlight)]",
             "background=\(c.background.diagnosticsKind)",
             "scale=\(Int(sample.scale))",
-        ].joined(separator: "|")
+        ]
+        // Only when on, so every manual fingerprint in the manifest stays valid.
+        let mode = c.paddingMode == .manual ? [] : ["paddingMode=\(c.paddingMode.rawValue)"]
+        let descriptor = (fields + mode).joined(separator: "|")
         let digest = SHA256.hash(data: Data(descriptor.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }

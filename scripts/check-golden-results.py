@@ -21,9 +21,11 @@ def expected_results(root: Path) -> dict[tuple[str, str], dict]:
     for kind, directory in [("export", "Golden"), ("social", "SocialCards")]:
         folder = root / directory
         manifest = json.loads((folder / "manifest.json").read_text())
-        image = manifest["pinnedImage"]
-        if manifest["schema"] != 2 or set(image) != IMAGE_KEYS or any(
-            not isinstance(value, str) or not value or value == "unknown" for value in image.values()
+        images = [manifest["pinnedImage"], *manifest.get("qualifiedImages", [])]
+        if manifest["schema"] != 2 or any(
+            set(image) != IMAGE_KEYS
+            or any(not isinstance(value, str) or not value or value == "unknown" for value in image.values())
+            for image in images
         ):
             raise ValueError(f"{directory}: baseline has no qualified environment")
         scenarios = manifest["scenarios"]
@@ -43,7 +45,7 @@ def expected_results(root: Path) -> dict[tuple[str, str], dict]:
                 raise ValueError(f"{directory}/{scenario}: dimensions disagree with manifest")
             if re.fullmatch(r"[0-9a-f]{64}", record["configFingerprint"]) is None:
                 raise ValueError(f"{directory}/{scenario}: invalid config fingerprint")
-            expected[(kind, scenario)] = image
+            expected[(kind, scenario)] = images
     return expected
 
 
@@ -58,7 +60,7 @@ def verify(log: str, expected: dict[tuple[str, str], dict]) -> None:
             continue
         receipt = json.loads(line.removeprefix("GOLDEN RESULT "))
         key = (receipt["kind"], receipt["scenario"])
-        if key not in expected or key in seen or receipt["image"] != expected[key]:
+        if key not in expected or key in seen or receipt["image"] not in expected[key]:
             raise ValueError(f"unexpected, duplicate or unqualified comparison: {key}")
         seen.add(key)
     if seen != set(expected):
@@ -67,7 +69,7 @@ def verify(log: str, expected: dict[tuple[str, str], dict]) -> None:
 
 def self_test() -> None:
     image = dict.fromkeys(IMAGE_KEYS, "synthetic")
-    expected = {("export", "example"): image, ("social", "default-card"): image}
+    expected = {("export", "example"): [image], ("social", "default-card"): [image]}
     rows = [{"kind": kind, "scenario": scenario, "image": image} for kind, scenario in expected]
 
     def log(records: list[dict]) -> str:
@@ -83,6 +85,8 @@ def self_test() -> None:
             pass
         else:
             raise AssertionError("accepted empty, omitted, duplicated, smoke or unqualified evidence")
+    rolled = dict(image, osBuild="rolled")
+    verify(log([dict(row, image=rolled) for row in rows]), {key: [image, rolled] for key in expected})
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         for directory in ["Golden", "SocialCards"]:

@@ -281,6 +281,12 @@ final class AppMenu {
             item(
                 for: .formatCode, action: #selector(EditorCommandResponder.formatCode(_:)),
                 target: editorCommands))
+        // First-responder: the code editor marks the lines its selection touches.
+        for command in CodeTextView.selectionCommands {
+            let item = menu.addItem(
+                withTitle: command.title, action: command.action, keyEquivalent: "")
+            item.setAccessibilityIdentifier("command-\(command.id)")
+        }
         menu.addItem(.separator())
 
         // AppKit owns these shortcuts so they keep working when the responsive

@@ -380,6 +380,31 @@ struct WorkflowConfigurationTests {
             try Self.makefile().contains("ENABLE_APP_SANDBOX=NO $(COVERAGE_DERIVED_DATA_FLAG)"))
     }
 
+    // MARK: - Contract: the WebKit workflow follows the UI case it runs
+
+    /// The controlled WebKit workflow runs on pull requests that change a listed path. It
+    /// lists the file holding the sign-in case it reruns in the Direct Download sandbox, not
+    /// the smoke suite, which most pull requests edit.
+    @Test func webCaptureRunsWhenTheFileHoldingItsSignInCaseChanges() throws {
+        let workflow = try Self.text(".github", "workflows", "web-capture.yml")
+        let selection = try #require(
+            workflow.firstMatch(of: /-only-testing:VitrineUITests\/(\w+)\/(\w+)/),
+            "the Direct Download step must select one UI case")
+        let (testClass, test) = (String(selection.output.1), String(selection.output.2))
+        let files = try FileManager.default.contentsOfDirectory(atPath: Self.url("UITests").path)
+            .filter { $0.hasSuffix(".swift") }
+        let owner = try #require(
+            try files.first {
+                try Self.text("UITests", $0).contains("class \(testClass): XCTestCase")
+            }, "no UITests file declares \(testClass)")
+        #expect(try Self.text("UITests", owner).contains("func \(test)()"))
+        #expect(workflow.contains("      - 'UITests/\(owner)'"))
+        #expect(!workflow.contains("UITests/VitrineUITests.swift"))
+        #expect(
+            try Self.text("scripts", "test-web-capture.py").contains("\"\(testClass)/\(test)()\""),
+            "the receipt check must expect the same case")
+    }
+
     // MARK: - Contract: a push to main reuses the evidence of the pull request it merges
 
     /// A squash merge of an up-to-date pull request lands the tree its CI already tested, so
@@ -740,6 +765,44 @@ struct WorkflowConfigurationTests {
                 text.firstMatch(of: pinnedHost) == nil,
                 "\(name) must not name the preview image's host macOS")
         }
+    }
+
+    /// The preview image cannot compile Vision's on-device text-recognition model, so its
+    /// unit gate skips exactly those cases and runs them apart, warning without failing the
+    /// job. Each skipped identifier must name a real recognition test, so a rename cannot
+    /// turn the skip into a no-op or hide anything else.
+    @Test func xcode27PreviewSetsAsideOnlyTheOnDeviceRecognitionCases() throws {
+        let workflow = try Self.xcode27Preview()
+        let gateStart = try #require(workflow.range(of: "      - name: Unit tests\n"))
+        let asideStart = try #require(
+            workflow.range(of: "      - name: On-device text recognition (informational)\n"))
+        let gate = String(workflow[gateStart.lowerBound..<asideStart.lowerBound])
+        let aside = String(workflow[asideStart.lowerBound...])
+        func cases(_ text: String) throws -> [String] {
+            try text.matches(of: Regex(#"VitrineTests/\w+/\w+\(\)"#)).map {
+                String(text[$0.range])
+            }
+        }
+
+        let skipped = try cases(gate)
+        #expect(skipped.count == 4)
+        #expect(try cases(aside) == skipped, "the informational step runs what the gate skips")
+        #expect(gate.contains(#"make test TEST_SKIP="${TEST_SKIP}""#))
+        #expect(aside.contains("continue-on-error: true"))
+        #expect(aside.contains(#"make test TEST_ONLY="${TEST_ONLY}""#))
+        for identifier in skipped {
+            let parts = identifier.split(separator: "/").map(String.init)
+            let source = try Self.text("Tests", "\(parts[1]).swift")
+            #expect(source.contains("struct \(parts[1])"), "\(identifier) names no suite")
+            let test = parts[2].dropLast(2)
+            #expect(source.contains("@Test func \(test)("), "\(identifier) names no test")
+            #expect(source.contains("ImageTextExtractor."), "\(identifier) must exercise OCR")
+        }
+
+        let make = try Self.makefile()
+        #expect(make.contains("$(foreach t,$(TEST_SKIP),'-skip-testing:$(t)')"))
+        #expect(make.contains("$(TEST_SELECTION_FLAGS) test"))
+        #expect(try Self.releasingDoc().contains("on-device text-recognition model"))
     }
 
     @Test func sanitizersAreFocusedWeeklyManualEarlyWarnings() throws {
