@@ -275,7 +275,7 @@ The share sheet gains **Post to X / LinkedIn / Bluesky** compose targets — the
 staged on the clipboard and the compose page opens, one paste from posting.
 Destination presets cover **OpenGraph** (1200×630), an **Instagram Story**, and a
 **GitHub banner**. [PRO](#vitrine-pro) adds **multi-size one-pass export**, **carousel
-export** (a long snippet split into numbered 4:5 slides), and the bundled
+export** (a long snippet split into numbered slides, as PNGs or a PDF), and the bundled
 **`vitrine` CLI** that renders the same pixels from your terminal.
 
 ### Crafted & private
@@ -319,7 +319,7 @@ Shortcuts and App Intents.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format, **HEIC** as a compact option for docs sites and wikis, and **AVIF** when the active ImageIO stack can encode it (Tahoe and newer). Shared preview/export budgets reject unsafe dimensions, pixel counts, or estimated working memory before bitmap allocation and return actionable errors. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
 - 📣 **Post to X / LinkedIn / Bluesky** — compose targets in the share sheet: the image is staged on the clipboard and the network's compose page opens with a paste hint. One paste from posting; Vitrine sends nothing anywhere.
-- 🎠 **Carousel export** *(PRO)* — split a long snippet into numbered 4:5 slides (`carousel-01.png` …) for a LinkedIn/Instagram carousel. Pick the lines per slide; the split balances so the last slide never trails, and every slide carries your style and brand mark.
+- 🎠 **Carousel export** *(PRO)* — split a long snippet into numbered slides for LinkedIn (4:5), Instagram (1:1), X (16:9) or a story (9:16), as `carousel-01.png` …, a one-file `carousel.pdf` for a LinkedIn document post, or both. Pick the lines per slide and the type sizes itself to fill the slide; the split balances so the last slide never trails, and every slide carries your style and brand mark.
 - 📌 **Pinned snapshot** — pin the current render in a floating window that stays above every app and follows you across Spaces, so the error or design you're working against stays visible while you code.
 - 🔤 **Copy text from image** — one click runs on-device OCR (Vision) on a beautified screenshot and puts the recognized text on the clipboard. Nothing leaves the Mac. Progress is visible and cancellable; replacing the image or closing its editor discards outstanding results. Copy feedback reflects whether the clipboard write succeeded.
 - 📐 **Safe-area guides** — an editor-only overlay that draws the margin platforms may crop over a fixed-size destination, with a live "lines × widest column" chip; never part of the export.

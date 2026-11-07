@@ -28,7 +28,20 @@ struct SlidePageBadgeOverlay: ViewModifier {
         return holdsCorner ? .topLeading : .topTrailing
     }
 
-    private static let inset: CGFloat = 40
+    static let inset: CGFloat = 40
+}
+
+extension SlideCue {
+    /// How far the page badge for `label` reaches into its frame corner, inset included, so
+    /// a layout can keep the card out of it.
+    public static func pageBadgeExtent(label: String) -> CGSize {
+        var size = CGSize.zero
+        ImageRenderer(content: SlidePageBadge(label: label)).render { measured, _ in
+            size = measured
+        }
+        let inset = SlidePageBadgeOverlay.inset
+        return CGSize(width: size.width + inset, height: size.height + inset)
+    }
 }
 
 /// Solid colors and a system font only, so it renders deterministically through
