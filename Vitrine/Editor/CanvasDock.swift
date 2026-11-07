@@ -284,6 +284,7 @@ struct CanvasModeButton: View {
         .help(Text(verbatim: "\(title) (⇧⌘F)"))
         .accessibilityLabel(Text(verbatim: title))
         .accessibilityIdentifier("canvas-mode-button")
+        .markToolbarAvoids()
         .padding(VitrineTokens.Spacing.sm)
     }
 }

@@ -206,10 +206,11 @@ public enum ANSIRenderer {
     /// explicit or inverse background is painted per run.
     public static func attributedString(
         _ text: String, font: NSFont, palette: ANSIPalette = .terminal, columns: Int? = nil,
-        redacting rows: [ClosedRange<Int>] = [], cursor: TerminalCursorStyle = .hidden
+        redacting rows: [ClosedRange<Int>] = [], cursor: TerminalCursorStyle = .hidden,
+        crop: TerminalCrop = TerminalCrop()
     ) -> NSAttributedString {
         let result = NSMutableAttributedString()
-        for run in exportRuns(text, columns: columns, redacting: rows, cursor: cursor) {
+        for run in exportRuns(text, columns: columns, redacting: rows, cursor: cursor, crop: crop) {
             result.append(
                 NSAttributedString(
                     string: run.text,
@@ -223,20 +224,53 @@ public enum ANSIRenderer {
     /// the rendered image shows. Used for the copyable-text sidecar so the shared image
     /// ships with selectable, accessible output rather than only pixels.
     public static func plainText(
-        _ text: String, columns: Int? = nil, redacting rows: [ClosedRange<Int>] = []
+        _ text: String, columns: Int? = nil, redacting rows: [ClosedRange<Int>] = [],
+        crop: TerminalCrop = TerminalCrop()
     ) -> String {
-        exportRuns(text, columns: columns, redacting: rows).map(\.text).joined()
+        exportRuns(text, columns: columns, redacting: rows, crop: crop).map(\.text).joined()
+    }
+
+    /// The cropped screen written back as SGR text, so text that may not carry the transcript
+    /// keeps its colors. Each run restates its whole style. Link targets stay behind, since the
+    /// image never shows them and they would leave unscanned.
+    public static func styledText(
+        _ text: String, columns: Int? = nil, crop: TerminalCrop
+    ) -> String {
+        let runs = exportRuns(text, columns: columns, redacting: [], crop: crop)
+        guard !runs.isEmpty else { return "" }
+        return runs.map { "\u{1B}[" + sgrCodes($0.style).joined(separator: ";") + "m" + $0.text }
+            .joined() + "\u{1B}[0m"
+    }
+
+    private static func sgrCodes(_ style: ANSIStyle) -> [String] {
+        func color(_ color: ANSIColor, base: Int, bright: Int) -> [String] {
+            switch color {
+            case .default: []
+            case .indexed(let index) where (0..<8).contains(index): [String(base + index)]
+            case .indexed(let index) where (8..<16).contains(index): [String(bright + index - 8)]
+            case .indexed(let index): [String(base + 8), "5", String(index)]
+            case .rgb(let red, let green, let blue):
+                [String(base + 8), "2", String(red), String(green), String(blue)]
+            }
+        }
+        let flags = [
+            (style.bold, "1"), (style.dim, "2"), (style.italic, "3"), (style.underline, "4"),
+            (style.inverse, "7"), (style.strikethrough, "9"),
+        ]
+        return ["0"] + flags.filter(\.0).map(\.1) + color(style.foreground, base: 30, bright: 90)
+            + color(style.background, base: 40, bright: 100)
     }
 
     /// Redactions address the final screen, never physical lines in the ANSI transcript.
     /// Text and attributed exports share this transform so styles and row numbers cannot
-    /// diverge. A replacement gets a fresh style, not attributes from hidden content.
+    /// diverge. A replacement gets a fresh style, not attributes from hidden content. A crop
+    /// comes first, so a placeholder is never cut, and redactions follow its rows.
     private static func exportRuns(
         _ text: String, columns: Int?, redacting rows: [ClosedRange<Int>],
-        cursor: TerminalCursorStyle = .hidden
+        cursor: TerminalCursorStyle = .hidden, crop: TerminalCrop = TerminalCrop()
     ) -> [ANSIRun] {
-        let runs = styledRuns(text, columns: columns, cursor: cursor)
-        let redactions = LineHighlight.normalize(rows)
+        let runs = crop.apply(to: styledRuns(text, columns: columns, cursor: cursor))
+        let redactions = crop.localRanges(LineHighlight.normalize(rows))
         guard !redactions.isEmpty else { return runs }
         var result: [ANSIRun] = []
         var row = 1
