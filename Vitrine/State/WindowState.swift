@@ -129,6 +129,7 @@ struct EditorWindowState: Codable, Equatable {
     var wrapColumns: Int?
     var terminalPalette: TerminalPaletteMode?
     var terminalCursor: TerminalCursorStyle?
+    var terminalCrop: TerminalCrop?
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
     var showDiffStats: Bool
@@ -169,6 +170,7 @@ struct EditorWindowState: Codable, Equatable {
         wrapColumns = config.wrapColumns
         terminalPalette = config.terminalPalette
         terminalCursor = config.terminalCursor
+        terminalCrop = config.terminalCrop.isEmpty ? nil : config.terminalCrop
         focusHighlightedLines = config.focusHighlightedLines
         diffDecorations = config.diffDecorations
         showDiffStats = config.showDiffStats
@@ -236,6 +238,7 @@ struct EditorWindowState: Codable, Equatable {
         config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
         config.terminalPalette = terminalPalette ?? .theme
         config.terminalCursor = terminalCursor ?? .hidden
+        config.terminalCrop = terminalCrop ?? TerminalCrop()
         config.focusHighlightedLines = focusHighlightedLines
         config.diffDecorations = diffDecorations
         config.showDiffStats = showDiffStats
@@ -252,7 +255,7 @@ struct EditorWindowState: Codable, Equatable {
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
         case showDiffStats, diffContextLines, diffView
-        case terminalPalette, terminalCursor
+        case terminalPalette, terminalCursor, terminalCrop
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
 
@@ -307,6 +310,7 @@ struct EditorWindowState: Codable, Equatable {
             TerminalPaletteMode.self, forKey: .terminalPalette)
         terminalCursor = try? container.decodeIfPresent(
             TerminalCursorStyle.self, forKey: .terminalCursor)
+        terminalCrop = try? container.decodeIfPresent(TerminalCrop.self, forKey: .terminalCrop)
         focusHighlightedLines =
             (try? container.decode(Bool.self, forKey: .focusHighlightedLines))
             ?? fallback.focusHighlightedLines

@@ -198,6 +198,20 @@ final class VitrineUITests: XCTestCase {
 
         assertExists(element("terminal-palette-picker", in: app), in: app, timeout: 8)
         assertExists(element("terminal-cursor-picker", in: app), in: app)
+        assertExists(
+            app.textFields.matching(identifier: "terminal-crop-columns-field").firstMatch, in: app)
+
+        // Return commits the crop, which the field shows back as one canonical span.
+        let rows = app.textFields.matching(identifier: "terminal-crop-rows-field").firstMatch
+        assertExists(rows, in: app)
+        if !rows.isHittable {
+            element("editor-inspector", in: app).scroll(byDeltaX: 0, deltaY: -200)
+        }
+        rows.click()
+        rows.typeText("3-1\r")
+        let committed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "1-3"), object: rows)
+        XCTAssertEqual(XCTWaiter().wait(for: [committed], timeout: 3), .completed)
 
         let header = element("inspector-disclosure-header", in: app)
         assertExists(header, in: app)
@@ -2222,6 +2236,63 @@ final class VitrineUITests: XCTestCase {
         let recents = RecentsRobot(testCase: self, app: app)
         assertExists(recents.gallery, in: app, timeout: 5)
         XCTAssertEqual(recents.cards.count, 0)
+    }
+
+    /// The launch flag holds the preview until it is dismissed, so no step races its lifetime.
+    @MainActor
+    func testCopyPreviewReopensTheEditorAndDismisses() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--copy-preview-stays"])
+        defer { app.terminate() }
+        assertHittable("copy-button", in: app, "Copy image is not reachable")
+
+        element("copy-button", in: app).click()
+        let preview = element("copy-preview-image", in: app)
+        assertExists(preview, in: app, timeout: 5)
+        assertExists(element("copy-preview-window", in: app), in: app)
+        // Close-after-copy is on by default, so the click has a closed editor to bring back.
+        preview.click()
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3), "Opening must hide the preview")
+        assertHittable("copy-button", in: app, "The preview must reopen the editor", timeout: 5)
+
+        element("copy-button", in: app).click()
+        assertExists(preview, in: app, timeout: 5)
+        element("copy-preview-dismiss", in: app).click()
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3), "Dismiss must hide the preview")
+    }
+
+    @MainActor
+    func testTurningTheCopyPreviewOffSkipsItOnTheNextCopy() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-settings", "--copy-preview-stays"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-output", in: app).click()
+        let toggle = element("copy-preview-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 1, "The copy preview must start on")
+        toggle.click()
+        XCTAssertEqual(toggle.value as? Int, 0)
+        app.typeKey("w", modifierFlags: .command)
+
+        assertHittable("copy-button", in: app, "Copy image is not reachable", timeout: 5)
+        element("copy-button", in: app).click()
+        let copied = NSPredicate { _, _ in pasteboard.data(forType: .png) != nil }
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [XCTNSPredicateExpectation(predicate: copied, object: nil)], timeout: 5),
+            .completed, "Copy image did not place a PNG on the pasteboard")
+        XCTAssertFalse(
+            element("copy-preview-image", in: app).waitForExistence(timeout: 2),
+            "A disabled preview must not appear")
     }
 
     @MainActor

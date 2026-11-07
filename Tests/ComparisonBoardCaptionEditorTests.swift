@@ -92,11 +92,17 @@ struct ComparisonBoardCaptionEditorTests {
         container.addSubview(hosting)
         window.contentView = container
         window.makeKeyAndOrderFront(nil)
-        try await settle()
-        return Harness(window: window, other: other, model: model)
+        let harness = Harness(window: window, other: other, model: model)
+        // Focus arrives asynchronously; a loaded host can take longer than one settle.
+        try await waitUntil { harness.fieldEditor.map { $0 !== other } ?? false }
+        return harness
     }
 
     private func settle() async throws { try await Task.sleep(for: .milliseconds(250)) }
+
+    private func waitUntil(_ condition: () -> Bool) async throws {
+        for _ in 0..<60 where !condition() { try await Task.sleep(for: .milliseconds(50)) }
+    }
 
     private func waitForFieldEditor(showing text: String, in harness: Harness) async throws {
         for _ in 0..<60 where harness.fieldEditor?.string != text {
@@ -165,7 +171,7 @@ struct ComparisonBoardCaptionEditorTests {
         defer { harness.window.orderOut(nil) }
 
         try harness.press(characters: "\r", keyCode: 36)
-        try await settle()
+        try await waitUntil { harness.model.ended.contains(harness.model.first) }
 
         #expect(harness.model.ended.contains(harness.model.first))
     }
@@ -175,7 +181,7 @@ struct ComparisonBoardCaptionEditorTests {
         defer { harness.window.orderOut(nil) }
 
         try harness.press(characters: "\u{1B}", keyCode: 53)
-        try await settle()
+        try await waitUntil { harness.model.ended.contains(harness.model.first) }
 
         #expect(harness.model.ended.contains(harness.model.first))
     }

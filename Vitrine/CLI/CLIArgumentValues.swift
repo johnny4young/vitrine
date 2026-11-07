@@ -452,6 +452,19 @@ extension CLIArgumentParser {
         return value
     }
 
+    /// One `first-last` span of the final screen's rows or columns.
+    func resolveCropRange(_ raw: String, flag: String) throws -> ClosedRange<Int> {
+        guard let span = TerminalCrop.span(raw) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return span
+    }
+
+    var terminalCrop: TerminalCrop? {
+        terminalCropRows == nil && terminalCropColumns == nil
+            ? nil : TerminalCrop(rows: terminalCropRows, columns: terminalCropColumns)
+    }
+
     func resolveTerminalCursor(_ raw: String, flag: String) throws -> TerminalCursorStyle {
         guard let value = TerminalCursorStyle(rawValue: raw.lowercased()) else {
             throw CLIError.invalidValue(flag: flag, value: raw)

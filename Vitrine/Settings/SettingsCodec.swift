@@ -47,6 +47,7 @@ enum SettingsCodec {
         static let autoCopy = "autoCopy"
         static let alsoSaveToFile = "alsoSaveToFile"
         static let closeAfterCopy = "closeAfterCopy"
+        static let showsCopyPreview = "showsCopyPreview"
         static let exportScale = "exportScale"
         static let exportFormat = "exportFormat"
         static let colorProfile = "colorProfile"
@@ -119,7 +120,8 @@ enum SettingsCodec {
             highlightedLines, focusHighlightedLines,
             diffDecorations, showDiffStats, diffContextLines, diffView, annotations, metadata,
             gradientPreset,
-            backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
+            backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, showsCopyPreview,
+            exportScale, exportFormat,
             colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction,
             acknowledgedMacOSHotkey, appLanguage,
             treatURLs,

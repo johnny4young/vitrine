@@ -229,6 +229,9 @@ struct CLIReproductionCommand {
             label(
                 "--terminal-palette", style.terminalPalette.rawValue, base.terminalPalette.rawValue)
             label("--terminal-cursor", style.terminalCursor.rawValue, base.terminalCursor.rawValue)
+            let span = { (range: ClosedRange<Int>?) in range.map { lineSpec([$0]) } }
+            label("--terminal-crop-rows", span(style.terminalCrop.rows), nil)
+            label("--terminal-crop-columns", span(style.terminalCrop.columns), nil)
         }
         return flags
     }
