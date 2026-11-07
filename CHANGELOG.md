@@ -14,13 +14,73 @@ can never drift.
 
 ### Added
 
+- A Magic swatch beside the editor's background presets builds a gradient from the capture
+  itself: the syntax colors the code uses, or the main colors of a beautified image. Shuffle
+  steps through its variants. Each stop keeps the code card distinct, and the result is an
+  ordinary custom gradient, so presets, recipes, share links and the CLI reproduce it.
+- The code editor has a line-number gutter that shows each line's highlight and redaction.
+  Click a number to highlight, redact or clear that line, or to turn on Focus highlighted;
+  ⇧-click marks a range. Selecting code offers Highlight and Redact for the lines it covers,
+  also in Edit ▸ Highlight Selected Lines / Redact Selected Lines and the editor's context
+  menu. Mark edits can be undone, and highlights and redactions now stay on their text when
+  you add or remove lines above them. Terminal captures keep their row-based redaction and
+  show no gutter.
+- A Balance switch under Padding (inspector and Settings ▸ Style) measures the padding to the
+  card and the visible part of its shadow, and sets the card a little above center, in the
+  window and in fixed-size destinations. `vitrine render --padding-mode balanced` does the
+  same. Off by default, so existing styles and exports render as before; presets, recipes,
+  restored windows and share links carry it. Blur boxes sit at canvas coordinates, so the
+  switch is disabled while a capture has any, a preset or recipe leaves the mode as it is,
+  and the CLI refuses `--padding-mode balanced` with `--blur-box`. Earlier builds reject a
+  recipe that sets `paddingMode`, since they refuse unknown recipe fields; a recipe with
+  Balance off writes no `paddingMode` and stays readable. Share links keep schema version 1,
+  so an earlier build opens a balanced link with manual padding.
+- Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
+  to see it in up to four themes on a comparison board, each captioned with its theme. The
+  board's inspector adds or removes themes without capturing again.
+- Marks snap while you draw, drag or resize them: box edges to code rows, token edges and the
+  card, arrow ends and placed marks to row centers and tokens, with a magenta guide on the
+  target. Hold ⌘ to place freely. Blur boxes only snap outward, so a snap never uncovers text,
+  and arrow-key nudges, opened documents and exports are unchanged.
+- Add an optional stats header to diffs, with the file path, added and removed line counts
+  and a diffstat bar, and a context slider that folds unchanged lines around each change.
+  The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
+  links keep the full patch.
+- Show a diff split, with the old and new file side by side, from the Layout control in the
+  inspector's Lines section or with `--diff-view split` in the CLI. Each side keeps its own
+  line numbers and redacted rows stay hidden on both sides. Unified stays the default.
+- Crop a terminal capture to some rows and columns of its final screen from the inspector's
+  Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
+  and redacted rows keep counting the whole screen, and text exports and share links carry only
+  the kept cells. Clearing the fields restores the rest.
+- A preview of the copied image floats in the bottom corner of the screen after Copy image,
+  a quick capture or a copy from Recents. Drag it into another app or into Finder, click it
+  to go back to the editor or Recents, or dismiss it. It skips copies marked confidential and
+  can be turned off in Settings › Output.
+- A selected mark gets a small toolbar beside it on the stage with its color, size and
+  Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
+  you draw, drag or resize, and is never part of an export.
+- Canvas mode (⇧⌘F, View ▸ Canvas Mode, the command palette, or the stage's corner button)
+  hides the code and inspector columns. A dock on the stage shows the current theme,
+  typography, background and padding, and opens the inspector's section for each in a
+  popover. Each window has its own mode, and leaving it restores both columns as they were.
 - When a dropped file picks up a workspace recipe, a bar over the stage names the recipe and
   its folder and counts the style fields you've changed since. Revert restores the recipe's
   look and can be undone; closing the bar keeps the style.
+- Settings ▸ Library shows workspace recipes as a gallery. Each card renders the recipe's
+  style on the same snippet, with its theme and output values as the file spells them, its
+  folder, and which recipe wins where one folder sits inside another. Choosing a card selects
+  it for Apply to Default and Remove.
 - The carousel export sheet shows a filmstrip of the real slides before writing files, with
   redactions in place, a flag on a last slide that came out short, and the slide size. A new
   switch draws slide dividers in the code editor while you edit; they never touch the text. PRO
   users opening it on a terminal capture or one with blur boxes now see why it can't export.
+- Carousel slides come in four sizes: LinkedIn 4:5, Instagram 1:1, X 16:9 and Story 9:16.
+  The type sizes itself so the widest line and the tallest slide (at least eight rows,
+  wrapped rows included) fill the frame, and the sheet says when a line can't fit even at the
+  smallest size. The export writes a PNG per slide, one `carousel.pdf` with a page per slide
+  for a LinkedIn document post, or both. The PDF is drawn locally as vector pages, or as
+  images when lines overflow, so no clipped text stays in the file.
 - Warn in the inspector's Theme header when a capture's code text has low measured contrast
   on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
   stock theme only when it measures better, and can be dismissed for a theme until you quit.

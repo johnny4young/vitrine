@@ -67,13 +67,13 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         return true
     }
 
-    /// True when the key window is an editor, or when no window is key and the main
-    /// window is an editor. A non-editor key window deliberately keeps editor commands
+    /// True when the key window is an editor, or when no window (or only a popover or
+    /// panel) is key and the main window is an editor. A non-editor key window keeps editor commands
     /// disabled; `EditorWindowController` tags every editor window with an
     /// `editor-window`-prefixed identifier, of which the primary is exactly
     /// `editor-window`.
     private var isEditorKey: Bool {
-        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return false }
+        guard let window = EditorWindowController.commandTargetWindow else { return false }
         return window.accessibilityIdentifier().hasPrefix("editor-window")
     }
 
@@ -84,6 +84,8 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
         case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
         case #selector(formatCode(_:)): canPerform(.formatCode)
+        case #selector(toggleCanvasMode(_:)):
+            validateCanvasMode(menuItem, session: EditorWindowController.shared.keyWindowSession)
         case #selector(selectAnnotationTool(_:)), #selector(performAnnotationMarkAction(_:)):
             isEditorKey
         default: true
@@ -93,7 +95,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     @objc func copyRenderedImage(_ sender: Any?) {
         guard canPerform(.copyImage) else { return }
         EditorWindowController.shared.keyWindowSession?.copyImage(
-            closing: NSApp.keyWindow ?? NSApp.mainWindow)
+            closing: EditorWindowController.commandTargetWindow)
     }
 
     @objc func saveRenderedImage(_ sender: Any?) {
@@ -115,7 +117,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     @objc func shareRenderedImage(_ sender: Any?) {
         let settings = activeSettings
         guard canPerform(.shareImage),
-            let view = (NSApp.keyWindow ?? NSApp.mainWindow)?.contentView
+            let view = EditorWindowController.commandTargetWindow?.contentView
         else { return }
         guard presentation.clearsPreflight(of: settings, for: .share, delivering: .image) else {
             return
@@ -139,6 +141,20 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         session.makeDefault()
     }
 
+    /// Shows or hides the key editor's code and inspector columns.
+    @objc func toggleCanvasMode(_ sender: Any?) {
+        guard canPerform(.toggleCanvasMode),
+            let session = EditorWindowController.shared.keyWindowSession
+        else { return }
+        session.isCanvasMode.toggle()
+    }
+
+    /// The check mark follows the key editor, so each window reports its own mode.
+    func validateCanvasMode(_ menuItem: NSMenuItem, session: EditorSession?) -> Bool {
+        menuItem.state = session?.isCanvasMode == true ? .on : .off
+        return session != nil && canPerform(.toggleCanvasMode)
+    }
+
     /// Routes a tool command to the key editor window. The window is the
     /// notification object so other open editors ignore the selection.
     @objc func selectAnnotationTool(_ sender: Any?) {
@@ -146,7 +162,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             let item = sender as? NSMenuItem,
             let rawValue = item.representedObject as? String,
             AnnotationTool(rawValue: rawValue) != nil,
-            let window = NSApp.keyWindow ?? NSApp.mainWindow
+            let window = EditorWindowController.commandTargetWindow
         else { return }
         NotificationCenter.default.post(
             name: .vitrineSelectAnnotationTool,
@@ -161,7 +177,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             let item = sender as? NSMenuItem,
             let rawValue = item.representedObject as? String,
             AnnotationMarkAction(rawValue: rawValue) != nil,
-            let window = NSApp.keyWindow ?? NSApp.mainWindow
+            let window = EditorWindowController.commandTargetWindow
         else { return }
         NotificationCenter.default.post(
             name: .vitrineAnnotationMarkAction,
@@ -180,7 +196,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
     @objc func formatCode(_ sender: Any?) {
         guard canPerform(.formatCode),
             let textView = CodeFormatOperation.editorTextView(
-                in: NSApp.keyWindow ?? NSApp.mainWindow)
+                in: EditorWindowController.commandTargetWindow)
         else { return }
         formatCode(in: textView, language: activeSettings.config.language)
     }

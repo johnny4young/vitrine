@@ -52,7 +52,8 @@ extension EditorView {
                         leaveAnnotationContext: leaveAnnotationContext,
                         carouselSplit: session.carouselSplit,
                         thumbnails: session.presetThumbnails,
-                        entitlements: entitlements)
+                        entitlements: entitlements,
+                        isCollapsed: isCanvasMode)
                 }
             }
         }
@@ -65,11 +66,7 @@ extension EditorView {
         // Accept a dropped source file or selected text. `.onDrop` with UTType
         // payloads is the current API; the bounded item-provider bridge runs in one
         // owned task so a replacement drop or disappearing editor cancels it.
-        .onDrop(of: [.image, .fileURL, .text], isTargeted: $isDropTargeted) { providers in
-            dropTask?.cancel()
-            dropTask = Task { await handleDrop(providers) }
-            return true
-        }
+        .onDrop(of: Self.droppableTypes, isTargeted: $isDropTargeted, perform: acceptDrop)
         .onChange(of: settings.style.foregroundImage) { _, _ in
             imageProcessing.cancel()
         }
@@ -80,6 +77,14 @@ extension EditorView {
         }
         .overlay { dropAffordance }
         .accessibilityContainerIdentifier("editor-drop-target")
+    }
+
+    static let droppableTypes: [UTType] = [.image, .fileURL, .text]
+
+    func acceptDrop(_ providers: [NSItemProvider]) -> Bool {
+        dropTask?.cancel()
+        dropTask = Task { await handleDrop(providers) }
+        return true
     }
 
     /// Compact access to the explicit, session-only file connection: an icon in the code
@@ -496,6 +501,7 @@ extension EditorView {
                         canvasSize: canvasSize, activeTool: activeTool,
                         drawColor: newDrawColor, drawThickness: newDrawThickness,
                         stickerGlyph: newStickerGlyph,
+                        snapper: cardGeometry.snapper,
                         onBeginEdit: beginAnnotationEdit,
                         onEndEdit: endAnnotationEdit)
                     // Free-placement: drag the brand mark anywhere on the canvas. The
@@ -516,36 +522,94 @@ extension EditorView {
                             showsGuideRect: settings.effectiveFixedSize != nil)
                     }
                 }
+                // The canvas shares this stack's origin, so its anchors resolve to canvas points.
+                .backgroundPreferenceValue(CanvasSnapAnchorsKey.self) { anchors in
+                    GeometryReader { proxy in
+                        Color.clear.onChange(of: anchors.resolved(in: proxy), initial: true) {
+                            cardGeometry.snapper.layout = $1
+                        }
+                    }
+                    .accessibilityHidden(true)
+                }
                 // Route arrow keys to a selected mark without competing with code-editor
                 // navigation when the annotation canvas has no selection.
                 .focusable(selectedAnnotationID != nil && editingAnnotationID == nil)
                 .focused($stageFocused)
                 .focusEffectDisabled()
                 .onChange(of: selectedAnnotationID) { _, id in
+                    // A Duplicate pressed from the keyboard keeps the toolbar's focus.
+                    if markToolbarFocused, id != nil { return }
                     stageFocused = id != nil && editingAnnotationID == nil
                 }
                 .onChange(of: editingAnnotationID) { _, id in
                     stageFocused = id == nil && selectedAnnotationID != nil
                 }
-                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
-                    nudgeSelection(
-                        press.key, shift: press.modifiers.contains(.shift),
-                        isRepeat: press.phase == .repeat) ? .handled : .ignored
-                }
-                .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-                    deleteSelection() ? .handled : .ignored
+                .onKeyPress(
+                    keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .delete, .deleteForward],
+                    action: markKeyPress
+                )
+                // Buttons take focus only with macOS keyboard navigation on, as elsewhere.
+                .onKeyPress(keys: [.tab]) { press in
+                    guard press.modifiers.isEmpty, activeTool == .select,
+                        NSApp.isFullKeyboardAccessEnabled
+                    else { return .ignored }
+                    markToolbarFocused = true
+                    return .handled
                 }
                 .onExitCommand(perform: clearAnnotationSelection)
             }
         }
         .onGeometryChange(for: CGSize.self, of: \.size) { stageSize = $0 }
         .clipped()
-        .background(stageBackground)
         .overlay(alignment: .bottom) {
             StageStatusCapsule(settings: settings, geometry: cardGeometry, stageSize: stageSize)
         }
+        .overlay(alignment: .topTrailing) {
+            CanvasModeButton(isCanvasMode: isCanvasMode) { session.isCanvasMode.toggle() }
+        }
+        // An inset, not an overlay, so the card fits above the dock instead of under it.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isCanvasMode {
+                CanvasDock(
+                    settings: settings, themes: themes, presets: presets,
+                    entitlements: entitlements, legibility: legibility,
+                    presetThumbnails: session.presetThumbnails,
+                    magicBackground: session.magicBackground,
+                    presentFramePaywall: { exportSheet = .framePaywall }
+                )
+                .markToolbarAvoids()
+            }
+        }
+        // The code column is the drop target until canvas mode collapses it.
+        .onDrop(
+            of: isCanvasMode ? Self.droppableTypes : [], isTargeted: $isDropTargeted,
+            perform: acceptDrop
+        )
+        .overlay { if isCanvasMode { dropAffordance } }
+        .background(stageBackground)
         .overlay(alignment: .top) {
             RecipeAppliedBar(session: session, settings: settings)
+        }
+        // Last, outside the preview's scale: it keeps its size and never reaches an export.
+        // Stage chrome joins `MarkToolbarAnchors.avoiding` to keep the toolbar off it.
+        .overlayPreferenceValue(MarkToolbarAnchorsKey.self) { anchors in
+            if let mark = anchors.mark {
+                GeometryReader { proxy in
+                    MarkToolbarPlacer(
+                        mark: proxy[mark], avoiding: anchors.avoiding.map { proxy[$0] },
+                        stage: proxy.size
+                    ) { popoverEdge, holdPlace in
+                        AnnotationMarkToolbar(
+                            color: annotationStyleColor, thickness: annotationStyleThickness,
+                            showsColor: annotationStyleUsesColor,
+                            showsThickness: annotationStyleUsesThickness,
+                            popoverEdge: popoverEdge, focus: $markToolbarFocused,
+                            onStyleEditEnded: endAnnotationEdit, onSizeDragging: holdPlace,
+                            onDuplicate: duplicateSelection, onMarkKey: markKeyPress,
+                            onExit: { stageFocused = selectedAnnotationID != nil })
+                    }
+                }
+            }
         }
         .layoutPriority(EditorLayout.stageLayoutPriority)
         // A container, so the canvas text and the inline callout field keep their own ids.
@@ -630,7 +694,8 @@ extension EditorView {
     var inspectorColumn: some View {
         EditorInspectorView(
             settings: settings, themes: themes, presets: presets, entitlements: entitlements,
-            legibility: legibility, presetThumbnails: session.presetThumbnails)
+            legibility: legibility, presetThumbnails: session.presetThumbnails,
+            magicBackground: session.magicBackground)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a
@@ -732,6 +797,8 @@ final class PreviewCardGeometry {
     var legendHeight: CGFloat = 0
     /// Legend entries a fixed frame had no room for.
     var legendDropped = 0
+    /// Where the card and code landed, for snapping marks while they are dragged.
+    @ObservationIgnored let snapper = AnnotationSnapper()
 
     /// The latest destination change that moved the card.
     private(set) var morph = StageFitMorph()
@@ -798,6 +865,7 @@ struct PreviewCardStage<Content: View>: View {
             // A drag on a card still changing shape would place a mark away from the pointer.
             .allowsHitTesting(reduceMotion || settledMorph == morph.generation)
             .scaleEffect(scale)
+            .onChange(of: scale, initial: true) { geometry.snapper.scale = $1 }
             // `scaleEffect` does not shrink the layout footprint, so without this the
             // unscaled (often very wide) card stays full-width in layout and its
             // centered overflow is clipped on the right. Pinning the footprint to the
@@ -879,6 +947,7 @@ private struct StageStatusCapsule: View {
         .accessibilityLabel("Destination")
         .accessibilityValue(Text(verbatim: line))
         .accessibilityIdentifier("editor-status-capsule")
+        .markToolbarAvoids()
         .padding(.bottom, 14)
     }
 
@@ -940,6 +1009,7 @@ private struct CodeDocumentEditor: View {
     let carouselSplit: CarouselSplitModel
     let thumbnails: PresetThumbnailModel
     let entitlements: Entitlements
+    let isCollapsed: Bool
 
     var body: some View {
         CodeEditorView(
@@ -952,12 +1022,16 @@ private struct CodeDocumentEditor: View {
             reindentOnPaste: reindentOnPaste,
             onReplaceAllPaste: beginPastedDocument,
             onUserEdit: leaveAnnotationContext,
-            slideDividers: carouselSplit.dividerLayout
+            slideDividers: carouselSplit.dividerLayout,
+            isHidden: isCollapsed
         )
         .background {
-            SlideDividerRefresher(
-                settings: settings, model: carouselSplit, thumbnails: thumbnails,
-                entitlements: entitlements)
+            // A collapsed editor draws no dividers, so it does not lay them out either.
+            if !isCollapsed {
+                SlideDividerRefresher(
+                    settings: settings, model: carouselSplit, thumbnails: thumbnails,
+                    entitlements: entitlements)
+            }
         }
         .overlay {
             if settings.documentIsEmpty {
