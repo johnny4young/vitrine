@@ -38,6 +38,8 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case terminalWidth
     case terminalPalette
     case terminalCursor
+    case terminalCropRows
+    case terminalCropColumns
     case wrapColumns
     case formatCode
     case format
@@ -97,6 +99,8 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case redactSecrets
     case focusLines
     case diffBands
+    case diffStats
+    case diffContext
     case recursive
     case failOnSkipped
     case failOnEmpty
@@ -283,6 +287,18 @@ nonisolated enum CLIArgumentSchema {
             synopsis: "--terminal-cursor <hidden|block|bar>",
             description:
                 "Draw the terminal cursor where the output left it, unless the program hid it or a full-screen app already exited. Only affects --language terminal."
+        ),
+        definition(
+            .terminalCropRows, ["--terminal-crop-rows"], .value("first-last"),
+            synopsis: "--terminal-crop-rows <first-last>",
+            description:
+                "Keep only these rows of the final terminal screen; line numbers and --redact-lines keep counting the whole screen. Only affects --language terminal."
+        ),
+        definition(
+            .terminalCropColumns, ["--terminal-crop-columns"], .value("first-last"),
+            synopsis: "--terminal-crop-columns <first-last>",
+            description:
+                "Keep only these columns of the final terminal screen. Only affects --language terminal."
         ),
         definition(
             .wrapColumns, ["--wrap-columns", "--wrap"], .value("n"), synopsis: "--wrap-columns <n>",
@@ -498,6 +514,13 @@ nonisolated enum CLIArgumentSchema {
             .diffBands, ["--diff-bands", "--no-diff-bands"], .flag,
             synopsis: "--diff-bands / --no-diff-bands",
             description: "Show or hide GitHub-style diff line bands."),
+        definition(
+            .diffStats, ["--diff-stats", "--no-diff-stats"], .flag,
+            synopsis: "--diff-stats / --no-diff-stats",
+            description: "Show or hide the file path and +/- counts above a diff."),
+        definition(
+            .diffContext, ["--diff-context"], .value("0...5"), synopsis: "--diff-context <0...5>",
+            description: "Fold a diff to this many unchanged lines around each change."),
         definition(
             .recursive, ["--recursive"], .flag, synopsis: "--recursive",
             description: "Batch only: include nested folders and preserve relative output paths.",

@@ -108,8 +108,11 @@ struct EditorWindowStateTests {
         config.wrapColumns = 72
         config.terminalPalette = .raw
         config.terminalCursor = .bar
+        config.terminalCrop = TerminalCrop(rows: 2...9, columns: 3...40)
         config.focusHighlightedLines = true
         config.diffDecorations = true
+        config.showDiffStats = true
+        config.diffContextLines = 2
         config.annotations = [
             Annotation(
                 kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),
@@ -166,6 +169,8 @@ struct EditorWindowStateTests {
         #expect(restored.wrapColumns == original.wrapColumns)
         #expect(restored.focusHighlightedLines == original.focusHighlightedLines)
         #expect(restored.diffDecorations == original.diffDecorations)
+        #expect(restored.showDiffStats == original.showDiffStats)
+        #expect(restored.diffContextLines == original.diffContextLines)
         #expect(restored.annotations == original.annotations)
     }
 

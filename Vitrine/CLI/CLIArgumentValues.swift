@@ -32,6 +32,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolveDiffContextLines(_ raw: String, flag: String) throws -> Int {
+        guard let value = Int(raw), SettingsDefaults.diffContextLinesRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     func containsControlCharacter(_ value: String) -> Bool {
         value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }
@@ -443,6 +450,19 @@ extension CLIArgumentParser {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return value
+    }
+
+    /// One `first-last` span of the final screen's rows or columns.
+    func resolveCropRange(_ raw: String, flag: String) throws -> ClosedRange<Int> {
+        guard let span = TerminalCrop.span(raw) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return span
+    }
+
+    var terminalCrop: TerminalCrop? {
+        terminalCropRows == nil && terminalCropColumns == nil
+            ? nil : TerminalCrop(rows: terminalCropRows, columns: terminalCropColumns)
     }
 
     func resolveTerminalCursor(_ raw: String, flag: String) throws -> TerminalCursorStyle {

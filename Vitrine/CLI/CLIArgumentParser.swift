@@ -30,6 +30,8 @@ struct CLIArgumentParser {
     var terminalColumns: Int?
     var terminalPalette: TerminalPaletteMode?
     var terminalCursor: TerminalCursorStyle?
+    var terminalCropRows: ClosedRange<Int>?
+    var terminalCropColumns: ClosedRange<Int>?
     var wrapColumns: Int?
     var formatCode = false
     var explicitFormat: ExportFormat?
@@ -69,6 +71,8 @@ struct CLIArgumentParser {
     var redactSecrets = false
     var focusHighlightedLines: Bool?
     var diffDecorations: Bool?
+    var showDiffStats: Bool?
+    var diffContextLines: Int?
     var recursiveBatch = false
     var failOnSkipped = false
     var failOnEmpty = false
@@ -205,6 +209,10 @@ struct CLIArgumentParser {
             terminalPalette = try resolveTerminalPalette(value, flag: token)
         case .terminalCursor:
             terminalCursor = try resolveTerminalCursor(value, flag: token)
+        case .terminalCropRows:
+            terminalCropRows = try resolveCropRange(value, flag: token)
+        case .terminalCropColumns:
+            terminalCropColumns = try resolveCropRange(value, flag: token)
         case .wrapColumns:
             wrapColumns = try resolveWrapColumns(value, flag: token)
         case .formatCode:
@@ -334,6 +342,10 @@ struct CLIArgumentParser {
             focusHighlightedLines = token == "--focus-lines"
         case .diffBands:
             diffDecorations = token == "--diff-bands"
+        case .diffStats:
+            showDiffStats = token == "--diff-stats"
+        case .diffContext:
+            diffContextLines = try resolveDiffContextLines(value, flag: token)
         case .recursive:
             recursiveBatch = true
         case .failOnSkipped:
