@@ -344,7 +344,7 @@ final class VitrineUITests: XCTestCase {
 
     /// Measured from the demo's code, at the default 26 pt card inset and 32 pt padding: the
     /// chrome sits above the code, and the background starts past the shadow's 10 pt ring.
-    private func stageRegionPoint(
+    @MainActor private func stageRegionPoint(
         _ target: StageRegionTarget, of code: XCUIElement, scale: CGFloat
     ) -> XCUICoordinate {
         let origin = code.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
