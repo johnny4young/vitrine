@@ -85,7 +85,12 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
         case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
         case #selector(formatCode(_:)): canPerform(.formatCode)
-        case #selector(commentOnSelectedLine(_:)): canPerform(.commentOnLine)
+        case #selector(commentOnSelectedLine(_:)):
+            // A comment on a folded or unpicked row would not draw.
+            canPerform(.commentOnLine)
+                && EditorView.caretRow(in: EditorWindowController.commandTargetWindow).map {
+                    activeSettings.config.showsDiffRow($0)
+                } == true
         case #selector(toggleCanvasMode(_:)):
             validateCanvasMode(menuItem, session: EditorWindowController.shared.keyWindowSession)
         case #selector(selectAnnotationTool(_:)), #selector(performAnnotationMarkAction(_:)):

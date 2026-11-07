@@ -104,7 +104,7 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
     /// The badge number. Only `.counter` uses it.
     public var number: Int
     /// The source line a text callout is pinned to; the canvas then places it from that
-    /// line's row and `start` only caches the last placement.
+    /// line's row and ignores `start`.
     public var lineAnchor: DiffLineAnchor?
 
     public init(
@@ -142,7 +142,10 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
         thickness =
             (try? container.decode(Double.self, forKey: .thickness)) ?? Annotation.defaultThickness
         number = (try? container.decode(Int.self, forKey: .number)) ?? 0
-        lineAnchor = try? container.decodeIfPresent(DiffLineAnchor.self, forKey: .lineAnchor)
+        // Only a text callout draws from an anchor; on any other kind it would only hide it.
+        lineAnchor =
+            kind == .text
+            ? try? container.decodeIfPresent(DiffLineAnchor.self, forKey: .lineAnchor) : nil
     }
 }
 

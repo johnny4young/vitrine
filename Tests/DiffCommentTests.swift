@@ -146,19 +146,81 @@ struct DiffCommentTests {
         #expect(config.diffCommentSlots.isEmpty)
     }
 
-    @Test func placementUsesTheRowAndTheCommentTextOnly() {
+    private func placed(_ text: String, row: CGRect) throws -> DiffCommentLayout.Placement {
+        let note = comment(row: 1, text: text)
+        return try #require(DiffCommentLayout.place([(note, row)])[note.id])
+    }
+
+    @Test func placementUsesTheRowAndTheCommentTextOnly() throws {
         let row = CGRect(x: 20, y: 100, width: 400, height: 22)
-        let short = DiffCommentLayout.center(of: comment(row: 1, text: "ok"), rowFrame: row)
-        let long = DiffCommentLayout.center(
-            of: comment(row: 1, text: "a longer note"), rowFrame: row)
-        #expect(short.y == row.midY)
-        #expect(short.x > long.x)
-        #expect(short.x < row.maxX)
-        // Too wide for the row: it starts at the row's leading edge.
+        let short = try placed("ok", row: row)
+        let long = try placed("a longer note", row: row)
+        #expect(short.center.y == row.midY)
+        #expect(short.frame.maxX == long.frame.maxX)
+        #expect(short.frame.minX > long.frame.minX)
+        #expect(short.frame.maxX <= row.maxX)
+    }
+
+    @Test func aLongCommentWrapsInsideItsRow() throws {
+        let row = CGRect(x: 20, y: 100, width: 300, height: 22)
+        let text = String(repeating: "a long comment that keeps going ", count: 6)
+        let long = try placed(text, row: row)
+        #expect(long.frame.minX >= row.minX)
+        #expect(long.frame.maxX <= row.maxX)
+        #expect(long.frame.height > row.height * 2)
+        #expect(long.textWidth < long.frame.width)
+        // A row narrower than any comment still starts it on the row.
         let narrow = CGRect(x: 20, y: 100, width: 30, height: 22)
-        let clamped = DiffCommentLayout.center(
-            of: comment(row: 1, text: "wide note"), rowFrame: narrow)
-        #expect(clamped.x > narrow.maxX - DiffCommentLayout.trailingInset)
+        #expect(try placed("wide note", row: narrow).frame.minX == narrow.minX)
+    }
+
+    @Test func commentsOnNeighboringLinesDoNotOverlap() {
+        let first = comment(row: 4, text: "first comment")
+        let second = comment(row: 5, text: "second comment")
+        let third = comment(row: 6, text: "third")
+        let rows = (0..<3).map { CGRect(x: 20, y: 100 + CGFloat($0) * 18, width: 600, height: 18) }
+        let placed = DiffCommentLayout.place([
+            (second, rows[1]), (first, rows[0]), (third, rows[2]),
+        ])
+        let frames = [first, second, third].compactMap { placed[$0.id]?.frame }
+        #expect(frames.count == 3)
+        for (index, frame) in frames.enumerated() {
+            #expect(frame.minX >= rows[index].minX)
+            for other in frames[(index + 1)...] { #expect(!frame.intersects(other)) }
+        }
+        // The first on the card keeps its spot at the trailing edge.
+        #expect(frames[0].maxX == rows[0].maxX - DiffCommentLayout.trailingInset)
+    }
+
+    @Test func onlyShownDiffRowsTakeComments() {
+        var config = diffConfig()
+        #expect(config.showsDiffRow(3))
+        #expect(!config.showsDiffRow(0))
+        #expect(!config.showsDiffRow(40))
+        config.diffHunks = [2]
+        #expect(!config.showsDiffRow(3))
+        #expect(config.showsDiffRow(8))
+        config.language = .swift
+        #expect(!config.showsDiffRow(8))
+    }
+
+    @Test @MainActor func theOverlayHandlesOnlyDrawnCommentsAndKeepsThemInPlace() {
+        let free = Annotation(kind: .text, start: .zero, end: .zero, text: "free")
+        let pinned = comment(row: 4)
+        let placed = [pinned.id: CGPoint(x: 0.7, y: 0.4)]
+        #expect(AnnotationEditingOverlay.isDrawn(free, placed: [:]))
+        #expect(!AnnotationEditingOverlay.isDrawn(pinned, placed: [:]))
+        #expect(AnnotationEditingOverlay.isDrawn(pinned, placed: placed))
+
+        let shown = AnnotationEditingOverlay.shown(pinned, placed: placed)
+        #expect(shown.start == CGPoint(x: 0.7, y: 0.4))
+        var dragged = shown
+        dragged.start = CGPoint(x: 0.1, y: 0.9)
+        dragged.text = "edited"
+        let stored = AnnotationEditingOverlay.stored(dragged, over: pinned, placed: placed)
+        #expect(stored.start == pinned.start)
+        #expect(stored.text == "edited")
+        #expect(AnnotationEditingOverlay.stored(dragged, over: free, placed: placed) == dragged)
     }
 
     @Test func aCommentOnARedactedLineShowsOnlyItsOwnText() throws {
@@ -179,17 +241,18 @@ struct DiffCommentTests {
         let edited = comment(row: 3, side: .old)
         config.annotations = [pinned, edited]
         settings.config = config
-        let generation = settings.anchorRebaseGeneration
 
         settings.documentCode = " zero\n" + settings.documentCode
         #expect(settings.style.annotations.map { $0.lineAnchor?.row } == [9, 4])
-        #expect(settings.anchorRebaseGeneration != generation)
 
-        settings.documentCode = settings.documentCode.replacingOccurrences(
-            of: "\"first\"", with: "\"FIRST\"")
+        let typed = settings.documentCode
+        settings.documentCode = typed.replacingOccurrences(of: "\"first\"", with: "\"FIRST\"")
         let anchors = settings.style.annotations.compactMap(\.lineAnchor)
         #expect(anchors.map(\.row) == [9, 4])
         #expect(anchors.map(\.isDetached) == [false, true])
+        // Undoing the typo puts the line back, and the comment with it.
+        settings.documentCode = typed
+        #expect(settings.style.annotations.compactMap(\.lineAnchor?.isDetached) == [false, false])
 
         // A config write brings its own marks for its own text, as a new window's seed does.
         let seeded = AppSettings(defaults: testDefaults())
@@ -198,6 +261,37 @@ struct DiffCommentTests {
         seeded.config = style
         seeded.config = config
         #expect(seeded.style.annotations.compactMap(\.lineAnchor?.row) == [8, 3])
+    }
+
+    @Test @MainActor func annotationUndoFollowsEditsInsteadOfResetting() throws {
+        let settings = AppSettings(defaults: testDefaults())
+        var config = diffConfig()
+        let pinned = comment(row: 8)
+        let blur = Annotation(
+            kind: .blur, start: CGPoint(x: 0.1, y: 0.1), end: CGPoint(x: 0.4, y: 0.3))
+        config.annotations = [pinned, blur]
+        settings.config = config
+        var history = AnnotationHistory()
+        settings.lineEditObserver = { history.follow($0) }
+
+        // Delete the blur box, then add a line above the comment.
+        history.beginEdit(settings.style.annotations)
+        settings.style.annotations.removeMark(blur.id)
+        history.endEdit(current: settings.style.annotations)
+        settings.documentCode = " zero\n" + settings.documentCode
+
+        let undone = history.undo(current: settings.style.annotations)
+        let restored = try #require(undone)
+        #expect(restored.contains { $0.id == blur.id })
+        #expect(restored.first { $0.id == pinned.id }?.lineAnchor?.row == 9)
+        #expect(settings.style.annotations.first?.lineAnchor?.row == 9)
+        // Free marks alone never parse the text.
+        var plain = AnnotationHistory()
+        plain.record([blur])
+        plain.follow {
+            Issue.record("parsed an edit no comment needs")
+            return .init(from: "", to: "")
+        }
     }
 
     @Test func theCaretRowCountsLineFeeds() {

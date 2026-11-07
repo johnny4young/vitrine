@@ -716,6 +716,58 @@ final class VitrineUITests: XCTestCase {
         XCTAssertEqual(field.value as? String, "Trim first")
     }
 
+    /// The stage text for a diff row and for the comment pinned to it.
+    @MainActor
+    private func stageText(_ prefix: String, in app: XCUIApplication) -> XCUIElement {
+        element("editor-preview-stage", in: app).staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", prefix)
+        ).firstMatch
+    }
+
+    @MainActor
+    func testShiftCommandMPinsACommentToTheCaretRow() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--demo-showcase"])
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        editor.click()
+        // Paragraph moves, so wrapped lines in the narrow code column don't count.
+        app.typeKey(.upArrow, modifierFlags: .command)
+        for _ in 0..<4 { app.typeKey(.downArrow, modifierFlags: .option) }
+        app.typeKey("m", modifierFlags: [.command, .shift])
+        let field = app.textFields.matching(identifier: "annotation-text-field").firstMatch
+        assertExists(field, in: app, timeout: 3)
+        field.typeText("Trim first\r")
+
+        let row = stageText("+    let trimmed", in: app)
+        let comment = stageText("Trim first", in: app)
+        assertExists(row, in: app, timeout: 3)
+        assertExists(comment, in: app, timeout: 3)
+        XCTAssertLessThan(abs(comment.frame.midY - row.frame.midY), row.frame.height)
+    }
+
+    @MainActor
+    func testAPinnedCommentStaysOnItsRowInSplit() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + [
+                "--demo-showcase", "--demo-diff-split", "--demo-diff-comment",
+            ])
+        defer { app.terminate() }
+
+        let row = stageText("+    let trimmed", in: app)
+        let comment = stageText("Trim first", in: app)
+        assertExists(row, in: app, timeout: 8)
+        assertExists(comment, in: app, timeout: 3)
+        XCTAssertLessThan(abs(comment.frame.midY - row.frame.midY), row.frame.height)
+        // The added line sits in the new column, so the comment does too.
+        XCTAssertGreaterThanOrEqual(comment.frame.minX, row.frame.minX)
+    }
+
     @MainActor
     func testEditorPrettyPrintsCompactHTML() throws {
         continueAfterFailure = false

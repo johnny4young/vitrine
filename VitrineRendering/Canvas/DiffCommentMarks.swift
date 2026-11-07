@@ -60,24 +60,72 @@ extension SnapshotConfig {
     var hasLineAnchoredAnnotations: Bool {
         annotations.contains { $0.lineAnchor != nil }
     }
+
+    /// Whether the code layout draws source `row`: a diff row that no fold or hunk pick hides.
+    public func showsDiffRow(_ row: Int) -> Bool {
+        guard diffOptionsApply, !code.isEmpty else { return false }
+        let document = DiffLayoutCache.shared.document(for: code)
+        guard document.rowKinds.indices.contains(row - 1) else { return false }
+        return diffDisplayRows(of: document)?.contains(.line(row)) ?? true
+    }
 }
 
-/// Places a pinned comment from its row: right-aligned at the row's trailing edge and
-/// centered on it, so it reads as a note on that line in either layout.
+/// Places pinned comments from their rows: right-aligned at the row's trailing edge and
+/// centered on it, so each reads as a note on its line in either layout.
 public enum DiffCommentLayout {
     static let trailingInset: CGFloat = 8
+    static let gap: CGFloat = 4
 
-    /// The callout's center in canvas points. Only the comment's own text sizes it, so a
-    /// redacted row's length never shows.
-    public static func center(of annotation: Annotation, rowFrame: CGRect) -> CGPoint {
-        let fontSize = TextMark.fontSize(for: annotation.thickness)
-        let text = annotation.text.isEmpty ? "Note" : annotation.text
-        let textWidth = (text as NSString).size(
-            withAttributes: [.font: TextMark.font(size: fontSize)]
-        ).width
-        let half = (textWidth + fontSize) / 2
-        let x = max(rowFrame.maxX - trailingInset - half, rowFrame.minX + half)
-        return CGPoint(x: x, y: rowFrame.midY)
+    /// A comment's callout in canvas points, and the width its text wraps at.
+    public struct Placement: Equatable, Sendable {
+        public var frame: CGRect
+        public var textWidth: CGFloat
+        public var center: CGPoint { CGPoint(x: frame.midX, y: frame.midY) }
+    }
+
+    /// Places each comment on its row. Text wraps past most of the row's width, so a long
+    /// comment stays on the card, and a callout that would cover a neighbor's moves left of
+    /// it. Only the comments' own text sizes them, so a redacted row's length never shows.
+    public static func place(
+        _ comments: [(annotation: Annotation, row: CGRect)]
+    ) -> [UUID: Placement] {
+        var placed: [UUID: Placement] = [:]
+        var taken: [CGRect] = []
+        let ordered = comments.enumerated().sorted {
+            ($0.element.row.minY, $0.offset) < ($1.element.row.minY, $1.offset)
+        }
+        for (_, comment) in ordered {
+            let row = comment.row
+            let fontSize = TextMark.fontSize(for: comment.annotation.thickness)
+            let limit = max(
+                fontSize * 3, min(row.width * 0.6, row.width - fontSize - trailingInset))
+            let text = comment.annotation.text.isEmpty ? "Note" : comment.annotation.text
+            let bounds = (text as NSString).boundingRect(
+                with: CGSize(width: limit, height: .greatestFiniteMagnitude),
+                options: [.usesLineFragmentOrigin, .usesFontLeading],
+                attributes: [.font: TextMark.font(size: fontSize)])
+            let textWidth = min(ceil(bounds.width) + 1, limit)
+            let size = CGSize(
+                width: textWidth + fontSize, height: ceil(bounds.height) + fontSize * 0.56)
+            var frame = CGRect(
+                x: max(row.maxX - trailingInset - size.width, row.minX),
+                y: row.midY - size.height / 2, width: size.width, height: size.height)
+            for _ in 0...taken.count {
+                guard
+                    let other = taken.first(where: {
+                        frame.insetBy(dx: -gap / 2, dy: -gap / 2).intersects($0)
+                    })
+                else { break }
+                if other.minX - gap - size.width >= row.minX {
+                    frame.origin.x = other.minX - gap - size.width
+                } else {
+                    frame.origin.y = other.maxY + gap
+                }
+            }
+            taken.append(frame)
+            placed[comment.annotation.id] = Placement(frame: frame, textWidth: textWidth)
+        }
+        return placed
     }
 }
 
@@ -95,29 +143,29 @@ struct AnchoredAnnotationMarks: View {
                 ForEach(annotations) { annotation in
                     if annotation.lineAnchor == nil {
                         AnnotationMarkView(annotation: annotation, size: size)
-                    } else if let point = placed[annotation.id] {
-                        AnnotationMarkView(
-                            annotation: moved(annotation, to: normalized(point, in: size)),
-                            size: size)
+                    } else if let placement = placed[annotation.id] {
+                        TextMark(
+                            annotation: moved(
+                                annotation, to: normalized(placement.center, in: size)),
+                            size: size, textWidth: placement.textWidth)
                     }
                 }
             }
             .preference(
                 key: DiffCommentPositionsKey.self,
-                value: placed.mapValues { normalized($0, in: size) })
+                value: placed.mapValues { normalized($0.center, in: size) })
         }
     }
 
-    private func placements(in proxy: GeometryProxy) -> [UUID: CGPoint] {
-        var placed: [UUID: CGPoint] = [:]
-        for annotation in annotations where annotation.kind == .text {
-            guard let anchor = annotation.lineAnchor, !anchor.isDetached,
-                let rowAnchor = anchors[DiffLineSlot(row: anchor.row, side: anchor.side)]
-            else { continue }
-            placed[annotation.id] = DiffCommentLayout.center(
-                of: annotation, rowFrame: proxy[rowAnchor])
-        }
-        return placed
+    private func placements(in proxy: GeometryProxy) -> [UUID: DiffCommentLayout.Placement] {
+        DiffCommentLayout.place(
+            annotations.compactMap { annotation in
+                guard annotation.kind == .text, let anchor = annotation.lineAnchor,
+                    !anchor.isDetached,
+                    let rowAnchor = anchors[DiffLineSlot(row: anchor.row, side: anchor.side)]
+                else { return nil }
+                return (annotation, proxy[rowAnchor])
+            })
     }
 
     private func moved(_ annotation: Annotation, to point: CGPoint) -> Annotation {

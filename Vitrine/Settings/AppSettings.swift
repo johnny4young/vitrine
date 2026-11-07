@@ -36,19 +36,29 @@ final class AppSettings {
             {
                 renderConfiguration.diffHunks = nil
             }
-            // A `config` write then replaces these with the marks it brings.
-            let annotations = DiffLineAnchor.rebasing(
-                renderConfiguration.annotations, from: oldValue, to: documentCode)
-            if annotations != renderConfiguration.annotations {
-                renderConfiguration.annotations = annotations
-                anchorRebaseGeneration &+= 1
+            guard oldValue != documentCode else { return }
+            // Parsed only when a pinned comment, here or in undo, has to follow the edit.
+            var edit: DiffLineAnchor.Edit?
+            func lineEdit() -> DiffLineAnchor.Edit {
+                if let edit { return edit }
+                let parsed = DiffLineAnchor.Edit(from: oldValue, to: documentCode)
+                edit = parsed
+                return parsed
             }
+            // A `config` write then replaces these with the marks it brings.
+            if DiffLineAnchor.follows(renderConfiguration.annotations) {
+                let annotations = lineEdit().apply(to: renderConfiguration.annotations)
+                if annotations != renderConfiguration.annotations {
+                    renderConfiguration.annotations = annotations
+                }
+            }
+            lineEditObserver?(lineEdit)
         }
     }
 
-    /// Bumped when an edit moves or detaches a pinned comment, so annotation undo recorded
-    /// against the old rows is dropped.
-    private(set) var anchorRebaseGeneration = 0
+    /// Receives each document edit, so the editor's annotation undo keeps its pinned
+    /// comments on the same lines as the live ones.
+    @ObservationIgnored var lineEditObserver: ((() -> DiffLineAnchor.Edit) -> Void)?
 
     /// Bumped whenever new content replaces the document, so editor-only state tied to
     /// the old content (annotation undo, selection) can reset.

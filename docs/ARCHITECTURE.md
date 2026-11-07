@@ -1393,11 +1393,14 @@ implicit new-content sanitizer.
 
 Annotations sit in normalized canvas coordinates, with one exception: a text callout with a
 `DiffLineAnchor` is a comment pinned to a source row and diff side. The code layout reports
-the frame of each pinned row, and `SnapshotCanvas` places the callout from it, so the comment
-stays on its line through Unified and Split, folds and wrapping; `start` only caches the last
-placement for the editor's handles. A comment whose row is folded or missing is not drawn.
-`AppSettings.documentCode` shifts anchors when lines above or below change and detaches an
-anchor whose own line changed; a detached comment never draws again.
+the frame of each pinned row, and `SnapshotCanvas` places the callout from it (right-aligned,
+wrapped inside the row, moved clear of a neighbor's), so the comment stays on its line through
+Unified and Split, folds and wrapping. Rendered positions stay in the editor, which uses them
+for handles; the model never stores them. A comment whose row is folded or missing is not
+drawn. `AppSettings.documentCode` shifts anchors, including those in annotation undo, when
+lines above or below change, and detaches an anchor whose own line changed. A detached comment
+does not draw; it attaches again only if an edit restores that line's text in place, and the
+line's text is kept in memory only.
 
 | Entry | Free/PRO contract | Channel |
 | --- | --- | --- |

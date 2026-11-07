@@ -495,9 +495,7 @@ extension EditorView {
                     }
                     .onPreferenceChange(DiffCommentPositionsKey.self) {
                         diffCommentPositions = $0
-                        syncDiffCommentPositions()
                     }
-                    .onChange(of: settings.style.annotations) { syncDiffCommentPositions() }
                     // Marks the export's transparent pixels, and only those.
                     .background {
                         if case .transparent = settings.style.background {
@@ -523,7 +521,8 @@ extension EditorView {
                         stickerGlyph: newStickerGlyph,
                         snapper: cardGeometry.snapper,
                         onBeginEdit: beginAnnotationEdit,
-                        onEndEdit: endAnnotationEdit)
+                        onEndEdit: endAnnotationEdit,
+                        placedComments: diffCommentPositions)
                     // Free-placement: drag the brand mark anywhere on the canvas. The
                     // handle shares the canvas coordinate space (a sibling at cardSize),
                     // so a drag maps straight to the normalized brand-kit position.
@@ -641,6 +640,7 @@ extension EditorView {
         .background {
             PreviewCodeSynchronizer(settings: settings) { code in
                 stagedPreviewCode = code
+                stagedCommentAnchors = Self.commentAnchors(in: settings.style.annotations)
                 legibility.stagedCode = code
                 session.presetThumbnails.stage(code, generation: settings.documentGeneration)
             }
@@ -747,9 +747,13 @@ extension EditorView {
             config.annotations[index].text = ""
         }
         // Until the debounced text catches up, place pinned comments against the rows shown.
-        if let stagedPreviewCode, config.annotations.contains(where: { $0.lineAnchor != nil }) {
-            config.annotations = DiffLineAnchor.rebasing(
-                config.annotations, from: settings.documentCode, to: stagedPreviewCode)
+        if !stagedCommentAnchors.isEmpty {
+            for index in config.annotations.indices {
+                guard let anchor = stagedCommentAnchors[config.annotations[index].id] else {
+                    continue
+                }
+                config.annotations[index].lineAnchor = anchor
+            }
         }
         return config
     }

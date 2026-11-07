@@ -45,8 +45,9 @@ struct DiffLineAnchorTests {
         #expect(rebased[0].lineAnchor?.isDetached == true)
         #expect(rows(rebased) == [nil, 5])
         #expect(rows(DiffLineAnchor.rebasing(marks, from: Self.text, to: "new")) == [nil, nil])
-        // Detached stays detached, even when the text comes back.
-        #expect(rows(DiffLineAnchor.rebasing(rebased, from: edited, to: Self.text)) == [nil, 5])
+        // Another edit to the line keeps it detached.
+        let again = edited.replacingOccurrences(of: "-tw0", with: "-tw00")
+        #expect(rows(DiffLineAnchor.rebasing(rebased, from: edited, to: again)) == [nil, 5])
     }
 
     @Test func freeMarksAndUnchangedTextAreLeftAlone() {
@@ -86,6 +87,28 @@ struct DiffLineAnchorTests {
         #expect(
             try JSONDecoder().decode(
                 DiffLineAnchor.self, from: JSONEncoder().encode(detached)) == detached)
+    }
+
+    @Test func restoringTheLineAttachesItAgainButOnlyInPlace() {
+        let marks = [comment(row: 3)]
+        let edited = Self.text.replacingOccurrences(of: "-two", with: "-tw0")
+        let detached = DiffLineAnchor.rebasing(marks, from: Self.text, to: edited)
+        #expect(rows(DiffLineAnchor.rebasing(detached, from: edited, to: Self.text)) == [3])
+        // The same text arriving on another row is someone else's line.
+        let elsewhere = edited.replacingOccurrences(of: " three", with: "-two")
+        #expect(rows(DiffLineAnchor.rebasing(detached, from: edited, to: elsewhere)) == [nil])
+        // Links never carry the line's text, so a decoded detached anchor stays detached.
+        let decoded = try? JSONDecoder().decode(
+            Annotation.self, from: JSONEncoder().encode(detached[0]))
+        #expect(decoded?.lineAnchor == DiffLineAnchor(row: 3, side: .new, isDetached: true))
+        #expect(rows(DiffLineAnchor.rebasing([decoded!], from: edited, to: Self.text)) == [nil])
+    }
+
+    @Test func onlyATextCalloutDecodesAnAnchor() throws {
+        var arrow = comment(row: 3)
+        arrow.kind = .arrow
+        let decoded = try JSONDecoder().decode(Annotation.self, from: JSONEncoder().encode(arrow))
+        #expect(decoded.lineAnchor == nil)
     }
 
     @Test func aDuplicateIsAFreeCallout() {

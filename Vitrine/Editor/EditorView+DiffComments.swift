@@ -8,10 +8,9 @@ extension EditorView {
     /// Pins a new comment to the line under the code editor's caret and opens its field. A
     /// line that already has an attached comment reopens that one instead.
     func commentOnSelectedLine() {
-        guard settings.style.diffOptionsApply, !settings.documentIsEmpty,
-            let textView = CodeFormatOperation.editorTextView(in: editorWindow.value)
+        guard let row = Self.caretRow(in: editorWindow.value),
+            settings.config.showsDiffRow(row)
         else { return }
-        let row = Self.caretRow(in: textView.string, at: textView.selectedRange().location)
         let anchor = DiffLineAnchor.anchor(
             row: row, in: DiffLayoutCache.shared.document(for: settings.documentCode))
         if let existing = settings.style.annotations.first(where: { $0.lineAnchor == anchor }) {
@@ -32,6 +31,12 @@ extension EditorView {
         editingAnnotationID = comment.id
     }
 
+    /// The caret's line in `window`'s code editor.
+    static func caretRow(in window: NSWindow?) -> Int? {
+        guard let textView = CodeFormatOperation.editorTextView(in: window) else { return nil }
+        return caretRow(in: textView.string, at: textView.selectedRange().location)
+    }
+
     /// The 1-based line holding UTF-16 offset `location` of `text`.
     static func caretRow(in text: String, at location: Int) -> Int {
         let utf16 = text.utf16
@@ -39,20 +44,35 @@ extension EditorView {
         return utf16[..<end].reduce(1) { $1 == 0x0A ? $0 + 1 : $0 }
     }
 
-    /// Moves each pinned comment's cached point to where the canvas drew it, so its handle,
-    /// selection and inline field sit on the drawn mark.
-    func syncDiffCommentPositions() {
-        var annotations = settings.style.annotations
-        var changed = false
-        for index in annotations.indices where annotations[index].lineAnchor != nil {
-            guard let point = diffCommentPositions[annotations[index].id],
-                abs(annotations[index].start.x - point.x) > 0.0001
-                    || abs(annotations[index].start.y - point.y) > 0.0001
-            else { continue }
-            annotations[index].start = point
-            annotations[index].end = point
-            changed = true
-        }
-        if changed { settings.style.annotations = annotations }
+    /// Each pinned comment's anchor, keyed by mark.
+    static func commentAnchors(in annotations: [Annotation]) -> [UUID: DiffLineAnchor] {
+        Dictionary(
+            uniqueKeysWithValues: annotations.compactMap { annotation in
+                annotation.lineAnchor.map { (annotation.id, $0) }
+            })
+    }
+}
+
+/// How the editing overlay treats pinned comments: a handle only where the canvas drew one,
+/// at that place, and never moved off its line.
+extension AnnotationEditingOverlay {
+    static func isDrawn(_ annotation: Annotation, placed: [UUID: CGPoint]) -> Bool {
+        annotation.lineAnchor == nil || placed[annotation.id] != nil
+    }
+
+    static func shown(_ annotation: Annotation, placed: [UUID: CGPoint]) -> Annotation {
+        guard let point = placed[annotation.id] else { return annotation }
+        var shown = annotation
+        (shown.start, shown.end) = (point, point)
+        return shown
+    }
+
+    static func stored(
+        _ edited: Annotation, over current: Annotation, placed: [UUID: CGPoint]
+    ) -> Annotation {
+        guard placed[current.id] != nil else { return edited }
+        var stored = edited
+        (stored.start, stored.end) = (current.start, current.end)
+        return stored
     }
 }

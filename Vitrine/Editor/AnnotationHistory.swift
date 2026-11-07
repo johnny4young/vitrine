@@ -71,6 +71,20 @@ struct AnnotationHistory {
         return next
     }
 
+    /// Moves the pinned comments in every snapshot with a document edit, so undo never puts
+    /// one back on a row the text has since moved.
+    mutating func follow(_ edit: () -> DiffLineAnchor.Edit) {
+        guard
+            undoStack.contains(where: DiffLineAnchor.follows)
+                || redoStack.contains(where: DiffLineAnchor.follows)
+                || editStart.map(DiffLineAnchor.follows) == true
+        else { return }
+        let edit = edit()
+        undoStack = undoStack.map(edit.apply)
+        redoStack = redoStack.map(edit.apply)
+        editStart = editStart.map(edit.apply)
+    }
+
     /// Drops both stacks — used when the canvas's content is replaced wholesale (a new
     /// capture), where the old marks are not a state this canvas can return to.
     mutating func reset() {

@@ -102,8 +102,10 @@ can never drift.
 - Pin a comment to a diff line with Edit › Comment on Selected Line (⇧⌘M) or the shortcut in
   the inspector's Lines section. The comment is a text callout on the line under the code
   editor's caret, and it stays on that line in Unified and Split, when hunks fold and when
-  lines wrap. Editing that line detaches it; the inspector counts detached comments and
-  removes them. Comments travel with shared links and restored windows.
+  lines wrap. Long comments wrap inside the card and comments on neighboring lines don't
+  overlap. Editing that line detaches it until an undo brings the line back; the inspector
+  counts detached comments and removes them. Comments travel with shared links and restored
+  windows.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only

@@ -7,12 +7,15 @@ import VitrineRendering
 /// comments whose line was edited away.
 struct DiffCommentInspectorRows: View {
     @Bindable var settings: AppSettings
+    @State private var window = WeakWindowReference()
+    /// The code editor's caret line, followed through its selection notifications.
+    @State private var caretRow: Int?
 
     var body: some View {
         InspectorRow(label: Text("Comment on selected line")) {
             Button {
                 NotificationCenter.default.post(
-                    name: .vitrineCommentOnSelectedLine, object: NSApp.keyWindow)
+                    name: .vitrineCommentOnSelectedLine, object: window.value)
             } label: {
                 Text(verbatim: "⇧⌘M")
                     .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
@@ -27,10 +30,26 @@ struct DiffCommentInspectorRows: View {
                     .contentShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
             .buttonStyle(.plain)
-            .disabled(settings.documentIsEmpty)
+            .disabled(!caretRowIsShown)
             .help(VitrineCommand.commentOnLine.accessibilityLabel)
             .accessibilityLabel(VitrineCommand.commentOnLine.accessibilityLabel)
             .accessibilityIdentifier("diff-comment-button")
+        }
+        .background(
+            WindowAccessor { resolved in
+                window.value = resolved
+                caretRow = EditorView.caretRow(in: resolved)
+            }
+        )
+        .onReceive(
+            NotificationCenter.default.publisher(for: NSTextView.didChangeSelectionNotification)
+        ) { notification in
+            guard let textView = notification.object as? NSTextView,
+                textView.window === window.value,
+                textView.accessibilityIdentifier() == "code-editor-text-view"
+            else { return }
+            caretRow = EditorView.caretRow(
+                in: textView.string, at: textView.selectedRange().location)
         }
         let detached = settings.style.annotations.filter { $0.lineAnchor?.isDetached == true }
         if !detached.isEmpty {
@@ -49,5 +68,14 @@ struct DiffCommentInspectorRows: View {
                 }
             }
         }
+    }
+
+    /// A comment on a folded or unpicked row would not draw, so the button waits for one
+    /// that shows. Reads the document text, which this small view alone observes.
+    private var caretRowIsShown: Bool {
+        guard let caretRow else { return false }
+        var config = settings.style
+        config.code = settings.documentCode
+        return config.showsDiffRow(caretRow)
     }
 }

@@ -11,9 +11,12 @@ public struct DiffLineAnchor: Hashable, Codable, Sendable {
     /// The 1-based source row.
     public var row: Int
     public var side: Side
-    /// Set once the anchored line is edited or removed. A detached comment never draws again,
-    /// so it cannot land on unrelated code.
+    /// Set once the anchored line is edited or removed. A detached comment does not draw, so
+    /// it cannot land on unrelated code.
     public var isDetached: Bool
+    /// The line's text when it detached, kept in memory only, so an edit that restores that
+    /// text in place (an undo) attaches the comment again.
+    var detachedLine: String?
 
     /// The highest row an anchor may name; untrusted input beyond it decodes detached.
     public static let maximumRow = 10_000_000
@@ -51,41 +54,122 @@ public struct DiffLineAnchor: Hashable, Codable, Sendable {
         return DiffLineAnchor(row: row, side: kind == .deletion ? .old : .new)
     }
 
-    /// `annotations` with every attached anchor moved to follow the edit from `old` to `new`.
-    /// Rows before or after the changed lines shift with them; an anchor on a changed line
-    /// detaches.
+    /// `annotations` following the edit from `old` to `new`.
     public static func rebasing(
         _ annotations: [Annotation], from old: String, to new: String
     ) -> [Annotation] {
-        guard old != new,
-            annotations.contains(where: { $0.lineAnchor.map { !$0.isDetached } ?? false })
-        else { return annotations }
-        let before = lines(of: old)
-        let after = lines(of: new)
-        let shared = min(before.count, after.count)
-        var prefix = 0
-        while prefix < shared, before[prefix] == after[prefix] { prefix += 1 }
-        var suffix = 0
-        while suffix < shared - prefix,
-            before[before.count - 1 - suffix] == after[after.count - 1 - suffix]
-        {
-            suffix += 1
-        }
-        let shift = after.count - before.count
-        return annotations.map { annotation in
-            guard var anchor = annotation.lineAnchor, !anchor.isDetached else { return annotation }
-            if anchor.row > before.count - suffix {
-                anchor.row += shift
-            } else if anchor.row > prefix {
-                anchor.isDetached = true
-            }
-            var moved = annotation
-            moved.lineAnchor = anchor
-            return moved
+        guard old != new, follows(annotations) else { return annotations }
+        return Edit(from: old, to: new).apply(to: annotations)
+    }
+
+    /// Whether an edit can move or attach any of `annotations`.
+    public static func follows(_ annotations: [Annotation]) -> Bool {
+        annotations.contains { annotation in
+            annotation.lineAnchor.map { !$0.isDetached || $0.detachedLine != nil } ?? false
         }
     }
 
-    private static func lines(of text: String) -> [Substring] {
-        text.split(omittingEmptySubsequences: false, whereSeparator: { $0 == "\n" || $0 == "\r\n" })
+    /// One text edit, read as the lines it kept before and after the span it changed.
+    public struct Edit: Sendable {
+        let before: [UInt8]
+        let after: [UInt8]
+        /// Lines equal at the start and at the end of both texts.
+        let prefix: Int
+        let suffix: Int
+        let beforeLines: Int
+        let afterLines: Int
+
+        /// Compares bytes rather than splitting lines, since it runs on every keystroke.
+        public init(from old: String, to new: String) {
+            let a = Array(old.utf8)
+            let b = Array(new.utf8)
+            let newline = UInt8(ascii: "\n")
+            func breaks(_ bytes: [UInt8], _ range: Range<Int>) -> Int {
+                bytes.withUnsafeBufferPointer { buffer in
+                    var count = 0
+                    var index = range.lowerBound
+                    while index < range.upperBound {
+                        if buffer[index] == newline { count += 1 }
+                        index += 1
+                    }
+                    return count
+                }
+            }
+            func endsLine(_ bytes: [UInt8], at index: Int) -> Bool {
+                index == bytes.count || bytes[index] == newline
+            }
+            func startsLine(_ bytes: [UInt8], at index: Int) -> Bool {
+                index == 0 || bytes[index - 1] == newline
+            }
+            let shared = min(a.count, b.count)
+            var bytePrefix = 0
+            while bytePrefix < shared, a[bytePrefix] == b[bytePrefix] { bytePrefix += 1 }
+            var byteSuffix = 0
+            while byteSuffix < shared - bytePrefix,
+                a[a.count - 1 - byteSuffix] == b[b.count - 1 - byteSuffix]
+            {
+                byteSuffix += 1
+            }
+            let leading = breaks(a, 0..<bytePrefix)
+            let trailing = breaks(a, (a.count - byteSuffix)..<a.count)
+            beforeLines = leading + breaks(a, bytePrefix..<(a.count - byteSuffix)) + trailing + 1
+            afterLines = leading + breaks(b, bytePrefix..<b.count) + 1
+            var prefix = leading
+            if endsLine(a, at: bytePrefix), endsLine(b, at: bytePrefix) { prefix += 1 }
+            var suffix = trailing
+            if startsLine(a, at: a.count - byteSuffix), startsLine(b, at: b.count - byteSuffix) {
+                suffix += 1
+            }
+            prefix = min(prefix, beforeLines, afterLines)
+            self.prefix = prefix
+            self.suffix = min(suffix, min(beforeLines, afterLines) - prefix)
+            (before, after) = (a, b)
+        }
+
+        /// Anchors outside the changed span shift with their lines. An attached anchor inside
+        /// it detaches; a detached one attaches again where the span restores its text.
+        public func apply(to annotations: [Annotation]) -> [Annotation] {
+            annotations.map { annotation in
+                guard let anchor = annotation.lineAnchor,
+                    !anchor.isDetached || anchor.detachedLine != nil
+                else { return annotation }
+                var moved = annotation
+                moved.lineAnchor = follow(anchor)
+                return moved
+            }
+        }
+
+        private func follow(_ anchor: DiffLineAnchor) -> DiffLineAnchor {
+            var anchor = anchor
+            if anchor.row > beforeLines - suffix {
+                anchor.row += afterLines - beforeLines
+            } else if anchor.row <= prefix {
+                return anchor
+            } else if !anchor.isDetached {
+                anchor.isDetached = true
+                anchor.detachedLine = Self.line(anchor.row, of: before)
+            } else if anchor.detachedLine != nil,
+                Self.line(anchor.row, of: after) == anchor.detachedLine
+            {
+                anchor.isDetached = false
+                anchor.detachedLine = nil
+            }
+            return anchor
+        }
+
+        /// The text of 1-based line `row`, without its line break.
+        private static func line(_ row: Int, of bytes: [UInt8]) -> String? {
+            var line = 1
+            var start = 0
+            for index in bytes.indices where line < row && bytes[index] == UInt8(ascii: "\n") {
+                line += 1
+                start = index + 1
+            }
+            guard line == row else { return nil }
+            var end = start
+            while end < bytes.count, bytes[end] != UInt8(ascii: "\n") { end += 1 }
+            if end > start, bytes[end - 1] == UInt8(ascii: "\r") { end -= 1 }
+            return String(decoding: bytes[start..<end], as: UTF8.self)
+        }
     }
 }
