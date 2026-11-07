@@ -67,6 +67,8 @@ final class CaptureFeedbackPresenter {
         case .openEditor:
             // Show, never load: the editor may hold an unsaved document.
             routing.showEditor()
+        case .undoCardReplacement:
+            environment.appSettings.restoreReplacedSocialCard()
         }
     }
 }

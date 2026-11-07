@@ -26,8 +26,8 @@ extension EditorView {
             ) {
                 let controller = SocialCardWindowController.shared
                 controller.open(
-                    SocialCardWindowController.paletteFill(
-                        template, card: controller.environment.appSettings.socialCard,
+                    CardTemplate.Fill(
+                        template: template, card: controller.environment.appSettings.socialCard,
                         editor: settings.config))
             }
         }

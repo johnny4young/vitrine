@@ -258,8 +258,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Opens a card-template link (`vitrine://card`) in the Social Card window. A link
     /// the strict parser refuses is a no-op, like a malformed share link.
     private func openCardTemplate(_ url: URL) {
-        guard let fill = try? CardTemplateLink.fill(from: url) else {
-            Log.app.notice("Ignored an invalid card template link")
+        let fill: CardTemplate.Fill
+        do {
+            fill = try CardTemplateLink.fill(from: url)
+        } catch let error as CardTemplate.FillError {
+            Log.app.notice("Ignored a card template link: \(error.logLabel, privacy: .public)")
+            return
+        } catch {
             return
         }
         openCard(fill)
@@ -267,7 +272,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     static func presentCard(_ fill: CardTemplate.Fill) {
-        SocialCardWindowController.shared.open(fill)
+        SocialCardWindowController.shared.openLink(fill)
     }
 
     static func presentEditor(_ config: SnapshotConfig) {

@@ -1527,6 +1527,14 @@ final class VitrineUITests: XCTestCase {
         XCTAssertEqual(title.value as? String, "Vitrine 1.3.0")
         XCTAssertEqual(app.textFields["social-card-author-field"].value as? String, "@jane")
         XCTAssertTrue(app.buttons["social-card-template-headline"].isSelected)
+
+        // The replaced card is kept, so the toolbar can put it back.
+        let restore = app.buttons["social-card-restore-button"]
+        assertExists(restore, in: app, timeout: 3)
+        restore.click()
+        XCTAssertTrue(restore.waitForNonExistence(timeout: 3))
+        XCTAssertNotEqual(title.value as? String, "Vitrine 1.3.0")
+        XCTAssertTrue(app.buttons["social-card-template-standard"].isSelected)
     }
 
     @MainActor

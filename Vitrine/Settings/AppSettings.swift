@@ -115,6 +115,21 @@ final class AppSettings {
         didSet { SettingsCodec.persistSocialCard(socialCard, to: defaults) }
     }
 
+    /// The card a `vitrine://card` link last replaced, persisted so the replacement can
+    /// be undone after a relaunch. One level only.
+    var replacedSocialCard: SocialCardModel? {
+        didSet {
+            SettingsCodec.persistSocialCard(
+                replacedSocialCard, to: defaults, key: SettingsCodec.Keys.replacedSocialCard)
+        }
+    }
+
+    func restoreReplacedSocialCard() {
+        guard let replacedSocialCard else { return }
+        socialCard = replacedSocialCard
+        self.replacedSocialCard = nil
+    }
+
     /// The per-capture image-output settings (scale, format, color profile, rich
     /// clipboard, and text sidecar), extracted into a focused sub-store
     /// rather than as members of this object. Access them through `export`,
@@ -341,6 +356,9 @@ final class AppSettings {
         // The working social card, read defensively: a missing or corrupt
         // blob yields a fresh default card, and the model re-validates every field.
         socialCard = SettingsCodec.readSocialCard(from: defaults)
+        replacedSocialCard =
+            defaults.data(forKey: Keys.replacedSocialCard) == nil
+            ? nil : SettingsCodec.readSocialCard(from: defaults, key: Keys.replacedSocialCard)
 
         let loadedConfig = SettingsCodec.readConfig(from: defaults)
         documentCode = loadedConfig.code
@@ -733,6 +751,7 @@ final class AppSettings {
         lastSeenWhatsNewVersion = nil
         menuBarNoticeVersion = nil
         socialCard = SocialCardModel()
+        replacedSocialCard = nil
         config = SnapshotConfig()
     }
 

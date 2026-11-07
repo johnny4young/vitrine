@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import VitrineDomain
 import VitrineRendering
 
 /// Owns the app's single social-card editor window.
@@ -79,11 +78,32 @@ final class SocialCardWindowController: NSObject {
         AppActivation.bringForward()
     }
 
-    /// Shows the window filled from `fill`. The card is app-global, so the replaced card
-    /// stays one Undo away in this window rather than being overwritten.
+    /// Shows the window filled from the palette. The card is app-global, so the replaced
+    /// card stays one Undo away in this window rather than being overwritten.
     func open(_ fill: CardTemplate.Fill) {
         show()
         apply(fill, undoManager: window?.undoManager)
+    }
+
+    /// Shows the window filled from a `vitrine://card` link.
+    func openLink(_ fill: CardTemplate.Fill) {
+        show()
+        applyLink(fill, undoManager: window?.undoManager)
+    }
+
+    /// A link is not something the user did here, so the replaced card is also kept in
+    /// storage, restorable from the HUD or the window after a relaunch.
+    func applyLink(_ fill: CardTemplate.Fill, undoManager: UndoManager?) {
+        let settings = environment.appSettings
+        let previous = settings.socialCard
+        apply(fill, undoManager: undoManager)
+        guard settings.socialCard != previous else { return }
+        settings.replacedSocialCard = previous
+        feedback(
+            Notifier.CaptureFeedback(
+                category: .info, message: String(localized: "Card replaced"),
+                actions: [.undoCardReplacement])
+        ) { _ in settings.restoreReplacedSocialCard() }
     }
 
     func apply(_ fill: CardTemplate.Fill, undoManager: UndoManager?) {
@@ -102,20 +122,6 @@ final class SocialCardWindowController: NSObject {
         undoManager?.registerUndo(withTarget: settings) { [weak undoManager] settings in
             replaceCard(in: settings, with: previous, undoManager: undoManager)
         }
-    }
-
-    /// The palette's fill: the working card's copy carried into `template`, with the
-    /// editor's code when it has some. Terminal output becomes plain text, as in Use Editor Code.
-    static func paletteFill(
-        _ template: CardTemplate, card: SocialCardModel, editor: SnapshotConfig
-    ) -> CardTemplate.Fill {
-        var source = card
-        let excerpt = SocialCardModel.truncatedExcerpt(editor.sidecarText)
-        if !excerpt.isEmpty {
-            source.codeExcerpt = excerpt
-            source.language = editor.language == .terminal ? .plaintext : editor.language
-        }
-        return CardTemplate.Fill(template: template, carrying: source)
     }
 
     /// Builds the AppKit window hosting a ``SocialCardEditorView`` composed from this

@@ -297,7 +297,7 @@ import VitrineRendering
                 arguments.indices.contains(index + 1), let url = URL(string: arguments[index + 1]),
                 let fill = try? CardTemplateLink.fill(from: url)
             {
-                SocialCardWindowController.shared.open(fill)
+                SocialCardWindowController.shared.openLink(fill)
                 didOpenWindow = true
             }
             if arguments.contains("--open-web-snapshot") {

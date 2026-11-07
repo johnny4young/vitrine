@@ -32,9 +32,44 @@ struct CardTemplateTests {
         #expect(card.title == "Vitrine 1.3.0")
         #expect(card.project == "vitrine")
         #expect(card.background == .gradient(.sunset))
-        // Slots the link leaves out are cleared; style the link leaves out stays.
+        // Owned slots the link leaves out are cleared; style the link leaves out stays.
         #expect(card.codeExcerpt.isEmpty && card.author == nil)
         #expect(card.theme == .nord && card.showLogo && card.fontSize == 30)
+    }
+
+    @Test func slotsTheTemplateDoesNotOwnKeepTheBaseValue() throws {
+        let base = SocialCardModel(
+            title: "Old", codeExcerpt: "keep()", language: .rust, author: "@brand")
+        let card = try CardTemplateLink.fill(from: link("template=announcement&title=New"))
+            .card(onto: base)
+        #expect(card.template == .headline && card.title == "New")
+        #expect(card.codeExcerpt == "keep()" && card.language == .rust)
+        #expect(card.author == nil)
+        for template in [CardTemplate.release, .snippet] {
+            #expect(template.contentSlots.contains(.handle))
+            #expect(template.contentSlots.contains(.project))
+            #expect(template.contentSlots.contains(.subtitle))
+        }
+    }
+
+    @Test func codeWithoutALanguageIsPlainText() throws {
+        let base = SocialCardModel(codeExcerpt: "old()", language: .swift)
+        let card = try CardTemplateLink.fill(from: link("template=release&code=print(1)"))
+            .card(onto: base)
+        #expect(card.codeExcerpt == "print(1)" && card.language == .plaintext)
+    }
+
+    @Test func plusReadsAsASpaceAndAnEncodedPlusStaysLiteral() throws {
+        let fill = try CardTemplateLink.fill(from: link("template=release&title=Hello+world%2B1"))
+        #expect(fill.values[.title] == "Hello world+1")
+    }
+
+    @Test func logLabelsNeverCarryLinkValues() {
+        #expect(CardTemplate.FillError.unsupportedSlot("secret").logLabel == "unsupportedSlot")
+        #expect(CardTemplate.FillError.duplicateSlot("secret").logLabel == "duplicateSlot")
+        #expect(CardTemplate.FillError.invalidValue(.title).logLabel == "invalidValue(title)")
+        #expect(CardTemplate.FillError.malformedLink.logLabel == "malformedLink")
+        #expect(CardTemplate.FillError.unknownTemplate.logLabel == "unknownTemplate")
     }
 
     @Test func choiceSlotsResolveOnlyAllowListedValues() throws {
@@ -64,7 +99,7 @@ struct CardTemplateTests {
             ("vitrine://card?title=x", .unknownTemplate),
             ("vitrine://card?template=nope", .unknownTemplate),
             ("vitrine://card?template=release&image=/etc/hosts", .unsupportedSlot("image")),
-            ("vitrine://card?template=release&handle=x", .unsupportedSlot("handle")),
+            ("vitrine://card?template=announcement&code=x", .unsupportedSlot("code")),
             ("vitrine://card?template=release&title=a&title=b", .duplicateSlot("title")),
         ]
         for (string, error) in refused {
@@ -77,7 +112,10 @@ struct CardTemplateTests {
         #expect(throws: CardTemplate.FillError.invalidValue(.title)) {
             try CardTemplateLink.fill(from: link("template=release&title=\(long)"))
         }
-        for value in ["a%00b", "a%0Ab", "a%E2%80%AEb"] {
+        let stacked = "a" + String(repeating: "%CC%81", count: 500)
+        for value in [
+            "a%00b", "a%0Ab", "a%E2%80%AEb", "a%E2%80%A8b", "a%E2%80%8Fb", "a%D8%9Cb", stacked,
+        ] {
             #expect(throws: CardTemplate.FillError.invalidValue(.title)) {
                 try CardTemplateLink.fill(from: link("template=release&title=\(value)"))
             }
@@ -93,27 +131,28 @@ struct CardTemplateTests {
             from: link("template=release&code=a()%0D%0A%09b()&subtitle=%20%20"))
         #expect(fill.values[.code] == "a()\n\tb()")
         #expect(fill.values[.subtitle] == nil)
+        let marked = try CardTemplateLink.fill(from: link("template=release&code=a%E2%80%8Fb"))
+        #expect(marked.values[.code] == "a\u{200F}b")
     }
 
-    @Test func aBuiltLinkRoundTripsReservedAndNonASCIIText() throws {
-        let fill = try CardTemplate.Fill(
-            template: .announcement,
-            values: [.title: "Ünïcode & more = 100% + ✨", .handle: "@jane", .accent: "ocean"])
-        let url = try #require(CardTemplateLink.url(for: fill))
-        #expect(url.absoluteString.hasPrefix("vitrine://card?template=announcement&title="))
-        #expect(try CardTemplateLink.fill(from: url) == fill)
-    }
-
-    @Test func carryingACardKeepsOnlyTheTemplatesContentSlots() {
+    @Test func thePaletteFillUsesTheEditorCodeAndCarriesTheCardCopy() {
         let card = SocialCardModel(
-            title: "T", subtitle: "S", codeExcerpt: "c()", language: .go, author: "@a",
-            project: "p")
-        let fill = CardTemplate.Fill(template: .announcement, carrying: card)
-        #expect(fill.values == [.title: "T", .subtitle: "S", .handle: "@a", .project: "p"])
-        let snippet = CardTemplate.Fill(template: .snippet, carrying: card).card(onto: card)
-        #expect(snippet.template == .codeFocus)
-        #expect(snippet.codeExcerpt == "c()" && snippet.language == .go)
-        #expect(snippet.subtitle == nil && snippet.project == nil)
+            title: "Keep", subtitle: "S", codeExcerpt: "old()", author: "@brand", project: "p")
+        let editor = SnapshotConfig(code: "\n  first()\n  second()\n", language: .terminal)
+        let fill = CardTemplate.Fill(template: .release, card: card, editor: editor)
+        #expect(fill.values[.code] == "first()\nsecond()")
+        #expect(fill.values[.language] == Language.plaintext.rawValue)
+        let filled = fill.card(onto: card)
+        #expect(filled.title == "Keep" && filled.subtitle == "S")
+        #expect(filled.author == "@brand" && filled.project == "p")
+
+        let empty = CardTemplate.Fill(
+            template: .snippet, card: card, editor: SnapshotConfig(code: "", language: .rust))
+        #expect(empty.values[.code] == "old()")
+        #expect(empty.values[.language] == Language.swift.rawValue)
+        let announcement = CardTemplate.Fill(template: .announcement, card: card, editor: editor)
+        #expect(announcement.values[.code] == nil)
+        #expect(announcement.card(onto: card).codeExcerpt == "old()")
     }
 }
 
@@ -160,18 +199,62 @@ struct CardTemplateOpeningTests {
         #expect(!undo.canUndo)
     }
 
-    @Test func thePaletteFillUsesTheEditorCodeAndCarriesTheCardCopy() {
-        let card = SocialCardModel(title: "Keep", codeExcerpt: "old()", author: "@me")
-        let editor = SnapshotConfig(code: "\n  first()\n  second()\n", language: .terminal)
-        let fill = SocialCardWindowController.paletteFill(.snippet, card: card, editor: editor)
-        #expect(fill.values[.code] == "first()\nsecond()")
-        #expect(fill.values[.language] == Language.plaintext.rawValue)
-        #expect(fill.values[.title] == "Keep" && fill.values[.handle] == "@me")
+    @Test func aLinkKeepsThePreviousCardAndTheHUDRestoresItAfterARelaunch() throws {
+        let defaults = testDefaults()
+        let environment = AppEnvironment(
+            defaults: defaults, entitlements: Entitlements(provider: FreeProvider()))
+        let original = SocialCardModel(title: "Mine", author: "@me")
+        environment.appSettings.socialCard = original
+        var shown: [Notifier.CaptureFeedback] = []
+        var undoAction: (Notifier.RecoveryAction) -> Void = { _ in }
+        let controller = SocialCardWindowController(
+            environment: environment,
+            feedback: FeedbackDisplay { feedback, onAction in
+                shown.append(feedback)
+                undoAction = onAction
+            },
+            presentation: .noOp)
 
-        let empty = SocialCardWindowController.paletteFill(
-            .snippet, card: card, editor: SnapshotConfig(code: "", language: .rust))
-        #expect(empty.values[.code] == "old()")
-        #expect(empty.values[.language] == Language.swift.rawValue)
+        let fill = try CardTemplateLink.fill(
+            from: URL(string: "vitrine://card?template=release&title=X")!)
+        controller.applyLink(fill, undoManager: nil)
+        #expect(environment.appSettings.socialCard.title == "X")
+        #expect(shown.first?.message == String(localized: "Card replaced"))
+        #expect(shown.first?.actions == [.undoCardReplacement])
+
+        let relaunched = AppSettings(defaults: defaults)
+        #expect(relaunched.replacedSocialCard == original)
+        relaunched.restoreReplacedSocialCard()
+        #expect(relaunched.socialCard == original && relaunched.replacedSocialCard == nil)
+        #expect(AppSettings(defaults: defaults).replacedSocialCard == nil)
+
+        controller.applyLink(fill, undoManager: nil)
+        undoAction(.undoCardReplacement)
+        #expect(environment.appSettings.socialCard == original)
+
+        // The same card again replaces nothing and keeps no copy.
+        environment.appSettings.socialCard = fill.card(onto: original)
+        shown = []
+        controller.applyLink(fill, undoManager: nil)
+        #expect(shown.isEmpty && environment.appSettings.replacedSocialCard == nil)
+    }
+
+    @Test func theMenuPanelUndoRestoresAndResetClearsTheStoredCard() {
+        let environment = environment()
+        let original = SocialCardModel(title: "Mine")
+        environment.appSettings.socialCard = SocialCardModel(title: "Link")
+        environment.appSettings.replacedSocialCard = original
+        CaptureFeedbackPresenter(display: .noOp).run(
+            .undoCardReplacement, environment: environment)
+        #expect(environment.appSettings.socialCard == original)
+        #expect(
+            Notifier.RecoveryAction.undoCardReplacement.accessibilityToken
+                == "undo-card-replacement")
+        #expect(Notifier.RecoveryAction.undoCardReplacement.title == String(localized: "Undo"))
+
+        environment.appSettings.replacedSocialCard = original
+        environment.appSettings.resetToDefaults()
+        #expect(environment.appSettings.replacedSocialCard == nil)
     }
 
     @Test func thePaletteOffersOneCommandPerTemplate() {

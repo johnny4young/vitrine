@@ -25,6 +25,9 @@ public struct CardTemplate: Identifiable, Equatable, Sendable {
             case .language, .theme, .accent: 32
             }
         }
+
+        /// Bounds combining-mark stacks that a character count alone lets through.
+        public var maxScalars: Int { maxLength * 4 }
     }
 
     /// Why a template could not be filled.
@@ -34,6 +37,17 @@ public struct CardTemplate: Identifiable, Equatable, Sendable {
         case unsupportedSlot(String)
         case duplicateSlot(String)
         case invalidValue(Slot)
+
+        /// A log-safe description: the case and slot, never a value from the link.
+        public var logLabel: String {
+            switch self {
+            case .malformedLink: "malformedLink"
+            case .unknownTemplate: "unknownTemplate"
+            case .unsupportedSlot: "unsupportedSlot"
+            case .duplicateSlot: "duplicateSlot"
+            case .invalidValue(let slot): "invalidValue(\(slot.rawValue))"
+            }
+        }
     }
 
     public let id: String
@@ -53,9 +67,10 @@ public struct CardTemplate: Identifiable, Equatable, Sendable {
 
     public static let release = CardTemplate(
         id: "release", layout: .standard,
-        contentSlots: [.title, .subtitle, .project, .code, .language])
+        contentSlots: [.title, .subtitle, .code, .language, .handle, .project])
     public static let snippet = CardTemplate(
-        id: "snippet", layout: .codeFocus, contentSlots: [.title, .code, .language, .handle])
+        id: "snippet", layout: .codeFocus,
+        contentSlots: [.title, .subtitle, .code, .language, .handle, .project])
     public static let announcement = CardTemplate(
         id: "announcement", layout: .headline,
         contentSlots: [.title, .subtitle, .handle, .project])
@@ -85,9 +100,20 @@ extension CardTemplate {
             }
         }
 
-        /// Carries an existing card's copy into `template`. The card is local, already
-        /// normalized data, so it is not re-validated; style stays on the card.
-        public init(template: CardTemplate, carrying card: SocialCardModel) {
+        /// The palette's fill: the card's own copy carried into `template`, with the
+        /// editor's code when it has some. Terminal output becomes plain text.
+        public init(template: CardTemplate, card: SocialCardModel, editor: SnapshotConfig) {
+            var source = card
+            let excerpt = SocialCardModel.truncatedExcerpt(editor.sidecarText)
+            if !excerpt.isEmpty {
+                source.codeExcerpt = excerpt
+                source.language = editor.language == .terminal ? .plaintext : editor.language
+            }
+            self.init(template: template, carrying: source)
+        }
+
+        /// Local, already normalized card data, so it is not re-validated.
+        init(template: CardTemplate, carrying card: SocialCardModel) {
             self.template = template
             let all: [Slot: String?] = [
                 .title: card.title, .subtitle: card.subtitle,
@@ -97,15 +123,23 @@ extension CardTemplate {
             values = all.compactMapValues { $0 }.filter { template.contentSlots.contains($0.key) }
         }
 
-        /// The card this fill draws: slots it lacks are cleared, while the base keeps
-        /// its theme, background, font and logo unless a style slot overrides them.
+        /// The card this fill draws. A slot the template owns comes from the fill (absent
+        /// means cleared); anything else, including style, stays as it is on `base`.
         public func card(onto base: SocialCardModel) -> SocialCardModel {
-            SocialCardModel(
-                title: values[.title], subtitle: values[.subtitle],
-                codeExcerpt: values[.code] ?? "",
-                language: values[.language].flatMap(Language.init(rawValue:)) ?? base.language,
-                author: values[.handle], project: values[.project], showLogo: base.showLogo,
-                template: template.layout,
+            func owned(_ slot: Slot, _ current: String?) -> String? {
+                template.contentSlots.contains(slot) ? values[slot] : current
+            }
+            let code =
+                template.contentSlots.contains(.code) ? values[.code] ?? "" : base.codeExcerpt
+            // Code from a fill without a language is not assumed to be the card's language.
+            let language =
+                values[.language].flatMap(Language.init(rawValue:))
+                ?? (values[.code] != nil ? .plaintext : base.language)
+            return SocialCardModel(
+                title: owned(.title, base.title), subtitle: owned(.subtitle, base.subtitle),
+                codeExcerpt: code, language: language,
+                author: owned(.handle, base.author), project: owned(.project, base.project),
+                showLogo: base.showLogo, template: template.layout,
                 theme: values[.theme].map(Theme.theme(withID:)) ?? base.theme,
                 background: values[.accent].flatMap(GradientPreset.init(rawValue:))
                     .map { .gradient($0) } ?? base.background,
@@ -115,15 +149,20 @@ extension CardTemplate {
         /// The canonical value for `slot`, `nil` when blank, or an error for an
         /// over-long value, a control character or a choice outside the allow-list.
         static func validated(_ raw: String, for slot: Slot) throws -> String? {
-            guard raw.count <= slot.maxLength else { throw FillError.invalidValue(slot) }
+            guard raw.count <= slot.maxLength, raw.unicodeScalars.count <= slot.maxScalars else {
+                throw FillError.invalidValue(slot)
+            }
             let text = raw.replacingOccurrences(of: "\r\n", with: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
             let allowed: Set<Unicode.Scalar> = slot == .code ? ["\n", "\t"] : []
-            // Bidirectional overrides can make a card read differently from its text.
+            // Bidirectional controls can make a card read differently from its text;
+            // line separators and direction marks are accepted only inside code.
+            let lineAndMarks: Set<UInt32> = [0x2028, 0x2029, 0x200E, 0x200F, 0x061C]
             let rejected = text.unicodeScalars.contains {
                 ($0.properties.generalCategory == .control && !allowed.contains($0))
                     || (0x202A...0x202E).contains($0.value) || (0x2066...0x2069).contains($0.value)
+                    || (slot != .code && lineAndMarks.contains($0.value))
             }
             guard !rejected else { throw FillError.invalidValue(slot) }
             let choice = text.lowercased()
@@ -150,11 +189,11 @@ extension CardTemplate {
     }
 }
 
-/// Reads and writes `vitrine://card?template=release&title=…` links.
+/// Reads `vitrine://card?template=release&title=…` links.
 ///
 /// The link is untrusted input: only the `template` key and the template's own slots
 /// are accepted, each once, within a bounded length, and nothing else in the URL
-/// (path, fragment, credentials, port) is allowed.
+/// (path, fragment, credentials, port) is allowed. `+` reads as a space, as in a form.
 public enum CardTemplateLink {
     public static let host = "card"
     public static let templateKey = "template"
@@ -167,14 +206,18 @@ public enum CardTemplateLink {
             components.host?.lowercased() == host,
             components.user == nil, components.password == nil, components.port == nil,
             components.path.isEmpty, components.fragment == nil,
-            let items = components.queryItems, items.count <= CardTemplate.Slot.allCases.count + 1
+            let items = components.percentEncodedQueryItems,
+            items.count <= CardTemplate.Slot.allCases.count + 1
         else { throw CardTemplate.FillError.malformedLink }
 
         var seen = Set<String>()
         var templateID: String?
         var values: [CardTemplate.Slot: String] = [:]
         for item in items {
-            guard let value = item.value else { throw CardTemplate.FillError.malformedLink }
+            guard
+                let value = item.value?.replacingOccurrences(of: "+", with: " ")
+                    .removingPercentEncoding
+            else { throw CardTemplate.FillError.malformedLink }
             guard seen.insert(item.name).inserted else {
                 throw CardTemplate.FillError.duplicateSlot(item.name)
             }
@@ -190,24 +233,5 @@ public enum CardTemplateLink {
             throw CardTemplate.FillError.unknownTemplate
         }
         return try CardTemplate.Fill(template: template, values: values)
-    }
-
-    /// The link that reopens `fill`, slots in the template's order.
-    public static func url(for fill: CardTemplate.Fill) -> URL? {
-        // Only ASCII unreserved characters pass through, so `&`, `=`, `+` and non-ASCII are escaped.
-        let unreserved = CharacterSet(
-            charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~")
-        func encoded(_ text: String) -> String {
-            text.addingPercentEncoding(withAllowedCharacters: unreserved) ?? ""
-        }
-        var components = URLComponents()
-        components.scheme = SnapshotShareLink.scheme
-        components.host = host
-        components.percentEncodedQueryItems =
-            [URLQueryItem(name: templateKey, value: fill.template.id)]
-            + fill.template.slots.compactMap { slot in
-                fill.values[slot].map { URLQueryItem(name: slot.rawValue, value: encoded($0)) }
-            }
-        return components.url
     }
 }

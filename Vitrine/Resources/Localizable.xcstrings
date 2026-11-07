@@ -1,6 +1,39 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Card replaced" : {
+      "comment" : "HUD message after a vitrine://card link replaced the social card",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta reemplazada"
+          }
+        }
+      }
+    },
+    "Restore Previous Card" : {
+      "comment" : "Accessibility label of the Social Card toolbar button that restores the card a link replaced",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar tarjeta anterior"
+          }
+        }
+      }
+    },
+    "Restore the card a link replaced" : {
+      "comment" : "Tooltip of the Social Card toolbar restore button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaura la tarjeta que reemplazó un enlace"
+          }
+        }
+      }
+    },
     "Release" : {
       "comment" : "Name of the built-in social card template for a release announcement",
       "localizations" : {

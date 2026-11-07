@@ -17,7 +17,8 @@ can never drift.
 - Social card templates. Release, Snippet and Announcement each pick a layout and the fields
   they fill. Run one from the command palette (⌘K) to open the Social Card with the editor's
   code, or open a `vitrine://card?template=release&title=…` link from Shortcuts or a script.
-  Undo in the Social Card window restores the card you had.
+  A link keeps the card it replaced: Undo in the confirmation or the restore button in the
+  Social Card toolbar puts it back, even after a relaunch.
 - A preview of the copied image floats in the bottom corner of the screen after Copy image,
   a quick capture or a copy from Recents. Drag it into another app or into Finder, click it
   to go back to the editor or Recents, or dismiss it. It skips copies marked confidential and
