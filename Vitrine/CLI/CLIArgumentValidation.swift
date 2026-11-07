@@ -216,7 +216,7 @@ extension CLIArgumentParser {
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
-            || showDiffStats != nil || diffContextLines != nil
+            || showDiffStats != nil || diffContextLines != nil || diffView != nil
 
         if imageInputPath != nil {
             if recipe != nil {
@@ -235,7 +235,7 @@ extension CLIArgumentParser {
                 || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
                 || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
-                || showDiffStats != nil || diffContextLines != nil
+                || showDiffStats != nil || diffContextLines != nil || diffView != nil
                 || textSidecar || markdownSidecar || htmlSidecar
             if codeOnlyOptionsRequested {
                 throw CLIError.incompatibleOptions(
@@ -453,6 +453,7 @@ extension CLIArgumentParser {
             diffDecorations: diffDecorations,
             showDiffStats: showDiffStats,
             diffContextLines: diffContextLines,
+            diffView: diffView,
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             failOnEmpty: failOnEmpty,

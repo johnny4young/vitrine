@@ -39,6 +39,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolveDiffView(_ raw: String, flag: String) throws -> DiffViewMode {
+        guard let value = DiffViewMode(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     func containsControlCharacter(_ value: String) -> Bool {
         value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }

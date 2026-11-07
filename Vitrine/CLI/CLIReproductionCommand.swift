@@ -217,6 +217,9 @@ struct CLIReproductionCommand {
         if !style.redactedLineRanges.isEmpty { flags.append("--redact-secrets") }
         toggle("--focus-lines", "--no-focus-lines", style.focusHighlightedLines, false)
         toggle("--diff-bands", "--no-diff-bands", style.diffDecorations, false)
+        if style.diffOptionsApply {
+            label("--diff-view", style.diffView.rawValue, base.diffView.rawValue)
+        }
         label("--terminal-width", style.terminalColumns.map(String.init), nil)
         if style.language == .terminal {
             label(

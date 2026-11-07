@@ -98,6 +98,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case diffBands
     case diffStats
     case diffContext
+    case diffView
     case recursive
     case failOnSkipped
     case failOnEmpty
@@ -500,6 +501,10 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .diffContext, ["--diff-context"], .value("0...5"), synopsis: "--diff-context <0...5>",
             description: "Fold a diff to this many unchanged lines around each change."),
+        definition(
+            .diffView, ["--diff-view"], .value("unified|split"),
+            synopsis: "--diff-view <unified|split>",
+            description: "Lay a diff out in one column or with old and new side by side."),
         definition(
             .recursive, ["--recursive"], .flag, synopsis: "--recursive",
             description: "Batch only: include nested folders and preserve relative output paths.",

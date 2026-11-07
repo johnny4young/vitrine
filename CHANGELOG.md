@@ -18,6 +18,9 @@ can never drift.
   and a diffstat bar, and a context slider that folds unchanged lines around each change.
   The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
   links keep the full patch.
+- Show a diff split, with the old and new file side by side, from the Layout control in the
+  inspector's Lines section or with `--diff-view split` in the CLI. Each side keeps its own
+  line numbers and redacted rows stay hidden on both sides. Unified stays the default.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.

@@ -33,6 +33,7 @@ public struct SharedSnapshot: Codable, Equatable {
     var diffDecorations: Bool
     var showDiffStats: Bool
     var diffContextLines: Int?
+    var diffView: DiffViewMode
     var terminalColumns: Int?
 
     private static let maxAnnotations = 256
@@ -64,6 +65,7 @@ public struct SharedSnapshot: Codable, Equatable {
         self.diffDecorations = config.diffDecorations
         self.showDiffStats = config.showDiffStats
         self.diffContextLines = config.diffContextLines.map(SettingsDefaults.clampDiffContextLines)
+        self.diffView = config.diffView
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -85,13 +87,14 @@ public struct SharedSnapshot: Codable, Equatable {
         config.diffDecorations = diffDecorations
         config.showDiffStats = showDiffStats
         config.diffContextLines = diffContextLines
+        config.diffView = diffView
         config.terminalColumns = terminalColumns
     }
 
     private enum CodingKeys: String, CodingKey {
         case version, code, languageID, style, annotations, windowTitle, metadata
         case shadowRadius, highlightedLineRanges, focusHighlightedLines, diffDecorations
-        case terminalColumns, altText, showDiffStats, diffContextLines
+        case terminalColumns, altText, showDiffStats, diffContextLines, diffView
     }
 
     public init(from decoder: Decoder) throws {
@@ -123,6 +126,7 @@ public struct SharedSnapshot: Codable, Equatable {
         diffContextLines =
             (try? container.decode(Int.self, forKey: .diffContextLines))
             .map(SettingsDefaults.clampDiffContextLines)
+        diffView = (try? container.decode(DiffViewMode.self, forKey: .diffView)) ?? .unified
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)

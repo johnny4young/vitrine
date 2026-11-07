@@ -378,11 +378,12 @@ public struct SnapshotCanvas: View, Equatable {
     @ViewBuilder
     private func codeRows(diff: DiffDocument?) -> some View {
         if config.usesLineRows {
-            CodeLinesView(
+            let displayRows = config.diffContextLines.flatMap {
+                diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
+            }
+            let lines = CodeLinesView(
                 rows: highlightedCodeLines,
-                displayRows: config.diffContextLines.flatMap {
-                    diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
-                },
+                displayRows: displayRows,
                 showLineNumbers: config.showLineNumbers,
                 firstLineNumber: config.firstLineNumber,
                 highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
@@ -395,7 +396,18 @@ public struct SnapshotCanvas: View, Equatable {
                 dimsUnfocused: config.focusHighlightedLines,
                 diffDecorations: config.diffDecorations
             )
-            .textSelection(.enabled)
+            if config.diffUsesSplitView, let diff {
+                SplitDiffLinesView(
+                    lines: lines,
+                    rows: diff.splitRows(
+                        displayRows ?? diff.rowKinds.indices.map { .line($0 + 1) },
+                        firstLineNumber: config.firstLineNumber,
+                        redacting: config.redactedLineRanges)
+                )
+                .textSelection(.enabled)
+            } else {
+                lines.textSelection(.enabled)
+            }
         } else {
             let code = highlightedCode
             Text(code)

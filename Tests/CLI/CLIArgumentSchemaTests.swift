@@ -11,7 +11,7 @@ struct CLIArgumentSchemaTests {
         #expect(Set(CLIArgumentSchema.options.map(\.id)) == Set(CLIOptionID.allCases))
 
         let names = CLIArgumentSchema.options.flatMap(\.names)
-        #expect(names.count == 122)
+        #expect(names.count == 123)
         #expect(Set(names).count == names.count)
         #expect(names.allSatisfy { $0.hasPrefix("-") })
         #expect(

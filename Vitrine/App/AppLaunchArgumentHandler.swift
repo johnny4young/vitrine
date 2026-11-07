@@ -208,6 +208,7 @@ import VitrineRendering
                 demo.windowTitle = "Greeter.swift"
                 demo.diffDecorations = true
                 demo.showDiffStats = true
+                if arguments.contains("--demo-diff-split") { demo.diffView = .split }
                 if arguments.contains("--demo-diff-blur") {
                     demo.annotations = [
                         Annotation(
