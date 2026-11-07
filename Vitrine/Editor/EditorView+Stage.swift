@@ -495,6 +495,12 @@ extension EditorView {
                     // Expose the canvas text as children: as one aggregate element,
                     // automated drags on annotation endpoint handles stop landing.
                     .accessibilityElement(children: .contain)
+                    .modifier(
+                        StageRegionRouting(
+                            model: stageRegions, config: previewConfig, canvasSize: canvasSize,
+                            isCanvasMode: isCanvasMode,
+                            isEnabled: activeTool == .select && selectedAnnotationID == nil
+                                && editingAnnotationID == nil))
                     AnnotationEditingOverlay(
                         settings: settings, selection: $selectedAnnotationID,
                         editingAnnotationID: $editingAnnotationID,
@@ -573,7 +579,7 @@ extension EditorView {
                 CanvasDock(
                     settings: settings, themes: themes, presets: presets,
                     entitlements: entitlements, legibility: legibility,
-                    presetThumbnails: session.presetThumbnails,
+                    presetThumbnails: session.presetThumbnails, stageRegions: stageRegions,
                     magicBackground: session.magicBackground,
                     presentFramePaywall: { exportSheet = .framePaywall }
                 )
@@ -695,7 +701,8 @@ extension EditorView {
         EditorInspectorView(
             settings: settings, themes: themes, presets: presets, entitlements: entitlements,
             legibility: legibility, presetThumbnails: session.presetThumbnails,
-            magicBackground: session.magicBackground)
+            magicBackground: session.magicBackground, stageRegions: stageRegions,
+            isCanvasMode: isCanvasMode)
     }
 
     /// The config the center stage renders. When the editor is empty it shows a

@@ -76,6 +76,10 @@ struct EditorView: View {
     /// zoom percentage.
     @State var stageSize: CGSize = .zero
 
+    /// Stage clicks that open inspector sections; an observable box so hovering never
+    /// evaluates the editor's body.
+    @State var stageRegions = StageRegionModel()
+
     /// The currently selected annotation, shared between the preview's interactive
     /// overlay and the inspector's annotation controls. `nil` when nothing
     /// is selected. Editor-only UI state, not persisted.
