@@ -289,6 +289,8 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--terminal-width', value: '<1...1000>', description: both('Pin terminal reconstruction width; vgrab -w sets this automatically.', 'Fija el ancho de reconstrucción; vgrab -w lo define automáticamente.') },
       { flags: '--terminal-palette', value: '<theme|raw>', description: both('Color terminal output with the theme palette or legible xterm colors. Only affects --language terminal.', 'Colorea la salida de terminal con la paleta del tema o colores xterm legibles. Solo afecta a --language terminal.') },
       { flags: '--terminal-cursor', value: '<hidden|block|bar>', description: both('Draw the terminal cursor where the output left it. Only affects --language terminal.', 'Dibuja el cursor de terminal donde lo dejó la salida. Solo afecta a --language terminal.') },
+      { flags: '--terminal-crop-rows', value: '<first-last>', description: both('Keep only these rows of the final screen; line numbers keep counting the whole screen. Only affects --language terminal.', 'Conserva solo estas filas de la pantalla final; los números de línea siguen contando toda la pantalla. Solo afecta a --language terminal.') },
+      { flags: '--terminal-crop-columns', value: '<first-last>', description: both('Keep only these columns of the final screen. Only affects --language terminal.', 'Conserva solo estas columnas de la pantalla final. Solo afecta a --language terminal.') },
       { flags: '--wrap-columns', value: '<40...200>', description: both('Soft-wrap long code lines at a stable column.', 'Ajusta líneas largas en una columna estable.') },
       { flags: '--format-code, --tidy', description: both('Apply Vitrine’s local indentation tidy before rendering.', 'Aplica el ajuste local de indentación antes de renderizar.') },
       { flags: '--line-numbers, --no-line-numbers', description: both('Show or hide the line-number gutter.', 'Muestra u oculta los números de línea.') },
@@ -363,6 +365,8 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--redact-secrets', description: both('Scan for likely secrets and redact matching rows.', 'Busca secretos probables y oculta las filas correspondientes.') },
       { flags: '--focus-lines, --no-focus-lines', description: both('Dim or restore rows outside the highlight.', 'Atenúa o restaura las filas fuera del resaltado.') },
       { flags: '--diff-bands, --no-diff-bands', description: both('Show or hide GitHub-style added and removed bands.', 'Muestra u oculta bandas de cambios al estilo GitHub.') },
+      { flags: '--diff-stats, --no-diff-stats', description: both('Show or hide the file path and +/- counts above a diff.', 'Muestra u oculta la ruta del archivo y los conteos +/- sobre un diff.') },
+      { flags: '--diff-context', value: '<0...5>', description: both('Fold a diff to this many unchanged lines around each change.', 'Pliega un diff a esta cantidad de líneas sin cambios alrededor de cada cambio.') },
     ],
   },
   {

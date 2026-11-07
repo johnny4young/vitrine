@@ -76,6 +76,25 @@ columns, isn't drawn, so it can't grow the image. There is no cursor to draw whe
 from a full-screen app that already exited, which is the usual `vgrab htop`. A share link of a
 redacted capture holds only the final screen, so it opens without a cursor.
 
+## Crop
+
+**Terminal ▸ Crop rows** and **Crop columns** (`--terminal-crop-rows 6-18`,
+`--terminal-crop-columns 1-80`) keep part of the final screen, as one `first-last` span; an
+empty field keeps everything. The transcript is untouched, so clearing a field brings the rest
+back. Rows keep their screen numbers: line numbers start at the first kept row, and highlighted
+and redacted lines, including `--redact-lines`, still name screen rows. A wide character cut by
+a column edge becomes a space, along with any mark or joiner attached to it, and a tab becomes
+spaces.
+
+Blur and spotlight boxes sit at fixed positions on the canvas, so the crop fields are off while
+a capture has one, and `--blur-box` can't be combined with a crop.
+
+Plain text, sidecars, rich text and share links carry only the kept cells, and an alternative
+text draft counts only the kept rows. A cropped link keeps the colors but not link targets, and
+opens without a cursor; with line numbers or highlights it places the kept rows under blank ones
+so their numbers hold. A redacted link is plain text. A cursor outside the crop isn't drawn. The
+header chips read the header, not the screen, so a crop leaves them alone.
+
 ## Prompt and context chips
 
 In the inspector's **Header** section, a terminal capture lists its **Filename** and **Title**
@@ -280,6 +299,7 @@ vitrine render <input-file> --out <image> --text-sidecar   # image + .txt of the
 vitrine render <input-file> --out <image> --sidecars all    # image + txt/md/html
 vitrine render <input-file> --out <image> --terminal-palette raw   # only affects --language terminal
 vitrine render <input-file> --out <image> --terminal-cursor block  # only affects --language terminal
+vitrine render <input-file> --out <image> --terminal-crop-rows 6-18 --terminal-crop-columns 1-80
 vitrine shell-init [zsh|bash|fish]            # print the helpers
 vitrine run [--copy | --edit] [--terminal-width <n>] [--no-context] [--title-from-command] [--redact-secrets] [--] <command> [args…]
 ```
