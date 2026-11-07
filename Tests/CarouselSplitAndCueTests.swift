@@ -334,7 +334,7 @@ struct CarouselSplitAndCueTests {
         #expect(slides.map(\.firstLine) == [1, 6])
 
         let result = await ExportManager.exportCarousel(
-            base, slides: slides, cues: Self.cues, to: dir)
+            base, slides: slides, cues: Self.cues, fit: CarouselFit(fontSize: 30), to: dir)
         #expect(result.written == 2)
         for (index, slide) in slides.enumerated() {
             let url = dir.appendingPathComponent(
@@ -342,7 +342,7 @@ struct CarouselSplitAndCueTests {
             let written = try #require(GoldenComparator.loadImage(at: url))
             let reference = try render(
                 CarouselPaginator.slideConfig(
-                    base, slide: slide, at: index, of: 2, cues: Self.cues))
+                    base, slide: slide, at: index, of: 2, cues: Self.cues, fontSize: 30))
             #expect(try compare(written, reference).matches)
         }
 
@@ -368,13 +368,13 @@ struct CarouselSplitAndCueTests {
         let written = try FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: nil)
         let total = try written.reduce(0) { $0 + (try Data(contentsOf: $1).count) }
-        let perSlide = try #require(
-            await ExportManager.estimatedCarouselSlideBytes(base, slides: slides, cues: Self.cues))
-        #expect(abs(perSlide * slides.count - total) <= total / 10)
+        let estimate = try #require(
+            await ExportManager.estimatedCarouselBytes(base, slides: slides, cues: Self.cues))
+        #expect(abs(estimate - total) <= total / 10)
     }
 
     @Test func nothingToSampleHasNoEstimate() async {
-        let estimate = await ExportManager.estimatedCarouselSlideBytes(
+        let estimate = await ExportManager.estimatedCarouselBytes(
             SnapshotConfig(), slides: [], cues: .none)
         #expect(estimate == nil)
     }

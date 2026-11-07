@@ -60,6 +60,7 @@ import VitrineRendering
         /// `--demo-sql-format` does the same for a compact query;
         /// `--demo-secret` preloads a synthetic token for the export pre-flight smoke test;
         /// `--demo-terminal` preloads a colored capture with a project and command header;
+        /// `--demo-snap-guide` (Debug) draws a box snapped to the code rows with its guides up;
         /// `--brand-accent` (Debug) keeps the brand accent whatever the macOS accent is;
         /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
         /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
