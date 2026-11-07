@@ -230,6 +230,10 @@ import VitrineRendering
                     demo.code +=
                         "\n@@ -20,3 +21,3 @@\n struct Greeter {\n-    let name = \"World\"\n+    let name = \"Vitrine\"\n }"
                 }
+                if arguments.contains("--demo-diff-source") {
+                    demo.diffSource = DiffSource(
+                        kind: .range, range: "main...feature/greeting", repository: "greeter")
+                }
                 if arguments.contains("--demo-diff-blur") {
                     demo.annotations = [
                         Annotation(

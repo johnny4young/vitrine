@@ -38,6 +38,8 @@ public struct SharedSnapshot: Codable, Equatable {
     var diffWordMarks: Bool?
     var diffHunks: [Int]?
     var diffLineNumbers: DiffLineNumbers?
+    /// Present only when the sender turned on sharing for it.
+    var diffSource: DiffSource?
     var terminalColumns: Int?
     var terminalCrop: TerminalCrop?
 
@@ -81,6 +83,7 @@ public struct SharedSnapshot: Codable, Equatable {
         self.diffWordMarks = config.diffWordMarks ? true : nil
         self.diffHunks = config.diffHunks.flatMap(SettingsDefaults.normalizeDiffHunks)
         self.diffLineNumbers = config.diffLineNumbers == .rows ? nil : config.diffLineNumbers
+        self.diffSource = config.diffSource?.sharesInLinks == true ? config.diffSource : nil
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -106,6 +109,12 @@ public struct SharedSnapshot: Codable, Equatable {
         config.diffWordMarks = diffWordMarks ?? false
         config.diffHunks = diffHunks
         config.diffLineNumbers = diffLineNumbers ?? .rows
+        // The receiver decides again before passing it on.
+        config.diffSource = diffSource.map {
+            var received = $0
+            received.sharesInLinks = false
+            return received
+        }
         config.terminalColumns = terminalColumns
         config.terminalCrop = terminalCrop ?? TerminalCrop()
     }
@@ -114,7 +123,7 @@ public struct SharedSnapshot: Codable, Equatable {
         case version, code, languageID, style, annotations, windowTitle, metadata
         case shadowRadius, highlightedLineRanges, focusHighlightedLines, diffDecorations
         case terminalColumns, altText, terminalCrop, showDiffStats, diffContextLines
-        case diffView, diffWordMarks, diffHunks, diffLineNumbers
+        case diffView, diffWordMarks, diffHunks, diffLineNumbers, diffSource
     }
 
     public init(from decoder: Decoder) throws {
@@ -151,6 +160,7 @@ public struct SharedSnapshot: Codable, Equatable {
         diffHunks = (try? container.decode([Int].self, forKey: .diffHunks))
             .flatMap(SettingsDefaults.normalizeDiffHunks)
         diffLineNumbers = try? container.decode(DiffLineNumbers.self, forKey: .diffLineNumbers)
+        diffSource = try? container.decodeIfPresent(DiffSource.self, forKey: .diffSource)
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)

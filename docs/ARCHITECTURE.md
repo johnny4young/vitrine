@@ -619,6 +619,14 @@ rendering. Literal pathspecs prevent scope expansion, terminal prompts are disab
 and `GIT_NO_LAZY_FETCH=1` prevents partial clones from reaching a promisor remote. The
 loaded source is tagged `.diff`, and diff bands default on unless the caller explicitly
 disables them.
+With `--edit`, the handoff URL also carries a `DiffSource`: the range or staged set, pathspecs
+made relative to the repository root (found by walking up to `.git`), a non-default context,
+and the root folder's name unless it is the home folder. The sandboxed app cannot run
+`/usr/bin/git`, so the inspector's Refresh copies `vitrine render --git-diff <range> --edit`,
+shell-quoted, instead of running anything. `DiffSource` validates on every way in (handoff,
+window restoration, share links): revisions allow only letters, digits and Git's revision
+punctuation, and pathspecs must stay inside the repository. Settings never store it, images
+never draw it, and share links carry it only after the user opts in for that document.
 Local CLI background images are imported once into an invocation-scoped
 `BackgroundImageStore`; `CLIRenderer` threads that isolated store independently from
 the foreground-image store through `ExportManager`, then removes it after a single

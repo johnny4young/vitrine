@@ -1,5 +1,6 @@
 import AppKit
 import VitrineDomain
+import VitrineRendering
 
 /// The contract for handing captured content from the `vitrine` CLI to the running
 /// app's editor (`vitrine render … --edit`, behind `vgrab -e`).
@@ -34,12 +35,19 @@ enum EditorHandoff {
     static let columnsKey = "columns"
     /// The terminal widths a handoff accepts, matching `--terminal-width`.
     static let columnsRange = 1...1000
+    /// The query keys carrying a diff's source; `DiffSource` validates them on read.
+    static let diffSourceKey = "diff-source"
+    static let diffRangeKey = "diff-range"
+    static let diffRepositoryKey = "diff-repository"
+    static let diffPathKey = "diff-path"
+    static let diffContextKey = "diff-context"
 
     /// What a handoff carries: the source text plus the hints the editor can apply.
     struct Payload: Equatable {
         var content: String
         var language: Language?
         var columns: Int? = nil
+        var diffSource: DiffSource? = nil
     }
     /// The prefix the per-handoff token is appended to, to form a unique pasteboard name.
     private static let pasteboardPrefix = "app.vitrine.edit-handoff"
@@ -68,6 +76,7 @@ enum EditorHandoff {
         if let columns = payload.columns, columnsRange.contains(columns) {
             queryItems.append(URLQueryItem(name: columnsKey, value: String(columns)))
         }
+        if let source = payload.diffSource { queryItems += Self.queryItems(for: source) }
         components.queryItems = queryItems
         guard let url = components.url else {
             // Do not leave the user's content staged when the matching one-shot URL could
@@ -102,7 +111,35 @@ enum EditorHandoff {
             .flatMap { columnsRange.contains($0) ? $0 : nil }
         return Payload(
             content: content, language: languageID.flatMap(Language.init(rawValue:)),
-            columns: columns)
+            columns: columns, diffSource: diffSource(in: queryItems))
+    }
+
+    private static func queryItems(for source: DiffSource) -> [URLQueryItem] {
+        var items = [URLQueryItem(name: diffSourceKey, value: source.kind.rawValue)]
+        if let range = source.range { items.append(URLQueryItem(name: diffRangeKey, value: range)) }
+        if let repository = source.repository {
+            items.append(URLQueryItem(name: diffRepositoryKey, value: repository))
+        }
+        items += source.paths.map { URLQueryItem(name: diffPathKey, value: $0) }
+        if let context = source.contextLines {
+            items.append(URLQueryItem(name: diffContextKey, value: String(context)))
+        }
+        return items
+    }
+
+    /// A malformed source is dropped and the content still opens.
+    static func diffSource(in queryItems: [URLQueryItem]) -> DiffSource? {
+        func value(_ key: String) -> String? { queryItems.first { $0.name == key }?.value }
+        guard let kind = value(diffSourceKey).flatMap(DiffSource.Kind.init(rawValue:)) else {
+            return nil
+        }
+        let context = value(diffContextKey)
+        let contextLines = context.flatMap { Int($0) }
+        guard context == nil || contextLines != nil else { return nil }
+        return DiffSource(
+            kind: kind, range: value(diffRangeKey), repository: value(diffRepositoryKey),
+            paths: queryItems.filter { $0.name == diffPathKey }.compactMap(\.value),
+            contextLines: contextLines)
     }
 
     /// The pasteboard name for a handoff `token`.

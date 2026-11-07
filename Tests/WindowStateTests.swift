@@ -117,6 +117,7 @@ struct EditorWindowStateTests {
         config.diffWordMarks = true
         config.diffHunks = [1, 3]
         config.diffLineNumbers = .old
+        config.diffSource = DiffSource(kind: .range, range: "main...topic", repository: "repo")
         config.annotations = [
             Annotation(
                 kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),

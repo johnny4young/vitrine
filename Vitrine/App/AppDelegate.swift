@@ -240,13 +240,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Intent do, seeded on the user's current style. A no-op for an empty payload.
     private func openEditHandoff(_ url: URL) {
         guard let handoff = EditorHandoff.consume(url: url) else { return }
+        loadEditor(Self.editorConfig(for: handoff, style: environment.appSettings.config))
+        Log.app.notice("Opened a CLI --edit handoff in the editor")
+    }
+
+    static func editorConfig(
+        for handoff: EditorHandoff.Payload, style: SnapshotConfig
+    ) -> SnapshotConfig {
         let interpreted = LanguageDetector.interpret(handoff.content)
-        var config = environment.appSettings.config.replacingContent(
+        var config = style.replacingContent(
             with: handoff.language == nil ? interpreted.code : handoff.content,
             language: handoff.language ?? interpreted.language)
         config.terminalColumns = handoff.columns
-        loadEditor(config)
-        Log.app.notice("Opened a CLI --edit handoff in the editor")
+        config.diffSource = config.language == .diff ? handoff.diffSource : nil
+        return config
     }
 
     /// Opens a shared-snapshot link (`vitrine://open`): decodes the untrusted

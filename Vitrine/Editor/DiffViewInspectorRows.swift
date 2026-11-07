@@ -6,9 +6,11 @@ import VitrineRendering
 /// numbering and hunks. Shown only for content that reads as a diff.
 struct DiffViewInspectorRows: View {
     @Bindable var settings: AppSettings
+    var feedback: FeedbackDisplay = .live
 
     var body: some View {
         if settings.style.diffOptionsApply {
+            DiffSourceRows(settings: settings, feedback: feedback)
             InspectorRow(label: Text("Layout")) {
                 TokenSegmentedPicker(
                     options: [
@@ -94,6 +96,77 @@ struct DiffViewInspectorRows: View {
     private var contextValue: Text {
         guard let lines = settings.style.diffContextLines else { return Text("All") }
         return Text(verbatim: "\(lines)")
+    }
+}
+
+/// Where the diff came from. The sandboxed app can't run Git, so Refresh copies the command
+/// that hands the same range to the editor again.
+struct DiffSourceRows: View {
+    @Bindable var settings: AppSettings
+    var feedback: FeedbackDisplay
+
+    var body: some View {
+        let source = settings.style.diffSource
+        InspectorRow(label: Text("Source")) {
+            HStack(spacing: 6) {
+                Text(kindLabel(source))
+                    .font(.system(size: VitrineTokens.FontSize.caption))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(VitrineTokens.Chrome.segmentTrack))
+                    .accessibilityIdentifier("diff-source-chip")
+                if let source {
+                    Button("Refresh") { feedback(Self.copyRefresh(source, settings: settings)) }
+                        .controlSize(.small)
+                        .help("Copy the command that renders this diff again")
+                        .accessibilityIdentifier("diff-source-refresh-button")
+                }
+            }
+        }
+        if let source {
+            Text(
+                verbatim: [source.gitSummary, source.repository].compactMap { $0 }
+                    .joined(separator: " · ")
+            )
+            .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+            .foregroundStyle(VitrineTokens.Text.tertiary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .accessibilityIdentifier("diff-source-summary")
+            Toggle("Include in share links", isOn: sharesInLinks)
+                .toggleStyle(.checkbox)
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .accessibilityIdentifier("diff-source-share-toggle")
+        }
+    }
+
+    private var sharesInLinks: Binding<Bool> {
+        Binding(
+            get: { settings.style.diffSource?.sharesInLinks ?? false },
+            set: { settings.style.diffSource?.sharesInLinks = $0 })
+    }
+
+    private func kindLabel(_ source: DiffSource?) -> LocalizedStringKey {
+        switch source?.kind {
+        case .range: "Branch range"
+        case .staged: "Staged"
+        case nil: "Pasted patch"
+        }
+    }
+
+    static func copyRefresh(
+        _ source: DiffSource, settings: AppSettings,
+        copy: (String, Bool) -> Bool = { ClipboardWriter.copy($0, concealed: $1) }
+    ) -> Notifier.CaptureFeedback {
+        let line = CLIReproductionCommand.line(source.refreshArguments)
+        guard copy(line, settings.outputBehavior.concealClipboard) else {
+            return Notifier.failure(String(localized: "Couldn't copy the command"))
+        }
+        guard let repository = source.repository else {
+            return Notifier.confirmation(String(localized: "Copied. Run it in the repository."))
+        }
+        return Notifier.confirmation(String(localized: "Copied. Run it in \(repository)."))
     }
 }
 

@@ -113,6 +113,10 @@ public struct SnapshotConfig: Equatable {
     /// What a diff's gutter numbers when line numbers are on. Patch rows by default.
     public var diffLineNumbers: DiffLineNumbers = .rows
 
+    /// The CLI range or staged set this diff came from, for the inspector's Refresh. Bound to
+    /// one patch and never drawn, so it is not a style and images never show it.
+    public var diffSource: DiffSource?
+
     /// Freeform marks drawn over the snapshot — arrows, text callouts, and
     /// blur/redaction boxes. Empty by default, so the default render and
     /// every golden are unchanged until the user adds one. Stored in normalized
@@ -350,6 +354,7 @@ public struct SnapshotConfig: Equatable {
         codeSteps = []
         activeCodeStep = nil
         diffHunks = nil
+        diffSource = nil
     }
 
     private func replacingRedactedLines(in text: String) -> String {

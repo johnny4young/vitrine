@@ -1,6 +1,94 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Branch range" : {
+      "comment" : "Diff source chip: the diff came from a Git revision range",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rango de ramas"
+          }
+        }
+      }
+    },
+    "Staged" : {
+      "comment" : "Diff source chip: the diff came from staged Git changes",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preparado"
+          }
+        }
+      }
+    },
+    "Pasted patch" : {
+      "comment" : "Diff source chip: the diff was pasted or opened as a file",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parche pegado"
+          }
+        }
+      }
+    },
+    "Refresh" : {
+      "comment" : "Button that copies the command which renders the diff again",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualizar"
+          }
+        }
+      }
+    },
+    "Copy the command that renders this diff again" : {
+      "comment" : "Help for the diff source Refresh button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el comando que vuelve a generar este diff"
+          }
+        }
+      }
+    },
+    "Include in share links" : {
+      "comment" : "Checkbox: share links carry the diff source",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluir en enlaces compartidos"
+          }
+        }
+      }
+    },
+    "Copied. Run it in the repository." : {
+      "comment" : "HUD after copying the diff refresh command",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Ejecútalo en el repositorio."
+          }
+        }
+      }
+    },
+    "Copied. Run it in %@." : {
+      "comment" : "HUD after copying the diff refresh command; %@ is the repository folder name",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Ejecútalo en %@."
+          }
+        }
+      }
+    },
     "Comment on Selected Line" : {
       "comment" : "Edit menu: pins a text comment to the diff line under the code editor's caret.",
       "localizations" : {

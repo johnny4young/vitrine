@@ -50,6 +50,7 @@ struct StyleCodecCompletenessTests {
         config.diffWordMarks = true
         config.diffHunks = [1, 3]
         config.diffLineNumbers = .old
+        config.diffSource = DiffSource(kind: .staged, repository: "repo")
         config.annotations = [
             Annotation(
                 kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),
@@ -101,6 +102,7 @@ struct StyleCodecCompletenessTests {
         expected.redactedLineRanges = []  // secret marks on a specific document (see persistStyle)
         expected.terminalCrop = TerminalCrop()  // bound to one document, like redactions
         expected.diffHunks = nil  // positions in one patch, like redactions
+        expected.diffSource = nil  // where one patch came from
         expected.watermark = nil  // Brand Kit owns its own persistence
         expected.foregroundImage = nil  // per-capture beautified image, not a default
         expected.imageFrame = .none  // frame of that image, travels with it

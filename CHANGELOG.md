@@ -106,6 +106,12 @@ can never drift.
   overlap. Editing that line detaches it until an undo brings the line back; the inspector
   counts detached comments and removes them. Comments travel with shared links and restored
   windows.
+- Show where a diff came from in the inspector's Lines section: a branch range, staged changes
+  or a pasted patch. A diff handed over by `vitrine render --git-diff <range> --edit` or
+  `--git-staged --edit` keeps its range and the repository folder's name, never a full path.
+  Refresh copies the command that renders it again, to run in that repository, since the app
+  can't run Git itself. Images never show the source, and share links carry it only when you
+  check Include in share links.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only

@@ -325,7 +325,12 @@ enum CLIRenderer {
         guard !loaded.text.isEmpty else { throw CLIError.editorHandoffEmpty }
         let payload = EditorHandoff.Payload(
             content: loaded.text, language: options.language ?? loaded.language,
-            columns: options.terminalColumns)
+            columns: options.terminalColumns,
+            diffSource: options.gitDiffSource.flatMap {
+                GitDiffInputLoader.provenance(
+                    source: $0, paths: options.gitDiffPaths,
+                    contextLines: options.gitDiffContextLines)
+            })
         guard let url = stage(payload) else {
             throw CLIError.editorHandoffFailed
         }

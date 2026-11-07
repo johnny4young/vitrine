@@ -769,6 +769,35 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testInspectorShowsTheDiffSource() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--demo-showcase", "--demo-diff-source"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+        for _ in 0..<5
+        where !waitForHittableElement("diff-source-share-toggle", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+
+        assertExists(element("diff-source-chip", in: app), in: app)
+        assertExists(element("diff-source-summary", in: app), in: app)
+        XCTAssertTrue(element("diff-source-refresh-button", in: app).isEnabled)
+        let share = element("diff-source-share-toggle", in: app)
+        XCTAssertEqual(share.value as? Int, 0)
+        share.click()
+        XCTAssertEqual(share.value as? Int, 1)
+    }
+
+    @MainActor
     func testEditorPrettyPrintsCompactHTML() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
