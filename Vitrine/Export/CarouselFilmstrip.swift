@@ -11,8 +11,8 @@ final class CarouselSplitModel {
     var size = CarouselSlideSize.linkedIn
     var output = CarouselOutput.pngSet
     var extras = CarouselExtras()
-    /// The Brand Kit handle is offered once; after that the field is the user's.
-    var hasOfferedHandle = false
+    /// The document the captions were written for; another one starts without them.
+    private(set) var captionGeneration: Int?
     /// The revision moves with every settled split, even an equal one: the text view's copy
     /// has been shifted by edits since, and an edit undone can leave it missing a divider.
     private(set) var dividerLayout = SlideDividerLayout()
@@ -27,6 +27,17 @@ final class CarouselSplitModel {
             EditorView.carouselAccepts(style), thumbnails.stagedGeneration == documentGeneration
         else { return nil }
         return thumbnails.stagedCode
+    }
+
+    func adoptDocument(generation: Int) {
+        guard captionGeneration != generation else { return }
+        extras.captions = [:]
+        captionGeneration = generation
+    }
+
+    /// A refresh of the watched file is the same document, so its captions stay.
+    func carryCaptions(from previous: Int, to generation: Int) {
+        if captionGeneration == previous { captionGeneration = generation }
     }
 
     func refreshDividers(code: String?) async {
@@ -58,7 +69,12 @@ final class CarouselFilmstripModel {
         let profile: ColorProfile
         var extras = CarouselExtras()
 
-        var pageCount: Int { extras.pageCount(slideCount: slides.count) }
+        /// Tiles, an empty cover or closing card included.
+        var tileCount: Int { extras.pageCount(slideCount: slides.count, tiles: true) }
+
+        func tile(at index: Int) -> CarouselExtras.Page {
+            extras.page(at: index, slideCount: slides.count, tiles: true)
+        }
     }
 
     private struct Rendered: Equatable {
@@ -108,12 +124,6 @@ final class CarouselFilmstripModel {
             fixedSize: size.pixels, profile: profile)
     }
 
-    static func renderTile(
-        _ config: SnapshotConfig, size: CarouselSlideSize = .linkedIn, profile: ColorProfile
-    ) -> CGImage? {
-        renderTile(.slide(config, caption: nil), size: size, profile: profile)
-    }
-
     func moveCurrent(by step: Int, count: Int) {
         current = min(max(current + step, 0), max(count - 1, 0))
     }
@@ -121,12 +131,13 @@ final class CarouselFilmstripModel {
     func refresh(_ input: Input) async {
         let live =
             input.fontSize == nil
-            ? [] : visible.filter { $0 < input.pageCount }.sorted().prefix(Self.maximumLiveTiles)
+            ? [] : visible.filter { $0 < input.tileCount }.sorted().prefix(Self.maximumLiveTiles)
+        let banded = input.extras.hasCaptions(input.slides)
         var wanted: [Int: Rendered] = [:]
         for index in live {
             let page = CarouselPaginator.page(
-                at: index, input.base, slides: input.slides, cues: input.cues,
-                fontSize: input.fontSize, extras: input.extras)
+                input.tile(at: index), input.base, slides: input.slides, cues: input.cues,
+                fontSize: input.fontSize, extras: input.extras, banded: banded)
             wanted[index] = Rendered(page: page, size: input.size, profile: input.profile)
         }
         // A tile that no longer matches leaves now, so it can't show an old split or a row
@@ -141,9 +152,7 @@ final class CarouselFilmstripModel {
         for index in live where rendered[index] == nil {
             guard !Task.isCancelled, let tile = wanted[index] else { return }
             let canPreview =
-                if case .slide(let slide) = input.extras.page(
-                    at: index, slideCount: input.slides.count)
-                {
+                if case .slide(let slide) = input.tile(at: index) {
                     input.slides[slide].canPreview
                 } else { true }
             if canPreview { images[index] = render(tile.page, tile.size, tile.profile) }
@@ -165,25 +174,28 @@ struct CarouselFilmstrip: View {
     @FocusState private var isFocused: Bool
 
     /// Tiles, cover and closing card included; arrows and selection move over all of them.
-    private var count: Int { input.pageCount }
+    private var count: Int { input.tileCount }
 
     var body: some View {
+        let captioned = input.extras.hasCaptions(input.slides)
+        let missing = input.extras.missingTextCount(input.slides)
         ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 10) {
                     ForEach(0..<count, id: \.self) { index in
-                        let page = input.extras.page(at: index, slideCount: input.slides.count)
+                        let page = input.tile(at: index)
                         CarouselSlideTile(
-                            page: page, slides: input.slides, index: index,
+                            page: page, slides: input.slides, index: index, count: count,
                             tileSize: CarouselFilmstripModel.tileSize(for: input.size),
                             isShort: hasShortTail && page == .slide(input.slides.count - 1),
-                            lacksText: input.extras.lacksText(
-                                page, slideCount: input.slides.count),
-                            marksText: input.extras.hasCaptions(slideCount: input.slides.count)
-                                || page == .cover || page == .outro,
+                            lacksText: input.extras.lacksText(page, slides: input.slides),
+                            marksText: captioned || page == .cover || page == .outro,
                             isCurrent: index == model.current, model: model
                         )
-                        .onTapGesture { model.current = index }
+                        .onTapGesture {
+                            model.current = index
+                            isFocused = true
+                        }
                         .id(index)
                         .onScrollVisibilityChange(threshold: 0.01) { isVisible in
                             if isVisible {
@@ -213,6 +225,7 @@ struct CarouselFilmstrip: View {
         }
         .task(id: RefreshID(input: input, visible: model.visible)) { await model.refresh(input) }
         .accessibilityElement(children: .contain)
+        .accessibilityValue(missing > 0 ? Text("\(missing) without text") : Text(verbatim: ""))
         .accessibilityIdentifier("carousel-filmstrip")
     }
 
@@ -227,6 +240,8 @@ private struct CarouselSlideTile: View {
     let page: CarouselExtras.Page
     let slides: [CarouselPaginator.Slide]
     let index: Int
+    /// Tiles in the strip, which a card's position counts against.
+    let count: Int
     let tileSize: CGSize
     let isShort: Bool
     let lacksText: Bool
@@ -273,10 +288,16 @@ private struct CarouselSlideTile: View {
                     .foregroundStyle(VitrineTokens.Text.tertiary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                // Filled when the page has its text, hollow while it is empty.
                 if marksText {
                     Circle()
-                        .fill(lacksText ? Color.orange : Color.green)
-                        .frame(width: 5, height: 5)
+                        .fill(lacksText ? Color.clear : VitrineTokens.Accent.system)
+                        .overlay {
+                            Circle().strokeBorder(
+                                lacksText ? VitrineTokens.Text.tertiary : Color.clear,
+                                lineWidth: 1)
+                        }
+                        .frame(width: 6, height: 6)
                 }
             }
             .frame(width: max(tileSize.width, CarouselFilmstripModel.tileSize.width))
@@ -307,6 +328,11 @@ private struct CarouselSlideTile: View {
     }
 
     private var accessibilityTitle: Text {
+        switch page {
+        case .cover: return Text("Cover, page \(index + 1) of \(count)")
+        case .outro: return Text("Closing slide, page \(index + 1) of \(count)")
+        case .slide: break
+        }
         guard let (index, slide) = slide else { return caption }
         return slide.lineCount == 1
             ? Text("Slide \(index + 1) of \(slides.count), line \(slide.lineRange)")

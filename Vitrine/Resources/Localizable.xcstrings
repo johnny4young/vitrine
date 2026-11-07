@@ -1,19 +1,52 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "1 without text" : {
-      "comment" : "Carousel sheet: one page (slide caption, cover title or call to action) is still empty.",
+    "1 caption not shown" : {
+      "comment" : "Carousel sheet: one caption was written for a slide that this split no longer opens at the same line.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1 sin texto"
+            "value" : "1 leyenda sin mostrar"
+          }
+        }
+      }
+    },
+    "%lld captions not shown" : {
+      "comment" : "Carousel sheet: captions written for a slide that this split no longer opens at the same line.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld leyendas sin mostrar"
+          }
+        }
+      }
+    },
+    "Cover, page %lld of %lld" : {
+      "comment" : "Carousel filmstrip, VoiceOver: the cover tile and its position among the tiles.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portada, página %1$lld de %2$lld"
+          }
+        }
+      }
+    },
+    "Closing slide, page %lld of %lld" : {
+      "comment" : "Carousel filmstrip, VoiceOver: the closing slide tile and its position among the tiles.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diapositiva de cierre, página %1$lld de %2$lld"
           }
         }
       }
     },
     "%lld without text" : {
-      "comment" : "Carousel sheet: how many pages (slide captions, cover title, call to action) are still empty.",
+      "comment" : "Carousel filmstrip, VoiceOver: how many tiles (slide captions, cover title, call to action) are still empty.",
       "localizations" : {
         "es" : {
           "stringUnit" : {

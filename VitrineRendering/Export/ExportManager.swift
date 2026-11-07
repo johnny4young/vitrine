@@ -359,27 +359,13 @@ public enum ExportManager {
         return produced ? data as Data : nil
     }
 
-    /// Renders each config as one page of a single PDF, every page pinned to `fixedSize` and
+    /// Renders carousel pages into one PDF, every page pinned to `fixedSize` and
     /// clipped to it. Pages are vector unless `rasterized`, which draws each as a `profile`
     /// image so text cut off by the frame can't stay in the file. The main actor is released
     /// between pages, and `onPage` follows them. Returns nil for no pages, a page context
     /// that cannot be created, or a cancelled task.
     public static func pdfData(
-        pages configs: [SnapshotConfig], fixedSize: CGSize, rasterized: Bool = false,
-        profile: ColorProfile = .sRGB,
-        backgroundImageStore: BackgroundImageStore = .container,
-        foregroundImageStore: BackgroundImageStore = .foregroundContainer,
-        onPage: ((_ completed: Int) -> Void)? = nil
-    ) async -> Data? {
-        await pdfData(
-            carouselPages: configs.map { .slide($0, caption: nil) }, fixedSize: fixedSize,
-            rasterized: rasterized, profile: profile, backgroundImageStore: backgroundImageStore,
-            foregroundImageStore: foregroundImageStore, onPage: onPage)
-    }
-
-    /// `pdfData(pages:)` for carousel pages, cover and closing cards included, in order.
-    public static func pdfData(
-        carouselPages pages: [CarouselPage], fixedSize: CGSize, rasterized: Bool = false,
+        pages: [CarouselPage], fixedSize: CGSize, rasterized: Bool = false,
         profile: ColorProfile = .sRGB,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,

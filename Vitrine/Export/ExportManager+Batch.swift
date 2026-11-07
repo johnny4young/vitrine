@@ -201,7 +201,7 @@ extension ExportManager {
             fit
             ?? CarouselPaginator.fit(
                 baseConfig, slides: slides, cues: cues, size: size,
-                reservesCaptionBand: extras.hasCaptions(slideCount: slides.count))
+                reservesCaptionBand: extras.hasCaptions(slides))
         let pages = CarouselPaginator.pages(
             baseConfig, slides: slides, cues: cues, fontSize: fit.fontSize, extras: extras)
         let pdfOutput = output.writesPDF ? outputs.popLast() : nil
@@ -210,7 +210,7 @@ extension ExportManager {
         await withTaskGroup(of: (BatchItemOutcome, Bool).self) { group in
             if let pdfOutput {
                 let pdf = await pdfData(
-                    carouselPages: pages, fixedSize: size.pixels, rasterized: fit.overflows,
+                    pages: pages, fixedSize: size.pixels, rasterized: fit.overflows,
                     profile: profile,
                     onPage: { _ in
                         completed += 1
@@ -288,11 +288,12 @@ extension ExportManager {
             fit
             ?? CarouselPaginator.fit(
                 baseConfig, slides: slides, cues: cues, size: size,
-                reservesCaptionBand: extras.hasCaptions(slideCount: slides.count))
+                reservesCaptionBand: extras.hasCaptions(slides))
+        let banded = extras.hasCaptions(slides)
         let samples = slides.indices.filter { slides[$0].canPreview }.prefix(2).map { index in
             CarouselPaginator.page(
-                at: extras.pageIndex(ofSlide: index), baseConfig, slides: slides, cues: cues,
-                fontSize: fit.fontSize, extras: extras)
+                .slide(index), baseConfig, slides: slides, cues: cues, fontSize: fit.fontSize,
+                extras: extras, banded: banded)
         }
         let pageCount = extras.pageCount(slideCount: slides.count)
         guard let first = samples.first else { return nil }
@@ -300,7 +301,7 @@ extension ExportManager {
         if output.writesPDF {
             func pdfBytes(_ pages: [CarouselPage]) async -> Int? {
                 await pdfData(
-                    carouselPages: pages, fixedSize: size.pixels, rasterized: fit.overflows,
+                    pages: pages, fixedSize: size.pixels, rasterized: fit.overflows,
                     profile: profile)?.count
             }
             guard let one = await pdfBytes([first]), let both = await pdfBytes(samples)

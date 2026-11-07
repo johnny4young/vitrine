@@ -3,17 +3,20 @@ import VitrineDomain
 import VitrineRendering
 
 /// The text a carousel adds around its code: a caption per slide, and an optional cover and
-/// closing card. Captions are kept by slide index, so a caption past the last slide waits
-/// until a split brings that slide back, and an edit that moves lines never moves a caption.
+/// closing card. A caption belongs to the document line that opens its slide, so it stays
+/// with that slide while another split moves the boundaries, and waits while no slide opens
+/// there.
 nonisolated struct CarouselExtras: Equatable, Sendable {
     /// One sentence, which three lines of the band hold on every slide size.
     static let textLimit = 120
 
+    /// Keyed by the slide's first document line.
     var captions: [Int: String] = [:]
     var showsCover = false
     var coverTitle = ""
     var showsOutro = false
     var callToAction = ""
+    /// Filled by the sheet from the Brand Kit.
     var handle = ""
 
     /// A page of the carousel, in the order it is written.
@@ -24,60 +27,86 @@ nonisolated struct CarouselExtras: Equatable, Sendable {
     }
 
     static func limited(_ text: String) -> String {
-        String(text.replacingOccurrences(of: "\n", with: " ").prefix(textLimit))
+        String(text.split(whereSeparator: \.isNewline).joined(separator: " ").prefix(textLimit))
     }
 
-    func text(of page: Page) -> String {
-        switch page {
-        case .cover: coverTitle
-        case .outro: callToAction
-        case .slide(let index): captions[index] ?? ""
-        }
+    private static func isBlank(_ text: String) -> Bool { text.allSatisfy(\.isWhitespace) }
+
+    /// A card without its text is a tile to fill in, not a page of the export.
+    private func hasCover(tiles: Bool) -> Bool {
+        showsCover && (tiles || !Self.isBlank(coverTitle))
+    }
+    private func hasOutro(tiles: Bool) -> Bool {
+        showsOutro && (tiles || !Self.isBlank(callToAction))
     }
 
-    mutating func setText(_ text: String, of page: Page) {
-        switch page {
-        case .cover: coverTitle = text
-        case .outro: callToAction = text
-        case .slide(let index): captions[index] = text.isEmpty ? nil : text
-        }
-    }
-
-    func caption(at index: Int) -> String? {
-        let text = captions[index]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return text.isEmpty ? nil : text
-    }
-
-    func pageCount(slideCount: Int) -> Int {
+    /// Pages written, or with `tiles` the filmstrip's tiles, which keep an empty card.
+    func pageCount(slideCount: Int, tiles: Bool = false) -> Int {
         guard slideCount > 0 else { return 0 }
-        return slideCount + (showsCover ? 1 : 0) + (showsOutro ? 1 : 0)
+        return slideCount + (hasCover(tiles: tiles) ? 1 : 0) + (hasOutro(tiles: tiles) ? 1 : 0)
     }
 
-    func page(at index: Int, slideCount: Int) -> Page {
-        if showsCover, index == 0 { return .cover }
-        let slide = index - (showsCover ? 1 : 0)
+    func page(at index: Int, slideCount: Int, tiles: Bool = false) -> Page {
+        let cover = hasCover(tiles: tiles)
+        if cover, index == 0 { return .cover }
+        let slide = index - (cover ? 1 : 0)
         return slide < slideCount ? .slide(slide) : .outro
     }
 
-    func pageIndex(ofSlide slide: Int) -> Int { slide + (showsCover ? 1 : 0) }
-
-    /// Whether any slide keeps a caption band, which every slide's type then makes room for.
-    func hasCaptions(slideCount: Int) -> Bool {
-        captions.keys.contains { $0 < slideCount && caption(at: $0) != nil }
-    }
-
-    /// Whether `page` lacks the text it is there for. Slides only count once captions are in use.
-    func lacksText(_ page: Page, slideCount: Int) -> Bool {
-        switch page {
-        case .cover: coverTitle.allSatisfy(\.isWhitespace)
-        case .outro: callToAction.allSatisfy(\.isWhitespace)
-        case .slide(let index): hasCaptions(slideCount: slideCount) && caption(at: index) == nil
+    func pages(slideCount: Int, tiles: Bool = false) -> [Page] {
+        (0..<pageCount(slideCount: slideCount, tiles: tiles)).map {
+            page(at: $0, slideCount: slideCount, tiles: tiles)
         }
     }
 
-    func missingTextCount(slideCount: Int) -> Int {
-        (0..<pageCount(slideCount: slideCount)).count {
-            lacksText(page(at: $0, slideCount: slideCount), slideCount: slideCount)
+    func text(of page: Page, slides: [CarouselPaginator.Slide]) -> String {
+        switch page {
+        case .cover: coverTitle
+        case .outro: callToAction
+        case .slide(let index): captions[slides[index].firstLine] ?? ""
+        }
+    }
+
+    mutating func setText(_ text: String, of page: Page, slides: [CarouselPaginator.Slide]) {
+        switch page {
+        case .cover: coverTitle = text
+        case .outro: callToAction = text
+        case .slide(let index): captions[slides[index].firstLine] = text.isEmpty ? nil : text
+        }
+    }
+
+    func caption(for slide: CarouselPaginator.Slide) -> String? {
+        let text = captions[slide.firstLine]?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return text.isEmpty ? nil : text
+    }
+
+    /// Whether any slide shows a caption, which gives every slide the band.
+    func hasCaptions(_ slides: [CarouselPaginator.Slide]) -> Bool {
+        slides.contains { caption(for: $0) != nil }
+    }
+
+    /// Captions whose line opens no slide in this split.
+    func hiddenCaptionCount(_ slides: [CarouselPaginator.Slide]) -> Int {
+        let openers = Set(slides.map(\.firstLine))
+        return captions.count { !openers.contains($0.key) && !Self.isBlank($0.value) }
+    }
+
+    /// Tiles still waiting for their text, counted in one pass over the slides.
+    func missingTextCount(_ slides: [CarouselPaginator.Slide]) -> Int {
+        guard !slides.isEmpty else { return 0 }
+        let cards =
+            (showsCover && Self.isBlank(coverTitle) ? 1 : 0)
+            + (showsOutro && Self.isBlank(callToAction) ? 1 : 0)
+        guard hasCaptions(slides) else { return cards }
+        return cards + slides.count { caption(for: $0) == nil }
+    }
+
+    /// Whether `page` lacks the text it is there for. Slides only count once captions are in use.
+    func lacksText(_ page: Page, slides: [CarouselPaginator.Slide]) -> Bool {
+        switch page {
+        case .cover: Self.isBlank(coverTitle)
+        case .outro: Self.isBlank(callToAction)
+        case .slide(let index): hasCaptions(slides) && caption(for: slides[index]) == nil
         }
     }
 }
@@ -88,17 +117,21 @@ extension CarouselPaginator {
         _ base: SnapshotConfig, slides: [Slide], cues: Cues, fontSize: Double?,
         extras: CarouselExtras
     ) -> [CarouselPage] {
-        (0..<extras.pageCount(slideCount: slides.count)).map {
-            page(at: $0, base, slides: slides, cues: cues, fontSize: fontSize, extras: extras)
+        let banded = extras.hasCaptions(slides)
+        return extras.pages(slideCount: slides.count).map {
+            page(
+                $0, base, slides: slides, cues: cues, fontSize: fontSize, extras: extras,
+                banded: banded)
         }
     }
 
+    /// With `banded`, every slide keeps the caption band, empty or not, so the card sits at
+    /// the same place on each.
     static func page(
-        at index: Int, _ base: SnapshotConfig, slides: [Slide], cues: Cues, fontSize: Double?,
-        extras: CarouselExtras
+        _ kind: CarouselExtras.Page, _ base: SnapshotConfig, slides: [Slide], cues: Cues,
+        fontSize: Double?, extras: CarouselExtras, banded: Bool
     ) -> CarouselPage {
         // Cover and closing cards are social cards in the capture's theme and background.
-        let kind = extras.page(at: index, slideCount: slides.count)
         guard case .slide(let slide) = kind else {
             return .card(
                 SocialCardModel(
@@ -110,6 +143,6 @@ extension CarouselPaginator {
             slideConfig(
                 base, slide: slides[slide], at: slide, of: slides.count, cues: cues,
                 fontSize: fontSize),
-            caption: extras.caption(at: slide))
+            caption: banded ? extras.caption(for: slides[slide]) ?? "" : nil)
     }
 }

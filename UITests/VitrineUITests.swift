@@ -1380,11 +1380,9 @@ final class VitrineUITests: XCTestCase {
         ] {
             assertExists(element(identifier, in: app), in: app, timeout: 3)
         }
-        XCTAssertFalse(element("carousel-handle-field", in: app).exists)
+        XCTAssertFalse(element("carousel-cover-tile", in: app).exists)
         element("carousel-cover-toggle", in: app).click()
         assertExists(element("carousel-cover-tile", in: app), in: app, timeout: 3)
-        assertExists(element("carousel-handle-field", in: app), in: app, timeout: 3)
-        assertExists(element("carousel-missing-text", in: app), in: app, timeout: 3)
         let summary = element("carousel-output-summary", in: app)
         XCTAssertTrue(
             (summary.value as? String ?? summary.label).hasPrefix("carousel-01.png"),

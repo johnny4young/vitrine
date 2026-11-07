@@ -155,7 +155,8 @@ struct CarouselFilmstripTests {
             let slide = try #require(CarouselSplit(linesPerSlide: 4).slides(of: base.code).first)
             let config = CarouselPaginator.slideConfig(
                 base, slide: slide, at: 0, of: 1, cues: .none)
-            let image = try #require(CarouselFilmstripModel.renderTile(config, profile: .sRGB))
+            let image = try #require(
+                CarouselFilmstripModel.renderTile(.slide(config, caption: nil), profile: .sRGB))
             let provider = try #require(image.dataProvider?.data)
             return provider as Data
         }
@@ -165,7 +166,8 @@ struct CarouselFilmstripTests {
     @Test func aTileIsTheSlideFrameAtTileScale() throws {
         var config = SnapshotConfig()
         config.code = "let a = 1"
-        let image = try #require(CarouselFilmstripModel.renderTile(config, profile: .sRGB))
+        let image = try #require(
+            CarouselFilmstripModel.renderTile(.slide(config, caption: nil), profile: .sRGB))
         #expect(abs(CGFloat(image.width) - 2 * CarouselFilmstripModel.tileSize.width) <= 1)
         #expect(abs(CGFloat(image.height) - 2 * CarouselFilmstripModel.tileSize.height) <= 1)
     }

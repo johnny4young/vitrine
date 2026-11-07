@@ -275,7 +275,9 @@ struct CarouselSizeAndPDFTests {
     }
 
     @Test func pdfPagesReportProgressAndStopWhenCancelled() async {
-        let configs = [SnapshotConfig(), SnapshotConfig(), SnapshotConfig()]
+        let configs = [SnapshotConfig(), SnapshotConfig(), SnapshotConfig()].map {
+            CarouselPage.slide($0, caption: nil)
+        }
         let pages = Log<Int>()
         let data = await ExportManager.pdfData(
             pages: configs, fixedSize: ExportManager.carouselSlideSize,
@@ -434,8 +436,10 @@ struct CarouselSizeAndPDFTests {
 
         let tile = try #require(
             CarouselFilmstripModel.renderTile(
-                CarouselPaginator.slideConfig(
-                    base, slide: slides[0], at: 0, of: 2, cues: .none, fontSize: 33),
+                .slide(
+                    CarouselPaginator.slideConfig(
+                        base, slide: slides[0], at: 0, of: 2, cues: .none, fontSize: 33),
+                    caption: nil),
                 size: .story, profile: .sRGB))
         #expect(abs(CGFloat(tile.height) - 2 * CarouselFilmstripModel.tileSize.height) <= 1)
     }

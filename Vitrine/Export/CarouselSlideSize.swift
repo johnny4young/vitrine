@@ -40,8 +40,9 @@ extension CarouselPaginator {
 
     /// The largest type at which the widest line and the tallest slide (at least
     /// `fittedMinimumRows` rows, wrapped rows included) fit the frame with every cue drawn,
-    /// above the caption band when one is reserved. A probe slide is measured and its type scaled by the room left; layout grows more
-    /// slowly than the font, so each step lands below the answer and the steps converge.
+    /// above the caption band when one is reserved. A probe slide is measured and its type
+    /// scaled by the room left; layout grows more slowly than the font, so each step lands
+    /// below the answer and the steps converge.
     static func fit(
         _ base: SnapshotConfig, slides: [Slide], cues: Cues, size: CarouselSlideSize,
         reservesCaptionBand: Bool = false

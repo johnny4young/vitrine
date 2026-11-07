@@ -40,8 +40,10 @@ struct CarouselExportView: View {
     let profile: ColorProfile
     let feedback: FeedbackDisplay
     let presentation: BatchExportPresentation
-    /// Offered once as the cover and closing card's handle.
+    /// The cover and closing card's handle.
     let brandHandle: String
+    /// Captions belong to this document; another one starts without them.
+    let documentGeneration: Int
     /// The split lives with the window, because the editor's dividers follow it too.
     @Bindable var splitModel: CarouselSplitModel
 
@@ -76,7 +78,7 @@ struct CarouselExportView: View {
     init(
         baseConfig: SnapshotConfig, profile: ColorProfile, feedback: FeedbackDisplay,
         presentation: BatchExportPresentation, splitModel: CarouselSplitModel,
-        brandHandle: String = BrandKitStore.shared.brandKit.handle
+        documentGeneration: Int, brandHandle: String = BrandKitStore.shared.brandKit.handle
     ) {
         self.baseConfig = baseConfig
         self.profile = profile
@@ -84,6 +86,7 @@ struct CarouselExportView: View {
         self.presentation = presentation
         self.splitModel = splitModel
         self.brandHandle = brandHandle
+        self.documentGeneration = documentGeneration
         _cues = State(
             initialValue: CarouselPaginator.Cues(
                 lineNumbers: baseConfig.showLineNumbers ? .continuing : .off,
@@ -105,13 +108,19 @@ struct CarouselExportView: View {
 
     private var pages: [CarouselPaginator.Slide] { outcome?.slides(for: request.code) ?? [] }
 
+    private var extras: CarouselExtras {
+        var extras = splitModel.extras
+        extras.handle = brandHandle
+        return extras
+    }
+
     /// Every file page, cover and closing card included.
-    private var pageCount: Int { splitModel.extras.pageCount(slideCount: pages.count) }
+    private var pageCount: Int { extras.pageCount(slideCount: pages.count) }
 
     private var fitRequest: FitRequest {
         FitRequest(
             base: baseConfig, slides: pages, cues: cues, size: splitModel.size,
-            reservesCaptionBand: splitModel.extras.hasCaptions(slideCount: pages.count))
+            reservesCaptionBand: extras.hasCaptions(pages))
     }
 
     /// `nil` while the choices have moved on from the last fit.
@@ -123,7 +132,7 @@ struct CarouselExportView: View {
     private var filmstripInput: CarouselFilmstripModel.Input {
         CarouselFilmstripModel.Input(
             base: baseConfig, slides: pages, cues: cues, size: splitModel.size,
-            fontSize: currentFit?.fontSize, profile: profile, extras: splitModel.extras)
+            fontSize: currentFit?.fontSize, profile: profile, extras: extras)
     }
 
     private var confirmTitle: LocalizedStringKey {
@@ -177,10 +186,7 @@ struct CarouselExportView: View {
         // Synchronously, so the sheet doesn't open on an empty strip and a zero count.
         .onAppear {
             outcome = CarouselPaginator.Outcome(split: request.split, code: request.code)
-            if !splitModel.hasOfferedHandle {
-                splitModel.extras.handle = brandHandle
-                splitModel.hasOfferedHandle = true
-            }
+            splitModel.adoptDocument(generation: documentGeneration)
             refreshFit()
         }
         .task(id: request) { await refreshSplit() }
@@ -217,25 +223,26 @@ struct CarouselExportView: View {
                     .foregroundStyle(VitrineTokens.Text.secondary)
                     .monospacedDigit()
                     .accessibilityIdentifier("carousel-slide-count")
-                let missing = splitModel.extras.missingTextCount(slideCount: pages.count)
-                if missing > 0 {
+                // Captions wait on a line no slide opens until another split brings it back.
+                let hidden = extras.hiddenCaptionCount(pages)
+                if hidden > 0 {
                     Group {
-                        if missing == 1 {
-                            Text("1 without text")
+                        if hidden == 1 {
+                            Text("1 caption not shown")
                         } else {
-                            Text("\(missing) without text")
+                            Text("\(hidden) captions not shown")
                         }
                     }
                     .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(VitrineTokens.Text.secondary)
                     .monospacedDigit()
-                    .accessibilityIdentifier("carousel-missing-text")
+                    .accessibilityIdentifier("carousel-hidden-captions")
                 }
             }
+            let input = filmstripInput
             CarouselFilmstrip(
-                input: filmstripInput, hasShortTail: outcome?.hasShortTail ?? false,
-                model: filmstrip)
-            if pageCount > 0 { pageTextRow }
+                input: input, hasShortTail: outcome?.hasShortTail ?? false, model: filmstrip)
+            if input.tileCount > 0 { pageTextRow(input) }
             switchRow(
                 "Prefer blank-line breaks", isOn: $splitModel.split.prefersBlankLineBreaks,
                 identifier: "carousel-prefer-blank-lines")
@@ -259,31 +266,22 @@ struct CarouselExportView: View {
     }
 
     /// The selected tile's text: a slide's caption, the cover title or the call to action.
-    private var pageTextRow: some View {
-        let page = splitModel.extras.page(
-            at: min(filmstrip.current, pageCount - 1), slideCount: pages.count)
-        let text = Binding(
-            get: { splitModel.extras.text(of: page) },
-            set: { splitModel.extras.setText(CarouselExtras.limited($0), of: page) })
+    private func pageTextRow(_ input: CarouselFilmstripModel.Input) -> some View {
+        let page = input.tile(at: min(filmstrip.current, input.tileCount - 1))
         let title: LocalizedStringKey =
             switch page {
             case .cover: "Cover title"
             case .outro: "Call to action"
             case .slide(let index): "Slide \(index + 1) caption"
             }
-        return HStack(spacing: 8) {
-            TextField(title, text: text)
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.small)
-                .accessibilityIdentifier("carousel-caption-field")
-                // A new page starts a new edit, so typing never lands on the page left behind.
-                .id(page)
-            Text(verbatim: "\(text.wrappedValue.count)/\(CarouselExtras.textLimit)")
-                .font(.system(size: VitrineTokens.FontSize.caption))
-                .foregroundStyle(VitrineTokens.Text.tertiary)
-                .monospacedDigit()
-                .accessibilityIdentifier("carousel-caption-count")
-        }
+        return CarouselTextField(
+            title: title,
+            text: Binding(
+                get: { splitModel.extras.text(of: page, slides: input.slides) },
+                set: { splitModel.extras.setText($0, of: page, slides: input.slides) })
+        )
+        // A new page starts a new edit, so typing never lands on the page left behind.
+        .id(page)
     }
 
     /// Turning a card on selects it, so the text field above names it.
@@ -298,7 +296,7 @@ struct CarouselExportView: View {
             get: { splitModel.extras.showsOutro },
             set: { isOn in
                 splitModel.extras.showsOutro = isOn
-                if isOn { filmstrip.current = max(pageCount - 1, 0) }
+                if isOn { filmstrip.current = max(filmstripInput.tileCount - 1, 0) }
             })
         return HStack(spacing: 12) {
             Toggle("Cover", isOn: cover)
@@ -306,18 +304,6 @@ struct CarouselExportView: View {
             Toggle("Closing slide", isOn: outro)
                 .accessibilityIdentifier("carousel-outro-toggle")
             Spacer(minLength: 0)
-            if splitModel.extras.showsCover || splitModel.extras.showsOutro {
-                TextField(
-                    "Handle",
-                    text: Binding(
-                        get: { splitModel.extras.handle },
-                        set: { splitModel.extras.handle = CarouselExtras.limited($0) })
-                )
-                .textFieldStyle(.roundedBorder)
-                .controlSize(.small)
-                .frame(width: 140)
-                .accessibilityIdentifier("carousel-handle-field")
-            }
         }
         .toggleStyle(.checkbox)
         .frame(minHeight: 22)
@@ -506,7 +492,7 @@ struct CarouselExportView: View {
         guard !Task.isCancelled else { return }
         let estimate = await ExportManager.estimatedCarouselBytes(
             baseConfig, slides: pages, cues: cues, size: splitModel.size, fit: fit,
-            output: splitModel.output, extras: splitModel.extras, profile: profile)
+            output: splitModel.output, extras: extras, profile: profile)
         guard !Task.isCancelled else { return }
         estimatedBytes = estimate
     }
@@ -534,7 +520,7 @@ struct CarouselExportView: View {
         guard let directory = folder ?? presentation.chooseDirectory(message: folderPrompt)
         else { return }
 
-        let (size, output, extras) = (splitModel.size, splitModel.output, splitModel.extras)
+        let (size, output, extras) = (splitModel.size, splitModel.output, extras)
         let pageCount = extras.pageCount(slideCount: pages.count)
         let fileCount = CarouselPaginator.requestedFilenames(
             slideCount: pageCount, output: output
@@ -562,6 +548,39 @@ struct CarouselExportView: View {
                 failureNote = completion.failureNote
                 refreshPlannedFilenames()
             }
+        }
+    }
+}
+
+/// Edits a draft and writes it back clamped. Storing the clamp into an unchanged value
+/// wouldn't redraw the field, so the draft itself is set back and the field follows it.
+struct CarouselTextField: View {
+    let title: LocalizedStringKey
+    @Binding var text: String
+    @State private var draft: String
+
+    init(title: LocalizedStringKey, text: Binding<String>) {
+        self.title = title
+        _text = text
+        _draft = State(initialValue: text.wrappedValue)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            TextField(title, text: $draft)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                .accessibilityIdentifier("carousel-caption-field")
+            Text(verbatim: "\(draft.count)/\(CarouselExtras.textLimit)")
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .monospacedDigit()
+                .accessibilityIdentifier("carousel-caption-count")
+        }
+        .onChange(of: draft) { _, edited in
+            let limited = CarouselExtras.limited(edited)
+            if limited != edited { draft = limited }
+            if text != limited { text = limited }
         }
     }
 }
