@@ -48,6 +48,10 @@ final class CaptureFeedbackPresenter {
         display(feedback) { [weak self] action in
             self?.run(action, environment: environment)
         }
+        // Show, never load, as for recovery: the editor may hold an unsaved document.
+        let reopen = result.savedToRecents ? routing.showRecents : routing.showEditor
+        display.preview(
+            result.copiedPNG, behavior: environment.appSettings.outputBehavior, reopen: reopen)
     }
 
     /// Presents an already-resolved feedback value and keeps the panel's retained

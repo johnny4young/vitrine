@@ -122,7 +122,7 @@ jobs:
               break
             fi
             if [ "${STATUS}" -ne 3 ]; then
-              echo "::error::CI did not pass on ${TAG_COMMIT}. Fix main and tag a commit whose CI passed."
+              echo "::error::CI did not pass on ${TAG_COMMIT}. Fix main and tag a commit whose CI passed. Skipped macOS checks mean the commit reused its pull request's CI: run gh workflow run ci.yml --ref ${GITHUB_REF_NAME}, then re-run this job once it passes."
               exit 1
             fi
             if [ "$(date +%s)" -ge "${DEADLINE}" ]; then

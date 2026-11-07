@@ -527,18 +527,24 @@ extension EditorView {
                 .focused($stageFocused)
                 .focusEffectDisabled()
                 .onChange(of: selectedAnnotationID) { _, id in
+                    // A Duplicate pressed from the keyboard keeps the toolbar's focus.
+                    if markToolbarFocused, id != nil { return }
                     stageFocused = id != nil && editingAnnotationID == nil
                 }
                 .onChange(of: editingAnnotationID) { _, id in
                     stageFocused = id == nil && selectedAnnotationID != nil
                 }
-                .onKeyPress(keys: [.leftArrow, .rightArrow, .upArrow, .downArrow]) { press in
-                    nudgeSelection(
-                        press.key, shift: press.modifiers.contains(.shift),
-                        isRepeat: press.phase == .repeat) ? .handled : .ignored
-                }
-                .onKeyPress(keys: [.delete, .deleteForward]) { _ in
-                    deleteSelection() ? .handled : .ignored
+                .onKeyPress(
+                    keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .delete, .deleteForward],
+                    action: markKeyPress
+                )
+                // Buttons take focus only with macOS keyboard navigation on, as elsewhere.
+                .onKeyPress(keys: [.tab]) { press in
+                    guard press.modifiers.isEmpty, activeTool == .select,
+                        NSApp.isFullKeyboardAccessEnabled
+                    else { return .ignored }
+                    markToolbarFocused = true
+                    return .handled
                 }
                 .onExitCommand(perform: clearAnnotationSelection)
             }
@@ -558,7 +564,9 @@ extension EditorView {
                     settings: settings, themes: themes, presets: presets,
                     entitlements: entitlements, legibility: legibility,
                     presetThumbnails: session.presetThumbnails,
-                    presentFramePaywall: { exportSheet = .framePaywall })
+                    presentFramePaywall: { exportSheet = .framePaywall }
+                )
+                .markToolbarAvoids()
             }
         }
         // The code column is the drop target until canvas mode collapses it.
@@ -570,6 +578,27 @@ extension EditorView {
         .background(stageBackground)
         .overlay(alignment: .top) {
             RecipeAppliedBar(session: session, settings: settings)
+        }
+        // Last, outside the preview's scale: it keeps its size and never reaches an export.
+        // Stage chrome joins `MarkToolbarAnchors.avoiding` to keep the toolbar off it.
+        .overlayPreferenceValue(MarkToolbarAnchorsKey.self) { anchors in
+            if let mark = anchors.mark {
+                GeometryReader { proxy in
+                    MarkToolbarPlacer(
+                        mark: proxy[mark], avoiding: anchors.avoiding.map { proxy[$0] },
+                        stage: proxy.size
+                    ) { popoverEdge, holdPlace in
+                        AnnotationMarkToolbar(
+                            color: annotationStyleColor, thickness: annotationStyleThickness,
+                            showsColor: annotationStyleUsesColor,
+                            showsThickness: annotationStyleUsesThickness,
+                            popoverEdge: popoverEdge, focus: $markToolbarFocused,
+                            onStyleEditEnded: endAnnotationEdit, onSizeDragging: holdPlace,
+                            onDuplicate: duplicateSelection, onMarkKey: markKeyPress,
+                            onExit: { stageFocused = selectedAnnotationID != nil })
+                    }
+                }
+            }
         }
         .layoutPriority(EditorLayout.stageLayoutPriority)
         // A container, so the canvas text and the inline callout field keep their own ids.
@@ -903,6 +932,7 @@ private struct StageStatusCapsule: View {
         .accessibilityLabel("Destination")
         .accessibilityValue(Text(verbatim: line))
         .accessibilityIdentifier("editor-status-capsule")
+        .markToolbarAvoids()
         .padding(.bottom, 14)
     }
 
