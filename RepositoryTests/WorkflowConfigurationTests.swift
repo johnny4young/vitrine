@@ -380,6 +380,31 @@ struct WorkflowConfigurationTests {
             try Self.makefile().contains("ENABLE_APP_SANDBOX=NO $(COVERAGE_DERIVED_DATA_FLAG)"))
     }
 
+    // MARK: - Contract: the WebKit workflow follows the UI case it runs
+
+    /// The controlled WebKit workflow runs on pull requests that change a listed path. It
+    /// lists the file holding the sign-in case it reruns in the Direct Download sandbox, not
+    /// the smoke suite, which most pull requests edit.
+    @Test func webCaptureRunsWhenTheFileHoldingItsSignInCaseChanges() throws {
+        let workflow = try Self.text(".github", "workflows", "web-capture.yml")
+        let selection = try #require(
+            workflow.firstMatch(of: /-only-testing:VitrineUITests\/(\w+)\/(\w+)/),
+            "the Direct Download step must select one UI case")
+        let (testClass, test) = (String(selection.output.1), String(selection.output.2))
+        let files = try FileManager.default.contentsOfDirectory(atPath: Self.url("UITests").path)
+            .filter { $0.hasSuffix(".swift") }
+        let owner = try #require(
+            try files.first {
+                try Self.text("UITests", $0).contains("class \(testClass): XCTestCase")
+            }, "no UITests file declares \(testClass)")
+        #expect(try Self.text("UITests", owner).contains("func \(test)()"))
+        #expect(workflow.contains("      - 'UITests/\(owner)'"))
+        #expect(!workflow.contains("UITests/VitrineUITests.swift"))
+        #expect(
+            try Self.text("scripts", "test-web-capture.py").contains("\"\(testClass)/\(test)()\""),
+            "the receipt check must expect the same case")
+    }
+
     // MARK: - Contract: a push to main reuses the evidence of the pull request it merges
 
     /// A squash merge of an up-to-date pull request lands the tree its CI already tested, so
