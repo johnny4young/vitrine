@@ -24,6 +24,19 @@ extension Array where Element == Annotation {
         insert(mark, at: target)
     }
 
+    /// Turns magnifiers past `Annotation.maxMagnifiers` back into plain boxes.
+    public func cappingMagnifiers() -> [Annotation] {
+        var seen = 0
+        return map { mark in
+            guard mark.isMagnifier else { return mark }
+            seen += 1
+            guard seen > Annotation.maxMagnifiers else { return mark }
+            var box = mark
+            box.variant = .standard
+            return box
+        }
+    }
+
     /// Removes a mark. Deleting a counter closes the gap it leaves, so the remaining
     /// badges keep reading in order and the next one placed continues the sequence.
     public mutating func removeMark(_ id: UUID) {
@@ -103,11 +116,11 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
     public var thickness: Double
     /// The badge number. Only `.counter` uses it.
     public var number: Int
-    /// The look within the kind, such as an elbow arrow.
+    /// The look within the kind: an elbow arrow, or a box drawn as a magnifier.
     public var variant: Variant = .standard
     public var stroke: Stroke = .clean
 
-    public enum Variant: String, Codable, Sendable { case standard, elbow }
+    public enum Variant: String, Codable, Sendable { case standard, elbow, magnifier }
     public enum Stroke: String, Codable, Sendable { case clean, handDrawn }
 
     public init(
@@ -183,6 +196,12 @@ extension Annotation {
             variant = newValue == .elbow ? .elbow : .standard
         }
     }
+
+    /// Whether this box enlarges the content under it instead of outlining it.
+    public var isMagnifier: Bool { kind == .rectangle && variant == .magnifier }
+
+    /// The most magnifiers one capture draws; each one adds compositing work.
+    public static let maxMagnifiers = 4
 
     /// Whether the mark is a stroke the hand-drawn style can apply to.
     public var supportsStrokeStyle: Bool {

@@ -125,6 +125,7 @@ struct AnnotationMarkToolbar: View {
     let onExit: () -> Void
     /// The selected mark's style variants; `nil` when its kind has none.
     var arrowStyle: Binding<Annotation.ArrowStyle>?
+    var magnifier: Binding<Bool>?
     var stroke: Binding<Annotation.Stroke>?
 
     var body: some View {
@@ -149,6 +150,11 @@ struct AnnotationMarkToolbar: View {
                         (.curved, Text("Curved"), "curved"),
                         (.elbow, Text("Elbow"), "elbow"),
                     ])
+            }
+            if let magnifier {
+                variantPicker(
+                    "Box style", id: "box-style", selection: magnifier,
+                    options: [(false, Text("Box"), "box"), (true, Text("Magnifier"), "magnifier")])
             }
             if let stroke {
                 variantPicker(

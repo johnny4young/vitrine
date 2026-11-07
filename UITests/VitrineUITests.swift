@@ -1051,6 +1051,9 @@ final class VitrineUITests: XCTestCase {
         let handDrawn = element("annotation-mark-toolbar-hand-drawn", in: app)
         handDrawn.click()
         XCTAssertTrue(handDrawn.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        let magnifier = element("annotation-mark-toolbar-magnifier", in: app)
+        magnifier.click()
+        XCTAssertTrue(magnifier.wait(for: \.isSelected, toEqual: true, timeout: 3))
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         XCTAssertTrue(toolbar.waitForNonExistence(timeout: 3), "Escape drops the selection")
 
@@ -1069,6 +1072,7 @@ final class VitrineUITests: XCTestCase {
         XCTAssertFalse(element("annotation-mark-toolbar-color", in: app).exists)
         XCTAssertFalse(element("annotation-mark-toolbar-size", in: app).exists)
         XCTAssertFalse(element("annotation-mark-toolbar-stroke", in: app).exists)
+        XCTAssertFalse(element("annotation-mark-toolbar-box-style", in: app).exists)
 
         // An arrow switches between its shapes and keeps its selection.
         revealToolbarAction(

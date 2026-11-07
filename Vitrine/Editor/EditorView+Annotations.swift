@@ -63,6 +63,12 @@ extension EditorView {
             })
     }
 
+    /// Whether `mark` may be a magnifier: it already is one, or the capture has room for another.
+    func canMagnify(_ mark: Annotation) -> Bool {
+        mark.isMagnifier
+            || settings.style.annotations.count(where: \.isMagnifier) < Annotation.maxMagnifiers
+    }
+
     /// The selected counter's legend field, or `nil` when the selection has no legend.
     var annotationLegendEdit: AnnotationLegendEdit? {
         guard let selected = selectedAnnotation, selected.kind == .counter else { return nil }
@@ -119,6 +125,7 @@ extension EditorView {
         let copy = original.duplicated(
             in: cardGeometry.canvasSize, counterNumber: nextCounterNumber)
         settings.style.annotations.append(copy)
+        settings.style.annotations = settings.style.annotations.cappingMagnifiers()
         selectedAnnotationID = copy.id
         endAnnotationEdit()
     }

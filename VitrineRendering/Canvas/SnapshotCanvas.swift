@@ -150,11 +150,15 @@ public struct SnapshotCanvas: View, Equatable {
     @ViewBuilder
     private var annotatedCanvas: some View {
         let composite = ZStack {
-            framedCanvas
-            if hasBlurAnnotations {
+            if lenses.isEmpty {
                 framedCanvas
-                    .blur(radius: Self.blurRadius)
-                    .mask { blurMask }
+                if hasBlurAnnotations {
+                    framedCanvas
+                        .blur(radius: Self.blurRadius)
+                        .mask { blurMask }
+                }
+            } else {
+                framedCanvas.hidden().overlay { magnifiedCanvas }
             }
             if hasSpotlightAnnotations {
                 spotlightDim
@@ -183,6 +187,79 @@ public struct SnapshotCanvas: View, Equatable {
         } else {
             styledContent
                 .background(BackgroundView(style: config.background))
+        }
+    }
+
+    /// The lenses drawn, capped so a document or share link cannot multiply the work.
+    private var lenses: [Annotation] {
+        config.annotations.cappingMagnifiers().filter(\.isMagnifier)
+    }
+
+    /// How much a magnifier enlarges the content under it.
+    static let magnification: CGFloat = 2
+
+    /// The canvas with its lenses, drawn from one resolved content render. A lens enlarges
+    /// the redacted content and the marks over it, and blur boxes apply last, so a blur box
+    /// hides whatever ends up beneath it, enlarged or not.
+    private var magnifiedCanvas: some View {
+        let lenses = lenses
+        let blurs = config.annotations.filter { $0.kind == .blur }
+        let radius = Self.blurRadius
+        let zoom = Self.magnification
+        return Canvas { context, size in
+            guard let content = context.resolveSymbol(id: 0),
+                let marks = context.resolveSymbol(id: 1)
+            else { return }
+            let frame = CGRect(origin: .zero, size: size)
+            let blurBoxes = Path { path in
+                for box in blurs {
+                    path.addRoundedRect(
+                        in: box.rect(in: size), cornerSize: CGSize(width: 10, height: 10))
+                }
+            }
+            func blurred(_ context: GraphicsContext, _ draw: (GraphicsContext) -> Void) {
+                guard !blurs.isEmpty else { return }
+                var clipped = context
+                clipped.clip(to: blurBoxes)
+                clipped.drawLayer { layer in
+                    layer.addFilter(.blur(radius: radius))
+                    draw(layer)
+                }
+            }
+            func redacted(_ context: GraphicsContext) {
+                context.draw(content, in: frame)
+                blurred(context) { $0.draw(content, in: frame) }
+            }
+            func lensed(_ context: GraphicsContext) {
+                redacted(context)
+                for lens in lenses {
+                    let rect = lens.rect(in: size)
+                    var inside = context
+                    inside.clip(to: Path(ellipseIn: rect))
+                    inside.translateBy(x: rect.midX, y: rect.midY)
+                    inside.scaleBy(x: zoom, y: zoom)
+                    inside.translateBy(x: -rect.midX, y: -rect.midY)
+                    redacted(inside)
+                    inside.draw(marks, in: frame)
+                }
+            }
+            lensed(context)
+            blurred(context, lensed)
+        } symbols: {
+            framedCanvas.tag(0)
+            lensMarks.tag(1)
+        }
+        .allowsHitTesting(false)
+    }
+
+    /// The marks a lens enlarges along with the content: every mark but the lens rings.
+    private var lensMarks: some View {
+        GeometryReader { proxy in
+            ZStack {
+                ForEach(config.annotations.filter { !$0.isMagnifier }) { annotation in
+                    AnnotationMarkView(annotation: annotation, size: proxy.size)
+                }
+            }
         }
     }
 
@@ -247,7 +324,7 @@ public struct SnapshotCanvas: View, Equatable {
         GeometryReader { proxy in
             let size = proxy.size
             ZStack {
-                ForEach(config.annotations) { annotation in
+                ForEach(config.annotations.cappingMagnifiers()) { annotation in
                     AnnotationMarkView(annotation: annotation, size: size)
                 }
             }

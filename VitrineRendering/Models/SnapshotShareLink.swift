@@ -146,7 +146,7 @@ public struct SharedSnapshot: Codable, Equatable {
     }
 
     private static func sanitizedAnnotations(_ annotations: [Annotation]) -> [Annotation] {
-        annotations.prefix(maxAnnotations).map { annotation in
+        Array(annotations.prefix(maxAnnotations)).cappingMagnifiers().map { annotation in
             var sanitized = annotation
             sanitized.start = finiteNormalized(annotation.start)
             sanitized.end = finiteNormalized(annotation.end)

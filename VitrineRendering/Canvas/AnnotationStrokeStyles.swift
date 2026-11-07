@@ -154,7 +154,9 @@ struct StyledStroke: View {
 extension AnnotationMarkBounds {
     /// The stroke of a mark with a style, or `nil` for a plain mark, which keeps its own view.
     nonisolated static func styledPath(_ annotation: Annotation, in size: CGSize) -> Path? {
-        guard annotation.arrowStyle == .elbow || annotation.stroke == .handDrawn,
+        guard
+            annotation.arrowStyle == .elbow || annotation.isMagnifier
+                || annotation.stroke == .handDrawn,
             let base = shapePath(annotation, in: size)
         else { return nil }
         guard annotation.stroke == .handDrawn else { return base }
@@ -185,6 +187,8 @@ extension AnnotationMarkBounds {
         case .curvedArrow:
             return CurvedArrowShape(from: from, to: to, weight: weight).path(in: .zero)
         case .line: return Path { $0.addLines([from, to]) }
+        case .rectangle where annotation.isMagnifier:
+            return Path(ellipseIn: annotation.rect(in: size))
         case .rectangle:
             return RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .path(in: annotation.rect(in: size))

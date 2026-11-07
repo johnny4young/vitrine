@@ -801,6 +801,39 @@
         }
       }
     },
+    "Box style" : {
+      "comment" : "Accessibility label for the selected box's style picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo del recuadro"
+          }
+        }
+      }
+    },
+    "Box" : {
+      "comment" : "Selected-mark toolbar: a box outline.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recuadro"
+          }
+        }
+      }
+    },
+    "Magnifier" : {
+      "comment" : "Selected-mark toolbar: a lens that enlarges the content under it.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lupa"
+          }
+        }
+      }
+    },
     "Arrow shape" : {
       "comment" : "Accessibility label for the selected arrow's shape picker.",
       "localizations" : {

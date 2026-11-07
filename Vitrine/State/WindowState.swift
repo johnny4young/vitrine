@@ -336,7 +336,7 @@ struct EditorWindowState: Codable, Equatable {
         diffView = try? container.decodeIfPresent(DiffViewMode.self, forKey: .diffView)
         annotations =
             (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
-            .compactMap(\.value) ?? fallback.annotations
+            .compactMap(\.value).cappingMagnifiers() ?? fallback.annotations
         codeSteps = (try? container.decode([String].self, forKey: .codeSteps)) ?? fallback.codeSteps
         activeCodeStep = try? container.decodeIfPresent(Int.self, forKey: .activeCodeStep)
         destinationID = try? container.decodeIfPresent(String.self, forKey: .destinationID)

@@ -78,6 +78,9 @@ can never drift.
 - Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
   to see it in up to four themes on a comparison board, each captioned with its theme. The
   board's inspector adds or removes themes without capturing again.
+- A box can become a magnifier from the selected mark's toolbar: it enlarges the content and
+  marks under it, up to four per capture. Blur boxes and redacted lines stay hidden inside a
+  lens, and a blur box drawn over a lens blurs what the lens shows.
 - The selected mark's toolbar switches an arrow between straight, curved and elbow, and arrows,
   lines and boxes between a clean and a hand-drawn stroke. A hand-drawn stroke looks the same in
   every render and share link.

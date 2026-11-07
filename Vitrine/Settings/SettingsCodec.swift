@@ -238,7 +238,7 @@ enum SettingsCodec {
         if let spec = defaults.string(forKey: Keys.highlightedLines) {
             config.highlightedLineRanges = LineHighlight.parse(spec)
         }
-        config.annotations = readAnnotations(from: defaults)
+        config.annotations = readAnnotations(from: defaults).cappingMagnifiers()
         if let metadata = readMetadata(from: defaults) {
             config.metadata = metadata
         }
