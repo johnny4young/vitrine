@@ -345,17 +345,17 @@ final class VitrineUITests: XCTestCase {
         return zoom / 100
     }
 
-    /// Measured from the demo's code, at the default 26 pt card inset and 32 pt padding: the
-    /// chrome sits above the code, and the background starts past the shadow's 10 pt ring.
+    /// The demo's text element spans the whole rendered canvas, so points are measured from its
+    /// edges: the default 32 pt padding, then the card's 28 pt window chrome.
     @MainActor private func stageRegionPoint(
-        _ target: StageRegionTarget, of code: XCUIElement, scale: CGFloat
+        _ target: StageRegionTarget, of canvas: XCUIElement, scale: CGFloat
     ) -> XCUICoordinate {
-        let origin = code.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+        let origin = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
         switch target {
         case .chrome:
-            return origin.withOffset(CGVector(dx: code.frame.width / 2, dy: -24 * scale))
+            return origin.withOffset(CGVector(dx: canvas.frame.width / 2, dy: 46 * scale))
         case .background:
-            return origin.withOffset(CGVector(dx: -47 * scale, dy: code.frame.height / 2))
+            return origin.withOffset(CGVector(dx: 8 * scale, dy: canvas.frame.height / 2))
         }
     }
 
