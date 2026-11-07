@@ -144,6 +144,69 @@ struct CarouselSizeAndPDFTests {
         _ = try expectEverySlideFits(base, linesPerSlide: 2, size: .story, "story")
     }
 
+    /// The badge's frame is where the render changes when it is drawn; the card's is what the
+    /// render holds without it.
+    @Test func thePageBadgeSitsClearOfTheCardOnEverySize() throws {
+        let cues = CarouselPaginator.Cues(
+            lineNumbers: .continuing, showsPageBadge: true, showsContinuation: true,
+            continuationLabel: "continues →")
+        for (lines, width) in [(24, 40), (24, 50), (24, 60), (24, 12), (6, 30)] {
+            var base = SnapshotConfig()
+            base.code = code(lines: lines, width: width)
+            // Little padding, so the canvas edge alone cannot keep the card off the badge.
+            base.padding = 8
+            base.background = .transparent
+            base.showShadow = false
+            let slides = CarouselSplit(linesPerSlide: min(12, lines / 2)).slides(of: base.code)
+            for size in CarouselSlideSize.allCases {
+                let label: Comment = "\(size) \(lines)×\(width)"
+                let fit = CarouselPaginator.fit(base, slides: slides, cues: cues, size: size)
+                let badged = CarouselPaginator.slideConfig(
+                    base, slide: slides[0], at: 0, of: slides.count, cues: cues,
+                    fontSize: fit.fontSize)
+                var plain = badged
+                plain.slideCue?.pageLabel = nil
+                let withBadge = try #require(
+                    ExportManager.renderCGImage(badged, scale: 1, fixedSize: size.pixels))
+                let withoutBadge = try #require(
+                    ExportManager.renderCGImage(plain, scale: 1, fixedSize: size.pixels))
+                let card = try opaqueBox(withoutBadge)
+                let badge = try changedBox(withBadge, withoutBadge)
+                #expect(!badge.isEmpty, label)
+                #expect(!badge.intersects(card), label)
+            }
+        }
+    }
+
+    /// The bounding box of pixels that differ between two renders of one size.
+    private func changedBox(_ lhs: CGImage, _ rhs: CGImage) throws -> CGRect {
+        func pixels(_ image: CGImage) throws -> [UInt8] {
+            var buffer = [UInt8](repeating: 0, count: image.width * image.height * 4)
+            let context = try #require(
+                CGContext(
+                    data: &buffer, width: image.width, height: image.height, bitsPerComponent: 8,
+                    bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            return buffer
+        }
+        let (a, b) = (try pixels(lhs), try pixels(rhs))
+        let width = lhs.width
+        var (minX, maxX, minY, maxY) = (width, -1, lhs.height, -1)
+        for index in stride(from: 0, to: a.count, by: 4)
+        where a[index] != b[index] || a[index + 1] != b[index + 1]
+            || a[index + 2] != b[index + 2] || a[index + 3] != b[index + 3]
+        {
+            let (x, y) = ((index / 4) % width, (index / 4) / width)
+            minX = min(minX, x)
+            maxX = max(maxX, x)
+            minY = min(minY, y)
+            maxY = max(maxY, y)
+        }
+        guard maxX >= 0 else { return .null }
+        return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
+    }
+
     @Test func shortSlidesSizeTheirTypeForEightRows() {
         var short = SnapshotConfig()
         short.code = code(lines: 2, width: 10)

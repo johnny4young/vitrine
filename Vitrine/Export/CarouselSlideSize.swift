@@ -68,13 +68,19 @@ extension CarouselPaginator {
 
         let frame = size.pixels
         let margin = 2 * fittedMargin * min(frame.width, frame.height)
+        // A framed card spans the frame's width, so it clears the corner badge only by
+        // starting below it; the canvas padding already sits between the two.
+        let badgeHeight =
+            cues.showsPageBadge && slides.count > 1
+            ? SlideCue.pageBadgeExtent(label: "\(slides.count) / \(slides.count)").height + 16
+                - base.padding : 0
+        let height = frame.height - max(margin, 2 * badgeHeight)
         func fill(_ fontSize: Double) -> Double {
             // The first of several slides carries every cue, the "continues" label included.
             let measured = naturalSize(
                 slideConfig(
                     base, slide: probe, at: 0, of: slides.count, cues: cues, fontSize: fontSize))
-            return max(
-                measured.width / (frame.width - margin), measured.height / (frame.height - margin))
+            return max(measured.width / (frame.width - margin), measured.height / height)
         }
         var fontSize = 20.0
         for _ in 0..<8 {
