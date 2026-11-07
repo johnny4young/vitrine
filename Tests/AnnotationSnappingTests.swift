@@ -178,10 +178,13 @@ struct AnnotationSnappingTests {
         #expect(snapper.targets(bypassed: false)?.frameYs.count == 2)
     }
 
-    private func report(_ code: String, lineNumbers: Bool = false) throws -> CanvasSnapLayout {
+    private func report(
+        _ code: String, lineNumbers: Bool = false, configure: (inout SnapshotConfig) -> Void = { _ in }
+    ) throws -> CanvasSnapLayout {
         var config = SnapshotConfig()
         config.code = code
         config.showLineNumbers = lineNumbers
+        configure(&config)
         let probe = LayoutProbe()
         let renderer = ImageRenderer(
             content: SnapshotCanvas(config: config)
@@ -217,6 +220,18 @@ struct AnnotationSnappingTests {
         let code = try #require(trailing.code)
         let oneRow = try #require(one.code).height + metrics.lineSpacing
         #expect(abs((code.height + metrics.lineSpacing) / 2 - oneRow) < 0.5)
+    }
+
+    @Test func aFoldedDiffReportsNoRows() throws {
+        let diff = "@@ -1,9 +1,9 @@\n a\n b\n c\n d\n-e\n+E\n f\n g\n h\n i"
+        let unfolded = try report(diff) { $0.language = .diff }
+        #expect(unfolded.text?.metrics().source != nil)
+        let folded = try report(diff) {
+            $0.language = .diff
+            $0.diffContextLines = 1
+        }
+        #expect(folded.text?.metrics().source == nil)
+        #expect(AnnotationSnapTargets(layout: folded).rows.isEmpty)
     }
 
     @Test func emojiOrFallbackTextReportsNoRows() throws {

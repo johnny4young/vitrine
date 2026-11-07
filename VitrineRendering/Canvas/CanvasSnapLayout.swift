@@ -28,6 +28,7 @@ public struct CanvasSnapLayout: Equatable {
         var usesLineRows: Bool
         var showLineNumbers: Bool
         var firstLineNumber: Int
+        var foldsDiffRows: Bool
 
         init(config: SnapshotConfig, lineSpacing: CGFloat) {
             code = config.code
@@ -40,6 +41,8 @@ public struct CanvasSnapLayout: Equatable {
             usesLineRows = config.usesLineRows
             showLineNumbers = config.showLineNumbers
             firstLineNumber = config.firstLineNumber
+            // Folded diff context draws rows the source lines don't map to.
+            foldsDiffRows = config.language == .diff && config.diffContextLines != nil
         }
 
         /// The row and column metrics, measured from the font the canvas draws with.
@@ -61,7 +64,7 @@ public struct CanvasSnapLayout: Equatable {
         /// Rows share one pitch only when nothing wraps and no glyph falls back to a taller
         /// font, so wrapped, terminal, non-ASCII and uncovered text reports no rows.
         private func mapsRows(in font: NSFont) -> Bool {
-            guard wrapColumns == nil, !isTerminal, !code.isEmpty,
+            guard wrapColumns == nil, !isTerminal, !foldsDiffRows, !code.isEmpty,
                 code.unicodeScalars.allSatisfy(\.isASCII)
             else { return false }
             var characters = Array(Set(code.utf16)).filter { $0 >= 0x20 && $0 != 0x7F }
