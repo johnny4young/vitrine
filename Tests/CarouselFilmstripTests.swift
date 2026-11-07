@@ -11,6 +11,7 @@ import VitrineRendering
 struct CarouselFilmstripTests {
     private final class RenderLog {
         var configs: [SnapshotConfig] = []
+        var pages: [CarouselPage] = []
     }
 
     private static func pixel() -> CGImage? {
@@ -23,8 +24,9 @@ struct CarouselFilmstripTests {
     private func model(
         _ log: RenderLog, quietWindow: Duration = .zero, frameGap: Duration = .zero
     ) -> CarouselFilmstripModel {
-        CarouselFilmstripModel(quietWindow: quietWindow, frameGap: frameGap) { config, _, _ in
-            log.configs.append(config)
+        CarouselFilmstripModel(quietWindow: quietWindow, frameGap: frameGap) { page, _, _ in
+            if case .slide(let config, _) = page { log.configs.append(config) }
+            log.pages.append(page)
             return Self.pixel()
         }
     }

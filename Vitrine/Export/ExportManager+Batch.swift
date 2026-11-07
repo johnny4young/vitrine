@@ -168,14 +168,16 @@ extension ExportManager {
 
     /// Renders one slide per page into `directory` as `carousel-01.png` …, a `carousel.pdf`
     /// with a page per slide, or both, every slide at the size's frame and `fit`'s type
-    /// size (fitted here when not given). PDF pages render first, releasing the main actor
-    /// between pages; PNGs render on the main actor and encode + write off it. Progress
-    /// counts PDF pages and PNG files; the result counts files. Only counts are logged.
+    /// size (fitted here when not given), with `extras`' cover first and closing card last.
+    /// PDF pages render first, releasing the main actor between pages; PNGs render on the
+    /// main actor and encode + write off it. Progress counts PDF pages and PNG files; the
+    /// result counts files. Only counts are logged.
     @discardableResult
     static func exportCarousel(
         _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
         cues: CarouselPaginator.Cues = .none, size: CarouselSlideSize = .linkedIn,
-        fit: CarouselFit? = nil, output: CarouselOutput = .pngSet, to directory: URL,
+        fit: CarouselFit? = nil, output: CarouselOutput = .pngSet,
+        extras: CarouselExtras = CarouselExtras(), to directory: URL,
         profile: ColorProfile = .sRGB,
         onProgress: (@MainActor (_ completed: Int, _ total: Int) -> Void)? = nil,
         writeFile: @escaping @Sendable (Data, URL) throws -> Void = {
@@ -185,9 +187,9 @@ extension ExportManager {
         var written = 0
         var failed = 0
         var firstRenderFailure: RenderBudgetError?
-        let requested = CarouselPaginator.requestedFilenames(
-            slideCount: slides.count, output: output)
-        let total = carouselProgressUnits(slideCount: slides.count, output: output)
+        let pageCount = extras.pageCount(slideCount: slides.count)
+        let requested = CarouselPaginator.requestedFilenames(slideCount: pageCount, output: output)
+        let total = carouselProgressUnits(slideCount: pageCount, output: output)
         var outputs: [BatchOutputFiles.Item]
         do {
             outputs = try BatchOutputFiles.plan(filenames: requested, in: directory)
@@ -195,19 +197,20 @@ extension ExportManager {
             onProgress?(total, total)
             return BatchExportResult(written: 0, failed: requested.count, firstRenderFailure: nil)
         }
-        let fit = fit ?? CarouselPaginator.fit(baseConfig, slides: slides, cues: cues, size: size)
-        let configs = slides.indices.map { index in
-            CarouselPaginator.slideConfig(
-                baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues,
-                fontSize: fit.fontSize)
-        }
+        let fit =
+            fit
+            ?? CarouselPaginator.fit(
+                baseConfig, slides: slides, cues: cues, size: size,
+                reservesCaptionBand: extras.hasCaptions(slideCount: slides.count))
+        let pages = CarouselPaginator.pages(
+            baseConfig, slides: slides, cues: cues, fontSize: fit.fontSize, extras: extras)
         let pdfOutput = output.writesPDF ? outputs.popLast() : nil
         var completed = 0
         // Each outcome says whether it is the PDF, whose progress was counted by page.
         await withTaskGroup(of: (BatchItemOutcome, Bool).self) { group in
             if let pdfOutput {
                 let pdf = await pdfData(
-                    pages: configs, fixedSize: size.pixels, rasterized: fit.overflows,
+                    carouselPages: pages, fixedSize: size.pixels, rasterized: fit.overflows,
                     profile: profile,
                     onPage: { _ in
                         completed += 1
@@ -220,7 +223,7 @@ extension ExportManager {
                     return (outcome, true)
                 }
             }
-            for (config, output) in zip(configs, outputs) {
+            for (page, output) in zip(pages, outputs) {
                 guard !Task.isCancelled else {
                     group.addTask { (.failed, false) }
                     continue
@@ -228,7 +231,7 @@ extension ExportManager {
                 let raster: CGImage?
                 do throws(RenderBudgetError) {
                     raster = try renderCGImageChecked(
-                        config, scale: 1, fixedSize: size.pixels, profile: profile)
+                        page, fixedSize: size.pixels, profile: profile)
                 } catch let error {
                     Log.export.error(
                         "Carousel export rejected a slide before raster allocation")
@@ -273,39 +276,45 @@ extension ExportManager {
     }
 
     /// The bytes `output` should take, sampled from the slides that can be previewed: the
-    /// first one's PNG times the slide count, and a PDF of the first two, whose difference is
+    /// first one's PNG times the page count, and a PDF of the first two, whose difference is
     /// what a page adds once the fonts are embedded. Renders on the main actor and writes nothing.
     static func estimatedCarouselBytes(
         _ baseConfig: SnapshotConfig, slides: [CarouselPaginator.Slide],
         cues: CarouselPaginator.Cues, size: CarouselSlideSize = .linkedIn,
-        fit: CarouselFit? = nil, output: CarouselOutput = .pngSet, profile: ColorProfile = .sRGB
+        fit: CarouselFit? = nil, output: CarouselOutput = .pngSet,
+        extras: CarouselExtras = CarouselExtras(), profile: ColorProfile = .sRGB
     ) async -> Int? {
-        let fit = fit ?? CarouselPaginator.fit(baseConfig, slides: slides, cues: cues, size: size)
+        let fit =
+            fit
+            ?? CarouselPaginator.fit(
+                baseConfig, slides: slides, cues: cues, size: size,
+                reservesCaptionBand: extras.hasCaptions(slideCount: slides.count))
         let samples = slides.indices.filter { slides[$0].canPreview }.prefix(2).map { index in
-            CarouselPaginator.slideConfig(
-                baseConfig, slide: slides[index], at: index, of: slides.count, cues: cues,
-                fontSize: fit.fontSize)
+            CarouselPaginator.page(
+                at: extras.pageIndex(ofSlide: index), baseConfig, slides: slides, cues: cues,
+                fontSize: fit.fontSize, extras: extras)
         }
+        let pageCount = extras.pageCount(slideCount: slides.count)
         guard let first = samples.first else { return nil }
         var total = 0
         if output.writesPDF {
-            func pdfBytes(_ pages: [SnapshotConfig]) async -> Int? {
+            func pdfBytes(_ pages: [CarouselPage]) async -> Int? {
                 await pdfData(
-                    pages: pages, fixedSize: size.pixels, rasterized: fit.overflows,
+                    carouselPages: pages, fixedSize: size.pixels, rasterized: fit.overflows,
                     profile: profile)?.count
             }
             guard let one = await pdfBytes([first]), let both = await pdfBytes(samples)
             else { return nil }
             let perPage = samples.count > 1 ? both - one : one
-            total += one + (slides.count - 1) * perPage
+            total += one + (pageCount - 1) * perPage
         }
         if output.writesPNG {
             guard
                 let raster = try? renderCGImageChecked(
-                    first, scale: 1, fixedSize: size.pixels, profile: profile),
+                    first, fixedSize: size.pixels, profile: profile),
                 let bytes = await encodedByteCount(raster, format: .png)
             else { return nil }
-            total += bytes * slides.count
+            total += bytes * pageCount
         }
         return total
     }

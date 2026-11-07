@@ -413,9 +413,9 @@ struct CarouselSizeAndPDFTests {
     @Test func theFilmstripWaitsForTheFitAndRendersAtTheChosenSize() async throws {
         let sizes = Log<CarouselSlideSize>()
         let fonts = Log<Double>()
-        let model = CarouselFilmstripModel(quietWindow: .zero, frameGap: .zero) { config, size, _ in
+        let model = CarouselFilmstripModel(quietWindow: .zero, frameGap: .zero) { page, size, _ in
             sizes.items.append(size)
-            fonts.items.append(config.fontSize)
+            if case .slide(let config, _) = page { fonts.items.append(config.fontSize) }
             return nil
         }
         var base = SnapshotConfig()

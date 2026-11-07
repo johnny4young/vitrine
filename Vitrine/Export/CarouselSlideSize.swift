@@ -39,11 +39,12 @@ extension CarouselPaginator {
     static let fittedMargin = 0.05
 
     /// The largest type at which the widest line and the tallest slide (at least
-    /// `fittedMinimumRows` rows, wrapped rows included) fit the frame with every cue drawn.
-    /// A probe slide is measured and its type scaled by the room left; layout grows more
+    /// `fittedMinimumRows` rows, wrapped rows included) fit the frame with every cue drawn,
+    /// above the caption band when one is reserved. A probe slide is measured and its type scaled by the room left; layout grows more
     /// slowly than the font, so each step lands below the answer and the steps converge.
     static func fit(
-        _ base: SnapshotConfig, slides: [Slide], cues: Cues, size: CarouselSlideSize
+        _ base: SnapshotConfig, slides: [Slide], cues: Cues, size: CarouselSlideSize,
+        reservesCaptionBand: Bool = false
     ) -> CarouselFit {
         let floor = ExportManager.carouselMinimumFontSize
         guard let last = slides.last else { return CarouselFit(fontSize: floor) }
@@ -66,7 +67,10 @@ extension CarouselPaginator {
             text: probeLines.joined(separator: "\n"), firstLine: last.firstLine,
             lineCount: probeLines.count)
 
-        let frame = size.pixels
+        var frame = size.pixels
+        if reservesCaptionBand {
+            frame.height -= CarouselPage.captionBandHeight(for: size.pixels)
+        }
         let margin = 2 * fittedMargin * min(frame.width, frame.height)
         // A framed card spans the frame's width, so it clears the corner badge only by
         // starting below it; the canvas padding already sits between the two.

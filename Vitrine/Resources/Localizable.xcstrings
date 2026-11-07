@@ -1,6 +1,105 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "1 without text" : {
+      "comment" : "Carousel sheet: one page (slide caption, cover title or call to action) is still empty.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1 sin texto"
+          }
+        }
+      }
+    },
+    "%lld without text" : {
+      "comment" : "Carousel sheet: how many pages (slide captions, cover title, call to action) are still empty.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sin texto"
+          }
+        }
+      }
+    },
+    "Slide %lld caption" : {
+      "comment" : "Carousel sheet: placeholder of the caption field for the selected slide.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leyenda de la diapositiva %lld"
+          }
+        }
+      }
+    },
+    "Cover title" : {
+      "comment" : "Carousel sheet: placeholder of the text field when the cover tile is selected.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Título de la portada"
+          }
+        }
+      }
+    },
+    "Call to action" : {
+      "comment" : "Carousel sheet: placeholder of the text field when the closing slide is selected.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Llamado a la acción"
+          }
+        }
+      }
+    },
+    "Cover" : {
+      "comment" : "Carousel sheet: checkbox that adds a cover slide; also the cover tile's label.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Portada"
+          }
+        }
+      }
+    },
+    "Closing slide" : {
+      "comment" : "Carousel sheet: checkbox that adds a closing slide with a call to action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diapositiva de cierre"
+          }
+        }
+      }
+    },
+    "Closing" : {
+      "comment" : "Carousel filmstrip: label under the closing slide's tile.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cierre"
+          }
+        }
+      }
+    },
+    "No text" : {
+      "comment" : "Carousel filmstrip, VoiceOver: this page has no caption or title yet.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin texto"
+          }
+        }
+      }
+    },
     "Card replaced" : {
       "comment" : "HUD message after a vitrine://card link replaced the social card",
       "localizations" : {
