@@ -11,7 +11,26 @@ import VitrineRendering
 extension EditorView {
     var commandPaletteCommands: [EditorCommand] {
         themeCommands + toggleCommands + styleCommands + [canvasModeCommand] + liveFileCommands
-            + exportCommands
+            + exportCommands + cardTemplateCommands
+    }
+
+    /// One command per built-in card template, filled with this editor's code.
+    var cardTemplateCommands: [EditorCommand] {
+        CardTemplate.builtIns.map { template in
+            EditorCommand(
+                id: "card.\(template.id)",
+                title: String(localized: "New Social Card from “\(template.displayName)” Template"),
+                group: String(localized: "Social Card"),
+                keywords: ["template", "og", "open graph"],
+                symbol: VitrineCommand.newSocialCard.systemImageName
+            ) {
+                let controller = SocialCardWindowController.shared
+                controller.open(
+                    CardTemplate.Fill(
+                        template: template, card: controller.environment.appSettings.socialCard,
+                        editor: settings.config))
+            }
+        }
     }
 
     /// Named for what running it does next, like the style toggles.

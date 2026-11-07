@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     enum HandoffRoute: Equatable {
         case edit
         case sharedSnapshot
+        case cardTemplate
     }
 
     private var hotkeyTask: Task<Void, Never>?
@@ -25,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let launchArguments: AppLaunchArgumentHandler
     let mainMenu: AppMenu
     private let loadEditor: @MainActor (SnapshotConfig) -> Void
+    private let openCard: @MainActor (CardTemplate.Fill) -> Void
 
     override init() {
         let environment = AppEnvironment.shared
@@ -32,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.environment = environment
         self.feedback = feedback
         loadEditor = Self.presentEditor
+        openCard = Self.presentCard
         launchArguments = AppLaunchArgumentHandler(environment: environment)
         mainMenu = AppMenu(
             environment: environment,
@@ -44,11 +47,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         environment: AppEnvironment,
         feedback: CaptureFeedbackPresenter,
         editorPresentation: EditorPresentation,
-        loadEditor: @escaping @MainActor (SnapshotConfig) -> Void = AppDelegate.presentEditor
+        loadEditor: @escaping @MainActor (SnapshotConfig) -> Void = AppDelegate.presentEditor,
+        openCard: @escaping @MainActor (CardTemplate.Fill) -> Void = AppDelegate.presentCard
     ) {
         self.environment = environment
         self.feedback = feedback
         self.loadEditor = loadEditor
+        self.openCard = openCard
         launchArguments = AppLaunchArgumentHandler(environment: environment)
         mainMenu = AppMenu(
             environment: environment,
@@ -214,6 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch url.host?.lowercased() {
         case EditorHandoff.editHost: return .edit
         case SnapshotShareLink.host: return .sharedSnapshot
+        case CardTemplateLink.host: return .cardTemplate
         default: return nil
         }
     }
@@ -223,6 +229,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch Self.handoffRoute(for: url) {
         case .edit: openEditHandoff(url)
         case .sharedSnapshot: openSharedSnapshot(url)
+        case .cardTemplate: openCardTemplate(url)
         case nil: break
         }
     }
@@ -254,6 +261,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         snapshot.apply(to: &config)
         loadEditor(config)
         Log.app.notice("Opened a shared snapshot link in the editor")
+    }
+
+    /// Opens a card-template link (`vitrine://card`) in the Social Card window. A link
+    /// the strict parser refuses is a no-op, like a malformed share link.
+    private func openCardTemplate(_ url: URL) {
+        let fill: CardTemplate.Fill
+        do {
+            fill = try CardTemplateLink.fill(from: url)
+        } catch let error as CardTemplate.FillError {
+            Log.app.notice("Ignored a card template link: \(error.logLabel, privacy: .public)")
+            return
+        } catch {
+            return
+        }
+        openCard(fill)
+        Log.app.notice("Opened a card template link")
+    }
+
+    static func presentCard(_ fill: CardTemplate.Fill) {
+        SocialCardWindowController.shared.openLink(fill)
     }
 
     static func presentEditor(_ config: SnapshotConfig) {

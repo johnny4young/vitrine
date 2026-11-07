@@ -64,6 +64,15 @@ struct SocialCardEditorView: View {
 
             Spacer(minLength: 0)
 
+            if settings.replacedSocialCard != nil {
+                GlassIconButton(systemImage: "arrow.uturn.backward") {
+                    settings.restoreReplacedSocialCard()
+                }
+                .help("Restore the card a link replaced")
+                .accessibilityLabel(Text("Restore Previous Card"))
+                .accessibilityIdentifier("social-card-restore-button")
+            }
+
             iconButton(
                 "social-card-save-button", label: Text(VitrineCommand.saveImage.accessibilityLabel),
                 help: "Render and save the card as a file", systemImage: "square.and.arrow.down",

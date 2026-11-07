@@ -278,6 +278,25 @@ Destination presets cover **OpenGraph** (1200×630), an **Instagram Story**, and
 export** (a long snippet split into numbered slides, as PNGs or a PDF), and the bundled
 **`vitrine` CLI** that renders the same pixels from your terminal.
 
+### Social card templates
+
+Fill a social card from a template: run **New Social Card from “Release” Template** from
+the editor's command palette (⌘K) to use the editor's code, or open a link such as
+`vitrine://card?template=release&title=Vitrine%201.3.0&handle=%40jane` from Shortcuts or a
+script. Values are plain text (`+` reads as a space); a link never reads a file or fetches
+anything. A link keeps the card it replaced: **Undo** in the confirmation, or the restore
+button in the Social Card toolbar, puts it back, even after a relaunch.
+
+| Template | Layout | Slots |
+| --- | --- | --- |
+| `release` | Standard | `title` `subtitle` `code` `language` `handle` `project` |
+| `snippet` | Code focus | `title` `subtitle` `code` `language` `handle` `project` |
+| `announcement` | Headline | `title` `subtitle` `handle` `project` |
+
+Every template also takes `theme` (a built-in theme id such as `dracula`) and `accent` (a
+gradient: `aurora`, `ocean`, `sunset`, `forest`, `night`, `carbon`). Code without a
+`language` is plain text. Fields a template doesn't list keep the card's current value.
+
 ### Crafted & private
 
 One design-token system drives every surface in light and dark. Localized in English

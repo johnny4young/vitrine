@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import VitrineRendering
 
 /// Owns the app's single social-card editor window.
 ///
@@ -75,6 +76,52 @@ final class SocialCardWindowController: NSObject {
         self.window = window
         window.makeKeyAndOrderFront(nil)
         AppActivation.bringForward()
+    }
+
+    /// Shows the window filled from the palette. The card is app-global, so the replaced
+    /// card stays one Undo away in this window rather than being overwritten.
+    func open(_ fill: CardTemplate.Fill) {
+        show()
+        apply(fill, undoManager: window?.undoManager)
+    }
+
+    /// Shows the window filled from a `vitrine://card` link.
+    func openLink(_ fill: CardTemplate.Fill) {
+        show()
+        applyLink(fill, undoManager: window?.undoManager)
+    }
+
+    /// A link is not something the user did here, so the replaced card is also kept in
+    /// storage, restorable from the HUD or the window after a relaunch.
+    func applyLink(_ fill: CardTemplate.Fill, undoManager: UndoManager?) {
+        let settings = environment.appSettings
+        let previous = settings.socialCard
+        apply(fill, undoManager: undoManager)
+        guard settings.socialCard != previous else { return }
+        settings.replacedSocialCard = previous
+        feedback(
+            Notifier.CaptureFeedback(
+                category: .info, message: String(localized: "Card replaced"),
+                actions: [.undoCardReplacement])
+        ) { _ in settings.restoreReplacedSocialCard() }
+    }
+
+    func apply(_ fill: CardTemplate.Fill, undoManager: UndoManager?) {
+        let card = fill.card(onto: environment.appSettings.socialCard)
+        guard card != environment.appSettings.socialCard else { return }
+        Self.replaceCard(in: environment.appSettings, with: card, undoManager: undoManager)
+        undoManager?.setActionName(String(localized: "Apply Card Template"))
+    }
+
+    // The undo manager does not retain its target, so target the settings that own the card.
+    private static func replaceCard(
+        in settings: AppSettings, with card: SocialCardModel, undoManager: UndoManager?
+    ) {
+        let previous = settings.socialCard
+        settings.socialCard = card
+        undoManager?.registerUndo(withTarget: settings) { [weak undoManager] settings in
+            replaceCard(in: settings, with: previous, undoManager: undoManager)
+        }
     }
 
     /// Builds the AppKit window hosting a ``SocialCardEditorView`` composed from this
