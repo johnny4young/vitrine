@@ -577,12 +577,13 @@ final class VitrineUITests: XCTestCase {
         element("code-step-add", in: app).click()
         assertExists(element("code-steps", in: app), in: app, timeout: 3)
 
+        // Add Step copies the active step and makes the copy active, so typing edits step 2.
+        element("code-step-add", in: app).click()
+        assertHittable("code-step-2", in: app, "The second step is not reachable")
         let second = "struct Step {\n    let answer = 42\n}"
         editor.codeTextView.click()
         editor.codeTextView.typeKey("a", modifierFlags: .command)
         editor.codeTextView.typeText(second)
-        element("code-step-add", in: app).click()
-        assertHittable("code-step-2", in: app, "The second step is not reachable")
 
         element("code-step-1", in: app).click()
         let deadline = Date().addingTimeInterval(3)
