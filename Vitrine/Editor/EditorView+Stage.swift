@@ -493,6 +493,11 @@ extension EditorView {
                         cardGeometry.legendHeight = $0.height
                         cardGeometry.legendDropped = $0.dropped
                     }
+                    .onPreferenceChange(DiffCommentPositionsKey.self) {
+                        diffCommentPositions = $0
+                        syncDiffCommentPositions()
+                    }
+                    .onChange(of: settings.style.annotations) { syncDiffCommentPositions() }
                     // Marks the export's transparent pixels, and only those.
                     .background {
                         if case .transparent = settings.style.background {
@@ -740,6 +745,11 @@ extension EditorView {
             config.annotations[index].kind == .text
         {
             config.annotations[index].text = ""
+        }
+        // Until the debounced text catches up, place pinned comments against the rows shown.
+        if let stagedPreviewCode, config.annotations.contains(where: { $0.lineAnchor != nil }) {
+            config.annotations = DiffLineAnchor.rebasing(
+                config.annotations, from: settings.documentCode, to: stagedPreviewCode)
         }
         return config
     }

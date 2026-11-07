@@ -88,6 +88,8 @@ struct CodeLinesView: View {
     /// One gutter label per row in place of its number, and the digit columns they need.
     var gutterLabels: [String]?
     var gutterColumns: Int?
+    /// The rows pinned comments are placed against.
+    var commentSlots: Set<DiffLineSlot> = []
 
     var body: some View {
         let metrics =
@@ -149,7 +151,8 @@ struct CodeLinesView: View {
     @ViewBuilder
     func row(
         _ line: AttributedString, lineNumber: Int, metrics: GutterMetrics,
-        gutterLabel: String? = nil, fillsHeight: Bool = false, showsGutter: Bool = true
+        gutterLabel: String? = nil, fillsHeight: Bool = false, showsGutter: Bool = true,
+        sides: [DiffLineAnchor.Side] = [.old, .new]
     )
         -> some View
     {
@@ -189,6 +192,7 @@ struct CodeLinesView: View {
         // Focus mode: fade the rows outside the highlight so the highlighted ones
         // read as the subject. A no-op when focus is off or this row is highlighted.
         .opacity(dimsUnfocused && !isHighlighted ? 0.34 : 1)
+        .reportingDiffLine(row: lineNumber, sides: sides, wanted: commentSlots)
     }
 
     /// One code line as text, preserving its syntax colors. An empty line still

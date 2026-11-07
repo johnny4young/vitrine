@@ -688,6 +688,35 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testDiffCommentOpensATextFieldForTheCaretLine() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--demo-showcase"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+        for _ in 0..<5 where !waitForHittableElement("diff-comment-button", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+
+        let comment = element("diff-comment-button", in: app)
+        assertExists(comment, in: app)
+        XCTAssertTrue(comment.isEnabled)
+        XCTAssertFalse(element("diff-detached-comment-count", in: app).exists)
+        comment.click()
+        let field = app.textFields.matching(identifier: "annotation-text-field").firstMatch
+        assertExists(field, in: app, timeout: 3)
+        field.typeText("Trim first")
+        XCTAssertEqual(field.value as? String, "Trim first")
+    }
+
+    @MainActor
     func testEditorPrettyPrintsCompactHTML() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()

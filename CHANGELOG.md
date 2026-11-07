@@ -99,6 +99,11 @@ can never drift.
   shared links and carousel slides keep every hunk, so use Redact to hide text. With line
   numbers on, a diff can number its patch rows, its old or new file lines, or both, from the
   Numbering control or `--diff-line-numbers rows|old|new|both`.
+- Pin a comment to a diff line with Edit › Comment on Selected Line (⇧⌘M) or the shortcut in
+  the inspector's Lines section. The comment is a text callout on the line under the code
+  editor's caret, and it stays on that line in Unified and Split, when hunks fold and when
+  lines wrap. Editing that line detaches it; the inspector counts detached comments and
+  removes them. Comments travel with shared links and restored windows.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only

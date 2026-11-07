@@ -1391,6 +1391,14 @@ annotations and style, and `loadIntoPrimary` does not clear them. That window op
 stops live-file watching and loads exactly the supplied document. It must not become an
 implicit new-content sanitizer.
 
+Annotations sit in normalized canvas coordinates, with one exception: a text callout with a
+`DiffLineAnchor` is a comment pinned to a source row and diff side. The code layout reports
+the frame of each pinned row, and `SnapshotCanvas` places the callout from it, so the comment
+stays on its line through Unified and Split, folds and wrapping; `start` only caches the last
+placement for the editor's handles. A comment whose row is folded or missing is not drawn.
+`AppSettings.documentCode` shifts anchors when lines above or below change and detaches an
+anchor whose own line changed; a detached comment never draws again.
+
 | Entry | Free/PRO contract | Channel |
 | --- | --- | --- |
 | Editor text ingress / Open Code in Editor | Free handoff; no export performed | Direct download and App Store |

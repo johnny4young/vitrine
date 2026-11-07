@@ -30,8 +30,8 @@ struct SplitDiffLinesView: View {
                     lines.foldedHunk(additions: additions, deletions: deletions, metrics: metrics)
                         .layoutValue(key: SplitColumnsLayout.Spans.self, value: true)
                 case .pair(let old, let new):
-                    cell(old, metrics: metrics, numbered: numbering != .new)
-                    cell(new, metrics: metrics, numbered: numbering != .old)
+                    cell(old, side: .old, metrics: metrics, numbered: numbering != .new)
+                    cell(new, side: .new, metrics: metrics, numbered: numbering != .old)
                 }
             }
         }
@@ -39,13 +39,14 @@ struct SplitDiffLinesView: View {
 
     @ViewBuilder
     private func cell(
-        _ cell: DiffSplitCell?, metrics: GutterMetrics, numbered: Bool
+        _ cell: DiffSplitCell?, side: DiffLineAnchor.Side, metrics: GutterMetrics,
+        numbered: Bool
     ) -> some View {
         if let cell, lines.rows.indices.contains(cell.row - 1) {
             lines.wrappingEachSide.row(
                 lines.rows[cell.row - 1], lineNumber: cell.row, metrics: metrics,
                 gutterLabel: cell.number.map { "\($0)" } ?? "", fillsHeight: true,
-                showsGutter: numbered)
+                showsGutter: numbered, sides: [side])
         } else {
             // The side a change does not reach, shaded so the pair still reads as one row.
             Rectangle()

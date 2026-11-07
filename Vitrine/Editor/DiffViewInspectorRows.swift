@@ -76,6 +76,7 @@ struct DiffViewInspectorRows: View {
                 .accessibilityIdentifier("diff-line-numbers-picker")
             }
             DiffHunkPicker(settings: settings)
+            DiffCommentInspectorRows(settings: settings)
             if settings.style.diffLayoutIsLocked {
                 Text("Locked while a blur box is on the canvas.")
                     .font(.system(size: VitrineTokens.FontSize.caption))

@@ -237,6 +237,13 @@ import VitrineRendering
                             end: CGPoint(x: 0.6, y: 0.6))
                     ]
                 }
+                if arguments.contains("--demo-diff-comment") {
+                    demo.annotations.append(
+                        Annotation(
+                            kind: .text, start: CGPoint(x: 0.5, y: 0.5),
+                            end: CGPoint(x: 0.5, y: 0.5), text: "Trim first", thickness: 3.5,
+                            lineAnchor: DiffLineAnchor(row: 4, side: .new)))
+                }
                 demo.showLineNumbers = true
                 demo.cornerRadius = 16
                 settings.config = demo

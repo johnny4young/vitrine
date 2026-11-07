@@ -1,6 +1,61 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Comment on Selected Line" : {
+      "comment" : "Edit menu: pins a text comment to the diff line under the code editor's caret.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentar la línea seleccionada"
+          }
+        }
+      }
+    },
+    "Comment on the selected diff line" : {
+      "comment" : "Accessibility label and help for the command that pins a comment to a diff line.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentar la línea seleccionada del diff"
+          }
+        }
+      }
+    },
+    "Comment on selected line" : {
+      "comment" : "Editor diff inspector: row label next to the shortcut that pins a comment to the caret's line.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentar la línea seleccionada"
+          }
+        }
+      }
+    },
+    "Detached comments" : {
+      "comment" : "Editor diff inspector: count of comments whose diff line was edited or removed, so they no longer show.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentarios desvinculados"
+          }
+        }
+      }
+    },
+    "Remove detached comments" : {
+      "comment" : "Accessibility label: deletes the comments whose diff line was edited or removed.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar los comentarios desvinculados"
+          }
+        }
+      }
+    },
     "Rows" : {
       "comment" : "Editor lines: diff numbering option, the patch's own row numbers.",
       "localizations" : {

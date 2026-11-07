@@ -160,12 +160,25 @@ public struct SnapshotCanvas: View, Equatable {
                 spotlightDim
             }
         }
-        .overlay { annotationMarks }
 
         if fixedSize != nil {
-            composite.clipped()
+            withAnnotationMarks(composite).clipped()
         } else {
-            composite.fixedSize()
+            withAnnotationMarks(composite).fixedSize()
+        }
+    }
+
+    /// Pinned comments are placed from the rows the code layout reports; without one the
+    /// marks layer is unchanged.
+    @ViewBuilder
+    private func withAnnotationMarks(_ composite: some View) -> some View {
+        if config.hasLineAnchoredAnnotations {
+            composite.overlayPreferenceValue(DiffLineFrameKey.self) { anchors in
+                AnchoredAnnotationMarks(annotations: config.annotations, anchors: anchors)
+                    .allowsHitTesting(false)
+            }
+        } else {
+            composite.overlay { annotationMarks }
         }
     }
 
@@ -396,7 +409,8 @@ public struct SnapshotCanvas: View, Equatable {
                 diffDecorations: config.diffDecorations,
                 wordMarks: wordMarks(rows: rows, diff: diff),
                 gutterLabels: gutter?.labels,
-                gutterColumns: gutter?.columns
+                gutterColumns: gutter?.columns,
+                commentSlots: config.diffCommentSlots
             )
             // An empty capture's placeholder is not a diff, so it shows once, full width.
             if config.diffUsesSplitView, !config.code.isEmpty, let diff {

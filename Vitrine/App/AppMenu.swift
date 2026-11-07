@@ -319,6 +319,11 @@ final class AppMenu {
             item.setAccessibilityIdentifier("command-annotation-\(action.rawValue)")
             menu.addItem(item)
         }
+        menu.addItem(
+            item(
+                for: .commentOnLine,
+                action: #selector(EditorCommandResponder.commentOnSelectedLine(_:)),
+                target: editorCommands))
 
         editMenuItem.submenu = menu
         return editMenuItem

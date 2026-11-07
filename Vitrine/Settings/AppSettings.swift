@@ -36,8 +36,19 @@ final class AppSettings {
             {
                 renderConfiguration.diffHunks = nil
             }
+            // A `config` write then replaces these with the marks it brings.
+            let annotations = DiffLineAnchor.rebasing(
+                renderConfiguration.annotations, from: oldValue, to: documentCode)
+            if annotations != renderConfiguration.annotations {
+                renderConfiguration.annotations = annotations
+                anchorRebaseGeneration &+= 1
+            }
         }
     }
+
+    /// Bumped when an edit moves or detaches a pinned comment, so annotation undo recorded
+    /// against the old rows is dropped.
+    private(set) var anchorRebaseGeneration = 0
 
     /// Bumped whenever new content replaces the document, so editor-only state tied to
     /// the old content (annotation undo, selection) can reset.

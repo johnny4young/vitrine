@@ -97,6 +97,9 @@ struct EditorView: View {
     /// drawn; committing keeps non-empty content or drops an empty callout. Editor-only.
     @State var editingAnnotationID: UUID?
 
+    /// Where the canvas last drew each pinned comment, normalized.
+    @State var diffCommentPositions: [UUID: CGPoint] = [:]
+
     /// The active annotation tool. `.select` moves/resizes existing marks;
     /// any other tool puts the preview into draw mode. Editor-only UI state.
     @State var activeTool: AnnotationTool = .select
@@ -321,6 +324,15 @@ struct EditorView: View {
                 else { return }
                 activeTool = tool
             }
+            .onReceive(NotificationCenter.default.publisher(for: .vitrineCommentOnSelectedLine)) {
+                notification in
+                guard let targetWindow = notification.object as? NSWindow,
+                    targetWindow === editorWindow.value
+                else { return }
+                commentOnSelectedLine()
+            }
+            // Undo snapshots name the rows from before the edit moved the comments.
+            .onChange(of: settings.anchorRebaseGeneration) { annotationHistory.reset() }
             .onReceive(NotificationCenter.default.publisher(for: .vitrineAnnotationMarkAction)) {
                 notification in
                 guard let targetWindow = notification.object as? NSWindow,

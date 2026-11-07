@@ -223,7 +223,7 @@ public struct SnapshotConfig: Equatable {
         showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
             || diffDecorations
             || (diffOptionsApply && (diffContextLines != nil || diffHunks != nil))
-            || diffUsesSplitView || diffUsesWordMarks
+            || diffUsesSplitView || diffUsesWordMarks || !diffCommentSlots.isEmpty
     }
 
     /// The file numbering the gutter draws, when it draws one for a diff.
