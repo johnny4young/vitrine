@@ -20,7 +20,7 @@ enum GoldenValidation {
             else {
                 throw Failure.missingBaseline
             }
-            guard current.isQualified, manifest.pinnedImage == current else {
+            guard current.isQualified, manifest.qualifies(current) else {
                 throw Failure.unqualifiedEnvironment
             }
             return true
@@ -64,6 +64,15 @@ struct GoldenValidationTests {
             try GoldenValidation.shouldCompare(
                 manifest: manifest, fixtureExists: true, mode: "strict"))
         manifest.pinnedImage.osBuild = "different-build"
+        #expect(throws: GoldenValidation.Failure.unqualifiedEnvironment) {
+            try GoldenValidation.shouldCompare(
+                manifest: manifest, fixtureExists: true, mode: "strict")
+        }
+        manifest.qualifiedImages = [current]
+        #expect(
+            try GoldenValidation.shouldCompare(
+                manifest: manifest, fixtureExists: true, mode: "strict"))
+        manifest.qualifiedImages?[0].xcodeBuild = "different-xcode"
         #expect(throws: GoldenValidation.Failure.unqualifiedEnvironment) {
             try GoldenValidation.shouldCompare(
                 manifest: manifest, fixtureExists: true, mode: "strict")

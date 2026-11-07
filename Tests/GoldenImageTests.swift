@@ -22,7 +22,7 @@ struct GoldenImageTests {
     /// qualification is separately fail-closed through GoldenValidation.
     static var isPinnedImage: Bool {
         guard let manifest else { return false }
-        return manifest.pinnedImage == .current()
+        return manifest.qualifies(.current())
     }
 
     // MARK: - Per-scenario coverage / comparison

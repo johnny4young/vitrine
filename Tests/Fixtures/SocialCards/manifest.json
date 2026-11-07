@@ -7,6 +7,16 @@
     "swiftVersion" : "6.2",
     "xcodeBuild" : "17F113"
   },
+  "qualifiedImages" : [
+    {
+      "architecture" : "arm64",
+      "osBuild" : "25G83",
+      "osVersion" : "26.6.2",
+      "sdkBuild" : "25F70",
+      "swiftVersion" : "6.2",
+      "xcodeBuild" : "17F113"
+    }
+  ],
   "scenarios" : {
     "default-card" : {
       "configFingerprint" : "ddb96c8c775076e634dc94b1af77ba4bf9eaea5eba3b5ee6761b7e3241d8b38e",
