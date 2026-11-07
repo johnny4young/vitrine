@@ -113,6 +113,36 @@ struct DiffWordMarksRenderTests {
         #expect(CodeLinesView.marking(added, spans: [1..<3]) != added)
     }
 
+    @Test func styleChangesReuseTheCachedMarks() {
+        var styled = diffConfig()
+        styled.theme = Theme.all.first { $0.id != styled.theme.id } ?? styled.theme
+        styled.padding += 16
+        styled.fontSize += 2
+        styled.diffView = .split
+        let key = DiffWordMarksCache.Key(config: diffConfig())
+        #expect(DiffWordMarksCache.Key(config: styled) == key)
+        var edited = diffConfig()
+        edited.code += "\n"
+        #expect(DiffWordMarksCache.Key(config: edited) != key)
+        edited = diffConfig()
+        edited.redactedLineRanges = [3...3]
+        #expect(DiffWordMarksCache.Key(config: edited) != key)
+
+        let cache = DiffWordMarksCache()
+        let first = cache.marks(for: key) { [3: [0..<1]] }
+        let second = cache.marks(for: DiffWordMarksCache.Key(config: styled)) { [:] }
+        #expect(second == first)
+        #expect(cache.misses == 1)
+    }
+
+    @Test func carouselSlidesLeaveWordsUnmarked() {
+        let config = diffConfig()
+        let slide = CarouselPaginator.slides(for: config.code, maxLinesPerSlide: 3)[0]
+        let slideConfig = CarouselPaginator.slideConfig(
+            config, slide: slide, at: 0, of: 2, cues: .none)
+        #expect(!slideConfig.diffWordMarks)
+    }
+
     @Test func theSwitchRespectsABlurBox() {
         let settings = AppSettings(defaults: testDefaults())
         settings.config = diffConfig(marks: false)

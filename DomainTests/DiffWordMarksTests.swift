@@ -100,6 +100,32 @@ struct DiffWordMarksTests {
         #expect(budget == DiffWordMarks.cellBudget - 16)
     }
 
+    @Test func aHugeLineIsRejectedBeforeItIsTokenized() {
+        let huge = String(repeating: "a,", count: 1_000_000)
+        var budget = DiffWordMarks.cellBudget
+        #expect(DiffWordMarks.changedSpans("-\(huge)x", "+\(huge)y", budget: &budget) == nil)
+        #expect(budget == DiffWordMarks.cellBudget)
+        #expect(marks("@@ -1 +1 @@\n-\(huge)x\n+\(huge)y").isEmpty)
+
+        let many = Array(repeating: "a", count: DiffWordMarks.tokenLimit).joined(separator: ",")
+        #expect(DiffWordMarks.tokens(Array(many)[...]) == nil)
+    }
+
+    @Test func eachCJKCharacterIsItsOwnToken() {
+        let result = marks("@@ -1 +1 @@\n-这是一个测试\n+这是一个实验")
+        #expect(marked("-这是一个测试", result[2]) == ["测试"])
+        #expect(marked("+这是一个实验", result[3]) == ["实验"])
+        #expect(DiffWordMarks.tokens(Array("かなハングル한글")[...])?.count == 8)
+    }
+
+    @Test func sharedIndentationDoesNotMakeLinesAlike() {
+        let indent = String(repeating: " ", count: 8)
+        #expect(marks("@@ -1 +1 @@\n-\(indent)foo(alpha)\n+\(indent)bar(beta)").isEmpty)
+        let related = marks("@@ -1 +1 @@\n-\(indent)let value = 1\n+\(indent)let value = 2")
+        #expect(marked("+\(indent)let value = 2", related[3]) == ["2"])
+        #expect(marks("@@ -1 +1 @@\n-\(indent)\n+  ").isEmpty)
+    }
+
     @Test func mismatchedLinesProduceNoMarks() {
         let document = DiffDocument(source: "@@ -1 +1 @@\n-value a\n+value b")
         #expect(document.wordMarks(lines: ["-value a"]).isEmpty)

@@ -260,6 +260,8 @@ enum CarouselPaginator {
         config.diffContextLines = nil
         // Slides cut a hunk by source rows, which only the unified layout keeps intact.
         config.diffView = .unified
+        // A slide pairs only its own rows, so it could mark lines the editor leaves plain.
+        config.diffWordMarks = false
 
         switch cues.lineNumbers {
         case nil:

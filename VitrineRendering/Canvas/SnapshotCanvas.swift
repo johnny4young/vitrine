@@ -431,11 +431,14 @@ public struct SnapshotCanvas: View, Equatable {
         }
     }
 
-    /// Computed once per render from the drawn rows, so the offsets match their characters.
+    /// Computed from the drawn rows, so the offsets match their characters, and cached so
+    /// style-only changes reuse them.
     private func wordMarks(rows: [AttributedString], diff: DiffDocument?) -> [Int: [Range<Int>]] {
         guard config.diffUsesWordMarks, !config.code.isEmpty, let diff else { return [:] }
-        return diff.wordMarks(
-            lines: rows.map { String($0.characters) }, redacting: config.redactedLineRanges)
+        return DiffWordMarksCache.shared.marks(for: .init(config: config)) {
+            diff.wordMarks(
+                lines: rows.map { String($0.characters) }, redacting: config.redactedLineRanges)
+        }
     }
 
     private var cardShadow: Brand.ShadowStyle { config.cardShadow }
