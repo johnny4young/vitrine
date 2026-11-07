@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Marks snap while you draw, drag or resize them: box edges to code rows, token edges and the
+  card, arrow ends and placed marks to row centers and tokens, with a magenta guide on the
+  target. Hold ⌘ to place freely. Blur boxes only snap outward, so a snap never uncovers text,
+  and arrow-key nudges, opened documents and exports are unchanged.
 - Add an optional stats header to diffs, with the file path, added and removed line counts
   and a diffstat bar, and a context slider that folds unchanged lines around each change.
   The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
