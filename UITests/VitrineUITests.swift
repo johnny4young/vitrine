@@ -198,6 +198,20 @@ final class VitrineUITests: XCTestCase {
 
         assertExists(element("terminal-palette-picker", in: app), in: app, timeout: 8)
         assertExists(element("terminal-cursor-picker", in: app), in: app)
+        assertExists(
+            app.textFields.matching(identifier: "terminal-crop-columns-field").firstMatch, in: app)
+
+        // Return commits the crop, which the field shows back as one canonical span.
+        let rows = app.textFields.matching(identifier: "terminal-crop-rows-field").firstMatch
+        assertExists(rows, in: app)
+        if !rows.isHittable {
+            element("editor-inspector", in: app).scroll(byDeltaX: 0, deltaY: -200)
+        }
+        rows.click()
+        rows.typeText("3-1\r")
+        let committed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "1-3"), object: rows)
+        XCTAssertEqual(XCTWaiter().wait(for: [committed], timeout: 3), .completed)
 
         let header = element("inspector-disclosure-header", in: app)
         assertExists(header, in: app)
@@ -237,6 +251,7 @@ final class VitrineUITests: XCTestCase {
         assertHittable("canvas-dock-canvas", in: app, "The dock must be reachable")
         element("canvas-dock-canvas", in: app).click()
         assertExists(element("padding-slider", in: app), in: app, timeout: 3)
+        assertExists(element("padding-balance-toggle", in: app), in: app)
         // Pressing the open pane's button closes it rather than reopening it.
         element("canvas-dock-canvas", in: app).click()
         XCTAssertTrue(element("padding-slider", in: app).waitForNonExistence(timeout: 3))
@@ -307,6 +322,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("inspector-privacy-footer", in: app), in: app)
 
         // Advanced controls start behind the collapsed Output disclosure.
+        revealInInspector("inspector-disclosure-output", in: app)
         element("inspector-disclosure-output", in: app).click()
         assertExists(element("editor-destination-preset-picker", in: app), in: app, timeout: 3)
         assertExists(element("inspector-resolution-picker", in: app), in: app)
@@ -422,6 +438,54 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(
             element("editor-window-2", in: app).waitForNonExistence(timeout: 3),
             "The second editor window did not close")
+    }
+
+    @MainActor
+    func testInspectorOffersDiffViewControlsForDiffContent() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--demo-showcase"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+
+        assertExists(element("diff-stats-toggle", in: app), in: app, timeout: 3)
+        assertExists(element("diff-context-slider", in: app), in: app)
+        XCTAssertFalse(element("diff-view-locked-note", in: app).exists)
+
+        assertExists(element("diff-view-picker", in: app), in: app)
+        let split = element("diff-view-split", in: app)
+        assertExists(split, in: app)
+        split.click()
+        XCTAssertTrue(split.wait(for: \.isSelected, toEqual: true, timeout: 3))
+    }
+
+    @MainActor
+    func testBlurBoxLocksDiffViewControls() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--demo-showcase", "--demo-diff-blur"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+
+        assertExists(element("diff-view-locked-note", in: app), in: app, timeout: 3)
+        XCTAssertFalse(element("diff-context-slider", in: app).isEnabled)
+        XCTAssertFalse(element("diff-stats-toggle", in: app).isEnabled)
+        XCTAssertFalse(element("diff-view-split", in: app).isEnabled)
     }
 
     @MainActor
@@ -588,6 +652,7 @@ final class VitrineUITests: XCTestCase {
         let delete = app.buttons["Delete annotation"]
         for fixedCanvas in [false, true] {
             if fixedCanvas {
+                revealInInspector("inspector-disclosure-output", in: app)
                 element("inspector-disclosure-output", in: app).click()
                 let destinations = element("editor-destination-preset-picker", in: app)
                 assertExists(destinations, in: app, timeout: 3)
@@ -606,9 +671,12 @@ final class VitrineUITests: XCTestCase {
             XCTAssertFalse(delete.exists, "A click must not create a zero-size arrow")
             let start = center.withOffset(CGVector(dx: -30, dy: -20))
             let end = center.withOffset(CGVector(dx: 30, dy: 20))
-            start.press(
-                forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                start.press(
+                    forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             assertExists(delete, in: app)
             revealToolbarAction(
                 "annotation-tool-select", from: "annotation-tool-picker", in: app
@@ -620,15 +688,21 @@ final class VitrineUITests: XCTestCase {
 
             let beforeMove = delete.frame
             let movedCenter = center.withOffset(CGVector(dx: 15, dy: 0))
-            center.press(
-                forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                center.press(
+                    forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeMove.minX, 15, accuracy: 3)
             let beforeResize = delete.frame
             let movedEnd = end.withOffset(CGVector(dx: 15, dy: 0))
-            movedEnd.press(
-                forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
-                withVelocity: dragVelocity, thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                movedEnd.press(
+                    forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
+                    withVelocity: dragVelocity, thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeResize.minX, 15, accuracy: 3)
             let beforeKey = delete.frame
             app.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [.shift])
@@ -659,9 +733,11 @@ final class VitrineUITests: XCTestCase {
             assertExists(delete, in: app)
             let beforeTextMove = delete.frame
             let textTarget = center.withOffset(CGVector(dx: 15, dy: 0))
-            center.press(
-                forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            XCUIElement.perform(withKeyModifiers: .command) {
+                center.press(
+                    forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeTextMove.minX, 15, accuracy: 3)
             XCTAssertFalse(field.exists, "A move must not reopen the text field")
             textTarget.doubleClick()
@@ -724,6 +800,43 @@ final class VitrineUITests: XCTestCase {
         assertExists(delete, in: app)
         delete.click()
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
+    }
+
+    /// The code gutter and the selection actions both edit the marks the inspector shows.
+    @MainActor
+    func testCodeGutterAndSelectionActionsMarkLines() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        // The gutter is the text view's leading inset; line 1 sits just below the top inset.
+        editor.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: 20, dy: 20)).click()
+        let highlight = app.menuItems["code-lane-highlight"]
+        assertExists(highlight, in: app, timeout: 3)
+        for id in ["code-lane-redact", "code-lane-clear", "code-lane-focus"] {
+            assertExists(app.menuItems[id], in: app)
+        }
+        chooseMenuItem(highlight)
+
+        editor.click()
+        editor.typeKey("a", modifierFlags: .command)
+        assertExists(element("code-selection-actions", in: app), in: app, timeout: 3)
+        let redact = element("code-selection-redact", in: app)
+        assertExists(redact, in: app)
+        assertExists(element("code-selection-highlight", in: app), in: app)
+        redact.click()
+
+        element("inspector-disclosure-lines", in: app).click()
+        let field = element("highlight-lines-field", in: app)
+        assertExists(field, in: app, timeout: 3)
+        XCTAssertEqual(field.value as? String, "1")
+        // The demo capture has 12 lines, all selected.
+        let clearRedactions = element("clear-redactions-button", in: app)
+        assertExists(clearRedactions, in: app)
+        XCTAssertEqual(clearRedactions.value as? String, "1-12")
     }
 
     /// A selected mark's toolbar sits beside it in Select mode, clear of its delete badge.
@@ -867,6 +980,32 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMagicBackgroundAppliesAndShuffles() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+
+        XCTAssertTrue(element("code-editor-text-view", in: app).waitForExistence(timeout: 8))
+        XCTAssertFalse(element("inspector-background-magic-shuffle", in: app).exists)
+        assertHittable(
+            "inspector-background-magic", in: app, "The Magic swatch must be reachable")
+        element("inspector-background-magic", in: app).click()
+        let shuffle = element("inspector-background-magic-shuffle", in: app)
+        assertExists(shuffle, in: app, timeout: 3)
+        // Only a preset prints a readout, so it leaves once the derived gradient applies.
+        XCTAssertTrue(
+            element("inspector-value-background", in: app).waitForNonExistence(timeout: 3))
+        // Every variant has its own angle, so the custom-gradient angle shows the change.
+        let angle = element("custom-gradient-angle", in: app)
+        assertExists(angle, in: app, timeout: 3)
+        let before = angle.value as? String
+        shuffle.click()
+        let changed = NSPredicate(format: "value != %@", before ?? "")
+        wait(for: [expectation(for: changed, evaluatedWith: angle)], timeout: 3)
+        assertExists(shuffle, in: app)
+    }
+
+    @MainActor
     func testPresetThumbnailApplies() throws {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.emptyEditor)
@@ -921,6 +1060,29 @@ final class VitrineUITests: XCTestCase {
         attachment.name = "style-defaults"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    /// Choosing a gallery card selects that association for the Manage actions.
+    @MainActor
+    func testRecipeGalleryCardSelectsTheAssociation() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.settings + ["--demo-recipe-gallery"])
+        defer { app.terminate() }
+        let settings = SettingsRobot(testCase: self, app: app)
+        settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+        assertExists(element("workspace-recipe-gallery", in: app), in: app, timeout: 5)
+        assertExists(element("workspace-recipe-card-2", in: app), in: app, timeout: 3)
+        let apply = element("apply-workspace-recipe-button", in: app)
+        XCTAssertFalse(apply.isEnabled, "Nothing is selected before a card is chosen")
+
+        assertHittable("workspace-recipe-card-0", in: app, "A gallery card should be reachable")
+        element("workspace-recipe-card-0", in: app).click()
+        let enabled = expectation(
+            for: NSPredicate(format: "isEnabled == true"), evaluatedWith: apply)
+        let pickerShowsCard = expectation(
+            for: NSPredicate(format: "value CONTAINS %@", "pr-review.vitrine-recipe.json"),
+            evaluatedWith: element("workspace-recipe-picker", in: app))
+        wait(for: [enabled, pickerShowsCard], timeout: 3)
     }
 
     /// Deletion, default replacement and reload are unit-tested in `LibraryDeletionTests`;
@@ -1054,7 +1216,7 @@ final class VitrineUITests: XCTestCase {
             "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
             "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
             "carousel-output-summary", "carousel-filmstrip", "carousel-slide-tile-0",
-            "carousel-show-dividers",
+            "carousel-show-dividers", "carousel-slide-size", "carousel-output-format",
         ] {
             assertExists(element(identifier, in: app), in: app, timeout: 3)
         }
@@ -1226,6 +1388,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(appearance, in: app, timeout: 3)
         assertExists(element("settings-terminal-palette-picker", in: app), in: app)
         assertExists(element("settings-terminal-cursor-picker", in: app), in: app)
+        assertExists(element("settings-padding-balance-toggle", in: app), in: app)
         lines.click()
         XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(appearance.isSelected)
@@ -1774,6 +1937,57 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsMakesThemeVariantsFromOneCapture() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.recents,
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
+        defer { app.terminate() }
+
+        hittableElement("recents-compare-button", in: app).click()
+        XCTAssertFalse(
+            element("recents-theme-variants-button", in: app).exists,
+            "Theme variants start from exactly one capture")
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        cards.element(boundBy: 0).click()
+        assertHittable(
+            "recents-theme-variants-button", in: app, "One selected capture offers its variants")
+        XCTAssertFalse(element("recents-create-comparison-button", in: app).exists)
+        cards.element(boundBy: 1).click()
+        assertHittable(
+            "recents-create-comparison-button", in: app, "Two captures make a board again")
+        cards.element(boundBy: 1).click()
+        hittableElement("recents-theme-variants-button", in: app).click()
+
+        assertExists(element("comparison-board-window", in: app), in: app, timeout: 10)
+        assertExists(element("comparison-board-variants", in: app), in: app, timeout: 5)
+        // Every seeded capture uses a theme from the variant list, so it adds none of its own.
+        let chips = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH 'comparison-board-variant-'"
+                    + " AND identifier != 'comparison-board-variants'"))
+        XCTAssertEqual(chips.count, 5)
+        assertExists(element("comparison-board-variant-github", in: app), in: app)
+        assertExists(element("comparison-board-label-3", in: app), in: app)
+
+        // One Light is always among the first four, GitHub Dark never is.
+        let githubDark = element("comparison-board-variant-github-dark", in: app)
+        XCTAssertFalse(githubDark.isEnabled, "A full board takes no fifth capture")
+        element("comparison-board-variant-one-light", in: app).click()
+        XCTAssertTrue(element("comparison-board-label-3", in: app).waitForNonExistence(timeout: 3))
+        assertHittable(
+            "comparison-board-variant-github-dark", in: app, "Removing a theme frees a place")
+        githubDark.click()
+        let added = element("comparison-board-label-3", in: app)
+        assertExists(added, in: app, timeout: 3)
+        assertValue("GitHub Dark", of: added)
+        XCTAssertTrue(
+            githubDark.wait(for: \.isSelected, toEqual: true, timeout: 3),
+            "A theme on the board reads as selected")
+    }
+
+    @MainActor
     private func assertValue(_ value: String, of field: XCUIElement) {
         XCTAssertEqual(
             XCTWaiter.wait(
@@ -2176,6 +2390,63 @@ final class VitrineUITests: XCTestCase {
         XCTAssertEqual(recents.cards.count, 0)
     }
 
+    /// The launch flag holds the preview until it is dismissed, so no step races its lifetime.
+    @MainActor
+    func testCopyPreviewReopensTheEditorAndDismisses() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--copy-preview-stays"])
+        defer { app.terminate() }
+        assertHittable("copy-button", in: app, "Copy image is not reachable")
+
+        element("copy-button", in: app).click()
+        let preview = element("copy-preview-image", in: app)
+        assertExists(preview, in: app, timeout: 5)
+        assertExists(element("copy-preview-window", in: app), in: app)
+        // Close-after-copy is on by default, so the click has a closed editor to bring back.
+        preview.click()
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3), "Opening must hide the preview")
+        assertHittable("copy-button", in: app, "The preview must reopen the editor", timeout: 5)
+
+        element("copy-button", in: app).click()
+        assertExists(preview, in: app, timeout: 5)
+        element("copy-preview-dismiss", in: app).click()
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3), "Dismiss must hide the preview")
+    }
+
+    @MainActor
+    func testTurningTheCopyPreviewOffSkipsItOnTheNextCopy() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-settings", "--copy-preview-stays"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-output", in: app).click()
+        let toggle = element("copy-preview-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 1, "The copy preview must start on")
+        toggle.click()
+        XCTAssertEqual(toggle.value as? Int, 0)
+        app.typeKey("w", modifierFlags: .command)
+
+        assertHittable("copy-button", in: app, "Copy image is not reachable", timeout: 5)
+        element("copy-button", in: app).click()
+        let copied = NSPredicate { _, _ in pasteboard.data(forType: .png) != nil }
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [XCTNSPredicateExpectation(predicate: copied, object: nil)], timeout: 5),
+            .completed, "Copy image did not place a PNG on the pasteboard")
+        XCTAssertFalse(
+            element("copy-preview-image", in: app).waitForExistence(timeout: 2),
+            "A disabled preview must not appear")
+    }
+
     @MainActor
     func testExportPreflightAsksBeforeCopyingAndCanCancelOrRedact() throws {
         continueAfterFailure = false
@@ -2208,6 +2479,7 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
         assertExists(element("inspector-disclosure-output", in: app), in: app, timeout: 8)
+        revealInInspector("inspector-disclosure-output", in: app)
         element("inspector-disclosure-output", in: app).click()
 
         let draft = element("alternative-text-draft-button", in: app)

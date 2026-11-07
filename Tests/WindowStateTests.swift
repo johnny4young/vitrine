@@ -93,6 +93,7 @@ struct EditorWindowStateTests {
         config.fontSize = 18
         config.fontLigatures = true
         config.padding = 48
+        config.paddingMode = .balanced
         config.cornerRadius = 18
         config.shadowRadius = 40
         config.showChrome = false
@@ -107,8 +108,12 @@ struct EditorWindowStateTests {
         config.wrapColumns = 72
         config.terminalPalette = .raw
         config.terminalCursor = .bar
+        config.terminalCrop = TerminalCrop(rows: 2...9, columns: 3...40)
         config.focusHighlightedLines = true
         config.diffDecorations = true
+        config.showDiffStats = true
+        config.diffContextLines = 2
+        config.diffView = .split
         config.annotations = [
             Annotation(
                 kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),
@@ -165,6 +170,9 @@ struct EditorWindowStateTests {
         #expect(restored.wrapColumns == original.wrapColumns)
         #expect(restored.focusHighlightedLines == original.focusHighlightedLines)
         #expect(restored.diffDecorations == original.diffDecorations)
+        #expect(restored.showDiffStats == original.showDiffStats)
+        #expect(restored.diffContextLines == original.diffContextLines)
+        #expect(restored.diffView == original.diffView)
         #expect(restored.annotations == original.annotations)
     }
 

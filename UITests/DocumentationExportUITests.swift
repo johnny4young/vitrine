@@ -177,13 +177,7 @@ final class DocumentationExportUITests: XCTestCase {
 
     @MainActor
     private func reveal(_ identifier: String, in app: XCUIApplication) {
-        if waitForHittableElement(identifier, in: app, timeout: 1) { return }
-        let inspector = element("editor-inspector", in: app)
-        XCTAssertTrue(inspector.waitForExistence(timeout: 3))
-        for _ in 0..<5 {
-            inspector.swipeUp()
-            if waitForHittableElement(identifier, in: app, timeout: 0.75) { return }
-        }
+        revealInInspector(identifier, in: app)
         assertHittable(identifier, in: app, "Documentation control is not reachable")
     }
 }

@@ -432,6 +432,8 @@ struct CLIArgumentParsingTests: CLITestSupport {
         #expect(defaults.redactSecrets == false)
         #expect(defaults.focusHighlightedLines == nil)
         #expect(defaults.diffDecorations == nil)
+        #expect(defaults.showDiffStats == nil)
+        #expect(defaults.diffContextLines == nil)
 
         let options = try CLIArguments.parse([
             "render", "snippet.swift",
@@ -477,13 +479,68 @@ struct CLIArgumentParsingTests: CLITestSupport {
 
         let lineEmphasisOff = try CLIArguments.parse([
             "render", "snippet.swift", "-o", "o.png", "--focus-lines", "--no-focus-lines",
-            "--diff-bands", "--no-diff-bands",
+            "--diff-bands", "--no-diff-bands", "--diff-stats", "--no-diff-stats",
         ])
         let lineEmphasisOffConfig = lineEmphasisOff.makeConfig(code: "", language: .swift)
         #expect(lineEmphasisOff.focusHighlightedLines == false)
         #expect(lineEmphasisOff.diffDecorations == false)
         #expect(!lineEmphasisOffConfig.focusHighlightedLines)
         #expect(!lineEmphasisOffConfig.diffDecorations)
+        #expect(lineEmphasisOff.showDiffStats == false)
+        #expect(!lineEmphasisOffConfig.showDiffStats)
+    }
+
+    @Test func diffViewOptionsFlowIntoTheRenderedConfig() throws {
+        let options = try CLIArguments.parse([
+            "render", "changes.diff", "-o", "o.png", "--diff-stats", "--diff-context", "2",
+        ])
+        let config = options.makeConfig(code: "", language: .diff)
+        #expect(config.showDiffStats)
+        #expect(config.diffContextLines == 2)
+
+        let batch = try CLIArguments.parse([
+            "batch", "inputs", "--out", "images", "--diff-stats", "--diff-context", "0",
+        ])
+        #expect(batch.showDiffStats == true)
+        #expect(batch.diffContextLines == 0)
+
+        let split = try CLIArguments.parse([
+            "render", "changes.diff", "-o", "o.png", "--diff-view", "Split",
+        ])
+        #expect(split.makeConfig(code: "", language: .diff).diffView == .split)
+        let unified = try CLIArguments.parse(["render", "changes.diff", "-o", "o.png"])
+        #expect(unified.diffView == nil)
+        #expect(unified.makeConfig(code: "", language: .diff).diffView == .unified)
+    }
+
+    @Test(arguments: ["side", ""])
+    func diffViewRejectsUnknownLayouts(_ value: String) {
+        #expect(throws: CLIError.invalidValue(flag: "--diff-view", value: value)) {
+            try CLIArguments.parse([
+                "render", "changes.diff", "-o", "o.png", "--diff-view", value,
+            ])
+        }
+    }
+
+    @Test(arguments: ["-1", "6", "all", ""])
+    func diffContextRejectsValuesOutsideTheSliderRange(_ value: String) {
+        #expect(throws: CLIError.invalidValue(flag: "--diff-context", value: value)) {
+            try CLIArguments.parse([
+                "render", "changes.diff", "-o", "o.png", "--diff-context", value,
+            ])
+        }
+    }
+
+    @Test(arguments: [
+        ["--diff-stats"], ["--no-diff-stats"], ["--diff-context", "1"], ["--diff-view", "split"],
+    ])
+    func diffViewOptionsAreCodeOnly(_ flags: [String]) {
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "Cannot combine --image with code-only or sidecar options.")
+        ) {
+            try CLIArguments.parse(["render", "--image", "shot.png", "-o", "o.png"] + flags)
+        }
     }
 
     @Test func metadataHeaderOptionsFlowIntoTheRenderedConfig() throws {

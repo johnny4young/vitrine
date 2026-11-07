@@ -2,12 +2,14 @@ import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
-/// A window's split choices, and the dividers they put in its code editor when asked for.
+/// A window's carousel choices, and the dividers they put in its code editor when asked for.
 /// Window state only: nothing here reaches the document, its history or an export's text.
 @Observable
 final class CarouselSplitModel {
     var split = CarouselSplit()
     var showsDividers = false
+    var size = CarouselSlideSize.linkedIn
+    var output = CarouselOutput.pngSet
     /// The revision moves with every settled split, even an equal one: the text view's copy
     /// has been shifted by edits since, and an edit undone can leave it missing a divider.
     private(set) var dividerLayout = SlideDividerLayout()
@@ -47,17 +49,26 @@ final class CarouselFilmstripModel {
         let base: SnapshotConfig
         let slides: [CarouselPaginator.Slide]
         let cues: CarouselPaginator.Cues
+        var size: CarouselSlideSize = .linkedIn
+        /// The carousel's fitted type size; no tile renders until it is known.
+        var fontSize: Double?
         let profile: ColorProfile
     }
 
     private struct Rendered: Equatable {
         let config: SnapshotConfig
+        let size: CarouselSlideSize
         let profile: ColorProfile
     }
 
-    static let tileSize = CGSize(
-        width: 86,
-        height: 86 * ExportManager.carouselSlideSize.height / ExportManager.carouselSlideSize.width)
+    /// Every size keeps this height, so the strip doesn't move when the size changes.
+    static let tileSize = CGSize(width: 86, height: 107.5)
+
+    static func tileSize(for size: CarouselSlideSize) -> CGSize {
+        CGSize(
+            width: (tileSize.height * size.pixels.width / size.pixels.height).rounded(),
+            height: tileSize.height)
+    }
     /// Lazy tiles leave the visible set on their own schedule; this holds regardless.
     static let maximumLiveTiles = 12
 
@@ -69,12 +80,12 @@ final class CarouselFilmstripModel {
     @ObservationIgnored private var rendered: [Int: Rendered] = [:]
     private let quietWindow: Duration
     private let frameGap: Duration
-    private let render: (SnapshotConfig, ColorProfile) -> CGImage?
+    private let render: (SnapshotConfig, CarouselSlideSize, ColorProfile) -> CGImage?
 
     init(
         quietWindow: Duration = .milliseconds(200), frameGap: Duration = .milliseconds(16),
-        render: @escaping (SnapshotConfig, ColorProfile) -> CGImage? = {
-            CarouselFilmstripModel.renderTile($0, profile: $1)
+        render: @escaping (SnapshotConfig, CarouselSlideSize, ColorProfile) -> CGImage? = {
+            CarouselFilmstripModel.renderTile($0, size: $1, profile: $2)
         }
     ) {
         self.quietWindow = quietWindow
@@ -83,10 +94,12 @@ final class CarouselFilmstripModel {
     }
 
     /// The export's frame, scale aside, so a tile lays out exactly as its slide will.
-    static func renderTile(_ config: SnapshotConfig, profile: ColorProfile) -> CGImage? {
+    static func renderTile(
+        _ config: SnapshotConfig, size: CarouselSlideSize = .linkedIn, profile: ColorProfile
+    ) -> CGImage? {
         try? ExportManager.renderCGImageChecked(
-            config, scale: 2 * tileSize.width / ExportManager.carouselSlideSize.width,
-            fixedSize: ExportManager.carouselSlideSize, profile: profile)
+            config, scale: 2 * tileSize.height / size.pixels.height,
+            fixedSize: size.pixels, profile: profile)
     }
 
     func moveCurrent(by step: Int, count: Int) {
@@ -94,13 +107,15 @@ final class CarouselFilmstripModel {
     }
 
     func refresh(_ input: Input) async {
-        let live = visible.filter { $0 < input.slides.count }.sorted().prefix(Self.maximumLiveTiles)
+        let live =
+            input.fontSize == nil
+            ? [] : visible.filter { $0 < input.slides.count }.sorted().prefix(Self.maximumLiveTiles)
         var wanted: [Int: Rendered] = [:]
         for index in live {
             let config = CarouselPaginator.slideConfig(
                 input.base, slide: input.slides[index], at: index, of: input.slides.count,
-                cues: input.cues)
-            wanted[index] = Rendered(config: config, profile: input.profile)
+                cues: input.cues, fontSize: input.fontSize)
+            wanted[index] = Rendered(config: config, size: input.size, profile: input.profile)
         }
         // A tile that no longer matches leaves now, so it can't show an old split or a row
         // hidden since. Tiles scrolled away go too, which is what bounds the images held.
@@ -114,7 +129,7 @@ final class CarouselFilmstripModel {
         for index in live where rendered[index] == nil {
             guard !Task.isCancelled, let tile = wanted[index] else { return }
             if input.slides[index].canPreview {
-                images[index] = render(tile.config, tile.profile)
+                images[index] = render(tile.config, tile.size, tile.profile)
             }
             rendered[index] = tile
             try? await Task.sleep(for: frameGap)
@@ -142,6 +157,7 @@ struct CarouselFilmstrip: View {
                     ForEach(input.slides.indices, id: \.self) { index in
                         CarouselSlideTile(
                             slide: input.slides[index], index: index, count: count,
+                            tileSize: CarouselFilmstripModel.tileSize(for: input.size),
                             isShort: hasShortTail && index == count - 1,
                             isCurrent: isFocused && index == model.current, model: model
                         )
@@ -188,6 +204,7 @@ private struct CarouselSlideTile: View {
     let slide: CarouselPaginator.Slide
     let index: Int
     let count: Int
+    let tileSize: CGSize
     let isShort: Bool
     let isCurrent: Bool
     let model: CarouselFilmstripModel
@@ -197,10 +214,7 @@ private struct CarouselSlideTile: View {
     var body: some View {
         VStack(spacing: 4) {
             Color.clear
-                .frame(
-                    width: CarouselFilmstripModel.tileSize.width,
-                    height: CarouselFilmstripModel.tileSize.height
-                )
+                .frame(width: tileSize.width, height: tileSize.height)
                 .background(VitrineTokens.Surface.inset)
                 .overlay {
                     if let image = model.images[index] {
@@ -227,7 +241,7 @@ private struct CarouselSlideTile: View {
                 .foregroundStyle(VitrineTokens.Text.tertiary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-                .frame(width: CarouselFilmstripModel.tileSize.width)
+                .frame(width: max(tileSize.width, CarouselFilmstripModel.tileSize.width))
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(

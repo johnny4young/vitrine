@@ -35,6 +35,7 @@ final class EditorSession {
     var appliedRecipe: AppliedRecipe?
     /// This window's preset thumbnails, fed from the same debounced code as the preview.
     let presetThumbnails = PresetThumbnailModel()
+    let magicBackground = MagicBackgroundModel()
     let carouselSplit = CarouselSplitModel()
     /// Hides the code and inspector columns for this window only; never persisted.
     var isCanvasMode = false
@@ -125,11 +126,14 @@ final class EditorSession {
             presentation.clearsPreflight(
                 of: settings, for: .copy, delivering: EditorPresentation.copyPayload(of: settings))
         else { return nil }
-        var pngBytes: Int?
+        var png: Data?
         let outcome = RenderedImageCopy.copy(
             settings.exportConfig, settings: settings, pasteboard: pasteboard
-        ) { pngBytes = $0 }
-        feedback(ExportFeedback.copyOutcome(outcome, pngBytes: pngBytes))
+        ) { png = $0 }
+        feedback(ExportFeedback.copyOutcome(outcome, pngBytes: png?.count))
+        feedback.preview(png, behavior: settings.outputBehavior) { [weak self] in
+            EditorWindowController.shared.reopen(self)
+        }
         copyConfirmation.record(outcome)
         guard
             EditorView.shouldCloseAfterCopy(
@@ -294,6 +298,13 @@ final class EditorWindowController: NSObject {
         // The window may be closed, so its view can't react to the replacement.
         session.copyConfirmation.clear()
         show()
+    }
+
+    /// Brings back the window that made a copy. A closed extra window's draft is gone, so
+    /// the primary editor is shown instead, never loaded over.
+    func reopen(_ session: EditorSession?) {
+        guard let session, sessions[session.identity.index] === session else { return show() }
+        showWindow(for: session.identity)
     }
 
     /// The session for `identity`'s window, creating it (and caching it) if absent, so

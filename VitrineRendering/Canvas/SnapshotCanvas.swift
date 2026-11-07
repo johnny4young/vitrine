@@ -95,7 +95,10 @@ public struct SnapshotCanvas: View, Equatable {
             // within it. `.clipped()` guarantees the render never exceeds the
             // requested size even if the card is larger than the frame.
             styledContent
-                .frame(width: fixedSize.width, height: fixedSize.height)
+                .frame(
+                    width: fixedSize.width, height: fixedSize.height,
+                    alignment: config.canvasAlignment
+                )
                 .background(BackgroundView(style: config.background))
                 .clipped()
         } else {
@@ -107,7 +110,7 @@ public struct SnapshotCanvas: View, Equatable {
 
     /// The padded content card — the shared unit both canvas paths frame and back.
     private var styledContent: some View {
-        contentCard.padding(config.padding)
+        contentCard.padding(config.canvasInsets)
     }
 
     /// The card body: a beautified framed image ("beautify any image"), or the code card.
@@ -115,9 +118,9 @@ public struct SnapshotCanvas: View, Equatable {
     @ViewBuilder
     private var contentCard: some View {
         if config.usesImageContent, let reference = config.foregroundImage {
-            imageCard(reference)
+            imageCard(reference).reportsSnapCard()
         } else {
-            codeCard
+            codeCard.reportsSnapCard()
         }
     }
 
@@ -188,7 +191,10 @@ public struct SnapshotCanvas: View, Equatable {
     private var framedCanvas: some View {
         if let fixedSize {
             styledContent
-                .frame(width: fixedSize.width, height: fixedSize.height)
+                .frame(
+                    width: fixedSize.width, height: fixedSize.height,
+                    alignment: config.canvasAlignment
+                )
                 .background(BackgroundView(style: config.background))
         } else {
             styledContent
@@ -271,7 +277,8 @@ public struct SnapshotCanvas: View, Equatable {
     private static let codeLineSpacing: CGFloat = 4
 
     private var codeCard: some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
+        let diff = config.diffDocument
+        return VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
             if config.showChrome {
                 WindowChrome(
                     title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -292,7 +299,16 @@ public struct SnapshotCanvas: View, Equatable {
                         HighlightManager.shared.gutterForegroundColor(for: config.theme)
                             .opacity(0.12))
             }
-            codeBody
+            if config.showDiffStats, let diff {
+                DiffStatsHeader(
+                    document: diff,
+                    path: diff.singleFilePath(redacting: config.redactedLineRanges),
+                    font: CodeFont.resolved(
+                        family: config.fontName, size: DiffStatsHeader.fontSize, ligatures: false),
+                    textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
+            }
+            codeBody(diff: diff)
+                .reportsSnapCode(config, lineSpacing: Self.codeLineSpacing)
             if let cue = config.slideCue, cue.rangeLabel != nil || cue.continuationLabel != nil {
                 slideCueFooter(cue)
             }
@@ -352,13 +368,13 @@ public struct SnapshotCanvas: View, Equatable {
     /// on, the card sizes to the wrap width and long lines wrap; in the gutter path the
     /// continuation hangs under the code column (the line number stays on the first row).
     @ViewBuilder
-    private var codeBody: some View {
+    private func codeBody(diff: DiffDocument?) -> some View {
         if config.usesLineRows {
-            codeRows
+            codeRows(diff: diff)
         } else if let wrapWidth {
-            codeRows.frame(width: wrapWidth, alignment: .leading)
+            codeRows(diff: diff).frame(width: wrapWidth, alignment: .leading)
         } else {
-            codeRows
+            codeRows(diff: diff)
         }
     }
 
@@ -367,14 +383,20 @@ public struct SnapshotCanvas: View, Equatable {
     /// Keeping the plain path untouched means the signature render is unchanged
     /// unless the user opts into the new chrome.
     @ViewBuilder
-    private var codeRows: some View {
+    private func codeRows(diff: DiffDocument?) -> some View {
         if config.usesLineRows {
-            CodeLinesView(
+            let displayRows = config.diffContextLines.flatMap {
+                diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
+            }
+            let lines = CodeLinesView(
                 rows: highlightedCodeLines,
+                displayRows: displayRows,
                 showLineNumbers: config.showLineNumbers,
-                firstLineNumber: config.firstLineNumber,
-                highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
-                redactedRanges: LineHighlight.normalize(config.redactedLineRanges),
+                firstLineNumber: config.firstLineNumber + terminalCrop.rowOffset,
+                highlightedRanges: terminalCrop.localRanges(
+                    LineHighlight.normalize(config.highlightedLineRanges)),
+                redactedRanges: terminalCrop.localRanges(
+                    LineHighlight.normalize(config.redactedLineRanges)),
                 font: codeFont,
                 lineSpacing: Self.codeLineSpacing,
                 codeColumnWidth: wrapWidth,
@@ -383,7 +405,19 @@ public struct SnapshotCanvas: View, Equatable {
                 dimsUnfocused: config.focusHighlightedLines,
                 diffDecorations: config.diffDecorations
             )
-            .textSelection(.enabled)
+            // An empty capture's placeholder is not a diff, so it shows once, full width.
+            if config.diffUsesSplitView, !config.code.isEmpty, let diff {
+                SplitDiffLinesView(
+                    lines: lines,
+                    rows: diff.splitRows(
+                        displayRows ?? diff.rowKinds.indices.map { .line($0 + 1) },
+                        firstLineNumber: config.firstLineNumber,
+                        redacting: config.redactedLineRanges)
+                )
+                .textSelection(.enabled)
+            } else {
+                lines.textSelection(.enabled)
+            }
         } else {
             let code = highlightedCode
             Text(code)
@@ -397,19 +431,7 @@ public struct SnapshotCanvas: View, Equatable {
         }
     }
 
-    /// The exported card's drop shadow: the `Brand.Shadow.elevated` recipe, or a true
-    /// no-op style when shadows are disabled. A zero-radius shadow with non-zero offsets
-    /// draws a crisp duplicate of the card contents in SwiftUI, so disabling the feature
-    /// must clear the whole recipe rather than just the blur radius.
-    private var cardShadow: Brand.ShadowStyle {
-        guard config.showShadow else { return .none }
-        return Brand.ShadowStyle(
-            color: Brand.Shadow.elevated.color,
-            radius: config.effectiveShadowRadius,
-            x: Brand.Shadow.elevated.x,
-            y: Brand.Shadow.elevated.y
-        )
-    }
+    private var cardShadow: Brand.ShadowStyle { config.cardShadow }
 
     /// The resolved code font (the named font, or a monospaced system fallback),
     /// shared by highlighting and the line-number gutter so the gutter column is
@@ -441,6 +463,11 @@ public struct SnapshotCanvas: View, Equatable {
         config.code.isEmpty ? .hidden : config.terminalCursor
     }
 
+    /// Rows keep their screen numbers, so the gutter and line marks follow the crop.
+    private var terminalCrop: TerminalCrop {
+        config.code.isEmpty ? TerminalCrop() : config.activeTerminalCrop
+    }
+
     /// The card fill: the syntax theme's background, or the terminal palette's
     /// background (theme-matched) when rendering ANSI terminal output.
     private var cardBackgroundColor: Color {
@@ -459,7 +486,7 @@ public struct SnapshotCanvas: View, Equatable {
             return HighlightManager.shared.terminalAttributedString(
                 for: source, theme: config.theme, font: codeFont,
                 columns: config.terminalColumns, palette: config.terminalPalette,
-                cursor: terminalCursor)
+                cursor: terminalCursor, crop: terminalCrop)
         }
         return HighlightManager.shared.swiftUIAttributedString(
             for: source,
@@ -480,13 +507,15 @@ public struct SnapshotCanvas: View, Equatable {
             var rows = HighlightManager.shared.terminalAttributedLines(
                 for: source, theme: config.theme, font: codeFont,
                 columns: config.terminalColumns, palette: config.terminalPalette,
-                cursor: terminalCursor)
+                cursor: terminalCursor, crop: terminalCrop)
             guard terminalCursor != .hidden, !config.redactedLineRanges.isEmpty else { return rows }
             // A mask takes its length from its row, so a cursor must not reach a redacted one.
             let bare = HighlightManager.shared.terminalAttributedLines(
                 for: source, theme: config.theme, font: codeFont,
-                columns: config.terminalColumns, palette: config.terminalPalette)
-            let redactions = LineHighlight.normalize(config.redactedLineRanges)
+                columns: config.terminalColumns, palette: config.terminalPalette,
+                crop: terminalCrop)
+            let redactions = terminalCrop.localRanges(
+                LineHighlight.normalize(config.redactedLineRanges))
             for index in rows.indices where LineHighlight.contains(redactions, line: index + 1) {
                 rows[index] = index < bare.count ? bare[index] : AttributedString()
             }
