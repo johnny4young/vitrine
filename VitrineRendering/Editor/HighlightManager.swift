@@ -3,6 +3,8 @@ import Highlightr
 import SwiftUI
 import VitrineDomain
 
+import class Highlightr.Theme
+
 /// Wraps Highlightr (Highlight.js) to produce a syntax-highlighted
 /// `NSAttributedString` and the theme's own background color.
 ///
@@ -36,6 +38,8 @@ public final class HighlightManager {
         let isDark: Bool
     }
     var builtInChrome: [VitrineDomain.Theme.Source: ThemeChrome] = [:]
+    /// Each bundled stylesheet parsed once, keyed by name. See `selectBuiltInTheme`.
+    var parsedStylesheets: [String: Theme] = [:]
 
     /// Cache key for highlighted code. `VitrineDomain.Theme.Source` captures the immutable stylesheet name for
     /// a built-in or the complete value-typed palette for a custom theme, so changing a palette
@@ -106,6 +110,7 @@ public final class HighlightManager {
         let columns: Int?
         let palette: TerminalPaletteMode
         let cursor: TerminalCursorStyle
+        let crop: TerminalCrop
         // Last, for the same reason as `HighlightKey.code`.
         let code: String
     }
@@ -248,17 +253,19 @@ public final class HighlightManager {
     /// value is identical to bridging `ANSIRenderer.attributedString(…)` by hand.
     public func terminalAttributedString(
         for code: String, theme: VitrineDomain.Theme, font: NSFont, columns: Int?,
-        palette mode: TerminalPaletteMode = .theme, cursor: TerminalCursorStyle = .hidden
+        palette mode: TerminalPaletteMode = .theme, cursor: TerminalCursorStyle = .hidden,
+        crop: TerminalCrop = TerminalCrop()
     ) -> AttributedString {
         let palette = ANSIPalette.resolved(for: theme, mode: mode)
         let render = {
             AttributedString(
                 ANSIRenderer.attributedString(
-                    code, font: font, palette: palette, columns: columns, cursor: cursor))
+                    code, font: font, palette: palette, columns: columns, cursor: cursor,
+                    crop: crop))
         }
         let key = TerminalKey(
             themeSource: theme.source, font: font, columns: columns, palette: mode,
-            cursor: cursor, code: code)
+            cursor: cursor, crop: crop, code: code)
         guard HighlightPolicy.shouldCache(code) else {
             if let recent = lastTerminal.value(forKey: key) { return recent }
             let rendered = render()
@@ -304,14 +311,15 @@ public final class HighlightManager {
     /// analogue of `swiftUIAttributedLines`, for a terminal capture shown with a gutter.
     public func terminalAttributedLines(
         for code: String, theme: VitrineDomain.Theme, font: NSFont, columns: Int?,
-        palette: TerminalPaletteMode = .theme, cursor: TerminalCursorStyle = .hidden
+        palette: TerminalPaletteMode = .theme, cursor: TerminalCursorStyle = .hidden,
+        crop: TerminalCrop = TerminalCrop()
     ) -> [AttributedString] {
         let bridged = terminalAttributedString(
             for: code, theme: theme, font: font, columns: columns, palette: palette,
-            cursor: cursor)
+            cursor: cursor, crop: crop)
         let key = TerminalKey(
             themeSource: theme.source, font: font, columns: columns, palette: palette,
-            cursor: cursor, code: code)
+            cursor: cursor, crop: crop, code: code)
         guard HighlightPolicy.shouldCache(code) else {
             if let recent = lastTerminalLines.value(forKey: key) { return recent }
             let rows = Self.splitRows(bridged)
