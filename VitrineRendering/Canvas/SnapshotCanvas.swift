@@ -384,9 +384,11 @@ public struct SnapshotCanvas: View, Equatable {
                     diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
                 },
                 showLineNumbers: config.showLineNumbers,
-                firstLineNumber: config.firstLineNumber,
-                highlightedRanges: LineHighlight.normalize(config.highlightedLineRanges),
-                redactedRanges: LineHighlight.normalize(config.redactedLineRanges),
+                firstLineNumber: config.firstLineNumber + terminalCrop.rowOffset,
+                highlightedRanges: terminalCrop.localRanges(
+                    LineHighlight.normalize(config.highlightedLineRanges)),
+                redactedRanges: terminalCrop.localRanges(
+                    LineHighlight.normalize(config.redactedLineRanges)),
                 font: codeFont,
                 lineSpacing: Self.codeLineSpacing,
                 codeColumnWidth: wrapWidth,
@@ -453,6 +455,11 @@ public struct SnapshotCanvas: View, Equatable {
         config.code.isEmpty ? .hidden : config.terminalCursor
     }
 
+    /// Rows keep their screen numbers, so the gutter and line marks follow the crop.
+    private var terminalCrop: TerminalCrop {
+        config.code.isEmpty ? TerminalCrop() : config.activeTerminalCrop
+    }
+
     /// The card fill: the syntax theme's background, or the terminal palette's
     /// background (theme-matched) when rendering ANSI terminal output.
     private var cardBackgroundColor: Color {
@@ -471,7 +478,7 @@ public struct SnapshotCanvas: View, Equatable {
             return HighlightManager.shared.terminalAttributedString(
                 for: source, theme: config.theme, font: codeFont,
                 columns: config.terminalColumns, palette: config.terminalPalette,
-                cursor: terminalCursor)
+                cursor: terminalCursor, crop: terminalCrop)
         }
         return HighlightManager.shared.swiftUIAttributedString(
             for: source,
@@ -492,13 +499,15 @@ public struct SnapshotCanvas: View, Equatable {
             var rows = HighlightManager.shared.terminalAttributedLines(
                 for: source, theme: config.theme, font: codeFont,
                 columns: config.terminalColumns, palette: config.terminalPalette,
-                cursor: terminalCursor)
+                cursor: terminalCursor, crop: terminalCrop)
             guard terminalCursor != .hidden, !config.redactedLineRanges.isEmpty else { return rows }
             // A mask takes its length from its row, so a cursor must not reach a redacted one.
             let bare = HighlightManager.shared.terminalAttributedLines(
                 for: source, theme: config.theme, font: codeFont,
-                columns: config.terminalColumns, palette: config.terminalPalette)
-            let redactions = LineHighlight.normalize(config.redactedLineRanges)
+                columns: config.terminalColumns, palette: config.terminalPalette,
+                crop: terminalCrop)
+            let redactions = terminalCrop.localRanges(
+                LineHighlight.normalize(config.redactedLineRanges))
             for index in rows.indices where LineHighlight.contains(redactions, line: index + 1) {
                 rows[index] = index < bare.count ? bare[index] : AttributedString()
             }

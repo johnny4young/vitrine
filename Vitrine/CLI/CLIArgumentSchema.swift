@@ -37,6 +37,8 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case terminalWidth
     case terminalPalette
     case terminalCursor
+    case terminalCropRows
+    case terminalCropColumns
     case wrapColumns
     case formatCode
     case format
@@ -278,6 +280,18 @@ nonisolated enum CLIArgumentSchema {
             synopsis: "--terminal-cursor <hidden|block|bar>",
             description:
                 "Draw the terminal cursor where the output left it, unless the program hid it or a full-screen app already exited. Only affects --language terminal."
+        ),
+        definition(
+            .terminalCropRows, ["--terminal-crop-rows"], .value("first-last"),
+            synopsis: "--terminal-crop-rows <first-last>",
+            description:
+                "Keep only these rows of the final terminal screen; line numbers and --redact-lines keep counting the whole screen. Only affects --language terminal."
+        ),
+        definition(
+            .terminalCropColumns, ["--terminal-crop-columns"], .value("first-last"),
+            synopsis: "--terminal-crop-columns <first-last>",
+            description:
+                "Keep only these columns of the final terminal screen. Only affects --language terminal."
         ),
         definition(
             .wrapColumns, ["--wrap-columns", "--wrap"], .value("n"), synopsis: "--wrap-columns <n>",
