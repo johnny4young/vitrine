@@ -19,6 +19,7 @@ enum SettingsCodec {
         static let languageID = "languageID"
         static let fontSize = "fontSize"
         static let padding = "padding"
+        static let paddingMode = "paddingMode"
         static let cornerRadius = "cornerRadius"
         /// The drop-shadow blur radius ("Shadow depth" in the inspector). Added late:
         /// the slider shipped without a codec key, so the value silently reset to the
@@ -114,7 +115,8 @@ enum SettingsCodec {
         /// store without an app reinstall. The schema version key is reset by
         /// the migration step that runs afterward.
         static let all = [
-            themeID, languageID, fontSize, padding, cornerRadius, shadowRadius, showChrome,
+            themeID, languageID, fontSize, padding, paddingMode, cornerRadius, shadowRadius,
+            showChrome,
             windowTitle,
             showShadow, showLineNumbers, wrapColumns, terminalPalette, terminalCursor,
             highlightedLines, focusHighlightedLines,
@@ -168,6 +170,11 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.padding) as? Double {
             config.padding = SettingsDefaults.clampPadding(value)
+        }
+        if let value = defaults.string(forKey: Keys.paddingMode).flatMap(
+            PaddingMode.init(rawValue:))
+        {
+            config.paddingMode = value
         }
         if let value = defaults.object(forKey: Keys.cornerRadius) as? Double {
             config.cornerRadius = SettingsDefaults.clampCornerRadius(value)
@@ -323,6 +330,7 @@ enum SettingsCodec {
         defaults.set(config.fontLigatures, forKey: Keys.fontLigatures)
         defaults.set(config.fontSize, forKey: Keys.fontSize)
         defaults.set(config.padding, forKey: Keys.padding)
+        defaults.set(config.paddingMode.rawValue, forKey: Keys.paddingMode)
         defaults.set(config.cornerRadius, forKey: Keys.cornerRadius)
         defaults.set(config.shadowRadius, forKey: Keys.shadowRadius)
         defaults.set(config.showChrome, forKey: Keys.showChrome)

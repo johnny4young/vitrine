@@ -549,8 +549,8 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--font-ligatures`, `--no-font-ligatures`, `--transparent`, `--background <id>`,
 `--background-color <hex>`, `--background-image <path>`, `--background-fit <fill|fit>`,
 `--background-blur <0...40>`, `--background-dimming <0...1>`, style controls
-(`--font-size`, `--padding`, `--corner-radius`, `--shadow-radius`, `--wrap-columns`,
-`--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
+(`--font-size`, `--padding`, `--padding-mode`, `--corner-radius`, `--shadow-radius`,
+`--wrap-columns`, `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
 `--diff-bands`, `--no-diff-bands`, `--diff-stats`, `--no-diff-stats`,
 `--diff-context <0...5>`, `--diff-view <unified|split>`), and the header controls
@@ -685,7 +685,9 @@ the same POSIX single-quote encoder. Command-generation tests inspect strings on
 base64url representation. The decoder rejects padding, whitespace, standard base64
 characters, impossible lengths, non-ASCII input, and non-zero unused tail bits before
 bounded zlib expansion and JSON decoding. A deterministic seeded adversarial corpus guards
-that contract against future normalization or Foundation decoder changes.
+that contract against future normalization or Foundation decoder changes. The schema
+version stays 1 when a style field is added, so an earlier build drops fields it does not
+know: a link with balanced padding (`paddingMode`) opens there with manual padding.
 
 **Version metadata.** `vitrine --version` / `vitrine -v` / `vitrine version [--json]`
 prints the installed CLI version before AppKit initialization and before the capability

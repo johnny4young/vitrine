@@ -144,6 +144,50 @@
         }
       }
     },
+    "Select one capture for theme variants, or two to four for a board" : {
+      "comment" : "Help for the Recents comparison action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selecciona una captura para ver variantes de tema, o de dos a cuatro para un tablero"
+          }
+        }
+      }
+    },
+    "Remove the blur boxes first: they would slide off what they hide." : {
+      "comment" : "Help for the padding Balance switch while blur boxes lock it",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quita primero las cajas de desenfoque: se saldrían de lo que ocultan."
+          }
+        }
+      }
+    },
+    "Balance" : {
+      "comment" : "Switch that measures the canvas padding to the card and its shadow",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Equilibrio"
+          }
+        }
+      }
+    },
+    "Counts the shadow in the padding and sets the card a little above center." : {
+      "comment" : "Help for the padding Balance switch",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuenta la sombra en el relleno y sube un poco la tarjeta sobre el centro."
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
@@ -15440,17 +15484,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fila"
-          }
-        }
-      }
-    },
-    "Select one capture for theme variants, or two to four for a board" : {
-      "comment" : "Help for the Recents comparison action.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selecciona una captura para ver variantes de tema, o de dos a cuatro para un tablero"
           }
         }
       }

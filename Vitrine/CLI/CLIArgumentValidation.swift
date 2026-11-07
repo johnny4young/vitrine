@@ -208,7 +208,7 @@ extension CLIArgumentParser {
             recipe != nil || stylePresetID != nil || canvasSize != nil || background != nil
             || backgroundImagePath != nil || transparent || fontName != nil
             || fontLigatures != nil
-            || fontSize != nil || padding != nil
+            || fontSize != nil || padding != nil || paddingMode != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
             || watermarkContentRequested
@@ -371,6 +371,11 @@ extension CLIArgumentParser {
             resolvedOutput = outputPath
         }
 
+        if paddingMode == .balanced, !annotations.blurBoxes.points.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --padding-mode balanced with --blur-box.")
+        }
+
         let resolvedFormat = try resolveFormat(
             explicitFormat, fallback: recipe?.output.format, command: mode,
             outputPath: resolvedOutput)
@@ -408,6 +413,7 @@ extension CLIArgumentParser {
             fontLigatures: fontLigatures,
             fontSize: fontSize,
             padding: padding,
+            paddingMode: paddingMode,
             cornerRadius: cornerRadius,
             shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,

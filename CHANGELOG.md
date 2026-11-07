@@ -14,6 +14,16 @@ can never drift.
 
 ### Added
 
+- A Balance switch under Padding (inspector and Settings ▸ Style) measures the padding to the
+  card and the visible part of its shadow, and sets the card a little above center, in the
+  window and in fixed-size destinations. `vitrine render --padding-mode balanced` does the
+  same. Off by default, so existing styles and exports render as before; presets, recipes,
+  restored windows and share links carry it. Blur boxes sit at canvas coordinates, so the
+  switch is disabled while a capture has any, a preset or recipe leaves the mode as it is,
+  and the CLI refuses `--padding-mode balanced` with `--blur-box`. Earlier builds reject a
+  recipe that sets `paddingMode`, since they refuse unknown recipe fields; a recipe with
+  Balance off writes no `paddingMode` and stays readable. Share links keep schema version 1,
+  so an earlier build opens a balanced link with manual padding.
 - Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
   to see it in up to four themes on a comparison board, each captioned with its theme. The
   board's inspector adds or removes themes without capturing again.

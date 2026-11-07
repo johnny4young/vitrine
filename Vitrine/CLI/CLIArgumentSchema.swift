@@ -32,6 +32,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case noFontLigatures
     case fontSize
     case padding
+    case paddingMode
     case cornerRadius
     case shadowRadius
     case terminalWidth
@@ -259,6 +260,12 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .padding, ["--padding"], .value("n"), synopsis: "--padding <n>",
             description: "Canvas padding in points (16-64)."),
+        definition(
+            .paddingMode, ["--padding-mode"], .value("manual|balanced"),
+            synopsis: "--padding-mode <manual|balanced>",
+            description:
+                "Balanced measures the padding to the card and its shadow and sets the card a little above center."
+        ),
         definition(
             .cornerRadius, ["--corner-radius"], .value("n"), synopsis: "--corner-radius <n>",
             description: "Code-card corner radius in points (0-48)."),

@@ -164,7 +164,7 @@ enum GoldenScenario: String, CaseIterable, Sendable {
             .map { "\($0.lowerBound)-\($0.upperBound)" }
             .joined(separator: ",")
         let size = fixedSize.map { "\(Int($0.width))x\(Int($0.height))" } ?? "hug"
-        let descriptor = [
+        let fields = [
             "code=\(c.code)",
             "language=\(c.language.rawValue)",
             "theme=\(c.theme.id)",
@@ -179,7 +179,10 @@ enum GoldenScenario: String, CaseIterable, Sendable {
             "background=\(c.background.diagnosticsKind)",
             "scale=\(Int(scale))",
             "size=\(size)",
-        ].joined(separator: "|")
+        ]
+        // Only when on, so every manual fingerprint in the manifest stays valid.
+        let mode = c.paddingMode == .manual ? [] : ["paddingMode=\(c.paddingMode.rawValue)"]
+        let descriptor = (fields + mode).joined(separator: "|")
         let digest = SHA256.hash(data: Data(descriptor.utf8))
         return digest.map { String(format: "%02x", $0) }.joined()
     }

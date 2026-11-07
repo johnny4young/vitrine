@@ -195,6 +195,7 @@ struct CLIReproductionCommand {
         label("--font-size", text(style.fontSize), text(base.fontSize))
         toggle("--font-ligatures", "--no-font-ligatures", style.fontLigatures, base.fontLigatures)
         label("--padding", text(style.padding), text(base.padding))
+        label("--padding-mode", style.paddingMode.rawValue, base.paddingMode.rawValue)
         label("--corner-radius", text(style.cornerRadius), text(base.cornerRadius))
         toggle("--shadow", "--no-shadow", style.showShadow, base.showShadow)
         label("--shadow-radius", text(style.shadowRadius), text(base.shadowRadius))

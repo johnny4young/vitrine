@@ -371,6 +371,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolvePaddingMode(_ raw: String, flag: String) throws -> PaddingMode {
+        guard let value = PaddingMode(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     /// Parses and range-checks the code-card corner radius in points.
     func resolveCornerRadius(_ raw: String, flag: String) throws -> Double {
         guard let value = Double(raw), SettingsDefaults.cornerRadiusRange.contains(value) else {

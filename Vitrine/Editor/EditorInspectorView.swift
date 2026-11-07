@@ -479,6 +479,21 @@ struct EditorInspectorView: View {
                     range: SettingsDefaults.paddingRange,
                     step: 4, identifier: "padding-slider", width: 92)
             }
+            InspectorRow(label: Text("Balance")) {
+                Toggle("Balance", isOn: $settings.style.balancesPadding)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .disabled(settings.style.locksPaddingMode)
+                    .help(
+                        settings.style.locksPaddingMode
+                            ? Text(
+                                "Remove the blur boxes first: they would slide off what they hide.")
+                            : Text(
+                                "Counts the shadow in the padding and sets the card a little above center."
+                            )
+                    )
+                    .accessibilityIdentifier("padding-balance-toggle")
+            }
             InspectorRow(label: Text("Corner radius")) {
                 ValueSlider(
                     label: "Corner radius", value: $settings.style.cornerRadius,

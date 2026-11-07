@@ -26,6 +26,21 @@ public struct SnapshotConfig: Equatable {
     /// change and never reflows the code.
     public var fontLigatures: Bool = false
     public var padding: Double = 32
+    /// `.balanced` reads `padding` as the visible margin; `.manual` keeps the geometric one.
+    public var paddingMode: PaddingMode = .manual
+
+    /// The on/off view of `paddingMode` that the Balance switches bind to.
+    public var balancesPadding: Bool {
+        get { paddingMode == .balanced }
+        set {
+            guard !locksPaddingMode else { return }
+            paddingMode = newValue ? .balanced : .manual
+        }
+    }
+
+    /// Blur boxes sit at canvas coordinates, and a new mode resizes the canvas and moves the
+    /// card, so it would slide them off the code they hide.
+    public var locksPaddingMode: Bool { annotations.contains { $0.kind == .blur } }
     public var background: BackgroundStyle = .gradient(.aurora)
     public var showChrome: Bool = true
 

@@ -403,6 +403,24 @@ struct CLIReproductionCommandTests: CLITestSupport {
         try inDirectory(directory) { try expectRoundTrip(overriding, recipe: file) }
     }
 
+    @Test func aManualDocumentOverridesABalancedRecipe() throws {
+        let directory = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let recipe = WorkspaceRecipe(
+            name: "Balanced",
+            style: StyleSnapshot(
+                themeID: Theme.oneDark.id, paddingMode: .balanced, background: .gradient(.aurora)))
+        let file = try recipeFile(recipe, in: directory)
+        var style = applied(recipe)
+        #expect(style.paddingMode == .balanced)
+        #expect(try !line(command(style).outcome(recipe: file)).contains("--padding-mode"))
+
+        style.paddingMode = .manual
+        let overriding = command(style)
+        #expect(try line(overriding.outcome(recipe: file)).contains("--padding-mode manual"))
+        try inDirectory(directory) { try expectRoundTrip(overriding, recipe: file) }
+    }
+
     @Test func aTerminalCropRoundTripsThroughTheCopiedLine() throws {
         var style = SnapshotConfig(code: "", language: .terminal)
         style.terminalCrop = TerminalCrop(rows: 6...18, columns: 3...3)
