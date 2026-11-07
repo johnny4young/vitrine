@@ -322,6 +322,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("inspector-privacy-footer", in: app), in: app)
 
         // Advanced controls start behind the collapsed Output disclosure.
+        revealInInspector("inspector-disclosure-output", in: app)
         element("inspector-disclosure-output", in: app).click()
         assertExists(element("editor-destination-preset-picker", in: app), in: app, timeout: 3)
         assertExists(element("inspector-resolution-picker", in: app), in: app)
@@ -651,6 +652,7 @@ final class VitrineUITests: XCTestCase {
         let delete = app.buttons["Delete annotation"]
         for fixedCanvas in [false, true] {
             if fixedCanvas {
+                revealInInspector("inspector-disclosure-output", in: app)
                 element("inspector-disclosure-output", in: app).click()
                 let destinations = element("editor-destination-preset-picker", in: app)
                 assertExists(destinations, in: app, timeout: 3)
@@ -2414,6 +2416,7 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
         assertExists(element("inspector-disclosure-output", in: app), in: app, timeout: 8)
+        revealInInspector("inspector-disclosure-output", in: app)
         element("inspector-disclosure-output", in: app).click()
 
         let draft = element("alternative-text-draft-button", in: app)
