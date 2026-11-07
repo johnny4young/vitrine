@@ -23,8 +23,8 @@ extension ExportManager {
     /// preset it applies that preset's presentation (`apply(to:)` writes padding +
     /// background, leaving `code`/`language`/any watermark intact) and renders at the
     /// preset's pinned `fixedSize` and `scale` through the same color-managed
-    /// `encodedPayload` path. So each written file is byte-for-byte what a single
-    /// export with THAT preset selected (at its pinned scale) produces. Files are
+    /// `encodedPayload` path. Without a focal point, each written file is byte-for-byte what a
+    /// single export with THAT preset selected (at its pinned scale) produces. Files are
     /// named `vitrine-<preset id>.<ext>`, with a numeric suffix when any image or
     /// requested sidecar name is occupied. Returns how many were written and how many
     /// presets failed, so the caller can give precise feedback. Only the

@@ -89,11 +89,20 @@ extension ExportManager {
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) -> FocalCrop? {
-        guard let focal = config.focalPoint, let fixedSize, !FocalCrop.isBlocked(for: config)
+        guard config.focalPoint != nil, fixedSize != nil, !FocalCrop.isBlocked(for: config)
         else { return nil }
         let natural = naturalCanvasSize(
             config, backgroundImageStore: backgroundImageStore,
             foregroundImageStore: foregroundImageStore)
+        return focalCrop(config, fixedSize: fixedSize, natural: natural)
+    }
+
+    /// The same crop from a natural size already measured.
+    public static func focalCrop(
+        _ config: SnapshotConfig, fixedSize: CGSize?, natural: CGSize
+    ) -> FocalCrop? {
+        guard let focal = config.focalPoint, let fixedSize, !FocalCrop.isBlocked(for: config)
+        else { return nil }
         return FocalCrop.crop(
             natural: natural, frame: fixedSize, focal: focal,
             wrapsToWidth: !config.usesImageContent)

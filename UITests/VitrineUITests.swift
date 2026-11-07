@@ -1105,13 +1105,19 @@ final class VitrineUITests: XCTestCase {
             XCTWaiter().wait(for: [measured], timeout: 20), .completed,
             "It reads \(String(describing: estimate.value))")
 
-        // A click on a tile sets the focal point every size shares; Clear removes it.
+        // A click on a rendered tile sets the focal point every size shares; Clear removes it.
+        assertExists(element("multi-size-board", in: app), in: app, timeout: 3)
         let clearFocalPoint = element("multi-size-focal-clear", in: app)
         XCTAssertFalse(clearFocalPoint.exists)
         let tile = element("multi-size-tile-linkedin", in: app)
-        assertExists(tile, in: app, timeout: 3)
+        assertExists(tile, in: app, timeout: 20)
         tile.click()
         assertExists(clearFocalPoint, in: app, timeout: 3)
+        let placed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value CONTAINS %@", "across"), object: tile)
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [placed], timeout: 3), .completed,
+            "It reads \(String(describing: tile.value))")
         clearFocalPoint.click()
         XCTAssertTrue(clearFocalPoint.waitForNonExistence(timeout: 3))
 

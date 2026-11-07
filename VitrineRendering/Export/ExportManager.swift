@@ -50,17 +50,31 @@ public enum ExportManager {
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer
     ) throws(RenderBudgetError) -> CGImage {
+        let crop = focalCrop(
+            config, fixedSize: fixedSize, backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore)
+        return try renderCGImageChecked(
+            config, scale: scale, fixedSize: fixedSize, crop: crop, profile: profile,
+            budget: budget, backgroundImageStore: backgroundImageStore,
+            foregroundImageStore: foregroundImageStore)
+    }
+
+    /// Renders through a crop already computed from the content's natural size, so a caller
+    /// that measured it doesn't lay the content out twice.
+    public static func renderCGImageChecked(
+        _ config: SnapshotConfig, scale: CGFloat, fixedSize: CGSize?, crop: FocalCrop?,
+        profile: ColorProfile = .sRGB,
+        budget: RenderBudget = .export,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+    ) throws(RenderBudgetError) -> CGImage {
         let signposter = RenderSignpost.signposter
         let state = signposter.beginInterval(
             RenderSignpost.renderName, "scale=\(Double(scale)) length=\(config.code.count)")
         defer { signposter.endInterval(RenderSignpost.renderName, state) }
 
         let normalizedImage: CGImage
-        if let fixedSize,
-            let crop = focalCrop(
-                config, fixedSize: fixedSize, backgroundImageStore: backgroundImageStore,
-                foregroundImageStore: foregroundImageStore)
-        {
+        if let fixedSize, let crop {
             normalizedImage = try renderCGImageChecked(
                 FocalCroppedCanvas(config: config, frame: fixedSize, crop: crop)
                     .environment(\.backgroundImageStore, backgroundImageStore)

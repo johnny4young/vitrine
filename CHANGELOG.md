@@ -14,10 +14,11 @@ can never drift.
 
 ### Added
 
-- The Export Sizes sheet shows the capture rendered at every platform size at once. Drag on
-  any tile to set a focal point: a size too small for the capture then keeps that part in view
-  instead of cutting off the end of the code. Exports without a focal point are unchanged, and
-  captures with marks or PDF output keep every size centered.
+- The Export Sizes sheet shows the capture rendered at every selected platform size at once.
+  Drag on a selected size, or focus it and use the arrow keys, to set a focal point: a size too
+  small for the capture then keeps that part in view instead of cutting off the end of the code.
+  Exports without a focal point are unchanged, and captures with marks or PDF output keep every
+  size centered. The focal point resets when the capture's content changes.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.

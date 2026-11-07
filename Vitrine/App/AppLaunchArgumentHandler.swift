@@ -131,6 +131,12 @@ import VitrineRendering
                 demo.language = .swift
                 settings.config = demo
             }
+            // A capture taller than the short destinations, for the multi-size focal point.
+            if arguments.contains("--demo-focal-point") {
+                settings.config.code = (1...40).map { "let value\($0) = compute(\($0))" }
+                    .joined(separator: "\n")
+                settings.config.language = .swift
+            }
             if arguments.contains("--demo-html-format") {
                 var demo = settings.config
                 demo.code =

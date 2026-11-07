@@ -1,6 +1,72 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Focal point" : {
+      "comment" : "Multi-size export sheet: accessibility label of a size tile, whose value is the focal point every size keeps in view",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Punto focal"
+          }
+        }
+      }
+    },
+    "%lld%% across, %lld%% down" : {
+      "comment" : "Multi-size export sheet: accessibility value of the focal point, as percentages from the left and top edges",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %% en horizontal, %lld %% en vertical"
+          }
+        }
+      }
+    },
+    "Move focal point up" : {
+      "comment" : "Multi-size export sheet: accessibility action on a size tile",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover el punto focal hacia arriba"
+          }
+        }
+      }
+    },
+    "Move focal point down" : {
+      "comment" : "Multi-size export sheet: accessibility action on a size tile",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover el punto focal hacia abajo"
+          }
+        }
+      }
+    },
+    "Move focal point left" : {
+      "comment" : "Multi-size export sheet: accessibility action on a size tile",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover el punto focal a la izquierda"
+          }
+        }
+      }
+    },
+    "Move focal point right" : {
+      "comment" : "Multi-size export sheet: accessibility action on a size tile",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover el punto focal a la derecha"
+          }
+        }
+      }
+    },
     "Clear focal point" : {
       "comment" : "Multi-size export sheet: button that removes the focal point shared by every size",
       "localizations" : {
@@ -8,39 +74,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quitar punto focal"
-          }
-        }
-      }
-    },
-    "Drag to choose what stays in view." : {
-      "comment" : "Multi-size export sheet: tooltip on a size tile, which sets the focal point a smaller frame keeps in view",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arrastra para elegir qué queda a la vista."
-          }
-        }
-      }
-    },
-    "Marks on the capture keep every size centered." : {
-      "comment" : "Multi-size export sheet: tooltip on a size tile when annotations prevent a focal point",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las marcas de la captura mantienen cada tamaño centrado."
-          }
-        }
-      }
-    },
-    "PDF exports keep every size centered." : {
-      "comment" : "Multi-size export sheet: tooltip on a size tile when the export format is PDF, which ignores the focal point",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Las exportaciones en PDF mantienen cada tamaño centrado."
           }
         }
       }

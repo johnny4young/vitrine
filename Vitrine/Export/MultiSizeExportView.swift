@@ -59,7 +59,7 @@ struct MultiSizeExportView: View {
     @State private var board = EverySizeBoardModel()
     @State private var focalPoint: CGPoint?
     /// The focal point under a drag, shown on every tile before the tiles re-render.
-    @State private var draggedFocalPoint: CGPoint?
+    @GestureState private var draggedFocalPoint: CGPoint?
 
     /// Whether an export is in flight — disables the buttons so the batch can't be
     /// re-triggered or the sheet dismissed mid-write.
@@ -106,6 +106,18 @@ struct MultiSizeExportView: View {
             await board.render(
                 ExportPreset.all.filter { request.selected.contains($0.id) }, for: request.config)
         }
+        // A point chosen on other content would aim at something else.
+        .onChange(of: baseConfig.code) { focalPoint = nil }
+        .onChange(of: baseConfig.foregroundImage) { focalPoint = nil }
+        .onAppear(perform: seedDemoFocalPoint)
+    }
+
+    private func seedDemoFocalPoint() {
+        #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--demo-focal-point") {
+                focalPoint = CGPoint(x: 0.5, y: 0.85)
+            }
+        #endif
     }
 
     /// Marks sit at fixed canvas positions and the PDF path draws every size centered, so
@@ -163,14 +175,11 @@ struct MultiSizeExportView: View {
                     .foregroundStyle(VitrineTokens.Accent.systemText)
                     .accessibilityIdentifier("multi-size-select-none")
                 if focalPoint != nil, acceptsFocalPoint {
-                    Button("Clear focal point") {
-                        focalPoint = nil
-                        draggedFocalPoint = nil
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(VitrineTokens.Accent.systemText)
-                    .disabled(isExporting)
-                    .accessibilityIdentifier("multi-size-focal-clear")
+                    Button("Clear focal point") { focalPoint = nil }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(VitrineTokens.Accent.systemText)
+                        .disabled(isExporting)
+                        .accessibilityIdentifier("multi-size-focal-clear")
                 }
                 Spacer(minLength: 0)
                 sizeEstimate
@@ -213,7 +222,8 @@ struct MultiSizeExportView: View {
         let tile = isSelected ? board.tiles[preset.id] : nil
         let shape = RoundedRectangle(cornerRadius: VitrineTokens.Radius.sm, style: .continuous)
         let scale = size.width / frame.width
-        let canFocus = isSelected && acceptsFocalPoint && tile != nil && !isExporting
+        let canFocus =
+            acceptsFocalPoint && !isExporting && tile?.geometry.acceptsFocalPoint == true
         ZStack(alignment: .topLeading) {
             if let tile {
                 Image(decorative: tile.image, scale: 1)
@@ -222,7 +232,7 @@ struct MultiSizeExportView: View {
             } else {
                 shape.fill(VitrineTokens.Surface.inset)
             }
-            if let tile, let focal = draggedFocalPoint ?? focalPoint, acceptsFocalPoint {
+            if let tile, canFocus, let focal = draggedFocalPoint ?? focalPoint {
                 let point = tile.geometry.point(for: focal)
                 Circle()
                     .fill(VitrineTokens.Accent.base)
@@ -238,29 +248,68 @@ struct MultiSizeExportView: View {
         .contentShape(shape)
         .gesture(
             DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    guard let tile, scale > 0 else { return }
-                    draggedFocalPoint = tile.geometry.focal(
-                        at: CGPoint(x: value.location.x / scale, y: value.location.y / scale))
+                .updating($draggedFocalPoint) { value, state, _ in
+                    state = focal(at: value.location, on: tile, scale: scale)
                 }
-                .onEnded { _ in
-                    focalPoint = draggedFocalPoint ?? focalPoint
-                    draggedFocalPoint = nil
+                .onEnded { value in
+                    if let point = focal(at: value.location, on: tile, scale: scale) {
+                        focalPoint = point
+                    }
                 },
             including: canFocus ? .all : .none
         )
-        .help(focalHelp(isSelected: isSelected))
+        .focusable(canFocus, interactions: .activate)
+        .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow]) { press in
+            guard canFocus else { return .ignored }
+            switch press.key {
+            case .upArrow: nudgeFocalPoint(dx: 0, dy: -1)
+            case .downArrow: nudgeFocalPoint(dx: 0, dy: 1)
+            case .leftArrow: nudgeFocalPoint(dx: -1, dy: 0)
+            default: nudgeFocalPoint(dx: 1, dy: 0)
+            }
+            return .handled
+        }
         .accessibilityElement()
-        .accessibilityLabel(Text(verbatim: preset.displayName))
-        .accessibilityIdentifier("multi-size-tile-\(preset.id)")
+        .accessibilityLabel(Text("Focal point"))
+        .accessibilityValue(focalPointValue)
+        .accessibilityAction(named: Text("Move focal point up")) {
+            if canFocus { nudgeFocalPoint(dx: 0, dy: -1) }
+        }
+        .accessibilityAction(named: Text("Move focal point down")) {
+            if canFocus { nudgeFocalPoint(dx: 0, dy: 1) }
+        }
+        .accessibilityAction(named: Text("Move focal point left")) {
+            if canFocus { nudgeFocalPoint(dx: -1, dy: 0) }
+        }
+        .accessibilityAction(named: Text("Move focal point right")) {
+            if canFocus { nudgeFocalPoint(dx: 1, dy: 0) }
+        }
+        // Set once the tile shows its render, so a test can wait for something to click.
+        .accessibilityIdentifier(
+            tile == nil ? "multi-size-tile-\(preset.id)-pending" : "multi-size-tile-\(preset.id)")
     }
 
-    private func focalHelp(isSelected: Bool) -> Text {
-        if format == .pdf { return Text("PDF exports keep every size centered.") }
-        if FocalCrop.isBlocked(for: baseConfig) {
-            return Text("Marks on the capture keep every size centered.")
+    private func focal(
+        at location: CGPoint, on tile: EverySizeBoardModel.Tile?, scale: CGFloat
+    ) -> CGPoint? {
+        guard let tile, scale > 0 else { return nil }
+        return tile.geometry.focal(at: CGPoint(x: location.x / scale, y: location.y / scale))
+    }
+
+    private var focalPointValue: Text {
+        guard let focalPoint, acceptsFocalPoint else { return Text("None") }
+        let across = Int((focalPoint.x * 100).rounded())
+        let down = Int((focalPoint.y * 100).rounded())
+        return Text("\(across)% across, \(down)% down")
+    }
+
+    /// Steps of a tenth, starting from the center when no point is set yet.
+    private func nudgeFocalPoint(dx: CGFloat, dy: CGFloat) {
+        let current = focalPoint ?? CGPoint(x: 0.5, y: 0.5)
+        func step(_ value: CGFloat, _ delta: CGFloat) -> CGFloat {
+            min(max(((value + delta / 10) * 10).rounded() / 10, 0), 1)
         }
-        return isSelected ? Text("Drag to choose what stays in view.") : Text(verbatim: "")
+        focalPoint = CGPoint(x: step(current.x, dx), y: step(current.y, dy))
     }
 
     /// Shares the row with the selection buttons, so its arrival never resizes the sheet.

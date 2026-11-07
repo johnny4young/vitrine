@@ -5,8 +5,8 @@ import VitrineRendering
 
 /// The multi-size sheet's tiles: each selected preset rendered as its export would be.
 /// Renders run on the main actor like the export, one preset per turn after a quiet window,
-/// and stop at the next preset once their task is cancelled. A tile is kept until its input
-/// changes, and shown until its replacement is ready.
+/// and stop at the next preset once their task is cancelled. A tile is redrawn only when its
+/// content or its crop changes, so moving the focal point skips every size it doesn't reframe.
 @Observable
 final class EverySizeBoardModel {
     struct Tile: Equatable {
@@ -14,39 +14,69 @@ final class EverySizeBoardModel {
         var geometry: FocalTileGeometry
     }
 
-    /// Render cost grows with the document, so a long one shows sizes without pictures.
-    static let maximumRenderedBytes = 16 * 1024
+    struct Renderer {
+        /// The content with its padding at its ideal size.
+        var measure: (SnapshotConfig) -> CGSize
+        var draw: (SnapshotConfig, ExportPreset, FocalCrop?) -> CGImage?
+    }
+
+    /// A tile at this size takes about 60 ms in a Debug build, 75 ms with a crop; at 4 KB it is
+    /// 170–250 ms, long enough to stall the sheet on every release of a drag.
+    static let maximumRenderedBytes = 2 * 1024
     static let tilePixels: CGFloat = 320
 
     private(set) var tiles: [String: Tile] = [:]
 
-    @ObservationIgnored private var renderedInputs: [String: SnapshotConfig] = [:]
+    private struct Key: Equatable {
+        var content: SnapshotConfig
+        var crop: FocalCrop?
+    }
+
+    @ObservationIgnored private var naturals: [String: (content: SnapshotConfig, size: CGSize)] =
+        [:]
+    @ObservationIgnored private var renderedKeys: [String: Key] = [:]
     @ObservationIgnored private var currentRun = 0
     @ObservationIgnored private let debounce: Duration
-    @ObservationIgnored private let renderTile: (ExportPreset, SnapshotConfig) -> Tile?
+    @ObservationIgnored private let renderer: Renderer
 
-    init(
-        debounce: Duration = .milliseconds(150),
-        renderTile: @escaping (ExportPreset, SnapshotConfig) -> Tile? = { preset, config in
-            EverySizeBoardModel.tile(preset, config)
-        }
-    ) {
+    init(debounce: Duration = .milliseconds(150), renderer: Renderer = .live) {
         self.debounce = debounce
-        self.renderTile = renderTile
+        self.renderer = renderer
     }
 
     func render(_ presets: [ExportPreset], for config: SnapshotConfig) async {
         currentRun += 1
         let run = currentRun
         guard config.code.utf8.count <= Self.maximumRenderedBytes else { return }
-        let missing = presets.filter { renderedInputs[$0.id] != config }
-        guard !missing.isEmpty else { return }
         try? await Task.sleep(for: debounce)
-        for preset in missing {
+        for preset in presets {
             guard !Task.isCancelled, run == currentRun else { return }
-            if let tile = renderTile(preset, config) {
-                tiles[preset.id] = tile
-                renderedInputs[preset.id] = config
+            var content = config
+            content.focalPoint = nil
+            preset.apply(to: &content)
+            let natural: CGSize
+            if let cached = naturals[preset.id], cached.content == content {
+                natural = cached.size
+            } else {
+                natural = renderer.measure(content)
+                naturals[preset.id] = (content, natural)
+            }
+            var focused = content
+            focused.focalPoint = config.focalPoint
+            let fixedSize = preset.sizing.fixedSize
+            let crop = ExportManager.focalCrop(focused, fixedSize: fixedSize, natural: natural)
+            let key = Key(content: content, crop: crop)
+            guard renderedKeys[preset.id] != key else { continue }
+            if let image = renderer.draw(focused, preset, crop) {
+                tiles[preset.id] = Tile(
+                    image: image,
+                    geometry: FocalTileGeometry(
+                        frame: fixedSize ?? natural, natural: natural, crop: crop,
+                        wrapsToWidth: !content.usesImageContent))
+                renderedKeys[preset.id] = key
+            } else {
+                tiles[preset.id] = nil
+                renderedKeys[preset.id] = nil
             }
             await Task.yield()
         }
@@ -55,27 +85,19 @@ final class EverySizeBoardModel {
     func stop() {
         currentRun += 1
     }
+}
 
-    static func tile(_ preset: ExportPreset, _ base: SnapshotConfig) -> Tile? {
-        var config = base
-        preset.apply(to: &config)
-        let natural = ExportManager.naturalCanvasSize(config)
-        let frame = preset.sizing.fixedSize ?? natural
-        guard frame.width > 0, frame.height > 0,
-            let image = try? ExportManager.renderCGImageChecked(
-                config, scale: tilePixels / max(frame.width, frame.height),
-                fixedSize: preset.sizing.fixedSize, budget: .preview)
-        else { return nil }
-        let crop = config.focalPoint.flatMap { focal in
-            FocalCrop.isBlocked(for: config)
-                ? nil
-                : FocalCrop.crop(
-                    natural: natural, frame: frame, focal: focal,
-                    wrapsToWidth: !config.usesImageContent)
-        }
-        return Tile(
-            image: image, geometry: FocalTileGeometry(frame: frame, natural: natural, crop: crop))
-    }
+extension EverySizeBoardModel.Renderer {
+    static let live = EverySizeBoardModel.Renderer(
+        measure: { ExportManager.naturalCanvasSize($0) },
+        draw: { config, preset, crop in
+            guard let frame = preset.sizing.fixedSize, frame.width > 0, frame.height > 0 else {
+                return nil
+            }
+            return try? ExportManager.renderCGImageChecked(
+                config, scale: EverySizeBoardModel.tilePixels / max(frame.width, frame.height),
+                fixedSize: frame, crop: crop, budget: .preview)
+        })
 }
 
 /// Maps between a tile's frame and the focal point, normalized over the content and its
@@ -84,6 +106,12 @@ struct FocalTileGeometry: Equatable {
     var frame: CGSize
     var natural: CGSize
     var crop: FocalCrop?
+    var wrapsToWidth = true
+
+    /// Code wider than its frame wraps, so the tile doesn't show the layout the point maps to.
+    var acceptsFocalPoint: Bool {
+        crop != nil || !wrapsToWidth || natural.width.rounded(.up) <= frame.width
+    }
 
     private var contentOrigin: CGPoint {
         let canvas = crop?.canvasSize ?? frame

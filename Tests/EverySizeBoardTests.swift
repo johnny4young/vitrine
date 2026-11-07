@@ -172,85 +172,142 @@ struct EverySizeBoardTests {
                 == png(focused, preset))
     }
 
-    @Test func boardTilesUseTheExportCrop() throws {
+    @Test func boardTilesUseTheExportCrop() async throws {
         var focused = config(lines: 60)
         focused.focalPoint = CGPoint(x: 0.5, y: 1)
-        let tile = try #require(EverySizeBoardModel.tile(.linkedIn, focused))
+        let model = EverySizeBoardModel(debounce: .zero)
+        await model.render([.linkedIn], for: focused)
+        let tile = try #require(model.tiles["linkedin"])
         let crop = try #require(tile.geometry.crop)
         #expect(crop.origin.y > 0)
         #expect(tile.geometry.frame == CGSize(width: 1200, height: 628))
         #expect(abs(tile.image.width - Int(EverySizeBoardModel.tilePixels)) <= 1)
     }
 
+    @Test func codeWrappedByItsFrameTakesNoFocalPoint() async throws {
+        var wide = SnapshotConfig()
+        wide.code = String(repeating: "let wide = 1; ", count: 12)
+        wide.focalPoint = CGPoint(x: 0.9, y: 0.5)
+        let model = EverySizeBoardModel(debounce: .zero)
+        await model.render([.instagramStory, .keynote], for: wide)
+
+        let story = try #require(model.tiles["instagram-story"]).geometry
+        #expect(story.natural.width > story.frame.width)
+        #expect(story.crop == nil)
+        #expect(!story.acceptsFocalPoint)
+        #expect(try #require(model.tiles["keynote"]).geometry.acceptsFocalPoint)
+    }
+
+    @Test func anImageWiderThanItsFrameStillTakesAFocalPoint() {
+        let geometry = FocalTileGeometry(
+            frame: CGSize(width: 1080, height: 1920), natural: CGSize(width: 1300, height: 700),
+            wrapsToWidth: false)
+        #expect(geometry.acceptsFocalPoint)
+    }
+
     // MARK: - Board model
 
-    private func stubTile() -> EverySizeBoardModel.Tile? {
-        let context = CGContext(
+    private static func stubImage() -> CGImage? {
+        CGContext(
             data: nil, width: 2, height: 2, bitsPerComponent: 8, bytesPerRow: 0,
             space: CGColorSpace(name: CGColorSpace.sRGB)!,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
-        guard let image = context?.makeImage() else { return nil }
-        return .init(
-            image: image,
-            geometry: FocalTileGeometry(frame: CGSize(width: 2, height: 2), natural: .zero))
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?.makeImage()
+    }
+
+    /// Content 600 pt tall, so a 1200 × 628 frame reframes and a 1080 × 1920 one does not.
+    private func renderer(
+        measured: @escaping () -> Void = {},
+        drawn: @escaping (ExportPreset) -> CGImage? = { _ in stubImage() }
+    ) -> EverySizeBoardModel.Renderer {
+        EverySizeBoardModel.Renderer(
+            measure: { _ in
+                measured()
+                return CGSize(width: 600, height: 900)
+            },
+            draw: { _, preset, _ in drawn(preset) })
     }
 
     @Test func tilesRenderOncePerInput() async {
-        var rendered: [String] = []
-        let model = EverySizeBoardModel(debounce: .zero) { preset, _ in
-            rendered.append(preset.id)
-            return stubTile()
-        }
-        let presets = [ExportPreset.twitter, .linkedIn]
+        var drawn: [String] = []
+        var measured = 0
+        let model = EverySizeBoardModel(
+            debounce: .zero,
+            renderer: renderer(
+                measured: { measured += 1 },
+                drawn: { preset in
+                    drawn.append(preset.id)
+                    return Self.stubImage()
+                }))
+        let presets = [ExportPreset.linkedIn, .instagramStory]
         let base = config(lines: 2)
 
         await model.render(presets, for: base)
         await model.render(presets, for: base)
-        #expect(rendered == ["twitter", "linkedin"])
-        #expect(Set(model.tiles.keys) == ["twitter", "linkedin"])
+        #expect(drawn == ["linkedin", "instagram-story"])
+        #expect(Set(model.tiles.keys) == ["linkedin", "instagram-story"])
 
+        // Only the size the point reframes is drawn again, and nothing is measured twice.
         var moved = base
         moved.focalPoint = CGPoint(x: 0.5, y: 0.2)
-        await model.render([.twitter], for: moved)
-        #expect(rendered == ["twitter", "linkedin", "twitter"])
+        await model.render(presets, for: moved)
+        #expect(drawn == ["linkedin", "instagram-story", "linkedin"])
+        #expect(measured == 2)
+    }
+
+    @Test func aFailedRenderRemovesTheStaleTile() async {
+        var fails = false
+        let model = EverySizeBoardModel(
+            debounce: .zero, renderer: renderer(drawn: { _ in fails ? nil : Self.stubImage() }))
+        await model.render([.linkedIn], for: config(lines: 2))
+        #expect(model.tiles["linkedin"] != nil)
+
+        fails = true
+        await model.render([.linkedIn], for: config(lines: 3))
+        #expect(model.tiles["linkedin"] == nil)
     }
 
     @Test func closingTheBoardStopsAtTheNextTile() async {
-        var rendered = 0
+        var drawn = 0
         var task: Task<Void, Never>?
-        let model = EverySizeBoardModel(debounce: .zero) { _, _ in
-            rendered += 1
-            task?.cancel()
-            return stubTile()
-        }
+        let model = EverySizeBoardModel(
+            debounce: .zero,
+            renderer: renderer(drawn: { _ in
+                drawn += 1
+                task?.cancel()
+                return Self.stubImage()
+            }))
         let base = config(lines: 2)
         task = Task { await model.render(ExportPreset.all, for: base) }
         await task?.value
-        #expect(rendered == 1)
+        #expect(drawn == 1)
     }
 
     @Test func aStoppedRunRendersNothingMore() async {
-        var rendered = 0
+        var drawn = 0
         var model: EverySizeBoardModel?
-        model = EverySizeBoardModel(debounce: .zero) { _, _ in
-            rendered += 1
-            model?.stop()
-            return stubTile()
-        }
+        model = EverySizeBoardModel(
+            debounce: .zero,
+            renderer: renderer(drawn: { _ in
+                drawn += 1
+                model?.stop()
+                return Self.stubImage()
+            }))
         await model?.render(ExportPreset.all, for: config(lines: 2))
-        #expect(rendered == 1)
+        #expect(drawn == 1)
     }
 
     @Test func aLongDocumentShowsSizesWithoutPictures() async {
-        var rendered = 0
-        let model = EverySizeBoardModel(debounce: .zero) { _, _ in
-            rendered += 1
-            return stubTile()
-        }
+        var drawn = 0
+        let model = EverySizeBoardModel(
+            debounce: .zero,
+            renderer: renderer(drawn: { _ in
+                drawn += 1
+                return Self.stubImage()
+            }))
         var long = SnapshotConfig()
         long.code = String(repeating: "x", count: EverySizeBoardModel.maximumRenderedBytes + 1)
         await model.render(ExportPreset.all, for: long)
-        #expect(rendered == 0)
+        #expect(drawn == 0)
         #expect(model.tiles.isEmpty)
     }
 }
