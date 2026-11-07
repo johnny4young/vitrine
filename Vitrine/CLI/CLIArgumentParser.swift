@@ -24,6 +24,7 @@ struct CLIArgumentParser {
     var fontLigatures: Bool?
     var fontSize: Double?
     var padding: Double?
+    var paddingMode: PaddingMode?
     var cornerRadius: Double?
     var shadowRadius: Double?
     var terminalColumns: Int?
@@ -73,6 +74,7 @@ struct CLIArgumentParser {
     var diffDecorations: Bool?
     var showDiffStats: Bool?
     var diffContextLines: Int?
+    var diffView: DiffViewMode?
     var recursiveBatch = false
     var failOnSkipped = false
     var failOnEmpty = false
@@ -197,6 +199,8 @@ struct CLIArgumentParser {
             fontSize = try resolveFontSize(value, flag: token)
         case .padding:
             padding = try resolvePadding(value, flag: token)
+        case .paddingMode:
+            paddingMode = try resolvePaddingMode(value, flag: token)
         case .cornerRadius:
             cornerRadius = try resolveCornerRadius(value, flag: token)
         case .shadowRadius:
@@ -346,6 +350,8 @@ struct CLIArgumentParser {
             showDiffStats = token == "--diff-stats"
         case .diffContext:
             diffContextLines = try resolveDiffContextLines(value, flag: token)
+        case .diffView:
+            diffView = try resolveDiffView(value, flag: token)
         case .recursive:
             recursiveBatch = true
         case .failOnSkipped:

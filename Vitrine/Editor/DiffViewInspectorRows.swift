@@ -2,13 +2,27 @@ import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
-/// The inspector rows that shape a diff: its stats header and how much context it keeps.
-/// Shown only for content that reads as a diff.
+/// The inspector rows that shape a diff: its layout, stats header and how much context it
+/// keeps. Shown only for content that reads as a diff.
 struct DiffViewInspectorRows: View {
     @Bindable var settings: AppSettings
 
     var body: some View {
         if settings.style.diffOptionsApply {
+            InspectorRow(label: Text("Layout")) {
+                TokenSegmentedPicker(
+                    options: [
+                        (DiffViewMode.unified, Text("Unified")),
+                        (DiffViewMode.split, Text("Split")),
+                    ],
+                    selection: settings.diffViewSelection,
+                    optionIdentifiers: ["diff-view-unified", "diff-view-split"]
+                )
+                .disabled(settings.style.diffLayoutIsLocked)
+                .opacity(settings.style.diffLayoutIsLocked ? 0.5 : 1)
+                .accessibilityLabel("Layout")
+                .accessibilityIdentifier("diff-view-picker")
+            }
             InspectorRow(label: Text("Stats header")) {
                 Toggle("Stats header", isOn: settings.diffStatsEnabled)
                     .toggleStyle(.switch)

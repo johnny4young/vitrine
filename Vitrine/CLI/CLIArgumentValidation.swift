@@ -228,7 +228,7 @@ extension CLIArgumentParser {
             recipe != nil || stylePresetID != nil || canvasSize != nil || background != nil
             || backgroundImagePath != nil || transparent || fontName != nil
             || fontLigatures != nil
-            || fontSize != nil || padding != nil
+            || fontSize != nil || padding != nil || paddingMode != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
             || watermarkContentRequested
@@ -236,7 +236,7 @@ extension CLIArgumentParser {
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
-            || showDiffStats != nil || diffContextLines != nil
+            || showDiffStats != nil || diffContextLines != nil || diffView != nil
 
         // A blur box is placed on the whole canvas, so a crop would slide content out from under it.
         if terminalCrop != nil, !annotations.blurBoxes.points.isEmpty {
@@ -261,7 +261,7 @@ extension CLIArgumentParser {
                 || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
                 || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
-                || showDiffStats != nil || diffContextLines != nil
+                || showDiffStats != nil || diffContextLines != nil || diffView != nil
                 || textSidecar || markdownSidecar || htmlSidecar || sourceLines != nil
             if codeOnlyOptionsRequested {
                 throw CLIError.incompatibleOptions(
@@ -391,6 +391,11 @@ extension CLIArgumentParser {
             resolvedOutput = outputPath
         }
 
+        if paddingMode == .balanced, !annotations.blurBoxes.points.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --padding-mode balanced with --blur-box.")
+        }
+
         let resolvedFormat = try resolveFormat(
             explicitFormat, fallback: recipe?.output.format, command: mode,
             outputPath: resolvedOutput)
@@ -428,6 +433,7 @@ extension CLIArgumentParser {
             fontLigatures: fontLigatures,
             fontSize: fontSize,
             padding: padding,
+            paddingMode: paddingMode,
             cornerRadius: cornerRadius,
             shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,
@@ -487,6 +493,7 @@ extension CLIArgumentParser {
             diffDecorations: diffDecorations,
             showDiffStats: showDiffStats,
             diffContextLines: diffContextLines,
+            diffView: diffView,
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             failOnEmpty: failOnEmpty,

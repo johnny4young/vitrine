@@ -1203,7 +1203,10 @@ CI's Tahoe build runs strict comparisons with the Xcode build recorded in the
 golden manifest, selected for that step only; every other step uses the latest
 stable Xcode. A missing Xcode build fails the lane and records review candidates on
 the default Xcode. The runner OS image can still change: that is a qualification
-failure requiring baseline review, not permission to skip pixels. Ordinary unit tests run render smoke;
+failure requiring baseline review, not permission to skip pixels. When a review shows the
+recorded renders are pixel-identical on another image (for example while GitHub rolls
+an image out), the manifest may list it under `qualifiedImages`; strict comparisons
+then run on either image. Ordinary unit tests run render smoke;
 `make test-goldens GOLDEN_MODE=smoke` requests that contract explicitly. Smoke is not
 visual regression certification. Result bundles and logs identify each comparison.
 
