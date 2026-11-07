@@ -112,6 +112,7 @@ struct EditorWindowState: Codable, Equatable {
     var fontSize: Double
     var fontLigatures: Bool
     var padding: Double
+    var paddingMode: PaddingMode?
     var cornerRadius: Double
     var shadowRadius: Double
     var showChrome: Bool
@@ -129,8 +130,12 @@ struct EditorWindowState: Codable, Equatable {
     var wrapColumns: Int?
     var terminalPalette: TerminalPaletteMode?
     var terminalCursor: TerminalCursorStyle?
+    var terminalCrop: TerminalCrop?
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
+    var showDiffStats: Bool
+    var diffContextLines: Int?
+    var diffView: DiffViewMode?
     var annotations: [Annotation]
     /// The window's destination and per-capture output, absent in older archives.
     var destinationID: String?
@@ -149,6 +154,7 @@ struct EditorWindowState: Codable, Equatable {
         fontSize = config.fontSize
         fontLigatures = config.fontLigatures
         padding = config.padding
+        paddingMode = config.paddingMode == .manual ? nil : config.paddingMode
         cornerRadius = config.cornerRadius
         shadowRadius = config.shadowRadius
         showChrome = config.showChrome
@@ -166,8 +172,12 @@ struct EditorWindowState: Codable, Equatable {
         wrapColumns = config.wrapColumns
         terminalPalette = config.terminalPalette
         terminalCursor = config.terminalCursor
+        terminalCrop = config.terminalCrop.isEmpty ? nil : config.terminalCrop
         focusHighlightedLines = config.focusHighlightedLines
         diffDecorations = config.diffDecorations
+        showDiffStats = config.showDiffStats
+        diffContextLines = config.diffContextLines
+        diffView = config.diffView
         annotations = config.annotations
     }
 
@@ -211,6 +221,7 @@ struct EditorWindowState: Codable, Equatable {
         config.fontSize = SettingsDefaults.clampFontSize(fontSize)
         config.fontLigatures = fontLigatures
         config.padding = SettingsDefaults.clampPadding(padding)
+        config.paddingMode = paddingMode ?? .manual
         config.cornerRadius = SettingsDefaults.clampCornerRadius(cornerRadius)
         config.shadowRadius = SettingsDefaults.clampShadowRadius(shadowRadius)
         config.showChrome = showChrome
@@ -230,19 +241,24 @@ struct EditorWindowState: Codable, Equatable {
         config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
         config.terminalPalette = terminalPalette ?? .theme
         config.terminalCursor = terminalCursor ?? .hidden
+        config.terminalCrop = terminalCrop ?? TerminalCrop()
         config.focusHighlightedLines = focusHighlightedLines
         config.diffDecorations = diffDecorations
+        config.showDiffStats = showDiffStats
+        config.diffContextLines = diffContextLines.map(SettingsDefaults.clampDiffContextLines)
+        config.diffView = diffView ?? .unified
         config.annotations = annotations
         return config
     }
 
     private enum CodingKeys: String, CodingKey {
         case code, languageID, themeID, fontName, fontSize, fontLigatures
-        case padding, cornerRadius, shadowRadius, showChrome, showShadow
+        case padding, paddingMode, cornerRadius, shadowRadius, showChrome, showShadow
         case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
-        case terminalPalette, terminalCursor
+        case showDiffStats, diffContextLines, diffView
+        case terminalPalette, terminalCursor, terminalCrop
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
 
@@ -261,6 +277,7 @@ struct EditorWindowState: Codable, Equatable {
         fontLigatures =
             (try? container.decode(Bool.self, forKey: .fontLigatures)) ?? fallback.fontLigatures
         padding = (try? container.decode(Double.self, forKey: .padding)) ?? fallback.padding
+        paddingMode = try? container.decodeIfPresent(PaddingMode.self, forKey: .paddingMode)
         cornerRadius =
             (try? container.decode(Double.self, forKey: .cornerRadius)) ?? fallback.cornerRadius
         shadowRadius =
@@ -297,11 +314,16 @@ struct EditorWindowState: Codable, Equatable {
             TerminalPaletteMode.self, forKey: .terminalPalette)
         terminalCursor = try? container.decodeIfPresent(
             TerminalCursorStyle.self, forKey: .terminalCursor)
+        terminalCrop = try? container.decodeIfPresent(TerminalCrop.self, forKey: .terminalCrop)
         focusHighlightedLines =
             (try? container.decode(Bool.self, forKey: .focusHighlightedLines))
             ?? fallback.focusHighlightedLines
         diffDecorations =
             (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? fallback.diffDecorations
+        showDiffStats =
+            (try? container.decode(Bool.self, forKey: .showDiffStats)) ?? fallback.showDiffStats
+        diffContextLines = try? container.decodeIfPresent(Int.self, forKey: .diffContextLines)
+        diffView = try? container.decodeIfPresent(DiffViewMode.self, forKey: .diffView)
         annotations =
             (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
             .compactMap(\.value) ?? fallback.annotations

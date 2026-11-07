@@ -32,6 +32,20 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolveDiffContextLines(_ raw: String, flag: String) throws -> Int {
+        guard let value = Int(raw), SettingsDefaults.diffContextLinesRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    func resolveDiffView(_ raw: String, flag: String) throws -> DiffViewMode {
+        guard let value = DiffViewMode(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     func containsControlCharacter(_ value: String) -> Bool {
         value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }
@@ -357,6 +371,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolvePaddingMode(_ raw: String, flag: String) throws -> PaddingMode {
+        guard let value = PaddingMode(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     /// Parses and range-checks the code-card corner radius in points.
     func resolveCornerRadius(_ raw: String, flag: String) throws -> Double {
         guard let value = Double(raw), SettingsDefaults.cornerRadiusRange.contains(value) else {
@@ -436,6 +457,19 @@ extension CLIArgumentParser {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return value
+    }
+
+    /// One `first-last` span of the final screen's rows or columns.
+    func resolveCropRange(_ raw: String, flag: String) throws -> ClosedRange<Int> {
+        guard let span = TerminalCrop.span(raw) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return span
+    }
+
+    var terminalCrop: TerminalCrop? {
+        terminalCropRows == nil && terminalCropColumns == nil
+            ? nil : TerminalCrop(rows: terminalCropRows, columns: terminalCropColumns)
     }
 
     func resolveTerminalCursor(_ raw: String, flag: String) throws -> TerminalCursorStyle {

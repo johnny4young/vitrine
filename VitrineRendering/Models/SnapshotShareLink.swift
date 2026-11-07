@@ -31,7 +31,12 @@ public struct SharedSnapshot: Codable, Equatable {
     var highlightedLineRanges: [ClosedRange<Int>]
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
+    var showDiffStats: Bool
+    var diffContextLines: Int?
+    /// Absent for unified, so links without a split layout encode as they did before.
+    var diffView: DiffViewMode?
     var terminalColumns: Int?
+    var terminalCrop: TerminalCrop?
 
     private static let maxAnnotations = 256
     private static let maxAnnotationTextLength = 4_096
@@ -45,11 +50,18 @@ public struct SharedSnapshot: Codable, Equatable {
     /// is a local file, not shareable text.
     public init(capturing config: SnapshotConfig) {
         self.version = Self.schemaVersion
-        self.code = config.richClipboardText
+        // A cropped link holds only the kept cells. Blank rows above keep their numbers when a
+        // gutter or highlight shows them.
+        let crop = config.activeTerminalCrop
+        let kept = config.richClipboardText
+        let numbered = config.showLineNumbers || !config.highlightedLineRanges.isEmpty
+        let rows = numbered && !kept.isEmpty ? crop.rows : nil
+        self.code = String(repeating: "\n", count: rows.map { $0.lowerBound - 1 } ?? 0) + kept
+        self.terminalCrop = rows.map { TerminalCrop(rows: $0) }
         self.languageID = config.language.rawValue
         var style = StyleSnapshot(capturing: config)
         // A redacted link holds only the final screen, which no longer says where the cursor was.
-        if !config.redactedLineRanges.isEmpty { style.terminalCursor = nil }
+        if !config.redactedLineRanges.isEmpty || !crop.isEmpty { style.terminalCursor = nil }
         self.style = style
         self.annotations = Self.sanitizedAnnotations(config.annotationsWithSafeLegendLabels)
         self.windowTitle = config.windowTitle
@@ -60,6 +72,9 @@ public struct SharedSnapshot: Codable, Equatable {
             config.highlightedLineRanges, lineCount: Self.lineCount(in: code))
         self.focusHighlightedLines = config.focusHighlightedLines
         self.diffDecorations = config.diffDecorations
+        self.showDiffStats = config.showDiffStats
+        self.diffContextLines = config.diffContextLines.map(SettingsDefaults.clampDiffContextLines)
+        self.diffView = config.diffView == .unified ? nil : config.diffView
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -79,13 +94,18 @@ public struct SharedSnapshot: Codable, Equatable {
         config.highlightedLineRanges = highlightedLineRanges
         config.focusHighlightedLines = focusHighlightedLines
         config.diffDecorations = diffDecorations
+        config.showDiffStats = showDiffStats
+        config.diffContextLines = diffContextLines
+        config.diffView = diffView ?? .unified
         config.terminalColumns = terminalColumns
+        config.terminalCrop = terminalCrop ?? TerminalCrop()
     }
 
     private enum CodingKeys: String, CodingKey {
         case version, code, languageID, style, annotations, windowTitle, metadata
         case shadowRadius, highlightedLineRanges, focusHighlightedLines, diffDecorations
-        case terminalColumns, altText
+        case terminalColumns, altText, terminalCrop, showDiffStats, diffContextLines
+        case diffView
     }
 
     public init(from decoder: Decoder) throws {
@@ -113,10 +133,16 @@ public struct SharedSnapshot: Codable, Equatable {
             (try? container.decode(Bool.self, forKey: .focusHighlightedLines)) ?? false
         diffDecorations =
             (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? false
+        showDiffStats = (try? container.decode(Bool.self, forKey: .showDiffStats)) ?? false
+        diffContextLines =
+            (try? container.decode(Int.self, forKey: .diffContextLines))
+            .map(SettingsDefaults.clampDiffContextLines)
+        diffView = try? container.decode(DiffViewMode.self, forKey: .diffView)
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)
             }
+        terminalCrop = try? container.decodeIfPresent(TerminalCrop.self, forKey: .terminalCrop)
     }
 
     private static func sanitizedAnnotations(_ annotations: [Annotation]) -> [Annotation] {

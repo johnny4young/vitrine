@@ -97,6 +97,28 @@ struct TransparencyGrid: View {
     }
 }
 
+/// The swatch that derives a background from the capture.
+struct MagicBackgroundSwatch: View {
+    let isSelected: Bool
+    var size: CGFloat = 26
+    let action: () -> Void
+
+    var body: some View {
+        FillSwatch(title: Text("Magic"), isSelected: isSelected, size: size, action: action) {
+            AngularGradient(
+                colors: GradientPreset.allCases.flatMap { $0.stopColors.map(\.color) },
+                center: .center
+            )
+            .overlay(
+                Image(systemName: "wand.and.sparkles")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .shadow(radius: 1)
+            )
+        }
+    }
+}
+
 /// The dashed "+" swatch that leads to the custom background kinds.
 struct CustomBackgroundSwatch: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

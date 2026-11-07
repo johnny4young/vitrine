@@ -767,4 +767,45 @@ extension AppSettings {
             set: { self.style.wrapColumns = SettingsDefaults.clampWrapColumns(Int($0)) }
         )
     }
+
+    var diffStatsEnabled: Binding<Bool> {
+        Binding(
+            get: { self.style.showDiffStats },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
+                self.style.showDiffStats = value
+            }
+        )
+    }
+
+    var diffViewSelection: Binding<DiffViewMode> {
+        Binding(
+            get: { self.style.diffView },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
+                self.style.diffView = value
+            }
+        )
+    }
+
+    /// The context-lines slider's stops: each count, then one past the range for "All".
+    static var diffContextSliderRange: ClosedRange<Double> {
+        let range = SettingsDefaults.diffContextLinesRange
+        return Double(range.lowerBound)...Double(range.upperBound + 1)
+    }
+
+    var diffContextSliderValue: Binding<Double> {
+        Binding(
+            get: {
+                self.style.diffContextLines.map(Double.init)
+                    ?? Self.diffContextSliderRange.upperBound
+            },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
+                let lines = Int(value.rounded())
+                self.style.diffContextLines =
+                    SettingsDefaults.diffContextLinesRange.contains(lines) ? lines : nil
+            }
+        )
+    }
 }

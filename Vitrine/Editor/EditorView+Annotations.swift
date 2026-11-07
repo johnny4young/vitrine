@@ -147,6 +147,17 @@ extension EditorView {
         return true
     }
 
+    /// Arrows nudge and Delete removes the selected mark, from the stage or its toolbar.
+    func markKeyPress(_ press: KeyPress) -> KeyPress.Result {
+        let handled =
+            press.key == .delete || press.key == .deleteForward
+            ? deleteSelection()
+            : nudgeSelection(
+                press.key, shift: press.modifiers.contains(.shift),
+                isRepeat: press.phase == .repeat)
+        return handled ? .handled : .ignored
+    }
+
     /// Escape drops the selection and returns to the Select tool.
     func clearAnnotationSelection() {
         selectedAnnotationID = nil

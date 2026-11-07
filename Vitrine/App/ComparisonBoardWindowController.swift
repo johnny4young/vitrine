@@ -44,10 +44,27 @@ final class ComparisonBoardWindowController: NSObject, NSWindowDelegate {
             presentation: presentation)
     }
 
+    func makeVariantDraft(of capture: Capture) throws -> ComparisonBoardDraft {
+        let recents = environment.recents
+        return try ComparisonBoardDraft(
+            variantsOf: recents.document(for: capture, over: environment.appSettings.exportConfig),
+            themes: ComparisonBoardDraft.variantThemes(startingWith: recents.theme(for: capture)),
+            profile: environment.appSettings.export.colorProfile,
+            renderScale: CGFloat(environment.appSettings.export.scale))
+    }
+
     func show(captures: [Capture]) {
+        present { try makeDraft(captures: captures) }
+    }
+
+    func showThemeVariants(of capture: Capture) {
+        present { try makeVariantDraft(of: capture) }
+    }
+
+    private func present(_ makeDraft: () throws -> ComparisonBoardDraft) {
         let draft: ComparisonBoardDraft
         do {
-            draft = try makeDraft(captures: captures)
+            draft = try makeDraft()
         } catch ComparisonBoardDraft.CreationError.renderFailure(_, let error) {
             feedback(ExportFeedback.renderFailure(error))
             return

@@ -208,7 +208,7 @@ extension CLIArgumentParser {
             recipe != nil || stylePresetID != nil || canvasSize != nil || background != nil
             || backgroundImagePath != nil || transparent || fontName != nil
             || fontLigatures != nil
-            || fontSize != nil || padding != nil
+            || fontSize != nil || padding != nil || paddingMode != nil
             || cornerRadius != nil || shadowRadius != nil || wrapColumns != nil
             || formatCode
             || watermarkContentRequested
@@ -216,6 +216,13 @@ extension CLIArgumentParser {
             || showLineNumbers != nil || showChrome != nil || showShadow != nil
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
+            || showDiffStats != nil || diffContextLines != nil || diffView != nil
+
+        // A blur box is placed on the whole canvas, so a crop would slide content out from under it.
+        if terminalCrop != nil, !annotations.blurBoxes.points.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --blur-box with --terminal-crop-rows or --terminal-crop-columns.")
+        }
 
         if imageInputPath != nil {
             if recipe != nil {
@@ -229,11 +236,12 @@ extension CLIArgumentParser {
             let codeOnlyOptionsRequested =
                 themeID != nil || languageID != nil || fontName != nil || fontLigatures != nil
                 || fontSize != nil || terminalColumns != nil || wrapColumns != nil || formatCode
-                || terminalPalette != nil || terminalCursor != nil
+                || terminalPalette != nil || terminalCursor != nil || terminalCrop != nil
                 || metadataFilename != nil || metadataTitle != nil
                 || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
                 || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
+                || showDiffStats != nil || diffContextLines != nil || diffView != nil
                 || textSidecar || markdownSidecar || htmlSidecar
             if codeOnlyOptionsRequested {
                 throw CLIError.incompatibleOptions(
@@ -291,6 +299,10 @@ extension CLIArgumentParser {
             if terminalCursor != nil {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --terminal-cursor.")
+            }
+            if terminalCrop != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with --terminal-crop-rows or --terminal-crop-columns.")
             }
             if styleOptionsRequested || themeID != nil {
                 throw CLIError.incompatibleOptions(
@@ -359,6 +371,11 @@ extension CLIArgumentParser {
             resolvedOutput = outputPath
         }
 
+        if paddingMode == .balanced, !annotations.blurBoxes.points.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --padding-mode balanced with --blur-box.")
+        }
+
         let resolvedFormat = try resolveFormat(
             explicitFormat, fallback: recipe?.output.format, command: mode,
             outputPath: resolvedOutput)
@@ -396,11 +413,13 @@ extension CLIArgumentParser {
             fontLigatures: fontLigatures,
             fontSize: fontSize,
             padding: padding,
+            paddingMode: paddingMode,
             cornerRadius: cornerRadius,
             shadowRadius: shadowRadius,
             terminalColumns: terminalColumns,
             terminalPalette: terminalPalette,
             terminalCursor: terminalCursor,
+            terminalCrop: terminalCrop,
             wrapColumns: wrapColumns,
             formatCode: formatCode,
             format: resolvedFormat,
@@ -449,6 +468,9 @@ extension CLIArgumentParser {
             redactSecrets: redactSecrets,
             focusHighlightedLines: focusHighlightedLines,
             diffDecorations: diffDecorations,
+            showDiffStats: showDiffStats,
+            diffContextLines: diffContextLines,
+            diffView: diffView,
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             failOnEmpty: failOnEmpty,

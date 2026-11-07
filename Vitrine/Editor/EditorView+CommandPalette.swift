@@ -10,7 +10,20 @@ import VitrineRendering
 /// toggle labels reflect the current state ("Hide line numbers" when they're on).
 extension EditorView {
     var commandPaletteCommands: [EditorCommand] {
-        themeCommands + toggleCommands + styleCommands + liveFileCommands + exportCommands
+        themeCommands + toggleCommands + styleCommands + [canvasModeCommand] + liveFileCommands
+            + exportCommands
+    }
+
+    /// Named for what running it does next, like the style toggles.
+    private var canvasModeCommand: EditorCommand {
+        EditorCommand(
+            id: "view.canvasMode",
+            title: isCanvasMode
+                ? String(localized: "Exit Canvas Mode") : String(localized: "Enter Canvas Mode"),
+            group: String(localized: "View"),
+            keywords: ["focus", "hide panels", "inspector", "dock"],
+            symbol: VitrineCommand.toggleCanvasMode.systemImageName
+        ) { session.isCanvasMode.toggle() }
     }
 
     /// One "Apply <theme>" command per built-in and custom theme, tagged with its

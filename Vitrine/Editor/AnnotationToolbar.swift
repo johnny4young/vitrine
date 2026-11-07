@@ -148,18 +148,9 @@ struct AnnotationToolbar: View {
                 ColorSwatchButton(color: $color, onEditEnded: onStyleEditEnded)
             }
             if showsThickness {
-                HStack(spacing: 5) {
-                    Image(systemName: "lineweight")
-                        .font(.system(size: 11))
-                        .foregroundStyle(VitrineTokens.Text.tertiary)
-                    Slider(value: $thickness, in: Annotation.thicknessRange) { editing in
-                        if !editing { onStyleEditEnded() }
-                    }
-                    .frame(width: 84)
-                    .accessibilityLabel("Annotation size")
-                    .accessibilityIdentifier("annotation-thickness-slider")
-                }
-                .help("Stroke and badge size")
+                AnnotationSizeSlider(
+                    thickness: $thickness, identifier: "annotation-thickness-slider",
+                    onEditEnded: onStyleEditEnded)
             }
             if let legend {
                 CounterLegendField(
@@ -421,10 +412,68 @@ private struct StickerSwatchButton: View {
     }
 }
 
+/// The stroke and badge size slider, shared by the title bar and the selected mark's toolbar.
+struct AnnotationSizeSlider: View {
+    @Binding var thickness: Double
+    let identifier: String
+    let onEditEnded: () -> Void
+    var onDragging: (Bool) -> Void = { _ in }
+
+    @State private var edit = SliderEditTracker()
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "lineweight")
+                .font(.system(size: 11))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+            Slider(
+                value: Binding(
+                    get: { thickness },
+                    set: {
+                        thickness = $0
+                        let pointer = NSApp.currentEvent.map {
+                            Self.pointerEvents.contains($0.type)
+                        }
+                        if edit.closesChange(fromPointer: pointer ?? false) { onEditEnded() }
+                    }),
+                in: Annotation.thicknessRange
+            ) { editing in
+                onDragging(editing)
+                if edit.editingChanged(editing) { onEditEnded() }
+            }
+            .frame(width: 84)
+            .accessibilityLabel("Annotation size")
+            .accessibilityIdentifier(identifier)
+        }
+        .help("Stroke and badge size")
+    }
+
+    private static let pointerEvents: Set<NSEvent.EventType> = [
+        .leftMouseDown, .leftMouseDragged, .leftMouseUp,
+    ]
+}
+
+/// Keeps a slider's history edit open across a pointer drag. A change from the keyboard or
+/// VoiceOver has no drag to end it, so it closes its own edit.
+struct SliderEditTracker {
+    private(set) var isDragging = false
+
+    func closesChange(fromPointer: Bool) -> Bool { !isDragging && !fromPointer }
+
+    /// Whether the change ends an edit.
+    mutating func editingChanged(_ editing: Bool) -> Bool {
+        isDragging = editing
+        return !editing
+    }
+}
+
 /// A color swatch that opens a vertical palette popover, with a custom-color
 /// well at the bottom.
-private struct ColorSwatchButton: View {
+struct ColorSwatchButton: View {
     @Binding var color: Color
+    var identifier = "annotation-color-swatch"
+    /// The palette opens away from what it edits: below the title bar, above a mark.
+    var arrowEdge: Edge = .bottom
     let onEditEnded: () -> Void
     @State private var showsPalette = false
 
@@ -448,8 +497,8 @@ private struct ColorSwatchButton: View {
         .buttonStyle(.plain)
         .help("Color")
         .accessibilityLabel("Annotation color")
-        .accessibilityIdentifier("annotation-color-swatch")
-        .popover(isPresented: $showsPalette, arrowEdge: .bottom) {
+        .accessibilityIdentifier(identifier)
+        .popover(isPresented: $showsPalette, arrowEdge: arrowEdge) {
             VStack(spacing: 7) {
                 ForEach(Array(Self.palette.enumerated()), id: \.offset) { _, swatch in
                     Button {
