@@ -69,7 +69,7 @@ export VITRINE_ENTITLEMENTS_FILE ?= Vitrine/Resources/Vitrine.entitlements
 export VITRINE_LICENSE_SIGNING_KEY ?=
 
 .DEFAULT_GOAL := all
-.PHONY: test-repository sanitizer-check test-ci-coverage test-lanes-check test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check appcast-requirements-check ci-changes-check ci-reuse-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
+.PHONY: test-repository sanitizer-check test-ci-coverage test-lanes-check test-goldens golden-check all bootstrap project open build build-release cli test test-coverage coverage-check swift-features-check test-asan test-tsan build-ui-tests test-ui test-visual ui-test-preflight-check screenshot-tour-check perf perf-check memory-smoke memory-smoke-all memory-soak-matrix memory-smoke-check build-boundaries build-boundaries-check informational-update-check appcast-requirements-check ci-changes-check ci-reuse-check ui-selection-check release-promotion-check commit-ci-check project-version-check bump bump-check qa-handoff-check record-goldens gallery site-test format lint hygiene changelog-check icon clean
 
 ## all: generate the project and open it in Xcode (default)
 all: open
@@ -237,11 +237,13 @@ build-ui-tests: project
 ## host one (the display-geometry-sensitive tests skip themselves below the
 ## editor's minimum supported display; CI runs the full suite unskipped).
 TEST_UI_SKIP_FLAGS = $(foreach t,$(TEST_UI_SKIP),-skip-testing:VitrineUITests/VitrineUITests/$(t))
+## Set TEST_UI_ONLY="<Class/test> <Class> ..." to run only those (CI's pull-request selection).
+TEST_UI_ONLY_FLAGS = $(foreach t,$(TEST_UI_ONLY),'-only-testing:VitrineUITests/$(t)')
 test-ui: project
 	python3 scripts/check-ui-test-environment.py
 	@$(if $(RESULT_BUNDLE),rm -rf "$(RESULT_BUNDLE)")
 	$(XCODEBUILD) -project $(PROJECT) -scheme $(UI_SCHEME) -configuration Debug \
-		-destination 'platform=macOS' $(RESULT_BUNDLE_FLAG) $(TEST_UI_SKIP_FLAGS) test
+		-destination 'platform=macOS' $(RESULT_BUNDLE_FLAG) $(TEST_UI_SKIP_FLAGS) $(TEST_UI_ONLY_FLAGS) test
 
 ## ui-test-preflight-check: validate foreign-runner detection without inspecting live processes
 ui-test-preflight-check:
@@ -364,6 +366,10 @@ appcast-requirements-check:
 ci-changes-check:
 	python3 scripts/classify-ci-changes.py --self-test
 
+## ui-selection-check: validate the pull-request UI test selection and visual-tour decision
+ui-selection-check:
+	python3 scripts/select-ui-tests.py --self-test
+
 ## ci-reuse-check: validate the decision that lets a push to main reuse its pull request's CI
 ci-reuse-check:
 	python3 scripts/ci-reuse-pr-evidence.py --self-test
@@ -431,7 +437,7 @@ format:
 	$(SWIFTFORMAT) format --in-place --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## lint: lint Swift sources and tracked repository metadata (fails on issues)
-lint: documentation-ui-profile-check sanitizer-check test-lanes-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check appcast-requirements-check ci-changes-check ci-reuse-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
+lint: documentation-ui-profile-check sanitizer-check test-lanes-check golden-check hygiene project-version-check bump-check perf-check coverage-check swift-features-check build-boundaries-check informational-update-check appcast-requirements-check ci-changes-check ci-reuse-check ui-selection-check release-promotion-check commit-ci-check qa-handoff-check memory-smoke-check ui-test-preflight-check screenshot-tour-check
 	$(SWIFTFORMAT) lint --strict --recursive Vitrine VitrineDomain VitrineRendering VitrineCLI VitrineMenuBarHelper DomainTests RenderingTests RepositoryTests Tests UITests
 
 ## hygiene: reject private planning identifiers and tracked planning artifacts

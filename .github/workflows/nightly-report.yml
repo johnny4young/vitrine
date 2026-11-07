@@ -1,0 +1,53 @@
+name: Nightly report
+
+# Pull requests run part of the UI suite and usually skip the visual tour; the nightly CI
+# run covers both. Its result goes to one tracking issue, so a break is seen within a day.
+# Runs on run metadata only: it never checks out or executes repository code.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: nightly-report
+  cancel-in-progress: false
+
+jobs:
+  report:
+    name: Report the nightly CI result
+    if: >-
+      github.event.workflow_run.event == 'schedule'
+      && contains(fromJSON('["success", "failure", "timed_out"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Open, update or close the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          label="nightly-failure"
+          title="Nightly CI failed"
+          issue="$(gh issue list --state open --label "${label}" --json number --jq '.[0].number // empty')"
+          if [ "${CONCLUSION}" = success ]; then
+            if [ -n "${issue}" ]; then
+              gh issue comment "${issue}" --body "The nightly run passed on ${HEAD_SHA}: ${RUN_URL}"
+              gh issue close "${issue}"
+            fi
+            exit 0
+          fi
+          body="The nightly run (${CONCLUSION}) on ${HEAD_SHA}, which runs the whole UI suite and the visual tour, did not pass: ${RUN_URL}"
+          if [ -n "${issue}" ]; then
+            gh issue comment "${issue}" --body "${body}"
+          else
+            gh label create "${label}" --color B60205 --description "The nightly CI run failed" 2>/dev/null || true
+            gh issue create --title "${title}" --label "${label}" --body "${body}"
+          fi

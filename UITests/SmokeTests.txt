@@ -1,0 +1,12 @@
+# UI tests every pull request runs: one journey per primary surface, about three minutes.
+# The full suite runs nightly and on manual CI runs. One `Class/testMethod` per line.
+VitrineUITests/testEditorLaunchesWithPrimaryControls
+VitrineUITests/testEditorShowsToolbarInspectorAndPreviewStage
+VitrineUITests/testMainMenuExposesPrimaryCommands
+VitrineUITests/testMenuBarRendersClipboardWithDestinationPreset
+VitrineUITests/testGeneralAndInputPanesExposeTheirDefaults
+VitrineUITests/testFirstRunShowsQuickStartWithPrivacyAndSampleCapture
+VitrineUITests/testExportPreflightAsksBeforeCopyingAndCanCancelOrRedact
+VitrineUITests/testRecentsSearchesAndDeletesOneCapture
+VitrineUITests/testWebSnapshotRendersAndCopiesMultipleLocalHTMLViewports
+VitrineUITests/testSettingsPanesSurviveAccentedPseudolocale

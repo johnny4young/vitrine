@@ -51,9 +51,9 @@ each check counts, so a flaky job that passes when re-run in CI unblocks the tag
 the failed `verify` job afterwards, as you would after CI outlasts the wait. A real failure
 means fixing `main` and moving the tag to a commit whose CI passed.
 
-Most pushes to `main` skip the macOS jobs and reuse their pull request's evidence (see
-*Continuous integration*), but a commit that changes `project.yml` always runs them, so
-tag the version-bump commit. If `verify` reports skipped checks on another commit, run
+Most pushes to `main` run only the build, often reusing their pull request's (see
+*Continuous integration*), but a commit that changes `project.yml` runs every gate,
+including the UI suite and the visual tour, so tag the version-bump commit. If `verify` reports skipped checks on another commit, run
 CI on the tag with `gh workflow run ci.yml --ref "v${VERSION}"`, then re-run `verify`
 once that run passes.
 
@@ -126,9 +126,18 @@ CI is a release gate, not just a compile check.
   optimizer-only failures are caught before packaging. The Swift Package Manager
   download cache is restored between runs (keyed on `project.yml`, the dependency
   source of truth) to cut build time without risking a stale build. Parallel
-  **`UI tests`** and **`Visual tour`** jobs execute the full XCUITest suite
-  (`make test-ui`) and the strict visual evidence tour (`make test-visual`) on the
-  same runtime and triggers — see *Running the UI tests* below.
+  **`UI tests`** and **`Visual tour`** jobs execute the XCUITest suite (`make test-ui`)
+  and the strict visual evidence tour (`make test-visual`) on the same runtime — see
+  *Running the UI tests* below for when each runs in full.
+- **Pull requests run a UI selection.** `scripts/select-ui-tests.py` picks the smoke list
+  in `UITests/SmokeTests.txt` (one journey per primary surface, about three minutes), every
+  UI test whose body the pull request changes, and `ZZDefaultsSuitePurgeUITests`, which must
+  run last. A change to shared UI-test code (`UITests/Robots/`,
+  `UITests/VitrineUITestSupport.swift`, `project.yml`, the `Makefile`, `ci.yml` or the
+  selector) runs the whole suite. The visual tour runs on a pull request only when it
+  touches the tour, its manifest or that shared code. The job summary lists the selection,
+  and a selection that fails runs everything. `UI tests` and `Visual tour` stay required
+  checks: a skipped job with a literal name satisfies them.
 - **Documentation-only pull requests.** `scripts/classify-ci-changes.py` reads the
   pull request's changed files. When every one sits under `docs/`, `site/`,
   `.design-sync/` or the issue templates, or is a root Markdown file or `LICENSE`, the
@@ -137,24 +146,27 @@ CI is a release gate, not just a compile check.
   classifier lists both sides of a rename, so a move into `docs/` still counts as an
   app change. Pushes, schedules and manual runs skip the classification and run every
   gate, and a failed classification runs them too.
-- **Pushes to `main` reuse pull-request evidence.** A squash merge of a pull request that
-  was up to date with `main` lands the exact tree its CI tested. The
-  `Reuse pull request evidence` job (`scripts/ci-reuse-pr-evidence.py`) skips the build,
-  UI and visual-tour jobs on the push only when the push added that single merge commit,
-  its tree equals the pull request head's, and the newest run of every required check on
-  that head succeeded, read with the release gate's rules. A commit that changes
-  `project.yml` always runs them, because a release tags the version bump and its gate
-  reads that commit's own checks. Any other doubt, or an API error, runs the full gate;
-  scheduled and manual runs never reuse.
+- **Pushes to `main` run the build.** A push runs `Build & test` and the Linux checks; the
+  UI suite and the visual tour run there only for a commit that changes `project.yml`,
+  because a release tags the version bump and its gate reads that commit's own checks. A
+  squash merge of a pull request that was up to date with `main` lands the exact tree its CI
+  tested, so the `Reuse pull request evidence` job (`scripts/ci-reuse-pr-evidence.py`) skips
+  the build too when the push added that single merge commit, its tree equals the pull
+  request head's, and the newest `Static checks (Linux)` and `Build & test · Tahoe 26` runs
+  on that head succeeded, read with the release gate's rules. A version bump never reuses,
+  any other doubt or an API error runs the build, and scheduled and manual runs never
+  reuse.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
   without re-running CI.
-- **Weekly drift watch.** A scheduled run (Mondays 08:00 UTC, also available via
-  *Run workflow*) re-runs the full matrix. GitHub rolls the explicit image and its
-  bundled Xcode/SDKs on its own cadence, which can break
-  the build with no code change; the scheduled run surfaces that drift on a
-  predictable day instead of on the next unrelated PR.
+- **Nightly full run.** A scheduled run (daily at 08:00 UTC, also available via
+  *Run workflow*) runs every gate, including the whole UI suite and the visual tour, which
+  pull requests and pushes run only in part. It also catches drift:
+  GitHub rolls the explicit image and its bundled Xcode/SDKs on its own cadence, which
+  can break the build with no code change. `nightly-report.yml` opens or updates a
+  `nightly-failure` issue when that run fails and closes it when one passes, so a UI
+  regression a pull request's selection missed surfaces within a day.
 - **Pinned release tooling and dependency inventory.** CI downloads XcodeGen's official
   universal release archive, verifies its pinned SHA-256 digest, and installs it into a
   runner-local prefix instead of depending on Homebrew's moving formula. A weekly workflow
@@ -427,9 +439,11 @@ five-megabyte source-import ceiling.
 
 ### Running the UI tests
 
-**The full UI suite (`make test-ui`) runs in CI on every PR and on each push to `main`
-that cannot reuse its pull request's run**, as the dedicated `UI tests` job in `ci.yml`,
-which compiles and executes the tests.
+**The full UI suite (`make test-ui`) runs in CI every night, on manual runs and on each
+version-bump push to `main`**, as the dedicated `UI tests` job in `ci.yml`, which compiles
+and executes the tests. A pull request runs the same job with a selection (see *Pull
+requests run a UI selection* above); `make test-ui TEST_UI_ONLY="Class/test …"` reproduces
+it locally.
 `make build-ui-tests` compiles them locally when automation permission is unavailable.
 The `macos-26` Tahoe row must finish; the matrix does not cancel one runtime merely
 because another failed.
@@ -525,8 +539,9 @@ The validator then exports stable filenames plus a dimension/hash manifest under
 confidential-clipboard Settings states outside the strict manifest; CI publishes them
 as the `clipboard-privacy-ui` artifact.
 
-CI runs this gate on every pull request and on each push to `main` that cannot reuse
-its pull request's run, and uploads the friendly evidence even on success. For a local run, keep Vitrine frontmost and avoid launching
+CI runs this gate every night, on manual runs, on each version-bump push to `main`, and on
+pull requests that touch the tour or shared UI-test code, and uploads the friendly evidence
+even on success. For a local run, keep Vitrine frontmost and avoid launching
 other applications until the tour finishes. This is intentional: visual evidence
 that contains an interrupting browser, terminal, or IDE must fail rather than be
 mistaken for a valid Vitrine screenshot.
