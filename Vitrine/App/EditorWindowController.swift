@@ -36,6 +36,8 @@ final class EditorSession {
     /// This window's preset thumbnails, fed from the same debounced code as the preview.
     let presetThumbnails = PresetThumbnailModel()
     let carouselSplit = CarouselSplitModel()
+    /// Hides the code and inspector columns for this window only; never persisted.
+    var isCanvasMode = false
 
     /// Creates a session for `identity` with its own ephemeral settings.
     ///
@@ -123,11 +125,14 @@ final class EditorSession {
             presentation.clearsPreflight(
                 of: settings, for: .copy, delivering: EditorPresentation.copyPayload(of: settings))
         else { return nil }
-        var pngBytes: Int?
+        var png: Data?
         let outcome = RenderedImageCopy.copy(
             settings.exportConfig, settings: settings, pasteboard: pasteboard
-        ) { pngBytes = $0 }
-        feedback(ExportFeedback.copyOutcome(outcome, pngBytes: pngBytes))
+        ) { png = $0 }
+        feedback(ExportFeedback.copyOutcome(outcome, pngBytes: png?.count))
+        feedback.preview(png, behavior: settings.outputBehavior) { [weak self] in
+            EditorWindowController.shared.reopen(self)
+        }
         copyConfirmation.record(outcome)
         guard
             EditorView.shouldCloseAfterCopy(
@@ -294,6 +299,13 @@ final class EditorWindowController: NSObject {
         show()
     }
 
+    /// Brings back the window that made a copy. A closed extra window's draft is gone, so
+    /// the primary editor is shown instead, never loaded over.
+    func reopen(_ session: EditorSession?) {
+        guard let session, sessions[session.identity.index] === session else { return show() }
+        showWindow(for: session.identity)
+    }
+
     /// The session for `identity`'s window, creating it (and caching it) if absent, so
     /// a window and its session are always made together.
     @discardableResult
@@ -425,13 +437,24 @@ final class EditorWindowController: NSObject {
 
     // MARK: - Key-window session (menu command target)
 
+    /// The window a menu command acts on. A popover or panel can be key without becoming
+    /// main, so commands then act on the main window behind it, such as the editor.
+    static func commandTarget(key: NSWindow?, main: NSWindow?) -> NSWindow? {
+        guard let key, key.canBecomeMain else { return main }
+        return key
+    }
+
+    static var commandTargetWindow: NSWindow? {
+        commandTarget(key: NSApp.keyWindow, main: NSApp.mainWindow)
+    }
+
     /// The session of the key (or, failing that, the main) editor window, so a Copy /
     /// Save / Share / Make Default initiated from the menu acts on the visible editor.
     /// `nil` when no editor window is key, which is how the editor commands
     /// stay disabled outside an editor.
     var keyWindowSession: EditorSession? {
-        let target = NSApp.keyWindow ?? NSApp.mainWindow
-        guard let target else { return nil }
+        guard let target = Self.commandTargetWindow
+        else { return nil }
         for (index, window) in windows where window === target {
             return sessions[index]
         }

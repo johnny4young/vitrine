@@ -21,8 +21,8 @@ extension ExportManager {
     ///
     /// `richText` and `plainText` add RTF/HTML or plain-text representations beside the
     /// same PNG bytes. Pasteboard failures stay distinct from a render rejection so
-    /// callers can present the right recovery action. `onCopied` receives the size of the
-    /// PNG, only after it reached the pasteboard.
+    /// callers can present the right recovery action. `onCopied` receives the exact PNG
+    /// bytes, only after they reached the pasteboard.
     @discardableResult
     public static func copyToPasteboardOutcome(
         _ config: SnapshotConfig, scale: CGFloat = 2, fixedSize: CGSize? = nil,
@@ -31,7 +31,7 @@ extension ExportManager {
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
         pasteboard: NSPasteboard = .general,
-        onCopied: (_ pngBytes: Int) -> Void = { _ in }
+        onCopied: (_ png: Data) -> Void = { _ in }
     ) -> CopyOutcome {
         // Either opt-in (rich styled text, or the plain-text rider) needs the
         // multi-representation item, so route both through RichPasteboard; the plain
@@ -68,7 +68,7 @@ extension ExportManager {
     @discardableResult
     public static func copyPNGToPasteboardOutcome(
         _ cgImage: CGImage, concealed: Bool = false, to pasteboard: NSPasteboard = .general,
-        onCopied: (_ pngBytes: Int) -> Void = { _ in }
+        onCopied: (_ png: Data) -> Void = { _ in }
     ) -> CopyOutcome {
         guard let png = pngData(from: cgImage) else {
             RenderingLog.export.error("Copy to pasteboard failed: PNG encode returned nil")
@@ -77,7 +77,7 @@ extension ExportManager {
         let copied = ClipboardWriter.copy(png, type: .png, concealed: concealed, to: pasteboard)
         RenderingLog.export.info("Copied image to pasteboard (success \(copied, privacy: .public))")
         guard copied else { return .failed }
-        onCopied(png.count)
+        onCopied(png)
         return .copied
     }
 

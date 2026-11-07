@@ -49,10 +49,12 @@ public struct ExportPreflight: Equatable, Sendable {
         unredacted.redactedLineRanges = []
         // Scan past existing redactions so a hand-redacted PEM banner cannot hide the key
         // body below it, then report only rows that are still visible.
-        let rows = unredacted.sidecarText
+        // Rows are numbered on the whole screen, like redactions; a cropped-out row ships nowhere.
+        let rows = unredacted.uncroppedSidecarText
         let redactions = LineHighlight.normalize(config.redactedLineRanges)
+        let kept = config.activeTerminalCrop.rows ?? 1...Int.max
         let visible = SecretScanner.scan(rows).filter {
-            !LineHighlight.contains(redactions, line: $0.line)
+            !LineHighlight.contains(redactions, line: $0.line) && kept.contains($0.line)
         }
         // Alternative text is never drawn, so pixels alone do not deliver it.
         let labels =
@@ -62,9 +64,10 @@ public struct ExportPreflight: Equatable, Sendable {
             ]
             .compactMap { $0 } + config.annotations.map(\.text)
             + (payload == .image ? [] : [config.altText?.text].compactMap { $0 })
-        // A link ships the raw stream until a row is redacted, whatever the screen shows.
+        // A link ships the raw stream until a row is redacted or cropped, whatever the screen shows.
         let transcript =
             payload == .transcript && config.language == .terminal && redactions.isEmpty
+                && config.activeTerminalCrop.isEmpty
             ? config.richClipboardText : ""
         let transcriptKinds = transcript == rows ? [] : SecretScanner.scan(transcript).map(\.kind)
 

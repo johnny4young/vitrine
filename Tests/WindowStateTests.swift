@@ -107,6 +107,7 @@ struct EditorWindowStateTests {
         config.wrapColumns = 72
         config.terminalPalette = .raw
         config.terminalCursor = .bar
+        config.terminalCrop = TerminalCrop(rows: 2...9, columns: 3...40)
         config.focusHighlightedLines = true
         config.diffDecorations = true
         config.annotations = [

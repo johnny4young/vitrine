@@ -198,6 +198,20 @@ final class VitrineUITests: XCTestCase {
 
         assertExists(element("terminal-palette-picker", in: app), in: app, timeout: 8)
         assertExists(element("terminal-cursor-picker", in: app), in: app)
+        assertExists(
+            app.textFields.matching(identifier: "terminal-crop-columns-field").firstMatch, in: app)
+
+        // Return commits the crop, which the field shows back as one canonical span.
+        let rows = app.textFields.matching(identifier: "terminal-crop-rows-field").firstMatch
+        assertExists(rows, in: app)
+        if !rows.isHittable {
+            element("editor-inspector", in: app).scroll(byDeltaX: 0, deltaY: -200)
+        }
+        rows.click()
+        rows.typeText("3-1\r")
+        let committed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "1-3"), object: rows)
+        XCTAssertEqual(XCTWaiter().wait(for: [committed], timeout: 3), .completed)
 
         let header = element("inspector-disclosure-header", in: app)
         assertExists(header, in: app)
@@ -215,6 +229,46 @@ final class VitrineUITests: XCTestCase {
         assertExists(removeArguments, in: app)
         removeArguments.click()
         XCTAssertTrue(removeArguments.waitForNonExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testCanvasModeHidesColumnsAndRestoresThemByKeyboardAndPalette() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        let editor = EditorRobot(testCase: self, app: app)
+        assertExists(editor.codeTextView, in: app, timeout: 8)
+
+        assertHittable("canvas-mode-button", in: app, "Canvas mode must be reachable")
+        element("canvas-mode-button", in: app).click()
+        XCTAssertTrue(element("editor-inspector", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(editor.codeTextView.waitForNonExistence(timeout: 3))
+        for pane in ["theme", "typography", "background"] {
+            assertExists(element("canvas-dock-\(pane)", in: app), in: app)
+        }
+        // The dock opens the inspector's own section, not a copy of its controls.
+        assertHittable("canvas-dock-canvas", in: app, "The dock must be reachable")
+        element("canvas-dock-canvas", in: app).click()
+        assertExists(element("padding-slider", in: app), in: app, timeout: 3)
+        // Pressing the open pane's button closes it rather than reopening it.
+        element("canvas-dock-canvas", in: app).click()
+        XCTAssertTrue(element("padding-slider", in: app).waitForNonExistence(timeout: 3))
+
+        app.typeKey("f", modifierFlags: [.command, .shift])
+        assertExists(element("editor-inspector", in: app), in: app, timeout: 3)
+        assertExists(editor.codeTextView, in: app)
+        XCTAssertTrue(element("canvas-dock", in: app).waitForNonExistence(timeout: 3))
+
+        app.typeKey("k", modifierFlags: .command)
+        let field = element("command-palette-field", in: app)
+        assertExists(field, in: app, timeout: 3)
+        field.typeText("canvas")
+        let command = element("command-palette-command-view.canvasMode", in: app)
+        XCTAssertTrue(command.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        app.typeKey(.return, modifierFlags: [])
+        assertExists(element("canvas-dock", in: app), in: app, timeout: 3)
+        XCTAssertTrue(element("editor-inspector", in: app).waitForNonExistence(timeout: 3))
     }
 
     @MainActor
@@ -684,6 +738,74 @@ final class VitrineUITests: XCTestCase {
         assertExists(delete, in: app)
         delete.click()
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
+    }
+
+    /// A selected mark's toolbar sits beside it in Select mode, clear of its delete badge.
+    @MainActor
+    func testSelectedMarkToolbarSitsBesideTheMark() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let stageGroup = element("editor-preview-stage", in: app)
+        let code = stageGroup.staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
+        assertExists(code, in: app, timeout: 3)
+        let center = code.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let toolbar = element("annotation-mark-toolbar", in: app)
+        let delete = app.buttons["Delete annotation"]
+
+        revealToolbarAction(
+            "annotation-tool-rectangle", from: "annotation-tool-picker", in: app
+        ).click()
+        center.withOffset(CGVector(dx: -60, dy: -25)).press(
+            forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 60, dy: 25)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.15)
+        assertExists(delete, in: app, timeout: 3)
+        XCTAssertFalse(toolbar.exists, "A draw tool keeps the canvas free for the next mark")
+
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+        assertExists(toolbar, in: app, timeout: 3)
+        assertExists(element("annotation-mark-toolbar-color", in: app), in: app)
+        assertExists(element("annotation-mark-toolbar-size", in: app), in: app)
+        XCTAssertFalse(toolbar.frame.intersects(delete.frame), "The toolbar covers the badge")
+        XCTAssertTrue(stageGroup.frame.contains(toolbar.frame), "The toolbar left the stage")
+
+        let marks = stageGroup.buttons.matching(NSPredicate(format: "label == %@", "Rectangle"))
+        XCTAssertEqual(marks.count, 1)
+        element("annotation-mark-toolbar-duplicate", in: app).click()
+        XCTAssertTrue(
+            marks.element(boundBy: 1).waitForExistence(timeout: 3), "Duplicate adds a mark")
+        element("annotation-undo", in: app).click()
+        XCTAssertTrue(
+            marks.element(boundBy: 1).waitForNonExistence(timeout: 3),
+            "Undo removes the copy in one step")
+        XCTAssertEqual(marks.count, 1)
+        XCTAssertTrue(toolbar.waitForNonExistence(timeout: 3))
+
+        center.click()
+        assertExists(toolbar, in: app, timeout: 3)
+        app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
+        XCTAssertTrue(toolbar.waitForNonExistence(timeout: 3), "Escape drops the selection")
+
+        // A blur box offers only Duplicate: nothing that weakens what it hides.
+        revealToolbarAction(
+            "annotation-tool-blur", from: "annotation-tool-picker", in: app
+        ).click()
+        center.withOffset(CGVector(dx: -60, dy: 45)).press(
+            forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 60, dy: 85)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.15)
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+        assertExists(toolbar, in: app, timeout: 3)
+        assertExists(element("annotation-mark-toolbar-duplicate", in: app), in: app)
+        XCTAssertFalse(element("annotation-mark-toolbar-color", in: app).exists)
+        XCTAssertFalse(element("annotation-mark-toolbar-size", in: app).exists)
     }
 
     /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.
@@ -2066,6 +2188,63 @@ final class VitrineUITests: XCTestCase {
         let recents = RecentsRobot(testCase: self, app: app)
         assertExists(recents.gallery, in: app, timeout: 5)
         XCTAssertEqual(recents.cards.count, 0)
+    }
+
+    /// The launch flag holds the preview until it is dismissed, so no step races its lifetime.
+    @MainActor
+    func testCopyPreviewReopensTheEditorAndDismisses() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--copy-preview-stays"])
+        defer { app.terminate() }
+        assertHittable("copy-button", in: app, "Copy image is not reachable")
+
+        element("copy-button", in: app).click()
+        let preview = element("copy-preview-image", in: app)
+        assertExists(preview, in: app, timeout: 5)
+        assertExists(element("copy-preview-window", in: app), in: app)
+        // Close-after-copy is on by default, so the click has a closed editor to bring back.
+        preview.click()
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3), "Opening must hide the preview")
+        assertHittable("copy-button", in: app, "The preview must reopen the editor", timeout: 5)
+
+        element("copy-button", in: app).click()
+        assertExists(preview, in: app, timeout: 5)
+        element("copy-preview-dismiss", in: app).click()
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3), "Dismiss must hide the preview")
+    }
+
+    @MainActor
+    func testTurningTheCopyPreviewOffSkipsItOnTheNextCopy() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--open-settings", "--copy-preview-stays"])
+        defer {
+            app.terminate()
+            pasteboard.clearContents()
+        }
+        assertExists(element("settings-general-pane", in: app), in: app, timeout: 8)
+        element("settings-nav-output", in: app).click()
+        let toggle = element("copy-preview-toggle", in: app)
+        assertExists(toggle, in: app, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 1, "The copy preview must start on")
+        toggle.click()
+        XCTAssertEqual(toggle.value as? Int, 0)
+        app.typeKey("w", modifierFlags: .command)
+
+        assertHittable("copy-button", in: app, "Copy image is not reachable", timeout: 5)
+        element("copy-button", in: app).click()
+        let copied = NSPredicate { _, _ in pasteboard.data(forType: .png) != nil }
+        XCTAssertEqual(
+            XCTWaiter.wait(
+                for: [XCTNSPredicateExpectation(predicate: copied, object: nil)], timeout: 5),
+            .completed, "Copy image did not place a PNG on the pasteboard")
+        XCTAssertFalse(
+            element("copy-preview-image", in: app).waitForExistence(timeout: 2),
+            "A disabled preview must not appear")
     }
 
     @MainActor

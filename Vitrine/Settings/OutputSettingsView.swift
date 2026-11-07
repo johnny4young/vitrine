@@ -34,6 +34,12 @@ struct OutputSettingsView: View {
                         .labelsHidden()
                         .accessibilityIdentifier("close-after-copy-toggle")
                 }
+                TokenRow(label: Text("Show a preview after copying")) {
+                    Toggle("Show a preview after copying", isOn: behavior.showsCopyPreview)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .accessibilityIdentifier("copy-preview-toggle")
+                }
                 TokenRow(label: Text("Resolution")) {
                     TokenSegmentedPicker(
                         options: [

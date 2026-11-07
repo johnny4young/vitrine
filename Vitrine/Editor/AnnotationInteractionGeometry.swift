@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import VitrineDomain
+import VitrineRendering
 
 /// Canvas-space interaction geometry shared by drawing, selecting and resizing.
 /// SwiftUI scales the whole overlay with the preview; these values must not apply
@@ -53,6 +54,38 @@ struct AnnotationInteractionGeometry {
         return CGRect(
             x: start.x - hitSize.width / 2, y: start.y - hitSize.height / 2,
             width: hitSize.width, height: hitSize.height)
+    }
+
+    /// The box the selection outline follows: a line's endpoints, or the selection rect.
+    var selectionBounds: CGRect {
+        guard isLineLike else { return selectionRect }
+        return CGRect(
+            x: min(start.x, end.x), y: min(start.y, end.y),
+            width: abs(start.x - end.x), height: abs(start.y - end.y))
+    }
+
+    static let handleDiameter: CGFloat = 12
+    static let deleteBadgeSize: CGFloat = 17
+    static let deleteBadgeOffset: CGFloat = 4
+
+    /// Just off the selection's top-right corner, pulled back onto the canvas.
+    var deleteBadgeCenter: CGPoint {
+        let box = selectionBounds
+        return CGPoint(
+            x: min(box.maxX + Self.deleteBadgeOffset, canvasSize.width - 10),
+            y: max(box.minY - Self.deleteBadgeOffset, 10))
+    }
+
+    /// The drawn mark with its selection outline, endpoint handles and delete badge.
+    var chromeBounds: CGRect {
+        let handle = Self.handleDiameter / 2
+        let badge = Self.deleteBadgeSize / 2
+        return selectionBounds.insetBy(dx: -handle, dy: -handle)
+            .union(AnnotationMarkBounds.drawn(annotation, in: canvasSize))
+            .union(
+                CGRect(
+                    x: deleteBadgeCenter.x - badge, y: deleteBadgeCenter.y - badge,
+                    width: Self.deleteBadgeSize, height: Self.deleteBadgeSize))
     }
 
     static func normalize(_ point: CGPoint, in canvasSize: CGSize) -> CGPoint {

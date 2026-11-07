@@ -135,6 +135,15 @@ public struct SnapshotConfig: Equatable {
     /// text a capture exports is the output alone.
     public var terminalCursor: TerminalCursorStyle = .hidden
 
+    /// The part of a `.terminal` capture's final screen its image and text keep. Content-bound
+    /// like redactions, whose rows keep numbering the whole screen.
+    public var terminalCrop = TerminalCrop()
+
+    /// The crop a render applies: only terminal text has a screen to crop.
+    public var activeTerminalCrop: TerminalCrop {
+        language == .terminal && !usesImageContent ? terminalCrop : TerminalCrop()
+    }
+
     /// Soft-wrap long code lines at this column count, or `nil` to let a line run as wide
     /// as it needs (the default). Unlike `terminalColumns`, this is a persisted document
     /// style the user toggles in the Style pane: when set, the card is sized to the wrap
@@ -182,17 +191,28 @@ public struct SnapshotConfig: Equatable {
         guard !usesImageContent else { return "" }
         if language == .terminal {
             return ANSIRenderer.plainText(
-                code, columns: terminalColumns, redacting: redactedLineRanges)
+                code, columns: terminalColumns, redacting: redactedLineRanges, crop: terminalCrop)
         }
         return replacingRedactedLines(in: code)
     }
 
+    /// `sidecarText` before any crop, numbered the way redactions are, for secret scans.
+    public var uncroppedSidecarText: String {
+        var screen = self
+        screen.terminalCrop = TerminalCrop()
+        return screen.sidecarText
+    }
+
     /// Source for portable text and share links. Unredacted terminal captures retain
-    /// their ANSI transcript for faithful reopening; once any rows are redacted, only
-    /// the sanitized final screen may leave the app, never the original transcript.
+    /// their ANSI transcript for faithful reopening; once any rows are redacted or cropped,
+    /// only the final screen may leave the app, never the original transcript. A cropped one
+    /// keeps its colors; a redacted one is plain text.
     public var richClipboardText: String {
         guard !usesImageContent else { return "" }
         if language == .terminal, !redactedLineRanges.isEmpty { return sidecarText }
+        if language == .terminal, !terminalCrop.isEmpty {
+            return ANSIRenderer.styledText(code, columns: terminalColumns, crop: terminalCrop)
+        }
         return replacingRedactedLines(in: code)
     }
 
@@ -216,7 +236,7 @@ public struct SnapshotConfig: Equatable {
     /// Whether the document carries marks that a content replacement would discard.
     public var hasContentMarks: Bool {
         altText != nil || !annotations.isEmpty || !highlightedLineRanges.isEmpty
-            || !redactedLineRanges.isEmpty
+            || !redactedLineRanges.isEmpty || !terminalCrop.isEmpty
     }
 
     /// Clears the marks tied to *this specific content* — alternative text, free-form annotations
@@ -229,6 +249,7 @@ public struct SnapshotConfig: Equatable {
         annotations = []
         highlightedLineRanges = []
         redactedLineRanges = []
+        terminalCrop = TerminalCrop()
         foregroundImage = nil
     }
 

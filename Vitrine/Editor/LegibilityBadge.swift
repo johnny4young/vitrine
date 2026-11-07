@@ -67,8 +67,10 @@ struct LegibilityMeter: View {
 struct LegibilityBadge: View {
     let settings: AppSettings
     let model: LegibilityModel
+    /// The editor window's, for a badge shown in a popover window of its own.
+    var windowUndoManager: UndoManager? = nil
 
-    @Environment(\.undoManager) private var undoManager
+    @Environment(\.undoManager) private var environmentUndoManager
     @State private var betterTheme: Theme?
     @State private var isShowingDetails = false
 
@@ -124,7 +126,9 @@ struct LegibilityBadge: View {
             }
             if let betterTheme {
                 Button("Use \(betterTheme.displayName)") {
-                    Self.applyFix(betterTheme, to: settings, undoManager: undoManager)
+                    Self.applyFix(
+                        betterTheme, to: settings,
+                        undoManager: windowUndoManager ?? environmentUndoManager)
                     isShowingDetails = false
                 }
                 .accessibilityIdentifier("theme-legibility-fix-button")
