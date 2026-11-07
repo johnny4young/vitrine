@@ -80,7 +80,7 @@ public struct SharedSnapshot: Codable, Equatable {
         self.diffView = config.diffView == .unified ? nil : config.diffView
         self.diffWordMarks = config.diffWordMarks ? true : nil
         self.diffHunks = config.diffHunks.flatMap(SettingsDefaults.normalizeDiffHunks)
-        self.diffLineNumbers = config.diffLineNumbers == .hidden ? nil : config.diffLineNumbers
+        self.diffLineNumbers = config.diffLineNumbers == .rows ? nil : config.diffLineNumbers
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -105,7 +105,7 @@ public struct SharedSnapshot: Codable, Equatable {
         config.diffView = diffView ?? .unified
         config.diffWordMarks = diffWordMarks ?? false
         config.diffHunks = diffHunks
-        config.diffLineNumbers = diffLineNumbers
+        config.diffLineNumbers = diffLineNumbers ?? .rows
         config.terminalColumns = terminalColumns
         config.terminalCrop = terminalCrop ?? TerminalCrop()
     }
@@ -150,8 +150,7 @@ public struct SharedSnapshot: Codable, Equatable {
         diffWordMarks = try? container.decode(Bool.self, forKey: .diffWordMarks)
         diffHunks = (try? container.decode([Int].self, forKey: .diffHunks))
             .flatMap(SettingsDefaults.normalizeDiffHunks)
-        diffLineNumbers = (try? container.decode(DiffLineNumbers.self, forKey: .diffLineNumbers))
-            .flatMap { $0 == .hidden ? nil : $0 }
+        diffLineNumbers = try? container.decode(DiffLineNumbers.self, forKey: .diffLineNumbers)
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)

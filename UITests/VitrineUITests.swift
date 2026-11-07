@@ -671,6 +671,7 @@ final class VitrineUITests: XCTestCase {
         }
 
         assertExists(element("diff-line-numbers-picker", in: app), in: app)
+        XCTAssertTrue(element("diff-line-numbers-rows", in: app).isSelected)
         let old = element("diff-line-numbers-old", in: app)
         assertExists(old, in: app)
         old.click()

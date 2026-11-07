@@ -223,6 +223,7 @@ enum CLIRenderer {
         foregroundStore: BackgroundImageStore,
         pasteboard: NSPasteboard
     ) throws -> String {
+        try CLIOutputWriter.checkDiffHunks(config)
         CLIPreflightNotice.report(config)
         let optionalOutputURL =
             options.outputPath.isEmpty ? nil : URL(fileURLWithPath: options.outputPath)

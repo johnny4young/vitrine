@@ -7,11 +7,10 @@ public struct DiffHunk: Equatable, Sendable {
     public var deletions: Int
 }
 
-/// Which file lines a diff's gutter numbers. `hidden` (`none` in the CLI) turns the gutter
-/// off, so a config stores it as `showLineNumbers = false` rather than as a value.
+/// What a diff's gutter numbers: the patch's own rows (the default), or the old file's lines,
+/// the new file's, or both. Whether the gutter shows is the Line numbers switch's call.
 public enum DiffLineNumbers: String, CaseIterable, Codable, Sendable {
-    case old, new, both
-    case hidden = "none"
+    case rows, old, new, both
 }
 
 extension DiffDocument {
@@ -36,10 +35,12 @@ extension DiffDocument {
         return hunks
     }
 
-    /// `rows` with every hunk whose position is not in `kept` folded to its counts, which
-    /// carry none of its text.
-    public func foldingHunks(_ rows: [DiffDisplayRow], keeping kept: [Int]) -> [DiffDisplayRow] {
-        let all = hunks
+    /// `rows` with every hunk whose position is not in `kept` folded to its counts. `all` is
+    /// this document's `hunks`, passed in when the caller already has them.
+    public func foldingHunks(
+        _ rows: [DiffDisplayRow], keeping kept: [Int], hunks all: [DiffHunk]? = nil
+    ) -> [DiffDisplayRow] {
+        let all = all ?? hunks
         let keep = Set(kept)
         var foldedHunk = [Int?](repeating: nil, count: rowKinds.count + 1)
         for (offset, hunk) in all.enumerated() where !keep.contains(offset + 1) {
@@ -93,7 +94,9 @@ extension DiffDocument {
         switch numbering {
         case .old: return (sides.map { label($0.old) }, digits)
         case .new: return (sides.map { label($0.new) }, digits)
-        case .hidden: return (sides.map { _ in "" }, digits)
+        case .rows:
+            let labels = rowKinds.indices.map { String($0 + firstLineNumber) }
+            return (labels, max(2, String(rowKinds.count + firstLineNumber - 1).count))
         case .both:
             let labels = sides.map { side in
                 side.old == nil && side.new == nil ? "" : padded(side.old) + " " + padded(side.new)

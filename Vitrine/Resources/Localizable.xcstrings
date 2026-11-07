@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Rows" : {
+      "comment" : "Editor lines: diff numbering option, the patch's own row numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filas"
+          }
+        }
+      }
+    },
     "Numbering" : {
       "comment" : "Editor lines: picker for which file lines a diff's gutter numbers.",
       "localizations" : {

@@ -149,14 +149,14 @@ struct CodeLinesView: View {
     @ViewBuilder
     func row(
         _ line: AttributedString, lineNumber: Int, metrics: GutterMetrics,
-        gutterLabel: String? = nil, fillsHeight: Bool = false
+        gutterLabel: String? = nil, fillsHeight: Bool = false, showsGutter: Bool = true
     )
         -> some View
     {
         let isHighlighted = LineHighlight.contains(highlightedRanges, line: lineNumber)
         let isRedacted = LineHighlight.contains(redactedRanges, line: lineNumber)
         HStack(alignment: .firstTextBaseline, spacing: 0) {
-            if showLineNumbers {
+            if showLineNumbers, showsGutter {
                 // Verbatim: a line number is a locale-neutral numeral, not catalog
                 // copy — and this also keeps Xcode's extractor from emitting a bare
                 // "%@" key into the String Catalog.

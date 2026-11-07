@@ -100,6 +100,7 @@ struct StyleCodecCompletenessTests {
         expected.code = ""  // document text, never style
         expected.redactedLineRanges = []  // secret marks on a specific document (see persistStyle)
         expected.terminalCrop = TerminalCrop()  // bound to one document, like redactions
+        expected.diffHunks = nil  // positions in one patch, like redactions
         expected.watermark = nil  // Brand Kit owns its own persistence
         expected.foregroundImage = nil  // per-capture beautified image, not a default
         expected.imageFrame = .none  // frame of that image, travels with it

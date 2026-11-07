@@ -29,6 +29,13 @@ final class AppSettings {
         didSet {
             let isEmpty = documentCode.isEmpty
             if documentIsEmpty != isEmpty { documentIsEmpty = isEmpty }
+            // A pick names hunks by position, which a different hunk count no longer means.
+            if renderConfiguration.diffHunks != nil,
+                DiffLayoutCache.shared.hunks(in: oldValue).count
+                    != DiffLayoutCache.shared.hunks(in: documentCode).count
+            {
+                renderConfiguration.diffHunks = nil
+            }
         }
     }
 
@@ -72,11 +79,18 @@ final class AppSettings {
             return resolved
         }
         set {
+            let previousPick = renderConfiguration.diffHunks
             if documentCode != newValue.code {
                 documentCode = newValue.code
             }
             var normalized = newValue
             normalized.code = ""
+            // The new text reset the pick; a write that only carried the old one forward drops it.
+            if previousPick != nil, renderConfiguration.diffHunks == nil,
+                normalized.diffHunks == previousPick
+            {
+                normalized.diffHunks = nil
+            }
             if renderConfiguration != normalized {
                 renderConfiguration = normalized
             }
@@ -817,12 +831,12 @@ extension AppSettings {
         )
     }
 
-    var diffLineNumbersSelection: Binding<DiffLineNumbers?> {
+    var diffLineNumbersSelection: Binding<DiffLineNumbers> {
         Binding(
-            get: { self.style.diffLineNumberChoice },
+            get: { self.style.diffLineNumbers },
             set: { value in
-                guard !self.style.diffLayoutIsLocked, let value else { return }
-                self.style.chooseDiffLineNumbers(value)
+                guard !self.style.diffLayoutIsLocked else { return }
+                self.style.diffLineNumbers = value
             }
         )
     }
@@ -830,10 +844,10 @@ extension AppSettings {
     /// Whether hunk `position` of `count` shows. Checking every hunk again clears the pick.
     func diffHunkShown(_ position: Int, of count: Int) -> Binding<Bool> {
         Binding(
-            get: { self.style.diffHunks?.contains(position) ?? true },
+            get: { self.style.diffShownHunks(count: count)?.contains(position) ?? true },
             set: { shown in
                 guard !self.style.diffLayoutIsLocked, count > 0 else { return }
-                var kept = Set(self.style.diffHunks ?? Array(1...count))
+                var kept = Set(self.style.diffShownHunks(count: count) ?? Array(1...count))
                 if shown { kept.insert(position) } else { kept.remove(position) }
                 // One hunk always shows, so the card never folds to counts alone.
                 guard !kept.isDisjoint(with: 1...count) else { return }

@@ -40,7 +40,6 @@ enum SettingsCodec {
         static let diffContextLines = "diffContextLines"
         static let diffView = "diffView"
         static let diffWordMarks = "diffWordMarks"
-        static let diffHunks = "diffHunks"
         static let diffLineNumbers = "diffLineNumbers"
         /// Snapshot annotations, stored as a JSON-encoded `[Annotation]`.
         /// Part of the document/style, so it seeds new editor windows.
@@ -127,7 +126,7 @@ enum SettingsCodec {
             windowTitle,
             showShadow, showLineNumbers, wrapColumns, terminalPalette, terminalCursor,
             highlightedLines, focusHighlightedLines,
-            diffDecorations, showDiffStats, diffContextLines, diffView, diffWordMarks, diffHunks,
+            diffDecorations, showDiffStats, diffContextLines, diffView, diffWordMarks,
             diffLineNumbers, annotations, metadata,
             gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, showsCopyPreview,
@@ -240,11 +239,8 @@ enum SettingsCodec {
         if let value = defaults.object(forKey: Keys.diffWordMarks) as? Bool {
             config.diffWordMarks = value
         }
-        if let value = defaults.array(forKey: Keys.diffHunks) as? [Int] {
-            config.diffHunks = SettingsDefaults.normalizeDiffHunks(value)
-        }
         if let raw = defaults.string(forKey: Keys.diffLineNumbers),
-            let numbering = DiffLineNumbers(rawValue: raw), numbering != .hidden
+            let numbering = DiffLineNumbers(rawValue: raw)
         {
             config.diffLineNumbers = numbering
         }
@@ -379,8 +375,8 @@ enum SettingsCodec {
         }
         defaults.set(config.diffView.rawValue, forKey: Keys.diffView)
         defaults.set(config.diffWordMarks, forKey: Keys.diffWordMarks)
-        defaults.set(config.diffHunks, forKey: Keys.diffHunks)
-        defaults.set(config.diffLineNumbers?.rawValue, forKey: Keys.diffLineNumbers)
+        // The hunk pick belongs to one patch, so it never seeds the next capture.
+        defaults.set(config.diffLineNumbers.rawValue, forKey: Keys.diffLineNumbers)
         defaults.set(
             LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
         // `redactedLineRanges` is deliberately NOT persisted here: redactions hide secrets

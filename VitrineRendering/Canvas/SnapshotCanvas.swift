@@ -436,10 +436,10 @@ public struct SnapshotCanvas: View, Equatable {
     /// File line numbers for a unified diff, when the numbering asks for them.
     private func unifiedDiffGutter(diff: DiffDocument?) -> (labels: [String], columns: Int)? {
         guard let numbering = config.diffFileNumbering, !config.diffUsesSplitView,
-            !config.code.isEmpty, let diff
+            !config.code.isEmpty, diff != nil
         else { return nil }
-        return diff.gutterLabels(
-            numbering, firstLineNumber: config.firstLineNumber,
+        return DiffLayoutCache.shared.gutterLabels(
+            numbering, code: config.code, firstLineNumber: config.firstLineNumber,
             redacting: config.redactedLineRanges)
     }
 

@@ -542,11 +542,11 @@ nonisolated enum CLIArgumentSchema {
             description: "Mark or unmark the changed words inside paired diff lines."),
         definition(
             .diffHunks, ["--diff-hunks"], .value("list"), synopsis: "--diff-hunks <1,3,...>",
-            description: "Show only these diff hunks; the others fold to their +/- counts."),
+            description: "Draw only these diff hunks; the others fold to their +/- counts."),
         definition(
-            .diffLineNumbers, ["--diff-line-numbers"], .value("old|new|both|none"),
-            synopsis: "--diff-line-numbers <old|new|both|none>",
-            description: "Number a diff by its old or new file lines, both, or not at all."),
+            .diffLineNumbers, ["--diff-line-numbers"], .value("rows|old|new|both"),
+            synopsis: "--diff-line-numbers <rows|old|new|both>",
+            description: "Number a diff by patch rows, its old or new file lines, or both."),
         definition(
             .recursive, ["--recursive"], .flag, synopsis: "--recursive",
             description: "Batch only: include nested folders and preserve relative output paths.",

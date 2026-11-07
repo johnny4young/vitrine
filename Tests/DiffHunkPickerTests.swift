@@ -54,7 +54,7 @@ struct DiffHunkPickerTests {
     @Test func defaultsDrawEveryRowAsBefore() throws {
         let config = diffConfig()
         #expect(config.diffHunks == nil)
-        #expect(config.diffLineNumbers == nil)
+        #expect(config.diffLineNumbers == .rows)
         #expect(config.diffDocument == nil)
         #expect(config.diffDisplayRows(of: DiffDocument(source: Self.patch)) == nil)
 
@@ -129,11 +129,10 @@ struct DiffHunkPickerTests {
         var both = split
         both.diffLineNumbers = .both
         #expect(try differingPixels({ try render(split) }, { try render(both) }) == 0)
+        // Old drops the new side's gutter, so the card narrows.
         var old = split
         old.diffLineNumbers = .old
-        #expect(
-            try FontLigatureTests.compareRenderedPixels(render(split), render(old))
-                .differingPixels > 0)
+        #expect(try render(old).width < render(split).width)
     }
 
     @Test func optionsApplyOnlyToDiffs() {
@@ -159,7 +158,58 @@ struct DiffHunkPickerTests {
         let slideConfig = CarouselPaginator.slideConfig(
             config, slide: slide, at: 1, of: 2, cues: .none)
         #expect(slideConfig.diffHunks == nil)
-        #expect(slideConfig.diffLineNumbers == nil)
+        #expect(slideConfig.diffLineNumbers == .rows)
+    }
+
+    // MARK: - Stale picks
+
+    @Test func picksPastTheLastHunkNeverFoldEverything() throws {
+        let document = DiffDocument(source: Self.patch)
+        var stale = diffConfig()
+        stale.diffHunks = [5]
+        #expect(stale.diffShownHunks(count: 2) == nil)
+        #expect(stale.diffDisplayRows(of: document) == nil)
+        stale.diffHunks = [2, 5]
+        #expect(stale.diffShownHunks(count: 2) == [2])
+
+        var single = diffConfig()
+        single.code = "@@ -1,2 +1,2 @@\n one\n-two\n+TWO"
+        single.diffHunks = [2]
+        var plain = single
+        plain.diffHunks = nil
+        #expect(try differingPixels({ try render(single) }, { try render(plain) }) == 0)
+    }
+
+    @Test func aPickBelongsToOnePatch() {
+        var config = diffConfig()
+        config.diffHunks = [2]
+        config.clearContentMarks()
+        #expect(config.diffHunks == nil)
+
+        let settings = AppSettings(defaults: testDefaults())
+        settings.config = diffConfig()
+        settings.diffHunkShown(1, of: 2).wrappedValue = false
+        #expect(settings.style.diffHunks == [2])
+        // An edit inside a hunk keeps the pick; one that changes the hunk count drops it.
+        settings.documentCode += "\n context"
+        #expect(settings.style.diffHunks == [2])
+        settings.config.code = "@@ -1 +1 @@\n-a\n+b"
+        #expect(settings.style.diffHunks == nil)
+
+        settings.config = diffConfig()
+        settings.diffHunkShown(1, of: 2).wrappedValue = false
+        settings.documentCode = "@@ -1 +1 @@\n-a\n+b"
+        #expect(settings.style.diffHunks == nil)
+    }
+
+    @Test func parsesAreSharedAcrossStyleChanges() {
+        let cache = DiffLayoutCache()
+        let code = Self.patch + "\n"
+        #expect(cache.hunks(in: code).count == 2)
+        _ = cache.document(for: code)
+        _ = cache.gutterLabels(.both, code: code, firstLineNumber: 1, redacting: [])
+        _ = cache.gutterLabels(.both, code: code, firstLineNumber: 1, redacting: [])
+        #expect(cache.misses == 1)
     }
 
     // MARK: - Inspector bindings
@@ -185,28 +235,31 @@ struct DiffHunkPickerTests {
         #expect(settings.style.diffHunks == nil)
     }
 
-    @Test func numberingPickerDrivesTheGutter() {
+    @Test func numberingIsItsOwnSettingAndLeavesTheGutterSwitchAlone() {
         let settings = AppSettings(defaults: testDefaults())
         settings.config = diffConfig()
+        settings.style.showLineNumbers = false
         let picker = settings.diffLineNumbersSelection
-        #expect(picker.wrappedValue == nil)
-        settings.style.diffView = .split
-        #expect(picker.wrappedValue == .both)
+        #expect(picker.wrappedValue == .rows)
 
-        picker.wrappedValue = .hidden
-        #expect(!settings.style.showLineNumbers)
-        #expect(picker.wrappedValue == .hidden)
         picker.wrappedValue = .old
-        #expect(settings.style.showLineNumbers)
         #expect(settings.style.diffLineNumbers == .old)
-        picker.wrappedValue = nil
-        #expect(settings.style.diffLineNumbers == .old)
+        #expect(!settings.style.showLineNumbers)
+        #expect(settings.style.diffFileNumbering == nil)
+        settings.style.showLineNumbers = true
+        #expect(settings.style.diffFileNumbering == .old)
+        settings.style.language = .swift
+        #expect(settings.style.diffFileNumbering == nil)
+        settings.style.language = .diff
+
+        picker.wrappedValue = .rows
+        #expect(settings.style.diffFileNumbering == nil)
 
         settings.style.annotations = [
             Annotation(kind: .blur, start: CGPoint(x: 0.1, y: 0.4), end: CGPoint(x: 0.5, y: 0.5))
         ]
         picker.wrappedValue = .new
-        #expect(settings.style.diffLineNumbers == .old)
+        #expect(settings.style.diffLineNumbers == .rows)
     }
 
     // MARK: - Persistence
@@ -224,36 +277,42 @@ struct DiffHunkPickerTests {
 
         var encoded = plain
         encoded["diffHunks"] = [0, 3, 3, 1, 50_000]
-        encoded["diffLineNumbers"] = "none"
+        encoded["diffLineNumbers"] = "sideways"
         var target = SnapshotConfig()
+        target.diffLineNumbers = .both
         try JSONDecoder().decode(
             SharedSnapshot.self, from: JSONSerialization.data(withJSONObject: encoded)
         ).apply(to: &target)
         #expect(target.diffHunks == [1, 3])
-        #expect(target.diffLineNumbers == nil)
+        #expect(target.diffLineNumbers == .rows)
     }
 
-    @Test func settingsCodecWritesAndClearsBothOptions() {
+    @Test func settingsKeepTheNumberingButNeverTheHunkPick() {
         let defaults = testDefaults()
         var config = SnapshotConfig()
         config.diffHunks = [2]
         config.diffLineNumbers = .both
         SettingsCodec.persistStyle(config, to: defaults)
         let read = SettingsCodec.readConfig(from: defaults)
-        #expect(read.diffHunks == [2])
+        #expect(read.diffHunks == nil)
         #expect(read.diffLineNumbers == .both)
+        #expect(defaults.object(forKey: "diffHunks") == nil)
 
         SettingsCodec.persistStyle(SnapshotConfig(), to: defaults)
-        #expect(defaults.object(forKey: SettingsCodec.Keys.diffHunks) == nil)
-        #expect(defaults.object(forKey: SettingsCodec.Keys.diffLineNumbers) == nil)
+        #expect(SettingsCodec.readConfig(from: defaults).diffLineNumbers == .rows)
     }
 
-    @Test func windowStateDropsHostileValues() throws {
+    @Test func windowStateRestoresThePickAndDropsHostileValues() throws {
         var state = EditorWindowState(config: diffConfig())
         state.diffHunks = [0, 4, 4]
-        state.diffLineNumbers = .hidden
         let restored = try #require(EditorWindowState.decoded(from: state.encoded()))
         #expect(restored.config().diffHunks == [4])
-        #expect(restored.config().diffLineNumbers == nil)
+        #expect(restored.config().diffLineNumbers == .rows)
+
+        let settings = AppSettings(defaults: testDefaults())
+        var picked = diffConfig()
+        picked.diffHunks = [2]
+        settings.config = EditorWindowState(config: picked).config()
+        #expect(settings.style.diffHunks == [2])
     }
 }

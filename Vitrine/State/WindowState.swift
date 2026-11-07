@@ -185,7 +185,7 @@ struct EditorWindowState: Codable, Equatable {
         diffView = config.diffView
         diffWordMarks = config.diffWordMarks
         diffHunks = config.diffHunks
-        diffLineNumbers = config.diffLineNumbers
+        diffLineNumbers = config.diffLineNumbers == .rows ? nil : config.diffLineNumbers
         annotations = config.annotations
         codeSteps = config.codeSteps
         activeCodeStep = config.activeCodeStep
@@ -259,7 +259,7 @@ struct EditorWindowState: Codable, Equatable {
         config.diffView = diffView ?? .unified
         config.diffWordMarks = diffWordMarks ?? false
         config.diffHunks = diffHunks.flatMap(SettingsDefaults.normalizeDiffHunks)
-        config.diffLineNumbers = diffLineNumbers == .hidden ? nil : diffLineNumbers
+        config.diffLineNumbers = diffLineNumbers ?? .rows
         config.annotations = annotations
         config.codeSteps = codeSteps
         // Older or damaged archives get the step the text came from, else the last one.

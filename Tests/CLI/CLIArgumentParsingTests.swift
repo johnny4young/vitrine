@@ -536,17 +536,38 @@ struct CLIArgumentParsingTests: CLITestSupport {
         #expect(config.diffLineNumbers == .old)
         #expect(config.showLineNumbers)
 
-        let hidden = try CLIArguments.parse([
-            "render", "changes.diff", "-o", "o.png", "--line-numbers",
-            "--diff-line-numbers", "none",
+        // A batch applies it to diffs only, so other files keep their gutter as set.
+        let swift = picked.makeConfig(code: "", language: .swift)
+        #expect(!swift.showLineNumbers)
+        #expect(swift.diffLineNumbers == .rows)
+
+        let rows = try CLIArguments.parse([
+            "render", "changes.diff", "-o", "o.png", "--diff-line-numbers", "rows",
         ])
-        let hiddenConfig = hidden.makeConfig(code: "", language: .diff)
-        #expect(!hiddenConfig.showLineNumbers)
-        #expect(hiddenConfig.diffLineNumbers == nil)
+        let rowsConfig = rows.makeConfig(code: "", language: .diff)
+        #expect(!rowsConfig.showLineNumbers)
+        #expect(rowsConfig.diffLineNumbers == .rows)
 
         let plain = try CLIArguments.parse(["render", "changes.diff", "-o", "o.png"])
         #expect(plain.diffHunks == nil)
         #expect(plain.diffLineNumbers == nil)
+    }
+
+    @Test func aPickPastTheLastHunkFailsTheRender() throws {
+        var config = SnapshotConfig(
+            code: "@@ -1 +1 @@\n-a\n+b\n@@ -9 +9 @@\n-c\n+d", language: .diff)
+        config.diffHunks = [1, 5]
+        #expect(
+            throws: CLIError.incompatibleOptions(
+                "--diff-hunks names hunk 5, but the diff has 2 hunks.")
+        ) {
+            try CLIOutputWriter.checkDiffHunks(config)
+        }
+        config.diffHunks = [2]
+        try CLIOutputWriter.checkDiffHunks(config)
+        config.language = .swift
+        config.diffHunks = [9]
+        try CLIOutputWriter.checkDiffHunks(config)
     }
 
     @Test(arguments: ["0", "1,,2", "a", "", "10001", "-1"])
@@ -558,7 +579,7 @@ struct CLIArgumentParsingTests: CLITestSupport {
         }
     }
 
-    @Test(arguments: ["rows", ""])
+    @Test(arguments: ["none", ""])
     func diffLineNumbersRejectsUnknownNumberings(_ value: String) {
         #expect(throws: CLIError.invalidValue(flag: "--diff-line-numbers", value: value)) {
             try CLIArguments.parse([

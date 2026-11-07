@@ -59,19 +59,19 @@ struct DiffViewInspectorRows: View {
             InspectorRow(label: Text("Numbering")) {
                 TokenSegmentedPicker(
                     options: [
-                        (DiffLineNumbers?.some(.old), Text("Old")),
-                        (.some(.new), Text("New")),
-                        (.some(.both), Text("Both")),
-                        (.some(.hidden), Text("None")),
+                        (DiffLineNumbers.rows, Text("Rows")),
+                        (.old, Text("Old")),
+                        (.new, Text("New")),
+                        (.both, Text("Both")),
                     ],
                     selection: settings.diffLineNumbersSelection,
                     optionIdentifiers: [
-                        "diff-line-numbers-old", "diff-line-numbers-new", "diff-line-numbers-both",
-                        "diff-line-numbers-none",
+                        "diff-line-numbers-rows", "diff-line-numbers-old", "diff-line-numbers-new",
+                        "diff-line-numbers-both",
                     ]
                 )
-                .disabled(settings.style.diffLayoutIsLocked)
-                .opacity(settings.style.diffLayoutIsLocked ? 0.5 : 1)
+                .disabled(numberingIsLocked)
+                .opacity(numberingIsLocked ? 0.5 : 1)
                 .accessibilityLabel("Numbering")
                 .accessibilityIdentifier("diff-line-numbers-picker")
             }
@@ -83,6 +83,11 @@ struct DiffViewInspectorRows: View {
                     .accessibilityIdentifier("diff-view-locked-note")
             }
         }
+    }
+
+    /// Numbering only changes a gutter the Line numbers switch shows.
+    private var numberingIsLocked: Bool {
+        settings.style.diffLayoutIsLocked || !settings.style.showLineNumbers
     }
 
     private var contextValue: Text {
@@ -98,13 +103,11 @@ private struct DiffHunkPicker: View {
 
     var body: some View {
         let code = settings.documentCode
-        let hunks = DiffDocument(source: code).hunks
+        let hunks = DiffLayoutCache.shared.hunks(in: code)
         if hunks.count > 1 {
             let lines = code.split(
                 omittingEmptySubsequences: false, whereSeparator: { $0 == "\n" || $0 == "\r\n" })
-            let shownCount = (1...hunks.count).count(where: {
-                settings.style.diffHunks?.contains($0) ?? true
-            })
+            let shownCount = settings.style.diffShownHunks(count: hunks.count)?.count ?? hunks.count
             VStack(alignment: .leading, spacing: 4) {
                 Text("Hunks")
                     .font(.system(size: VitrineTokens.FontSize.body))

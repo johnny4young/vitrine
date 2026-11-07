@@ -198,14 +198,15 @@ struct CLIReproductionCommandTests: CLITestSupport {
         var style = SnapshotConfig()
         style.language = .diff
         style.diffHunks = [1, 3]
-        style.chooseDiffLineNumbers(.both)
+        style.showLineNumbers = true
+        style.diffLineNumbers = .both
         let line = try line(command(style).outcome())
         #expect(line.contains("--diff-hunks 1,3"))
         #expect(line.contains("--diff-line-numbers both"))
         try expectRoundTrip(command(style))
 
         style.diffHunks = nil
-        style.chooseDiffLineNumbers(.hidden)
+        style.diffLineNumbers = .rows
         let plain = try self.line(command(style).outcome())
         #expect(!plain.contains("--diff-hunks"))
         #expect(!plain.contains("--diff-line-numbers"))

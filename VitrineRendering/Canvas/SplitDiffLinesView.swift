@@ -7,7 +7,7 @@ import VitrineDomain
 struct SplitDiffLinesView: View {
     let lines: CodeLinesView
     let rows: [DiffSplitRow]
-    /// `old` or `new` leaves the other side's gutter blank; `nil` and `both` number both.
+    /// `old` or `new` drops the other side's gutter; `nil` and `both` number both.
     var numbering: DiffLineNumbers?
 
     var body: some View {
@@ -44,8 +44,8 @@ struct SplitDiffLinesView: View {
         if let cell, lines.rows.indices.contains(cell.row - 1) {
             lines.wrappingEachSide.row(
                 lines.rows[cell.row - 1], lineNumber: cell.row, metrics: metrics,
-                gutterLabel: numbered ? cell.number.map { "\($0)" } ?? "" : "",
-                fillsHeight: true)
+                gutterLabel: cell.number.map { "\($0)" } ?? "", fillsHeight: true,
+                showsGutter: numbered)
         } else {
             // The side a change does not reach, shaded so the pair still reads as one row.
             Rectangle()

@@ -74,7 +74,9 @@ struct DiffHunksTests {
         let new = document.gutterLabels(.new)
         #expect(new.labels[2...6] == ["", "10", "", "11", "12"])
         #expect(new.labels[12...14] == ["98", "99", ""])
-        #expect(document.gutterLabels(.hidden).labels.allSatisfy { $0.isEmpty })
+        let rows = document.gutterLabels(.rows, firstLineNumber: 3)
+        #expect(rows.labels == (3...17).map(String.init))
+        #expect(rows.columns == 2)
     }
 
     @Test func bothRightAlignsTheTwoColumns() {

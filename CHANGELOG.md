@@ -93,10 +93,12 @@ can never drift.
   the Word marks switch in the inspector's Lines section or `--diff-word-marks` in the CLI.
   Lines too unlike to pair stay unmarked, and a redacted line hides its marks and its
   partner's.
-- Pick which hunks of a diff to show from the checkboxes in the inspector's Lines section, or
-  with `--diff-hunks 1,3` in the CLI. A hunk left out folds to one row with its added and
-  removed counts and none of its text. Number a diff by its old or new file lines, both, or
-  not at all, from the Numbering control or `--diff-line-numbers old|new|both|none`.
+- Fold diff hunks out of the image from the checkboxes in the inspector's Lines section, or
+  with `--diff-hunks 1,3` in the CLI. A folded hunk draws as one row of added and removed
+  counts. Like the context fold, it changes only the image: copied text, sidecars, alt text,
+  shared links and carousel slides keep every hunk, so use Redact to hide text. With line
+  numbers on, a diff can number its patch rows, its old or new file lines, or both, from the
+  Numbering control or `--diff-line-numbers rows|old|new|both`.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only
