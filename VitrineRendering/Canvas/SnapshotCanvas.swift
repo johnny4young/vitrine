@@ -378,8 +378,9 @@ public struct SnapshotCanvas: View, Equatable {
             let displayRows = config.diffContextLines.flatMap {
                 diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
             }
+            let rows = highlightedCodeLines
             let lines = CodeLinesView(
-                rows: highlightedCodeLines,
+                rows: rows,
                 displayRows: displayRows,
                 showLineNumbers: config.showLineNumbers,
                 firstLineNumber: config.firstLineNumber + terminalCrop.rowOffset,
@@ -393,7 +394,8 @@ public struct SnapshotCanvas: View, Equatable {
                 textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme),
                 highlightColor: HighlightManager.shared.lineHighlightColor(for: config.theme),
                 dimsUnfocused: config.focusHighlightedLines,
-                diffDecorations: config.diffDecorations
+                diffDecorations: config.diffDecorations,
+                wordMarks: wordMarks(rows: rows, diff: diff)
             )
             // An empty capture's placeholder is not a diff, so it shows once, full width.
             if config.diffUsesSplitView, !config.code.isEmpty, let diff {
@@ -427,6 +429,13 @@ public struct SnapshotCanvas: View, Equatable {
                     Text(verbatim: String(code.characters))
                 }
         }
+    }
+
+    /// Computed once per render from the drawn rows, so the offsets match their characters.
+    private func wordMarks(rows: [AttributedString], diff: DiffDocument?) -> [Int: [Range<Int>]] {
+        guard config.diffUsesWordMarks, !config.code.isEmpty, let diff else { return [:] }
+        return diff.wordMarks(
+            lines: rows.map { String($0.characters) }, redacting: config.redactedLineRanges)
     }
 
     private var cardShadow: Brand.ShadowStyle { config.cardShadow }

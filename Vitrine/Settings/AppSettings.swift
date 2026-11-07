@@ -797,6 +797,16 @@ extension AppSettings {
         )
     }
 
+    var diffWordMarksEnabled: Binding<Bool> {
+        Binding(
+            get: { self.style.diffWordMarks },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
+                self.style.diffWordMarks = value
+            }
+        )
+    }
+
     var diffViewSelection: Binding<DiffViewMode> {
         Binding(
             get: { self.style.diffView },

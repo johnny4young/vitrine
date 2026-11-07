@@ -1,6 +1,17 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Word marks" : {
+      "comment" : "Editor lines: switch that tints the changed words inside paired diff lines.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcas de palabras"
+          }
+        }
+      }
+    },
     "Card replaced" : {
       "comment" : "HUD message after a vitrine://card link replaced the social card",
       "localizations" : {

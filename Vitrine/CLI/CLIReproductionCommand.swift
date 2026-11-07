@@ -224,6 +224,9 @@ struct CLIReproductionCommand {
                 "--diff-context", style.diffContextLines.map(String.init),
                 base.diffContextLines.map(String.init))
             label("--diff-view", style.diffView.rawValue, base.diffView.rawValue)
+            toggle(
+                "--diff-word-marks", "--no-diff-word-marks", style.diffWordMarks,
+                base.diffWordMarks)
         }
         label("--terminal-width", style.terminalColumns.map(String.init), nil)
         if style.language == .terminal {

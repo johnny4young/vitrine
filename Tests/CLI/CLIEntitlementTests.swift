@@ -175,7 +175,7 @@ struct CLIEntitlementTests: CLITestSupport {
 
     @Test(arguments: [
         ["--diff-bands"], ["--no-diff-bands"], ["--diff-stats"], ["--no-diff-stats"],
-        ["--diff-context", "1"], ["--diff-view", "split"],
+        ["--diff-context", "1"], ["--diff-view", "split"], ["--diff-word-marks"],
     ])
     func explicitGitRenderStylesStillRejectHandoff(_ flags: [String]) {
         #expect(

@@ -101,6 +101,9 @@ public struct SnapshotConfig: Equatable {
     /// Lay a diff out in one column (the default) or with old and new side by side.
     public var diffView: DiffViewMode = .unified
 
+    /// Tint the words that changed inside paired removed and added lines. Off by default.
+    public var diffWordMarks: Bool = false
+
     /// Freeform marks drawn over the snapshot — arrows, text callouts, and
     /// blur/redaction boxes. Empty by default, so the default render and
     /// every golden are unchanged until the user adds one. Stored in normalized
@@ -210,10 +213,12 @@ public struct SnapshotConfig: Equatable {
     public var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
             || diffDecorations || (diffOptionsApply && diffContextLines != nil)
-            || diffUsesSplitView
+            || diffUsesSplitView || diffUsesWordMarks
     }
 
     public var diffUsesSplitView: Bool { diffOptionsApply && diffView == .split }
+
+    public var diffUsesWordMarks: Bool { diffOptionsApply && diffWordMarks }
 
     /// Whether the stats header and context fold apply. Diff bands alone do not qualify:
     /// they outlive a diff session, and a fold on other code would drop the user's rows.
@@ -225,7 +230,8 @@ public struct SnapshotConfig: Equatable {
 
     /// The parsed diff, only when an option on the canvas needs it.
     public var diffDocument: DiffDocument? {
-        guard diffOptionsApply, showDiffStats || diffContextLines != nil || diffView == .split
+        guard diffOptionsApply,
+            showDiffStats || diffContextLines != nil || diffView == .split || diffWordMarks
         else { return nil }
         return DiffDocument(source: code)
     }

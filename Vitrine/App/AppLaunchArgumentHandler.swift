@@ -225,6 +225,7 @@ import VitrineRendering
                 demo.diffDecorations = true
                 demo.showDiffStats = true
                 if arguments.contains("--demo-diff-split") { demo.diffView = .split }
+                if arguments.contains("--demo-diff-word-marks") { demo.diffWordMarks = true }
                 if arguments.contains("--demo-diff-blur") {
                     demo.annotations = [
                         Annotation(

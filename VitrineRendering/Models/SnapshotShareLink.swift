@@ -35,6 +35,7 @@ public struct SharedSnapshot: Codable, Equatable {
     var diffContextLines: Int?
     /// Absent for unified, so links without a split layout encode as they did before.
     var diffView: DiffViewMode?
+    var diffWordMarks: Bool?
     var terminalColumns: Int?
     var terminalCrop: TerminalCrop?
 
@@ -75,6 +76,7 @@ public struct SharedSnapshot: Codable, Equatable {
         self.showDiffStats = config.showDiffStats
         self.diffContextLines = config.diffContextLines.map(SettingsDefaults.clampDiffContextLines)
         self.diffView = config.diffView == .unified ? nil : config.diffView
+        self.diffWordMarks = config.diffWordMarks ? true : nil
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -97,6 +99,7 @@ public struct SharedSnapshot: Codable, Equatable {
         config.showDiffStats = showDiffStats
         config.diffContextLines = diffContextLines
         config.diffView = diffView ?? .unified
+        config.diffWordMarks = diffWordMarks ?? false
         config.terminalColumns = terminalColumns
         config.terminalCrop = terminalCrop ?? TerminalCrop()
     }
@@ -105,7 +108,7 @@ public struct SharedSnapshot: Codable, Equatable {
         case version, code, languageID, style, annotations, windowTitle, metadata
         case shadowRadius, highlightedLineRanges, focusHighlightedLines, diffDecorations
         case terminalColumns, altText, terminalCrop, showDiffStats, diffContextLines
-        case diffView
+        case diffView, diffWordMarks
     }
 
     public init(from decoder: Decoder) throws {
@@ -138,6 +141,7 @@ public struct SharedSnapshot: Codable, Equatable {
             (try? container.decode(Int.self, forKey: .diffContextLines))
             .map(SettingsDefaults.clampDiffContextLines)
         diffView = try? container.decode(DiffViewMode.self, forKey: .diffView)
+        diffWordMarks = try? container.decode(Bool.self, forKey: .diffWordMarks)
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)

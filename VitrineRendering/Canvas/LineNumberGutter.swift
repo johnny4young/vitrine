@@ -77,6 +77,9 @@ struct CodeLinesView: View {
     /// Band added (`+`) lines green and removed (`-`) lines red, GitHub-style. When
     /// on, the diff band takes precedence over the plain highlight band.
     var diffDecorations: Bool = false
+    /// Changed character spans inside paired diff lines, keyed by 1-based row and computed
+    /// once per render by `DiffDocument.wordMarks`.
+    var wordMarks: [Int: [Range<Int>]] = [:]
 
     var body: some View {
         let metrics = GutterMetrics(font: font, lineCount: rows.count + firstLineNumber - 1)
@@ -138,7 +141,9 @@ struct CodeLinesView: View {
             // rendered text is a neutral placeholder — not the original source blurred —
             // so accessibility, text selection, and rich clipboard paths cannot recover
             // the secret the image is meant to hide.
-            lineText(line, isRedacted: isRedacted)
+            lineText(
+                isRedacted ? line : Self.marking(line, spans: wordMarks[lineNumber]),
+                isRedacted: isRedacted)
             Spacer(minLength: 0)
         }
         // A full-bleed band so the highlight reads as a selected row across the
@@ -198,6 +203,27 @@ struct CodeLinesView: View {
             return diff
         }
         return isHighlighted ? highlightColor : Color.clear
+    }
+
+    /// `line` with a stronger tint behind each changed span. A text attribute, so the tint
+    /// follows the glyphs onto wrapped rows.
+    static func marking(_ line: AttributedString, spans: [Range<Int>]?) -> AttributedString {
+        guard let spans, !spans.isEmpty else { return line }
+        let color: Color
+        switch line.characters.first {
+        case "+": color = DiffColor.added.opacity(0.4)
+        case "-": color = DiffColor.removed.opacity(0.4)
+        default: return line
+        }
+        var marked = line
+        let count = marked.characters.count
+        for span in spans where !span.isEmpty && span.lowerBound >= 0 && span.upperBound <= count {
+            let start = marked.characters.index(marked.startIndex, offsetBy: span.lowerBound)
+            let end = marked.characters.index(start, offsetBy: span.count)
+            marked[start..<end][AttributeScopes.SwiftUIAttributes.BackgroundColorAttribute.self] =
+                color
+        }
+        return marked
     }
 
     /// A green band for an added (`+`) line, red for a removed (`-`) line, `nil`

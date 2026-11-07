@@ -184,6 +184,16 @@ struct CLIReproductionCommandTests: CLITestSupport {
         #expect(try !self.line(command(style).outcome()).contains("--diff-view"))
     }
 
+    @Test func aDiffWithWordMarksCarriesTheFlag() throws {
+        var style = SnapshotConfig()
+        style.language = .diff
+        style.diffWordMarks = true
+        #expect(try line(command(style).outcome()).contains("--diff-word-marks"))
+        try expectRoundTrip(command(style))
+        style.diffWordMarks = false
+        #expect(try !self.line(command(style).outcome()).contains("word-marks"))
+    }
+
     @Test func aFoldedDiffCarriesItsStatsAndContext() throws {
         var style = SnapshotConfig()
         style.language = .diff

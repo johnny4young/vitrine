@@ -237,6 +237,7 @@ extension CLIArgumentParser {
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
             || showDiffStats != nil || diffContextLines != nil || diffView != nil
+            || diffWordMarks != nil
 
         // A blur box is placed on the whole canvas, so a crop would slide content out from under it.
         if terminalCrop != nil, !annotations.blurBoxes.points.isEmpty {
@@ -262,6 +263,7 @@ extension CLIArgumentParser {
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
                 || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
                 || showDiffStats != nil || diffContextLines != nil || diffView != nil
+                || diffWordMarks != nil
                 || textSidecar || markdownSidecar || htmlSidecar || sourceLines != nil
             if codeOnlyOptionsRequested {
                 throw CLIError.incompatibleOptions(
@@ -494,6 +496,7 @@ extension CLIArgumentParser {
             showDiffStats: showDiffStats,
             diffContextLines: diffContextLines,
             diffView: diffView,
+            diffWordMarks: diffWordMarks,
             recursiveBatch: recursiveBatch,
             failOnSkipped: failOnSkipped,
             failOnEmpty: failOnEmpty,

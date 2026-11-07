@@ -89,6 +89,10 @@ can never drift.
 - Show a diff split, with the old and new file side by side, from the Layout control in the
   inspector's Lines section or with `--diff-view split` in the CLI. Each side keeps its own
   line numbers and redacted rows stay hidden on both sides. Unified stays the default.
+- Mark the words that changed inside a diff's removed and added lines, in both layouts, with
+  the Word marks switch in the inspector's Lines section or `--diff-word-marks` in the CLI.
+  Lines too unlike to pair stay unmarked, and a redacted line hides its marks and its
+  partner's.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only

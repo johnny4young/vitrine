@@ -616,6 +616,9 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("diff-stats-toggle", in: app), in: app, timeout: 3)
         assertExists(element("diff-context-slider", in: app), in: app)
         XCTAssertFalse(element("diff-view-locked-note", in: app).exists)
+        let wordMarks = element("diff-word-marks-toggle", in: app)
+        assertExists(wordMarks, in: app)
+        XCTAssertTrue(wordMarks.isEnabled)
 
         assertExists(element("diff-view-picker", in: app), in: app)
         let split = element("diff-view-split", in: app)
@@ -644,6 +647,7 @@ final class VitrineUITests: XCTestCase {
         XCTAssertFalse(element("diff-context-slider", in: app).isEnabled)
         XCTAssertFalse(element("diff-stats-toggle", in: app).isEnabled)
         XCTAssertFalse(element("diff-view-split", in: app).isEnabled)
+        XCTAssertFalse(element("diff-word-marks-toggle", in: app).isEnabled)
     }
 
     @MainActor

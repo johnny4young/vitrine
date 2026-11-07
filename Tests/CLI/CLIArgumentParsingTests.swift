@@ -434,6 +434,7 @@ struct CLIArgumentParsingTests: CLITestSupport {
         #expect(defaults.diffDecorations == nil)
         #expect(defaults.showDiffStats == nil)
         #expect(defaults.diffContextLines == nil)
+        #expect(defaults.diffWordMarks == nil)
 
         let options = try CLIArguments.parse([
             "render", "snippet.swift",
@@ -513,6 +514,18 @@ struct CLIArgumentParsingTests: CLITestSupport {
         #expect(unified.makeConfig(code: "", language: .diff).diffView == .unified)
     }
 
+    @Test func diffWordMarksParseAsAPair() throws {
+        let on = try CLIArguments.parse([
+            "render", "changes.diff", "-o", "o.png", "--diff-word-marks",
+        ])
+        #expect(on.makeConfig(code: "", language: .diff).diffWordMarks)
+        let off = try CLIArguments.parse([
+            "render", "changes.diff", "-o", "o.png", "--diff-word-marks", "--no-diff-word-marks",
+        ])
+        #expect(off.diffWordMarks == false)
+        #expect(!off.makeConfig(code: "", language: .diff).diffWordMarks)
+    }
+
     @Test(arguments: ["side", ""])
     func diffViewRejectsUnknownLayouts(_ value: String) {
         #expect(throws: CLIError.invalidValue(flag: "--diff-view", value: value)) {
@@ -533,6 +546,7 @@ struct CLIArgumentParsingTests: CLITestSupport {
 
     @Test(arguments: [
         ["--diff-stats"], ["--no-diff-stats"], ["--diff-context", "1"], ["--diff-view", "split"],
+        ["--diff-word-marks"],
     ])
     func diffViewOptionsAreCodeOnly(_ flags: [String]) {
         #expect(

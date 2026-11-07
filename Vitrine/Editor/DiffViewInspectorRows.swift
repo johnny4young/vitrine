@@ -2,8 +2,8 @@ import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
-/// The inspector rows that shape a diff: its layout, stats header and how much context it
-/// keeps. Shown only for content that reads as a diff.
+/// The inspector rows that shape a diff: its layout, word marks, stats header and how much
+/// context it keeps. Shown only for content that reads as a diff.
 struct DiffViewInspectorRows: View {
     @Bindable var settings: AppSettings
 
@@ -22,6 +22,13 @@ struct DiffViewInspectorRows: View {
                 .opacity(settings.style.diffLayoutIsLocked ? 0.5 : 1)
                 .accessibilityLabel("Layout")
                 .accessibilityIdentifier("diff-view-picker")
+            }
+            InspectorRow(label: Text("Word marks")) {
+                Toggle("Word marks", isOn: settings.diffWordMarksEnabled)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .disabled(settings.style.diffLayoutIsLocked)
+                    .accessibilityIdentifier("diff-word-marks-toggle")
             }
             InspectorRow(label: Text("Stats header")) {
                 Toggle("Stats header", isOn: settings.diffStatsEnabled)
