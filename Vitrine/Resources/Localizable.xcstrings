@@ -317,6 +317,39 @@
         }
       }
     },
+    "Change Background" : {
+      "comment" : "Undo action name for picking a derived background or its next variant.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar fondo"
+          }
+        }
+      }
+    },
+    "Magic" : {
+      "comment" : "Background swatch and inspector row for a gradient derived from the capture's own colors.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mágico"
+          }
+        }
+      }
+    },
+    "Shuffle" : {
+      "comment" : "Button that switches the derived background to its next gradient variant.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otra variante"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {

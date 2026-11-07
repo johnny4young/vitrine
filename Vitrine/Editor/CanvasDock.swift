@@ -68,6 +68,7 @@ struct CanvasDock: View {
     let entitlements: Entitlements
     let legibility: LegibilityModel
     let presetThumbnails: PresetThumbnailModel
+    let magicBackground: MagicBackgroundModel
     let presentFramePaywall: () -> Void
 
     @State private var openPane: InspectorPane?
@@ -94,7 +95,8 @@ struct CanvasDock: View {
                         EditorInspectorView(
                             settings: settings, themes: themes, presets: presets,
                             entitlements: entitlements, legibility: legibility,
-                            presetThumbnails: presetThumbnails, pane: pane,
+                            presetThumbnails: presetThumbnails, magicBackground: magicBackground,
+                            pane: pane,
                             presentFramePaywall: {
                                 openPane = nil
                                 presentFramePaywall()

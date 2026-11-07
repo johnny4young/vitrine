@@ -980,6 +980,32 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMagicBackgroundAppliesAndShuffles() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+
+        XCTAssertTrue(element("code-editor-text-view", in: app).waitForExistence(timeout: 8))
+        XCTAssertFalse(element("inspector-background-magic-shuffle", in: app).exists)
+        assertHittable(
+            "inspector-background-magic", in: app, "The Magic swatch must be reachable")
+        element("inspector-background-magic", in: app).click()
+        let shuffle = element("inspector-background-magic-shuffle", in: app)
+        assertExists(shuffle, in: app, timeout: 3)
+        // Only a preset prints a readout, so it leaves once the derived gradient applies.
+        XCTAssertTrue(
+            element("inspector-value-background", in: app).waitForNonExistence(timeout: 3))
+        // Every variant has its own angle, so the custom-gradient angle shows the change.
+        let angle = element("custom-gradient-angle", in: app)
+        assertExists(angle, in: app, timeout: 3)
+        let before = angle.value as? String
+        shuffle.click()
+        let changed = NSPredicate(format: "value != %@", before ?? "")
+        wait(for: [expectation(for: changed, evaluatedWith: angle)], timeout: 3)
+        assertExists(shuffle, in: app)
+    }
+
+    @MainActor
     func testPresetThumbnailApplies() throws {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.emptyEditor)
