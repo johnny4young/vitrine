@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- A Magic swatch beside the editor's background presets builds a gradient from the capture
+  itself: the syntax colors the code uses, or the main colors of a beautified image. Shuffle
+  steps through its variants. Each stop keeps the code card distinct, and the result is an
+  ordinary custom gradient, so presets, recipes, share links and the CLI reproduce it.
 - The code editor has a line-number gutter that shows each line's highlight and redaction.
   Click a number to highlight, redact or clear that line, or to turn on Focus highlighted;
   ⇧-click marks a range. Selecting code offers Highlight and Redact for the lines it covers,
