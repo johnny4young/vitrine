@@ -46,6 +46,7 @@ struct StyleCodecCompletenessTests {
         config.diffDecorations = true
         config.showDiffStats = true
         config.diffContextLines = 2
+        config.diffView = .split
         config.annotations = [
             Annotation(
                 kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),

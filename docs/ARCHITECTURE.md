@@ -553,9 +553,9 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
 `--diff-bands`, `--no-diff-bands`, `--diff-stats`, `--no-diff-stats`,
-`--diff-context <0...5>`), and the header controls (`--window-title`,
-`--filename`, `--title`, `--caption`, `--language-badge`, `--no-language-badge`) and an
-explicit `--recipe <path>` override individual choices.
+`--diff-context <0...5>`, `--diff-view <unified|split>`), and the header controls
+(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`,
+`--no-language-badge`) and an explicit `--recipe <path>` override individual choices.
 Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation fails
 loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
 same deterministic `SecretScanner` as the editor and merges detected rows with any

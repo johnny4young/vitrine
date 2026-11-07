@@ -309,6 +309,9 @@ enum VitrineTokens {
             light: Color(hex: "#4F46E5"),
             dark: Color(hex: "#FFFFFF")
         ).color
+        /// The guide a dragged mark shows on a snap target. One hue in both appearances,
+        /// because it sits over the user's capture, not the app's chrome.
+        static let snapGuide = Color(hex: "#FF2D95")
         /// The transparency checker's two cells: light grey on a light stage.
         static let checkerBase = Brand.BrandColor(
             light: Color(hex: "#F7F8FA"),

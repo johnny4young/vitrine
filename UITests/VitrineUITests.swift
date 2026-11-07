@@ -457,6 +457,12 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("diff-stats-toggle", in: app), in: app, timeout: 3)
         assertExists(element("diff-context-slider", in: app), in: app)
         XCTAssertFalse(element("diff-view-locked-note", in: app).exists)
+
+        assertExists(element("diff-view-picker", in: app), in: app)
+        let split = element("diff-view-split", in: app)
+        assertExists(split, in: app)
+        split.click()
+        XCTAssertTrue(split.wait(for: \.isSelected, toEqual: true, timeout: 3))
     }
 
     @MainActor
@@ -478,6 +484,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("diff-view-locked-note", in: app), in: app, timeout: 3)
         XCTAssertFalse(element("diff-context-slider", in: app).isEnabled)
         XCTAssertFalse(element("diff-stats-toggle", in: app).isEnabled)
+        XCTAssertFalse(element("diff-view-split", in: app).isEnabled)
     }
 
     @MainActor
@@ -662,9 +669,12 @@ final class VitrineUITests: XCTestCase {
             XCTAssertFalse(delete.exists, "A click must not create a zero-size arrow")
             let start = center.withOffset(CGVector(dx: -30, dy: -20))
             let end = center.withOffset(CGVector(dx: 30, dy: 20))
-            start.press(
-                forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                start.press(
+                    forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             assertExists(delete, in: app)
             revealToolbarAction(
                 "annotation-tool-select", from: "annotation-tool-picker", in: app
@@ -676,15 +686,21 @@ final class VitrineUITests: XCTestCase {
 
             let beforeMove = delete.frame
             let movedCenter = center.withOffset(CGVector(dx: 15, dy: 0))
-            center.press(
-                forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                center.press(
+                    forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeMove.minX, 15, accuracy: 3)
             let beforeResize = delete.frame
             let movedEnd = end.withOffset(CGVector(dx: 15, dy: 0))
-            movedEnd.press(
-                forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
-                withVelocity: dragVelocity, thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                movedEnd.press(
+                    forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
+                    withVelocity: dragVelocity, thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeResize.minX, 15, accuracy: 3)
             let beforeKey = delete.frame
             app.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [.shift])
@@ -715,9 +731,11 @@ final class VitrineUITests: XCTestCase {
             assertExists(delete, in: app)
             let beforeTextMove = delete.frame
             let textTarget = center.withOffset(CGVector(dx: 15, dy: 0))
-            center.press(
-                forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            XCUIElement.perform(withKeyModifiers: .command) {
+                center.press(
+                    forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeTextMove.minX, 15, accuracy: 3)
             XCTAssertFalse(field.exists, "A move must not reopen the text field")
             textTarget.doubleClick()
@@ -979,6 +997,29 @@ final class VitrineUITests: XCTestCase {
         add(attachment)
     }
 
+    /// Choosing a gallery card selects that association for the Manage actions.
+    @MainActor
+    func testRecipeGalleryCardSelectsTheAssociation() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.settings + ["--demo-recipe-gallery"])
+        defer { app.terminate() }
+        let settings = SettingsRobot(testCase: self, app: app)
+        settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+        assertExists(element("workspace-recipe-gallery", in: app), in: app, timeout: 5)
+        assertExists(element("workspace-recipe-card-2", in: app), in: app, timeout: 3)
+        let apply = element("apply-workspace-recipe-button", in: app)
+        XCTAssertFalse(apply.isEnabled, "Nothing is selected before a card is chosen")
+
+        assertHittable("workspace-recipe-card-0", in: app, "A gallery card should be reachable")
+        element("workspace-recipe-card-0", in: app).click()
+        let enabled = expectation(
+            for: NSPredicate(format: "isEnabled == true"), evaluatedWith: apply)
+        let pickerShowsCard = expectation(
+            for: NSPredicate(format: "value CONTAINS %@", "pr-review.vitrine-recipe.json"),
+            evaluatedWith: element("workspace-recipe-picker", in: app))
+        wait(for: [enabled, pickerShowsCard], timeout: 3)
+    }
+
     /// Deletion, default replacement and reload are unit-tested in `LibraryDeletionTests`;
     /// this proves the named confirmations keep Cancel as the safe default.
     @MainActor
@@ -1110,7 +1151,7 @@ final class VitrineUITests: XCTestCase {
             "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
             "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
             "carousel-output-summary", "carousel-filmstrip", "carousel-slide-tile-0",
-            "carousel-show-dividers",
+            "carousel-show-dividers", "carousel-slide-size", "carousel-output-format",
         ] {
             assertExists(element(identifier, in: app), in: app, timeout: 3)
         }
@@ -1828,6 +1869,57 @@ final class VitrineUITests: XCTestCase {
         divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
         XCTAssertTrue(sliderCaption.waitForNonExistence(timeout: 3))
         XCTAssertEqual(position(), settled, "That click only closes the caption")
+    }
+
+    @MainActor
+    func testRecentsMakesThemeVariantsFromOneCapture() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.recents,
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
+        defer { app.terminate() }
+
+        hittableElement("recents-compare-button", in: app).click()
+        XCTAssertFalse(
+            element("recents-theme-variants-button", in: app).exists,
+            "Theme variants start from exactly one capture")
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        cards.element(boundBy: 0).click()
+        assertHittable(
+            "recents-theme-variants-button", in: app, "One selected capture offers its variants")
+        XCTAssertFalse(element("recents-create-comparison-button", in: app).exists)
+        cards.element(boundBy: 1).click()
+        assertHittable(
+            "recents-create-comparison-button", in: app, "Two captures make a board again")
+        cards.element(boundBy: 1).click()
+        hittableElement("recents-theme-variants-button", in: app).click()
+
+        assertExists(element("comparison-board-window", in: app), in: app, timeout: 10)
+        assertExists(element("comparison-board-variants", in: app), in: app, timeout: 5)
+        // Every seeded capture uses a theme from the variant list, so it adds none of its own.
+        let chips = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH 'comparison-board-variant-'"
+                    + " AND identifier != 'comparison-board-variants'"))
+        XCTAssertEqual(chips.count, 5)
+        assertExists(element("comparison-board-variant-github", in: app), in: app)
+        assertExists(element("comparison-board-label-3", in: app), in: app)
+
+        // One Light is always among the first four, GitHub Dark never is.
+        let githubDark = element("comparison-board-variant-github-dark", in: app)
+        XCTAssertFalse(githubDark.isEnabled, "A full board takes no fifth capture")
+        element("comparison-board-variant-one-light", in: app).click()
+        XCTAssertTrue(element("comparison-board-label-3", in: app).waitForNonExistence(timeout: 3))
+        assertHittable(
+            "comparison-board-variant-github-dark", in: app, "Removing a theme frees a place")
+        githubDark.click()
+        let added = element("comparison-board-label-3", in: app)
+        assertExists(added, in: app, timeout: 3)
+        assertValue("GitHub Dark", of: added)
+        XCTAssertTrue(
+            githubDark.wait(for: \.isSelected, toEqual: true, timeout: 3),
+            "A theme on the board reads as selected")
     }
 
     @MainActor

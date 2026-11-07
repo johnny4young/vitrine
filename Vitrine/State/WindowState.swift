@@ -135,6 +135,7 @@ struct EditorWindowState: Codable, Equatable {
     var diffDecorations: Bool
     var showDiffStats: Bool
     var diffContextLines: Int?
+    var diffView: DiffViewMode?
     var annotations: [Annotation]
     /// The window's destination and per-capture output, absent in older archives.
     var destinationID: String?
@@ -176,6 +177,7 @@ struct EditorWindowState: Codable, Equatable {
         diffDecorations = config.diffDecorations
         showDiffStats = config.showDiffStats
         diffContextLines = config.diffContextLines
+        diffView = config.diffView
         annotations = config.annotations
     }
 
@@ -244,6 +246,7 @@ struct EditorWindowState: Codable, Equatable {
         config.diffDecorations = diffDecorations
         config.showDiffStats = showDiffStats
         config.diffContextLines = diffContextLines.map(SettingsDefaults.clampDiffContextLines)
+        config.diffView = diffView ?? .unified
         config.annotations = annotations
         return config
     }
@@ -254,7 +257,7 @@ struct EditorWindowState: Codable, Equatable {
         case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
-        case showDiffStats, diffContextLines
+        case showDiffStats, diffContextLines, diffView
         case terminalPalette, terminalCursor, terminalCrop
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
@@ -320,6 +323,7 @@ struct EditorWindowState: Codable, Equatable {
         showDiffStats =
             (try? container.decode(Bool.self, forKey: .showDiffStats)) ?? fallback.showDiffStats
         diffContextLines = try? container.decodeIfPresent(Int.self, forKey: .diffContextLines)
+        diffView = try? container.decodeIfPresent(DiffViewMode.self, forKey: .diffView)
         annotations =
             (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
             .compactMap(\.value) ?? fallback.annotations
