@@ -14,6 +14,9 @@ can never drift.
 
 ### Added
 
+- Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
+  to see it in up to four themes on a comparison board, each captioned with its theme. The
+  board's inspector adds or removes themes without capturing again.
 - Marks snap while you draw, drag or resize them: box edges to code rows, token edges and the
   card, arrow ends and placed marks to row centers and tokens, with a magenta guide on the
   target. Hold ⌘ to place freely. Blur boxes only snap outward, so a snap never uncovers text,

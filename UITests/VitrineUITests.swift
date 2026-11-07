@@ -1870,6 +1870,57 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testRecentsMakesThemeVariantsFromOneCapture() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.recents,
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
+        defer { app.terminate() }
+
+        hittableElement("recents-compare-button", in: app).click()
+        XCTAssertFalse(
+            element("recents-theme-variants-button", in: app).exists,
+            "Theme variants start from exactly one capture")
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        cards.element(boundBy: 0).click()
+        assertHittable(
+            "recents-theme-variants-button", in: app, "One selected capture offers its variants")
+        XCTAssertFalse(element("recents-create-comparison-button", in: app).exists)
+        cards.element(boundBy: 1).click()
+        assertHittable(
+            "recents-create-comparison-button", in: app, "Two captures make a board again")
+        cards.element(boundBy: 1).click()
+        hittableElement("recents-theme-variants-button", in: app).click()
+
+        assertExists(element("comparison-board-window", in: app), in: app, timeout: 10)
+        assertExists(element("comparison-board-variants", in: app), in: app, timeout: 5)
+        // Every seeded capture uses a theme from the variant list, so it adds none of its own.
+        let chips = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH 'comparison-board-variant-'"
+                    + " AND identifier != 'comparison-board-variants'"))
+        XCTAssertEqual(chips.count, 5)
+        assertExists(element("comparison-board-variant-github", in: app), in: app)
+        assertExists(element("comparison-board-label-3", in: app), in: app)
+
+        // One Light is always among the first four, GitHub Dark never is.
+        let githubDark = element("comparison-board-variant-github-dark", in: app)
+        XCTAssertFalse(githubDark.isEnabled, "A full board takes no fifth capture")
+        element("comparison-board-variant-one-light", in: app).click()
+        XCTAssertTrue(element("comparison-board-label-3", in: app).waitForNonExistence(timeout: 3))
+        assertHittable(
+            "comparison-board-variant-github-dark", in: app, "Removing a theme frees a place")
+        githubDark.click()
+        let added = element("comparison-board-label-3", in: app)
+        assertExists(added, in: app, timeout: 3)
+        assertValue("GitHub Dark", of: added)
+        XCTAssertTrue(
+            githubDark.wait(for: \.isSelected, toEqual: true, timeout: 3),
+            "A theme on the board reads as selected")
+    }
+
+    @MainActor
     private func assertValue(_ value: String, of field: XCUIElement) {
         XCTAssertEqual(
             XCTWaiter.wait(
