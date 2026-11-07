@@ -335,7 +335,10 @@ final class VitrineUITests: XCTestCase {
 
     /// The status capsule prints the fit percentage once the card is scaled down.
     @MainActor private func previewScale(in app: XCUIApplication) -> CGFloat {
-        let value = element("editor-status-capsule", in: app).value as? String ?? ""
+        // The capsule's identifier can resolve to more than one element on the CI image.
+        let capsule = app.descendants(matching: .any)
+            .matching(identifier: "editor-status-capsule").firstMatch
+        let value = capsule.value as? String ?? ""
         guard let match = value.firstMatch(of: /(\d+)\s?%/), let zoom = Double(match.1) else {
             return 1
         }
