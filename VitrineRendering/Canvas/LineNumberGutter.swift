@@ -111,10 +111,11 @@ struct CodeLinesView: View {
     }
 
     /// `gutterLabel` replaces the drawn number; the split layout numbers each side itself.
+    /// `fillsHeight` stretches the band to a row the other side made taller.
     @ViewBuilder
     func row(
         _ line: AttributedString, lineNumber: Int, metrics: GutterMetrics,
-        gutterLabel: String? = nil
+        gutterLabel: String? = nil, fillsHeight: Bool = false
     )
         -> some View
     {
@@ -144,6 +145,7 @@ struct CodeLinesView: View {
         // whole card width, behind both the gutter number and the code.
         .padding(.horizontal, Brand.Spacing.xs)
         .padding(.vertical, lineSpacing / 2)
+        .fillingHeight(fillsHeight)
         .background(rowBackground(line: line, isHighlighted: isHighlighted))
         // Negative inset cancels the horizontal padding so highlighted and plain
         // rows share the same left edge; the band simply extends past the text.
@@ -206,6 +208,13 @@ struct CodeLinesView: View {
         case "-": DiffColor.removed.opacity(0.18)
         default: nil
         }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    fileprivate func fillingHeight(_ fills: Bool) -> some View {
+        if fills { frame(maxHeight: .infinity, alignment: .top) } else { self }
     }
 }
 

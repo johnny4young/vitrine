@@ -106,6 +106,62 @@ struct DiffSplitViewTests {
         #expect(try render(config).height < plain.height)
     }
 
+    @Test func anEmptyCaptureShowsOnePlaceholder() throws {
+        var unified = diffConfig(.unified)
+        unified.code = ""
+        var split = unified
+        split.diffView = .split
+        #expect(try differingPixels({ try render(unified) }, { try render(split) }) == 0)
+    }
+
+    @Test func wrappedSidesKeepTheUnifiedWidthAndBandsFillTheRow() throws {
+        let long = String(repeating: "word ", count: 30)
+        var unified = diffConfig(.unified)
+        unified.wrapColumns = 60
+        unified.code = "@@ -1 +1 @@\n-x\n+\(long)"
+        var split = unified
+        split.diffView = .split
+        #expect(try render(split).width <= render(unified).width + 80)
+
+        func removedBandRows(addition: String) throws -> Int {
+            var config = split
+            config.background = .solid(RGBAColor(hex: "#000000")!)
+            config.code = "@@ -1 +1 @@\n-x\n+\(addition)"
+            return try Self.redRows(in: render(config), atFraction: 0.4)
+        }
+        let single = try removedBandRows(addition: "short")
+        #expect(single > 0)
+        #expect(try removedBandRows(addition: long) > single * 2)
+    }
+
+    /// Rows of the column at `fraction` of the width tinted by the removed band.
+    private static func redRows(in image: CGImage, atFraction fraction: Double) throws -> Int {
+        let width = image.width
+        let height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let context = try #require(
+            CGContext(
+                data: &pixels, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let x = Int(Double(width) * fraction)
+        return (0..<height).filter { y in
+            let offset = (y * width + x) * 4
+            return Int(pixels[offset]) > Int(pixels[offset + 1]) + 15
+        }.count
+    }
+
+    // MARK: - Carousel
+
+    @Test func carouselSlidesRenderUnified() {
+        let config = diffConfig()
+        let slide = CarouselPaginator.slides(for: config.code, maxLinesPerSlide: 4)[1]
+        let slideConfig = CarouselPaginator.slideConfig(
+            config, slide: slide, at: 1, of: 2, cues: .none)
+        #expect(slideConfig.diffView == .unified)
+    }
+
     // MARK: - Privacy
 
     @Test(arguments: [5...5, 8...8])
@@ -151,6 +207,17 @@ struct DiffSplitViewTests {
     }
 
     // MARK: - Persistence
+
+    @Test func unifiedLinksEncodeAsBefore() throws {
+        func keys(_ config: SnapshotConfig) throws -> [String: Any] {
+            try #require(
+                JSONSerialization.jsonObject(
+                    with: JSONEncoder().encode(SharedSnapshot(capturing: config)))
+                    as? [String: Any])
+        }
+        #expect(try keys(diffConfig(.unified))["diffView"] == nil)
+        #expect(try keys(diffConfig())["diffView"] as? String == "split")
+    }
 
     @Test func shareLinkRoundTripsAndOlderPayloadsReadUnified() throws {
         let url = try SnapshotShareLink.url(for: SharedSnapshot(capturing: diffConfig()))

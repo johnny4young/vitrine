@@ -218,6 +218,10 @@ struct CLIReproductionCommand {
         toggle("--focus-lines", "--no-focus-lines", style.focusHighlightedLines, false)
         toggle("--diff-bands", "--no-diff-bands", style.diffDecorations, false)
         if style.diffOptionsApply {
+            toggle("--diff-stats", "--no-diff-stats", style.showDiffStats, base.showDiffStats)
+            label(
+                "--diff-context", style.diffContextLines.map(String.init),
+                base.diffContextLines.map(String.init))
             label("--diff-view", style.diffView.rawValue, base.diffView.rawValue)
         }
         label("--terminal-width", style.terminalColumns.map(String.init), nil)

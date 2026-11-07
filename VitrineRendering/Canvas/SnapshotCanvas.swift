@@ -396,7 +396,8 @@ public struct SnapshotCanvas: View, Equatable {
                 dimsUnfocused: config.focusHighlightedLines,
                 diffDecorations: config.diffDecorations
             )
-            if config.diffUsesSplitView, let diff {
+            // An empty capture's placeholder is not a diff, so it shows once, full width.
+            if config.diffUsesSplitView, !config.code.isEmpty, let diff {
                 SplitDiffLinesView(
                     lines: lines,
                     rows: diff.splitRows(

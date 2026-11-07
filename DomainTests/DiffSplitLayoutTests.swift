@@ -42,7 +42,7 @@ struct DiffSplitLayoutTests {
                 .pair(old: cell(8, 13), new: cell(8, 22)),
                 .pair(old: nil, new: cell(9, 23)),
                 .pair(old: nil, new: cell(10, 24)),
-                .spanning(.line(11)),
+                .pair(old: nil, new: cell(11, nil)),
             ])
     }
 
@@ -116,6 +116,21 @@ struct DiffSplitLayoutTests {
                 .pair(old: cell(1, Int.max), new: cell(1, Int.max)),
                 .pair(old: cell(2, nil), new: cell(2, nil)),
             ])
+    }
+
+    @Test func aChangedLastLineWithoutANewlineStillPairs() {
+        let note = "\\ No newline at end of file"
+        let rows = split("@@ -1 +1 @@\n-old\n\(note)\n+new\n\(note)")
+        #expect(
+            rows == [
+                .spanning(.line(1)),
+                .pair(old: cell(2, 1), new: cell(4, 1)),
+                .pair(old: cell(3, nil), new: cell(5, nil)),
+            ])
+
+        let oneSided = split("@@ -1 +1 @@\n-old\n\(note)\n+new")
+        #expect(oneSided.last == .pair(old: cell(3, nil), new: nil))
+        #expect(split("@@ -1 +1 @@\n a\n\(note)").last == .spanning(.line(3)))
     }
 
     @Test func rowsOutsideTheDocumentSpan() {

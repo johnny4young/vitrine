@@ -33,7 +33,8 @@ public struct SharedSnapshot: Codable, Equatable {
     var diffDecorations: Bool
     var showDiffStats: Bool
     var diffContextLines: Int?
-    var diffView: DiffViewMode
+    /// Absent for unified, so links without a split layout encode as they did before.
+    var diffView: DiffViewMode?
     var terminalColumns: Int?
 
     private static let maxAnnotations = 256
@@ -65,7 +66,7 @@ public struct SharedSnapshot: Codable, Equatable {
         self.diffDecorations = config.diffDecorations
         self.showDiffStats = config.showDiffStats
         self.diffContextLines = config.diffContextLines.map(SettingsDefaults.clampDiffContextLines)
-        self.diffView = config.diffView
+        self.diffView = config.diffView == .unified ? nil : config.diffView
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -87,7 +88,7 @@ public struct SharedSnapshot: Codable, Equatable {
         config.diffDecorations = diffDecorations
         config.showDiffStats = showDiffStats
         config.diffContextLines = diffContextLines
-        config.diffView = diffView
+        config.diffView = diffView ?? .unified
         config.terminalColumns = terminalColumns
     }
 
@@ -126,7 +127,7 @@ public struct SharedSnapshot: Codable, Equatable {
         diffContextLines =
             (try? container.decode(Int.self, forKey: .diffContextLines))
             .map(SettingsDefaults.clampDiffContextLines)
-        diffView = (try? container.decode(DiffViewMode.self, forKey: .diffView)) ?? .unified
+        diffView = try? container.decode(DiffViewMode.self, forKey: .diffView)
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)

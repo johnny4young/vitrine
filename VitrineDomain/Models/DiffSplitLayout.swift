@@ -35,6 +35,7 @@ extension DiffDocument {
         var result: [DiffSplitRow] = []
         var removed: [DiffSplitCell] = []
         var added: [DiffSplitCell] = []
+        var previous: DiffDocument.RowKind?
         func flush() {
             for index in 0..<max(removed.count, added.count) {
                 result.append(
@@ -48,10 +49,13 @@ extension DiffDocument {
             guard case .line(let line) = row, rowKinds.indices.contains(line - 1) else {
                 flush()
                 result.append(.spanning(row))
+                previous = nil
                 continue
             }
             let side = numbers[line - 1]
-            switch rowKinds[line - 1] {
+            let kind = rowKinds[line - 1]
+            defer { previous = kind }
+            switch kind {
             case .deletion:
                 if !added.isEmpty { flush() }
                 removed.append(DiffSplitCell(row: line, number: side?.old))
@@ -63,6 +67,11 @@ extension DiffDocument {
                     .pair(
                         old: DiffSplitCell(row: line, number: side?.old),
                         new: DiffSplitCell(row: line, number: side?.new)))
+            // A note belongs to the line before it, so it stays on that line's side.
+            case .note where previous == .deletion:
+                removed.append(DiffSplitCell(row: line, number: nil))
+            case .note where previous == .addition:
+                added.append(DiffSplitCell(row: line, number: nil))
             case .outside, .hunkHeader, .note:
                 flush()
                 result.append(.spanning(row))

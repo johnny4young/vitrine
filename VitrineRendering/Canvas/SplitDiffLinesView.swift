@@ -35,9 +35,9 @@ struct SplitDiffLinesView: View {
     @ViewBuilder
     private func cell(_ cell: DiffSplitCell?, metrics: GutterMetrics) -> some View {
         if let cell, lines.rows.indices.contains(cell.row - 1) {
-            lines.row(
+            lines.wrappingEachSide.row(
                 lines.rows[cell.row - 1], lineNumber: cell.row, metrics: metrics,
-                gutterLabel: cell.number.map { "\($0)" } ?? "")
+                gutterLabel: cell.number.map { "\($0)" } ?? "", fillsHeight: true)
         } else {
             // The side a change does not reach, shaded so the pair still reads as one row.
             Rectangle()
@@ -53,6 +53,16 @@ struct SplitDiffLinesView: View {
             guard case .pair(let old, let new) = row else { return highest }
             return max(highest, old?.number ?? 0, new?.number ?? 0)
         }
+    }
+}
+
+extension CodeLinesView {
+    /// The same rows wrapped at half the width, so a wrapped split card stays as wide as the
+    /// unified one.
+    fileprivate var wrappingEachSide: CodeLinesView {
+        var copy = self
+        copy.codeColumnWidth = codeColumnWidth.map { $0 / 2 }
+        return copy
     }
 }
 
