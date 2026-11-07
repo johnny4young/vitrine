@@ -9,7 +9,9 @@ the pull request's CI already tested. The push then reuses that evidence, but on
 - the newest run of every required check on that head succeeded, read with the same
   rules as the release gate (`scripts/verify-commit-ci.py`);
 - the commit leaves `project.yml` alone. A release tags the commit that bumps the version
-  there, and its gate reads that commit's own checks, so those commits always run.
+  there, and its gate reads that commit's own checks, so those commits always run;
+- no required check on the head says it skipped a comparison, such as a pull request that
+  rendered the goldens without comparing pixels on an image the baselines do not pin.
 
 Anything else, including an API or git error, prints `reuse=false` and the full gate runs.
 
@@ -33,6 +35,8 @@ from typing import Any
 
 ALWAYS_FULL = ("project.yml",)
 BASE_BRANCH = "main"
+# Annotation titles ci.yml writes when a pull request skipped part of what main enforces.
+WEAKER_THAN_MAIN = ("Golden baseline image",)
 
 
 def load_commit_ci() -> Any:
@@ -57,9 +61,23 @@ def merged_pull(pulls: list[dict[str, Any]], commit: str) -> dict[str, Any] | No
     return None
 
 
+def newest_runs(runs: list[dict[str, Any]], required: list[str], head: str) -> list[int]:
+    """The ids of the newest Actions run of each required check on `head`."""
+    newest: dict[str, dict[str, Any]] = {}
+    for run in runs:
+        name = run.get("name")
+        if name not in required or run.get("head_sha") != head:
+            continue
+        if (run.get("app") or {}).get("slug") != "github-actions":
+            continue
+        if name not in newest or run["id"] > newest[name]["id"]:
+            newest[name] = run
+    return [run["id"] for run in newest.values()]
+
+
 def decide(
     *, single_commit: bool, changed: list[str], commit_tree: str, head_tree: str | None,
-    checks: str
+    checks: str, weaker: list[str]
 ) -> tuple[bool, str]:
     if not single_commit:
         return False, "the push added more than one commit"
@@ -71,6 +89,8 @@ def decide(
         return False, "main's tree differs from the pull request head's"
     if checks != "passed":
         return False, f"the pull request head's required checks are {checks}"
+    if weaker:
+        return False, f"the pull request ran weaker than main ({', '.join(weaker)})"
     return True, "the pull request head tested this exact tree"
 
 
@@ -91,7 +111,7 @@ def gather(repository: str, commit: str, before: str, required: list[str]) -> tu
     changed = git("diff", "--name-only", "--no-renames", f"{commit}^", commit).splitlines()
     commit_tree = git("rev-parse", f"{commit}^{{tree}}")
     pull = merged_pull(json.loads(api(f"repos/{repository}/commits/{commit}/pulls")), commit)
-    head_tree, checks = None, "unread"
+    head_tree, checks, weaker = None, "unread", []
     if pull is not None:
         head = pull["head"]["sha"]
         head_tree = json.loads(api(f"repos/{repository}/git/commits/{head}"))["tree"]["sha"]
@@ -99,12 +119,16 @@ def gather(repository: str, commit: str, before: str, required: list[str]) -> tu
             api(f"repos/{repository}/commits/{head}/check-runs?per_page=100",
                 paginate=True, jq=".check_runs[]"))
         checks, lines = load_commit_ci().evaluate(runs, required, head)
+        for run_id in newest_runs(runs, required, head):
+            titles = api(f"repos/{repository}/check-runs/{run_id}/annotations?per_page=100",
+                         paginate=True, jq=".[].title").splitlines()
+            weaker += [title for title in titles if title in WEAKER_THAN_MAIN]
         print(f"Pull request #{pull['number']} head {head}:", file=sys.stderr)
         for line in lines:
             print(f"  {line}", file=sys.stderr)
     reuse, reason = decide(
         single_commit=single_commit, changed=changed, commit_tree=commit_tree,
-        head_tree=head_tree, checks=checks)
+        head_tree=head_tree, checks=checks, weaker=weaker)
     if reuse and pull is not None:
         reason += f": #{pull['number']} at {pull['head']['sha']}"
     return reuse, reason
@@ -117,7 +141,7 @@ def run_self_test() -> int:
 
     good = {
         "single_commit": True, "changed": ["Vitrine/App/AppDelegate.swift"],
-        "commit_tree": "t", "head_tree": "t", "checks": "passed",
+        "commit_tree": "t", "head_tree": "t", "checks": "passed", "weaker": [],
     }
     expect(decide(**good)[0], "the same tree with every check passed reuses")
     for label, override in [
@@ -127,6 +151,7 @@ def run_self_test() -> int:
         ("a tree the pull request never tested", {"head_tree": "u"}),
         ("a failed required check", {"checks": "failed"}),
         ("a required check still running or missing", {"checks": "pending"}),
+        ("goldens rendered without comparing pixels", {"weaker": [WEAKER_THAN_MAIN[0]]}),
     ]:
         expect(not decide(**{**good, **override})[0], label)
 
@@ -147,6 +172,10 @@ def run_self_test() -> int:
            "check runs are read with the release gate's rules")
     expect(commit_ci.evaluate([{**run, "conclusion": "skipped"}], required, "a" * 40)[0]
            == "failed", "a skipped check is not evidence")
+    rerun = {**run, "id": 2}
+    other = {**run, "id": 3, "name": "WebKit integration · macos-26"}
+    expect(newest_runs([run, rerun, other], required, "a" * 40) == [2],
+           "annotations are read from the newest run of each required check")
     print("CI evidence reuse self-test passed.")
     return 0
 

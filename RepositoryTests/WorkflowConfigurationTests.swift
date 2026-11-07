@@ -313,7 +313,7 @@ struct WorkflowConfigurationTests {
         #expect(buildJob.contains("fetch-depth: 0"))
         #expect(buildJob.contains("make perf"))
         #expect(buildJob.contains("make test-goldens"))
-        #expect(buildJob.contains("make test-goldens GOLDEN_MODE=strict"))
+        #expect(buildJob.contains(#"make test-goldens GOLDEN_MODE="${mode}""#))
         // Only the strict golden step uses the baseline's Xcode build.
         #expect(!buildJob.contains("xcode-version:"))
         #expect(buildJob.contains(#"["pinnedImage"]["xcodeBuild"]"#))
@@ -416,6 +416,32 @@ struct WorkflowConfigurationTests {
             try Self.job("verify", in: Self.release()).contains(
                 "gh workflow run ci.yml --ref ${GITHUB_REF_NAME}"),
             "the release gate must say how to recover a commit that reused its evidence")
+    }
+
+    // MARK: - Contract: a runner image never fails a pull request's goldens
+
+    /// A pull request does not choose its runner image. On a macOS build the baselines do
+    /// not pin, it renders the goldens without comparing and annotates the run; every other
+    /// event compares strictly, and main refuses to reuse a pull request that skipped pixels.
+    @Test func onlyAPullRequestOnAnUnpinnedImageSkipsPixelComparison() throws {
+        let build = try Self.job("build", in: Self.ci())
+        let title = "Golden baseline image"
+        for fragment in [
+            "mode=strict",
+            #"host="$(sysctl -n kern.osversion)""#,
+            #"["pinnedImage"]["osBuild"]"#,
+            #"if [ "${EVENT_NAME}" = pull_request ] && [ "${host}" != "${pinned}" ]; then"#,
+            "mode=smoke",
+            "::warning title=\(title)::",
+        ] {
+            #expect(build.contains(fragment), "the golden step must contain `\(fragment)`")
+        }
+        #expect(build.components(separatedBy: "mode=smoke").count == 2, "one smoke path")
+
+        let script = try Self.text("scripts", "ci-reuse-pr-evidence.py")
+        #expect(script.contains(#"WEAKER_THAN_MAIN = ("\#(title)",)"#))
+        let doc = try Self.releasingDoc()
+        #expect(doc.contains("a pull request on a macOS build the baselines do not pin"))
     }
 
     // MARK: - Contract: fast local tests and explicit CI coverage
