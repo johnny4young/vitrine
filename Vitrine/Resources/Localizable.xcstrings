@@ -1,6 +1,94 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Card replaced" : {
+      "comment" : "HUD message after a vitrine://card link replaced the social card",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta reemplazada"
+          }
+        }
+      }
+    },
+    "Restore Previous Card" : {
+      "comment" : "Accessibility label of the Social Card toolbar button that restores the card a link replaced",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar tarjeta anterior"
+          }
+        }
+      }
+    },
+    "Restore the card a link replaced" : {
+      "comment" : "Tooltip of the Social Card toolbar restore button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaura la tarjeta que reemplazó un enlace"
+          }
+        }
+      }
+    },
+    "Release" : {
+      "comment" : "Name of the built-in social card template for a release announcement",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lanzamiento"
+          }
+        }
+      }
+    },
+    "Snippet" : {
+      "comment" : "Name of the built-in social card template centered on a code snippet",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fragmento"
+          }
+        }
+      }
+    },
+    "Announcement" : {
+      "comment" : "Name of the built-in headline-only social card template",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anuncio"
+          }
+        }
+      }
+    },
+    "New Social Card from “%@” Template" : {
+      "comment" : "Command palette item; the argument is a card template name",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nueva tarjeta social con la plantilla “%@”"
+          }
+        }
+      }
+    },
+    "Apply Card Template" : {
+      "comment" : "Undo action name after a card template fills the social card",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar plantilla de tarjeta"
+          }
+        }
+      }
+    },
     "Some lines don't fit the slide" : {
       "comment" : "Carousel sheet note: lines overflow the slide even at the smallest type size.",
       "localizations" : {
@@ -559,90 +647,79 @@
         }
       }
     },
-    "Card replaced" : {
-      "comment" : "HUD message after a vitrine://card link replaced the social card",
+    "Show Step" : {
+      "comment" : "Undo action name for switching the editor to another code step.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Tarjeta reemplazada"
+            "value" : "Mostrar paso"
           }
         }
       }
     },
-    "Restore Previous Card" : {
-      "comment" : "Accessibility label of the Social Card toolbar button that restores the card a link replaced",
+    "Add the current code as a step." : {
+      "comment" : "Help for the code column button that stores the current code as an animation step.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaurar tarjeta anterior"
+            "value" : "Agrega el código actual como un paso."
           }
         }
       }
     },
-    "Restore the card a link replaced" : {
-      "comment" : "Tooltip of the Social Card toolbar restore button",
+    "Steps can't be used with redactions, blur boxes, terminal output or images." : {
+      "comment" : "Help for the disabled add-step button: steps would show what redactions and blur boxes hide.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Restaura la tarjeta que reemplazó un enlace"
+            "value" : "Los pasos no funcionan con redacciones, cuadros de desenfoque, salida de terminal ni imágenes."
           }
         }
       }
     },
-    "Release" : {
-      "comment" : "Name of the built-in social card template for a release announcement",
+    "Add Step" : {
+      "comment" : "Accessibility label and undo action name for storing the current code as an animation step.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lanzamiento"
+            "value" : "Agregar paso"
           }
         }
       }
     },
-    "Snippet" : {
-      "comment" : "Name of the built-in social card template centered on a code snippet",
+    "Code Steps" : {
+      "comment" : "Accessibility label of the row of numbered code steps the preview animates between.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fragmento"
+            "value" : "Pasos de código"
           }
         }
       }
     },
-    "Announcement" : {
-      "comment" : "Name of the built-in headline-only social card template",
+    "Remove Step" : {
+      "comment" : "Button and undo action name that delete the selected code step.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Anuncio"
+            "value" : "Quitar paso"
           }
         }
       }
     },
-    "New Social Card from “%@” Template" : {
-      "comment" : "Command palette item; the argument is a card template name",
+    "Steps can't hold a secret." : {
+      "comment" : "Error shown when a code step would store text that contains a detected secret.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nueva tarjeta social con la plantilla “%@”"
-          }
-        }
-      }
-    },
-    "Apply Card Template" : {
-      "comment" : "Undo action name after a card template fills the social card",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aplicar plantilla de tarjeta"
+            "value" : "Los pasos no pueden guardar un secreto."
           }
         }
       }

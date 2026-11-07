@@ -178,6 +178,12 @@ public struct SnapshotConfig: Equatable {
     /// byte-for-byte unchanged, so the goldens are untouched.
     public var wrapColumns: Int?
 
+    /// Earlier and later states of the code, in order, which the editor's stage animates
+    /// between. Content-bound like redactions, and never drawn by an export.
+    public var codeSteps: [String] = []
+    /// The step the editor text was loaded from, which a step change saves edits back into.
+    public var activeCodeStep: Int?
+
     /// Whether soft-wrap is on — the single source of truth for the optional→Bool mapping
     /// shared by the wrap toggle's binding and the wrap-width control's visibility, so the
     /// two can never drift if "off" stops meaning `nil`.
@@ -280,7 +286,7 @@ public struct SnapshotConfig: Equatable {
     /// Whether the document carries marks that a content replacement would discard.
     public var hasContentMarks: Bool {
         altText != nil || !annotations.isEmpty || !highlightedLineRanges.isEmpty
-            || !redactedLineRanges.isEmpty || !terminalCrop.isEmpty
+            || !redactedLineRanges.isEmpty || !codeSteps.isEmpty || !terminalCrop.isEmpty
     }
 
     /// Clears the marks tied to *this specific content* — alternative text, free-form annotations
@@ -295,6 +301,8 @@ public struct SnapshotConfig: Equatable {
         redactedLineRanges = []
         terminalCrop = TerminalCrop()
         foregroundImage = nil
+        codeSteps = []
+        activeCodeStep = nil
     }
 
     private func replacingRedactedLines(in text: String) -> String {

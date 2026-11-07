@@ -146,6 +146,12 @@ struct EditorView: View {
     /// flash on open).
     @State var stagedPreviewCode: String?
 
+    /// The stage's change to a code step while it plays, or a cross-fade to one.
+    @State var codeStepAnimation: CodeStepAnimation?
+    @State var codeStepFade = 0
+    @ReducesMotion var reduceMotion
+    @Environment(\.undoManager) var undoManager
+
     /// Feeds the contrast warning that debounced code without tying the inspector to it.
     @State var legibility = LegibilityModel()
 

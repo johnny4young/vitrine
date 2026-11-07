@@ -26,6 +26,7 @@ extension EditorView {
                     if !session.livingSnapshot.isActive {
                         livingSnapshotMenu
                     }
+                    addCodeStepButton
                     formatButton
                 }
             }
@@ -39,6 +40,11 @@ extension EditorView {
                     if session.livingSnapshot.isActive {
                         livingSnapshotMenu
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 18)
+                            .padding(.vertical, VitrineTokens.Spacing.xs)
+                    }
+                    if !settings.style.codeSteps.isEmpty {
+                        codeStepStrip
                             .padding(.horizontal, 18)
                             .padding(.vertical, VitrineTokens.Spacing.xs)
                     }
@@ -472,7 +478,10 @@ extension EditorView {
                 let document = settings.documentGeneration
                 ZStack(alignment: .top) {
                     ThemeFadingCanvas(
-                        canvas: SnapshotCanvas(config: previewConfig, fixedSize: destination)
+                        canvas: SnapshotCanvas(
+                            config: previewConfig, fixedSize: destination,
+                            codeStepAnimation: codeStepAnimation),
+                        fadeGeneration: codeStepFade
                     )
                     .fixedSize()
                     .onGeometryChange(for: PreviewCardGeometry.Measurement.self) {
@@ -783,8 +792,8 @@ extension EditorView {
     func beginPastedDocument(_ text: String) -> LanguageDetector.Interpretation {
         let intake = LanguageDetector.interpret(text)
         session.livingSnapshot.stop()
-        settings.style.resetForNewContent()
-        settings.style.language = intake.language
+        settings.style = CodeStepRules.pastingDocument(
+            over: settings.style, language: intake.language)
         settings.noteDocumentReplaced()
         return intake
     }

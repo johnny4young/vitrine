@@ -14,6 +14,13 @@ can never drift.
 
 ### Added
 
+- Code steps: the stack button in the code header stores the current code as a step, and
+  choosing a numbered step saves your edits into the current one, loads the other and
+  animates the preview to it. Tokens both steps share glide, removed ones fade out and new
+  ones fade in; with Reduce Motion on, or for very long steps, they cross-fade. Adding,
+  removing and switching steps can be undone, and pasting a whole document keeps the steps.
+  A step can't hold a detected secret, and steps can't be switched while a capture has
+  redactions, blur boxes or terminal output. Exports show the current code only.
 - Social card templates. Release, Snippet and Announcement each pick a layout and the fields
   they fill. Run one from the command palette (⌘K) to open the Social Card with the editor's
   code, or open a `vitrine://card?template=release&title=…` link from Shortcuts or a script.

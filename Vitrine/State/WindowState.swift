@@ -137,6 +137,8 @@ struct EditorWindowState: Codable, Equatable {
     var diffContextLines: Int?
     var diffView: DiffViewMode?
     var annotations: [Annotation]
+    var codeSteps: [String]
+    var activeCodeStep: Int?
     /// The window's destination and per-capture output, absent in older archives.
     var destinationID: String?
     var exportScale: Int?
@@ -179,6 +181,8 @@ struct EditorWindowState: Codable, Equatable {
         diffContextLines = config.diffContextLines
         diffView = config.diffView
         annotations = config.annotations
+        codeSteps = config.codeSteps
+        activeCodeStep = config.activeCodeStep
     }
 
     /// Captures a window's document together with its destination and output choices.
@@ -248,6 +252,11 @@ struct EditorWindowState: Codable, Equatable {
         config.diffContextLines = diffContextLines.map(SettingsDefaults.clampDiffContextLines)
         config.diffView = diffView ?? .unified
         config.annotations = annotations
+        config.codeSteps = codeSteps
+        // Older or damaged archives get the step the text came from, else the last one.
+        config.activeCodeStep =
+            activeCodeStep.flatMap { codeSteps.indices.contains($0) ? $0 : nil }
+            ?? codeSteps.firstIndex(of: code) ?? codeSteps.indices.last
         return config
     }
 
@@ -257,6 +266,7 @@ struct EditorWindowState: Codable, Equatable {
         case showLineNumbers, highlightedLines, redactedLines, background, metadata, altText
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
+        case codeSteps, activeCodeStep
         case showDiffStats, diffContextLines, diffView
         case terminalPalette, terminalCursor, terminalCrop
         case destinationID, exportScale, exportFormatID, colorProfileID
@@ -327,6 +337,8 @@ struct EditorWindowState: Codable, Equatable {
         annotations =
             (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
             .compactMap(\.value) ?? fallback.annotations
+        codeSteps = (try? container.decode([String].self, forKey: .codeSteps)) ?? fallback.codeSteps
+        activeCodeStep = try? container.decodeIfPresent(Int.self, forKey: .activeCodeStep)
         destinationID = try? container.decodeIfPresent(String.self, forKey: .destinationID)
         exportScale = try? container.decodeIfPresent(Int.self, forKey: .exportScale)
         exportFormatID = try? container.decodeIfPresent(String.self, forKey: .exportFormatID)
