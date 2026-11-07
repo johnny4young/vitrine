@@ -8,7 +8,7 @@ enum RenderedImageCopy {
     /// is the app-wide instance, so this is right for a session and the default alike.
     static func copy(
         _ config: SnapshotConfig, settings: AppSettings, pasteboard: NSPasteboard = .general,
-        onCopied: (_ pngBytes: Int) -> Void = { _ in }
+        onCopied: (_ png: Data) -> Void = { _ in }
     ) -> ExportManager.CopyOutcome {
         copy(
             config, output: settings.export, behavior: settings.outputBehavior,
@@ -20,7 +20,7 @@ enum RenderedImageCopy {
     static func copy(
         _ config: SnapshotConfig, output: ExportSettings, behavior: OutputBehavior,
         scale: CGFloat, fixedSize: CGSize?, pasteboard: NSPasteboard = .general,
-        onCopied: (_ pngBytes: Int) -> Void = { _ in }
+        onCopied: (_ png: Data) -> Void = { _ in }
     ) -> ExportManager.CopyOutcome {
         ExportManager.copyToPasteboardOutcome(
             config, scale: scale, fixedSize: fixedSize, profile: output.colorProfile,
