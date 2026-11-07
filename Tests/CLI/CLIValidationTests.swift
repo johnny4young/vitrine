@@ -95,7 +95,7 @@ struct CLIValidationTests: CLITestSupport {
             ["--out", "capture.png"], ["--stdin"], ["--language", "swift"],
             ["--theme", "dracula"], ["--preset", "twitter"], ["--scale", "3"],
             ["--background", "night"], ["--watermark", "Vitrine"],
-            ["--callout", "note"], ["--redact-secrets"], ["--text-sidecar"],
+            ["--callout", "note"], ["--lines", "1-2"], ["--text-sidecar"],
             ["--quiet"], ["--json"], ["--no-overwrite"],
         ]
 

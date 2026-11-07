@@ -538,6 +538,7 @@ vitrine render Sources/App.swift --out launch-card.png \
 | Validate or inspect a portable style recipe | `vitrine recipe` |
 | Discover valid theme, language, preset, font, frame, or format IDs | `vitrine list` |
 | Verify the installed version and build | `vitrine --version` |
+| Run a command and copy an image of its colored output | `vitrine run` |
 | Enable `vgrab` and `vpane` terminal helpers | `vitrine shell-init` |
 
 Run `vitrine render --help` for the exact reference shipped by your installed build, or
@@ -575,6 +576,14 @@ eval "$(vitrine shell-init zsh)"
 vgrab npm test
 vgrab -e git status                 # finish styling or annotating in the editor
 vgrab --no-context date             # output only: no project, branch, or command header
+vitrine run -- swift test           # the same capture, free, with no shell setup
+```
+
+**Show where a snippet comes from.** `--lines` renders one span of a file, numbers the
+gutter from the file's own line, and titles the window with the project and file name.
+
+```bash
+vitrine render Sources/ForecastClient.swift --lines 142-146 --copy
 ```
 
 See [Terminal capture](docs/TERMINAL.md) for `vpane`, full-screen TUIs, color-preserving

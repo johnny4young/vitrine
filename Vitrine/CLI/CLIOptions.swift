@@ -242,6 +242,11 @@ struct CLIOptions: Equatable {
     var showLanguageBadge: Bool = false
     /// Optional line-number override. Nil preserves the app/preset default.
     var showLineNumbers: Bool?
+    /// `--lines`: the 1-based file span to render. The gutter starts at its first line,
+    /// and highlight and redaction specs name file lines.
+    var sourceLines: ClosedRange<Int>?
+    /// The project and file name used as the window title for a `--lines` slice of a file.
+    var sourceTitle: String?
     /// Optional window-chrome override. Nil preserves the app/preset default.
     var showChrome: Bool?
     /// Optional drop-shadow override. Nil preserves the app/preset default.
@@ -511,12 +516,25 @@ struct CLIOptions: Equatable {
         if let terminalPalette { config.terminalPalette = terminalPalette }
         if let terminalCursor { config.terminalCursor = terminalCursor }
         if let terminalCrop { config.terminalCrop = terminalCrop }
-        if let windowTitle { config.windowTitle = windowTitle }
+        if let windowTitle {
+            config.windowTitle = windowTitle
+        } else if let sourceTitle, recipe?.metadata.windowTitle == nil {
+            config.windowTitle = sourceTitle
+        }
+        if let sourceLines {
+            config.firstLineNumber = sourceLines.lowerBound
+            config.showLineNumbers = true
+        }
         if let showLineNumbers { config.showLineNumbers = showLineNumbers }
         if let showChrome { config.showChrome = showChrome }
         if let showShadow { config.showShadow = showShadow }
-        if let highlightedLineRanges { config.highlightedLineRanges = highlightedLineRanges }
-        if let redactedLineRanges { config.redactedLineRanges = redactedLineRanges }
+        if let highlightedLineRanges {
+            config.highlightedLineRanges = CLISourceLines.rows(
+                highlightedLineRanges, in: sourceLines)
+        }
+        if let redactedLineRanges {
+            config.redactedLineRanges = CLISourceLines.rows(redactedLineRanges, in: sourceLines)
+        }
         if redactSecrets {
             let secretRanges = SecretScanner.secretLines(in: config.uncroppedSidecarText).map {
                 $0...$0

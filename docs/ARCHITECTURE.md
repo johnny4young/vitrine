@@ -578,6 +578,26 @@ mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename conte
 extension-based language inference and default metadata while still reading the source
 only from standard input.
 
+`--lines <first-last>` renders one span of a file or stdin. `CLISourceLines` slices rows at
+U+000A, the same rule as `LineSplitter.lineCount` and the redaction pass, and the gutter
+starts at the span's first line (`SnapshotConfig.firstLineNumber`). `--highlight-lines` and
+`--redact-lines` name file lines and are remapped onto rendered rows; a redaction wholly
+outside the span, `--format-code`, `--edit`, Git diffs, images, batches and terminal output
+are refused. The stderr secret warning names file lines too. For a file, `CLISourceOrigin`
+titles the window with the work tree's folder and file name, reading `.git` and `HEAD` as
+small regular files (never running Git) and never naming the home folder or `/`.
+
+`vitrine run [options] [--] <command…>` (`CLIRunCommand`) is `vgrab` without the shell hook.
+It validates its options as `terminal-capture` options (so it stays free), then starts
+`/usr/bin/script -q -e` with `posix_spawn` in the CLI's own process group, so `script` can
+own the terminal, and waits for it. The capture lives in a 0700 `mkdtemp` folder that
+`CLIRunScratch` removes when the run ends or when SIGHUP, SIGINT or SIGTERM arrives, before
+the CLI dies of that signal. The exit status is the command's, even when rendering fails;
+`script` reports a command killed by a signal as the signal's number. The header shows only
+the program (`CLIRunHeader.program`); `--title-from-command` shows the arguments with
+credential-shaped values masked (`CLIRunHeader.command`, plus `SecretScanner`). The app
+never runs commands.
+
 Raster availability is capability-driven rather than version-switched:
 `ExportFormat.availableCases` (`VitrineRendering/Export/ExportFormat+Encoding.swift`) caches
 `CGImageDestinationCopyTypeIdentifiers()` once and interactive pickers expose only writers
@@ -996,6 +1016,9 @@ Vitrine/
 │   ├── CLIRecipeCommand.swift # stateless recipe validate/show inspection
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
 │   ├── CLIRenderer.swift      # stable render/multi-size/edit/batch operation facade
+│   ├── CLISourceLines.swift   # --lines slicing and row remap; CLISourceOrigin (work tree, branch)
+│   ├── CLIRunCommand.swift    # `vitrine run`: posix_spawn of script, CLIRunScratch cleanup
+│   ├── CLIRunHeader.swift     # `vitrine run` header: program only, or masked arguments
 │   ├── CLIRenderResources.swift # invocation-scoped backgrounds and watermark logos
 │   ├── CLIBatchRenderer.swift # folder discovery, output planning, manifests, reports
 │   ├── CLIOutputWriter.swift  # ExportManager encoding, artifact preflight, sidecars

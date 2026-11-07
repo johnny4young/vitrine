@@ -80,6 +80,10 @@ nonisolated enum CLIError: Error, Equatable {
     case editorHandoffFailed
     /// `--edit` read an empty source; the editor would discard it, so report it instead.
     case editorHandoffEmpty
+    /// `--lines` starts after the source's last line.
+    case sourceLinesOutOfRange(first: Int, lineCount: Int)
+    /// `vitrine run` found no executable by that name, so nothing ran.
+    case commandNotFound(String)
     /// The PRO tier is required for an advanced command-line automation capability but
     /// is not active. Reported before any file work; basic `vgrab` capture stays free.
     case proRequired
@@ -90,7 +94,7 @@ nonisolated enum CLIError: Error, Equatable {
         case .helpRequested:
             CLIUsage.text
         case .unknownCommand(let command):
-            "Unknown command \"\(command)\". The commands are \"terminal-capture\", \"render\", \"multi-size\", \"batch\", \"recipe\", \"list\", \"shell-init\", and \"version\"."
+            "Unknown command \"\(command)\". The commands are \"run\", \"terminal-capture\", \"render\", \"multi-size\", \"batch\", \"recipe\", \"list\", \"shell-init\", and \"version\"."
         case .unknownFlag(let flag):
             "Unknown option \"\(flag)\"."
         case .unexpectedArgument(let argument):
@@ -154,6 +158,10 @@ nonisolated enum CLIError: Error, Equatable {
             "Could not prepare the local Vitrine editor handoff."
         case .editorHandoffEmpty:
             "The source is empty, so there is nothing to open in the editor."
+        case .sourceLinesOutOfRange(let first, let lineCount):
+            "--lines starts at line \(first), but the source has \(lineCount) line\(lineCount == 1 ? "" : "s")."
+        case .commandNotFound(let command):
+            "Command not found: \(command). vitrine run starts programs directly, not shell aliases or functions."
         case .proRequired:
             "Vitrine PRO is required for advanced command-line automation. "
                 + "Basic vgrab terminal capture is free, as is render --edit; activate PRO in the Vitrine app "
@@ -167,6 +175,7 @@ nonisolated enum CLIError: Error, Equatable {
     var exitCode: Int32 {
         switch self {
         case .helpRequested: 0
+        case .commandNotFound: 127
         default: isUsageError ? 2 : 1
         }
     }

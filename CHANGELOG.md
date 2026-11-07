@@ -14,6 +14,15 @@ can never drift.
 
 ### Added
 
+- `vitrine run -- <command>` runs a command you type in a pseudo-terminal, as `vgrab` does, and
+  copies a terminal image of its colored output with the project, branch and program name above
+  it. It needs no shell setup, is free like `vgrab`, keeps the output on this Mac, and exits with
+  the command's status. `--title-from-command` adds the arguments, with credential-shaped values
+  masked. `--edit`, `--terminal-width`, `--no-context` and `--redact-secrets` work as they do for
+  `vgrab`; `--redact-secrets` is now also accepted by `terminal-capture`.
+- `vitrine render --lines 142-146` renders one span of a file, numbers the gutter from line 142,
+  reads `--highlight-lines` and `--redact-lines` as file lines, and titles the window
+  "project — File.swift" unless a window title is given.
 - A Magic swatch beside the editor's background presets builds a gradient from the capture
   itself: the syntax colors the code uses, or the main colors of a beautified image. Shuffle
   steps through its variants. Each stop keeps the code card distinct, and the result is an

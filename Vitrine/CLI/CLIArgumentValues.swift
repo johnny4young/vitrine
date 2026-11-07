@@ -432,6 +432,13 @@ extension CLIArgumentParser {
         return LineHighlight.normalize(ranges)
     }
 
+    /// `--lines` takes one span, so the gutter has a single first number.
+    func resolveSourceLines(_ raw: String, flag: String) throws -> ClosedRange<Int> {
+        let ranges = try resolveLineRanges(raw, flag: flag)
+        guard ranges.count == 1 else { throw CLIError.invalidValue(flag: flag, value: raw) }
+        return ranges[0]
+    }
+
     func positiveLine(_ text: Substring) -> Int? {
         guard
             let value = Int(text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)),
