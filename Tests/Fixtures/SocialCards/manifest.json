@@ -1,8 +1,8 @@
 {
   "pinnedImage" : {
     "architecture" : "arm64",
-    "osBuild" : "25G83",
-    "osVersion" : "26.6.2",
+    "osBuild" : "25G332",
+    "osVersion" : "26.7.2",
     "sdkBuild" : "25F70",
     "swiftVersion" : "6.2",
     "xcodeBuild" : "17F113"
