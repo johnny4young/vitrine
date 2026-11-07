@@ -47,6 +47,23 @@ extension XCTestCase {
         app.descendants(matching: .any)[identifier]
     }
 
+    /// Scrolls the inspector until `identifier` sits inside its visible area. A control the
+    /// scroll view clips still reports hittable, and a click there lands on the footer.
+    @MainActor
+    func revealInInspector(_ identifier: String, in app: XCUIApplication) {
+        let scroll = element("editor-inspector", in: app)
+            .children(matching: .scrollView).firstMatch
+        let target = element(identifier, in: app)
+        XCTAssertTrue(scroll.waitForExistence(timeout: 3) && target.waitForExistence(timeout: 3))
+        for _ in 0..<8 {
+            let visible = scroll.frame.insetBy(dx: 0, dy: 2)
+            if target.frame.minY >= visible.minY, target.frame.maxY <= visible.maxY { return }
+            if target.frame.maxY > visible.maxY { scroll.swipeUp() } else { scroll.swipeDown() }
+            Thread.sleep(forTimeInterval: 0.3)
+        }
+        XCTFail("\(identifier) stays outside the inspector's visible area: \(target.frame)")
+    }
+
     /// Every AX element carrying `identifier`, resolved fresh on each call.
     ///
     /// A single identifier can legitimately match nested elements: an AppKit toolbar

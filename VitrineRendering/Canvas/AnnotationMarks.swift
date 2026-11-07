@@ -52,7 +52,9 @@ struct StickerMark: View {
     /// The emoji's point size, driven by the toolbar's size slider: the 2…28
     /// thickness range maps to ~22…100 pt so the smallest sticker stays legible
     /// and the largest is a deliberate statement, not an accident.
-    private var fontSize: CGFloat { max(22, annotation.thickness * 3.6) }
+    private var fontSize: CGFloat { Self.fontSize(for: annotation.thickness) }
+
+    nonisolated static func fontSize(for thickness: Double) -> CGFloat { max(22, thickness * 3.6) }
 }
 
 /// An arrow: a straight shaft from tail to head with a chevron arrowhead.
@@ -244,7 +246,17 @@ struct TextMark: View {
         }
     }
 
-    private var fontSize: CGFloat { max(12, annotation.thickness * 4) }
+    private var fontSize: CGFloat { Self.fontSize(for: annotation.thickness) }
+
+    nonisolated static func fontSize(for thickness: Double) -> CGFloat { max(12, thickness * 4) }
+
+    nonisolated static func font(size: CGFloat) -> NSFont {
+        let bold = NSFont.systemFont(ofSize: size, weight: .bold)
+        return bold.fontDescriptor.withDesign(.rounded).flatMap {
+            NSFont(descriptor: $0, size: size)
+        }
+            ?? bold
+    }
 }
 
 /// A dimension callout: a technical-drawing measurement — the shaft
@@ -317,7 +329,7 @@ struct CounterMark: View {
     let size: CGSize
 
     var body: some View {
-        let diameter = max(24, annotation.thickness * 4 + 16)
+        let diameter = Self.diameter(for: annotation.thickness)
         Circle()
             .fill(annotation.color.color)
             .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: max(1, diameter * 0.04)))
@@ -329,5 +341,66 @@ struct CounterMark: View {
             .frame(width: diameter, height: diameter)
             .shadow(color: .black.opacity(0.25), radius: 2, x: 0, y: 1)
             .position(annotation.startPoint(in: size))
+    }
+
+    nonisolated static func diameter(for thickness: Double) -> CGFloat {
+        max(24, thickness * 4 + 16)
+    }
+}
+
+/// The canvas area a mark paints, in canvas points: stroke, arrowhead, curve and label
+/// included, shadows not. Editor chrome uses it to stay off the mark.
+public nonisolated enum AnnotationMarkBounds {
+    public static func drawn(_ annotation: Annotation, in size: CGSize) -> CGRect {
+        let from = annotation.startPoint(in: size)
+        let to = annotation.endPoint(in: size)
+        let weight = annotation.thickness
+        let ends = CGRect(
+            x: min(from.x, to.x), y: min(from.y, to.y),
+            width: abs(to.x - from.x), height: abs(to.y - from.y))
+        switch annotation.kind {
+        case .arrow:
+            return ArrowShape(from: from, to: to, weight: weight).path(in: .zero).boundingRect
+                .insetBy(dx: -weight / 2, dy: -weight / 2)
+        case .curvedArrow:
+            return CurvedArrowShape(from: from, to: to, weight: weight).path(in: .zero)
+                .boundingRect.insetBy(dx: -weight / 2, dy: -weight / 2)
+        case .line:
+            return ends.insetBy(dx: -weight / 2, dy: -weight / 2)
+        case .measure:
+            let stroke = max(1.5, weight * 0.5) / 2
+            let shaft = MeasureShape(from: from, to: to).path(in: .zero).boundingRect
+                .insetBy(dx: -stroke, dy: -stroke)
+            let length = hypot(to.x - from.x, to.y - from.y)
+            guard length >= 8 else { return shaft }
+            let label = ("\(Int(length.rounded())) px" as NSString).size(withAttributes: [
+                .font: NSFont.monospacedSystemFont(ofSize: 11, weight: .semibold)
+            ])
+            let mid = CGPoint(x: (from.x + to.x) / 2, y: (from.y + to.y) / 2)
+            return shaft.union(centered(at: mid, width: label.width + 12, height: label.height + 5))
+        case .rectangle:
+            return annotation.rect(in: size).insetBy(dx: -weight / 2, dy: -weight / 2)
+        case .highlighter, .blur, .spotlight:
+            return annotation.rect(in: size)
+        case .text:
+            let fontSize = TextMark.fontSize(for: weight)
+            let text = (annotation.text as NSString).size(withAttributes: [
+                .font: TextMark.font(size: fontSize)
+            ])
+            return centered(
+                at: from, width: text.width + fontSize, height: text.height + fontSize * 0.56)
+        case .sticker:
+            let glyph = (annotation.text as NSString).size(withAttributes: [
+                .font: NSFont.systemFont(ofSize: StickerMark.fontSize(for: weight))
+            ])
+            return centered(at: from, width: glyph.width, height: glyph.height)
+        case .counter:
+            let diameter = CounterMark.diameter(for: weight)
+            return centered(at: from, width: diameter, height: diameter)
+        }
+    }
+
+    private static func centered(at point: CGPoint, width: CGFloat, height: CGFloat) -> CGRect {
+        CGRect(x: point.x - width / 2, y: point.y - height / 2, width: width, height: height)
     }
 }

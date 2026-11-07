@@ -348,10 +348,13 @@ struct WorkflowConfigurationTests {
         // A failed or missing classification runs the gates instead of skipping them.
         for name in ["build", "ui-test", "visual-tour"] {
             let job = try Self.job(name, in: ci)
-            #expect(job.contains("needs: changes"), "\(name) must wait for the classification")
             #expect(
-                job.contains("if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}"),
-                "\(name) must fail open")
+                job.contains("needs: [changes, reuse]"),
+                "\(name) must wait for the classification")
+            #expect(
+                job.contains(
+                    "if: ${{ !cancelled() && needs.changes.outputs.app != 'false' && needs.reuse.outputs.reuse != 'true' }}"
+                ), "\(name) must fail open")
         }
         // App, CLI and repository suites all read documentation, so every unit suite runs.
         let docs = try Self.job("docs-checks", in: ci)
@@ -400,6 +403,44 @@ struct WorkflowConfigurationTests {
         #expect(
             try Self.text("scripts", "test-web-capture.py").contains("\"\(testClass)/\(test)()\""),
             "the receipt check must expect the same case")
+    }
+
+    // MARK: - Contract: a push to main reuses the evidence of the pull request it merges
+
+    /// A squash merge of an up-to-date pull request lands the tree its CI already tested, so
+    /// a push skips the macOS gates only when the decision script proves that. The script
+    /// requires the same checks as the release gate, and a version bump always runs them,
+    /// because the release gate reads the tagged commit's own checks.
+    @Test func pushesReuseTheirPullRequestsEvidenceOnlyWhenProven() throws {
+        let ci = try Self.ci()
+        let reuse = try Self.job("reuse", in: ci)
+        #expect(reuse.contains("if: github.event_name == 'push'"))
+        #expect(reuse.contains("fetch-depth: 2"))
+        for permission in ["contents: read", "checks: read", "pull-requests: read"] {
+            #expect(reuse.contains(permission), "the decision reads with `\(permission)`")
+        }
+        #expect(reuse.contains(#"--commit "${GITHUB_SHA}" --before "${BEFORE}""#))
+        let required = Set(
+            try reuse.matches(of: Regex(#"--required "([^"]+)""#))
+                .compactMap { $0.output[1].substring }.map(String.init))
+        let defined = try Self.ciCheckNames()
+        #expect(required == defined, "reuse must require ci.yml's checks")
+
+        let script = try Self.text("scripts", "ci-reuse-pr-evidence.py")
+        #expect(script.contains(#"ALWAYS_FULL = ("project.yml",)"#))
+        #expect(script.contains(#"Path(__file__).with_name("verify-commit-ci.py")"#))
+        let makefile = try Self.makefile()
+        #expect(
+            makefile.contains("ci-reuse-pr-evidence.py --self-test")
+                && makefile.contains(" ci-reuse-check "),
+            "make lint must execute the reuse decision's self-test")
+
+        let doc = try Self.releasingDoc()
+        #expect(doc.contains("gh workflow run ci.yml --ref"))
+        #expect(
+            try Self.job("verify", in: Self.release()).contains(
+                "gh workflow run ci.yml --ref ${GITHUB_REF_NAME}"),
+            "the release gate must say how to recover a commit that reused its evidence")
     }
 
     // MARK: - Contract: fast local tests and explicit CI coverage

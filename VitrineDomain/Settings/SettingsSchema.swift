@@ -252,6 +252,14 @@ public enum SettingsDefaults {
     public static let wrapColumnsRange = 40...200
     public static let wrapColumns = 80
 
+    /// Unchanged lines a diff may keep around each change. Larger values add little over
+    /// showing everything, which is the default (`nil`).
+    public static let diffContextLinesRange = 0...5
+
+    public static func clampDiffContextLines(_ value: Int) -> Int {
+        min(max(value, diffContextLinesRange.lowerBound), diffContextLinesRange.upperBound)
+    }
+
     public static func clampExportScale(_ value: Int) -> Int {
         guard value >= exportScaleRange.lowerBound else { return exportScale }
         return min(value, exportScaleRange.upperBound)

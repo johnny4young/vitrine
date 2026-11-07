@@ -27,6 +27,8 @@ struct SnapshotShareLinkTests {
         config.highlightedLineRanges = [1...1]
         config.focusHighlightedLines = true
         config.diffDecorations = true
+        config.showDiffStats = true
+        config.diffContextLines = 2
         config.terminalColumns = 96
         config.annotations = [
             Annotation(kind: .arrow, start: CGPoint(x: 0.1, y: 0.2), end: CGPoint(x: 0.6, y: 0.5))
@@ -65,6 +67,8 @@ struct SnapshotShareLinkTests {
         #expect(target.highlightedLineRanges == source.highlightedLineRanges)
         #expect(target.focusHighlightedLines == source.focusHighlightedLines)
         #expect(target.diffDecorations == source.diffDecorations)
+        #expect(target.showDiffStats == source.showDiffStats)
+        #expect(target.diffContextLines == source.diffContextLines)
         #expect(target.terminalColumns == source.terminalColumns)
         #expect(target.annotations == source.annotations)
     }
