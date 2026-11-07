@@ -103,6 +103,12 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
     public var thickness: Double
     /// The badge number. Only `.counter` uses it.
     public var number: Int
+    /// The look within the kind, such as an elbow arrow.
+    public var variant: Variant = .standard
+    public var stroke: Stroke = .clean
+
+    public enum Variant: String, Codable, Sendable { case standard, elbow }
+    public enum Stroke: String, Codable, Sendable { case clean, handDrawn }
 
     public init(
         id: UUID = UUID(), kind: Kind, start: CGPoint, end: CGPoint,
@@ -120,7 +126,7 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, start, end, text, color, thickness, number
+        case id, kind, start, end, text, color, thickness, number, variant, stroke
     }
 
     /// Decodes tolerantly: the fields added after the first version (`thickness`,
@@ -137,6 +143,58 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
         thickness =
             (try? container.decode(Double.self, forKey: .thickness)) ?? Annotation.defaultThickness
         number = (try? container.decode(Int.self, forKey: .number)) ?? 0
+        variant = (try? container.decode(Variant.self, forKey: .variant)) ?? .standard
+        stroke = (try? container.decode(Stroke.self, forKey: .stroke)) ?? .clean
+    }
+
+    /// Writes the style fields only when set, so existing marks keep their exact encoding.
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(kind, forKey: .kind)
+        try container.encode(start, forKey: .start)
+        try container.encode(end, forKey: .end)
+        try container.encode(text, forKey: .text)
+        try container.encode(color, forKey: .color)
+        try container.encode(thickness, forKey: .thickness)
+        try container.encode(number, forKey: .number)
+        if variant != .standard { try container.encode(variant, forKey: .variant) }
+        if stroke != .clean { try container.encode(stroke, forKey: .stroke) }
+    }
+}
+
+extension Annotation {
+    /// The three arrow shapes the selected-mark toolbar switches between. Curved stays its
+    /// own kind, so the Curved Arrow tool and older documents keep working.
+    public enum ArrowStyle: String, CaseIterable, Sendable { case straight, curved, elbow }
+
+    /// The arrow's shape, or `nil` when the mark is not an arrow.
+    public var arrowStyle: ArrowStyle? {
+        get {
+            switch kind {
+            case .arrow: variant == .elbow ? .elbow : .straight
+            case .curvedArrow: .curved
+            default: nil
+            }
+        }
+        set {
+            guard let newValue, arrowStyle != nil else { return }
+            kind = newValue == .curved ? .curvedArrow : .arrow
+            variant = newValue == .elbow ? .elbow : .standard
+        }
+    }
+
+    /// Whether the mark is a stroke the hand-drawn style can apply to.
+    public var supportsStrokeStyle: Bool {
+        switch kind {
+        case .arrow, .curvedArrow, .line, .rectangle: true
+        default: false
+        }
+    }
+
+    /// Seeds the hand-drawn wobble from the mark's id, so every render of a mark matches.
+    public var strokeSeed: UInt64 {
+        withUnsafeBytes(of: id.uuid) { $0.loadUnaligned(as: UInt64.self) }
     }
 }
 
@@ -214,12 +272,16 @@ extension Annotation {
     /// never affects a pixel, so it is deliberately excluded.
     public var fingerprint: String {
         func f(_ point: CGPoint) -> String { String(format: "%.3f,%.3f", point.x, point.y) }
-        return [
+        var fields = [
             kind.rawValue, f(start), f(end), text, String(format: "%.2f", thickness),
             String(number),
             String(
                 format: "%.3f,%.3f,%.3f,%.3f", color.red, color.green, color.blue, color.opacity),
-        ].joined(separator: "|")
+        ]
+        // Only a styled mark adds fields, so existing fingerprints stay unchanged.
+        if variant != .standard { fields.append(variant.rawValue) }
+        if stroke != .clean { fields.append(stroke.rawValue) }
+        return fields.joined(separator: "|")
     }
 
     /// Builds a new annotation for `tool` spanning `start`→`end`, inheriting the

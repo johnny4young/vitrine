@@ -621,7 +621,12 @@ extension EditorView {
                             popoverEdge: popoverEdge, focus: $markToolbarFocused,
                             onStyleEditEnded: endAnnotationEdit, onSizeDragging: holdPlace,
                             onDuplicate: duplicateSelection, onMarkKey: markKeyPress,
-                            onExit: { stageFocused = selectedAnnotationID != nil })
+                            onExit: { stageFocused = selectedAnnotationID != nil },
+                            arrowStyle: selectedMarkStyle(\.arrowStyle) { $0.arrowStyle = $1 },
+                            stroke: selectedMarkStyle({ $0.supportsStrokeStyle ? $0.stroke : nil })
+                            {
+                                $0.stroke = $1
+                            })
                     }
                 }
             }

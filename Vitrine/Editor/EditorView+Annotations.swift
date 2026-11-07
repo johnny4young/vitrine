@@ -45,6 +45,24 @@ extension EditorView {
             })
     }
 
+    /// One style field of the selected mark, each pick a single undo step; `nil` when the
+    /// mark's kind has no such field.
+    func selectedMarkStyle<Value>(
+        _ read: @escaping (Annotation) -> Value?, write: @escaping (inout Annotation, Value) -> Void
+    ) -> Binding<Value>? {
+        guard let selected = selectedAnnotation, let initial = read(selected) else { return nil }
+        let id = selected.id
+        return Binding(
+            get: { settings.style.annotations.first { $0.id == id }.flatMap(read) ?? initial },
+            set: { value in
+                guard let index = settings.style.annotations.firstIndex(where: { $0.id == id })
+                else { return }
+                beginAnnotationEdit()
+                write(&settings.style.annotations[index], value)
+                endAnnotationEdit()
+            })
+    }
+
     /// The selected counter's legend field, or `nil` when the selection has no legend.
     var annotationLegendEdit: AnnotationLegendEdit? {
         guard let selected = selectedAnnotation, selected.kind == .counter else { return nil }

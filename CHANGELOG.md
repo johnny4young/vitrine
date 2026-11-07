@@ -78,6 +78,9 @@ can never drift.
 - Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
   to see it in up to four themes on a comparison board, each captioned with its theme. The
   board's inspector adds or removes themes without capturing again.
+- The selected mark's toolbar switches an arrow between straight, curved and elbow, and arrows,
+  lines and boxes between a clean and a hand-drawn stroke. A hand-drawn stroke looks the same in
+  every render and share link.
 - Marks snap while you draw, drag or resize them: box edges to code rows, token edges and the
   card, arrow ends and placed marks to row centers and tokens, with a magenta guide on the
   target. Hold ⌘ to place freely. Blur boxes only snap outward, so a snap never uncovers text,

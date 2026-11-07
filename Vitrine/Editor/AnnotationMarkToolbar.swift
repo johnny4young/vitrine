@@ -1,4 +1,5 @@
 import SwiftUI
+import VitrineDomain
 import VitrineRendering
 
 /// What the mark's toolbar is placed against: the selected mark, reported from inside the
@@ -122,6 +123,9 @@ struct AnnotationMarkToolbar: View {
     let onMarkKey: (KeyPress) -> KeyPress.Result
     /// Escape hands the keyboard back to the mark.
     let onExit: () -> Void
+    /// The selected mark's style variants; `nil` when its kind has none.
+    var arrowStyle: Binding<Annotation.ArrowStyle>?
+    var stroke: Binding<Annotation.Stroke>?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -136,6 +140,23 @@ struct AnnotationMarkToolbar: View {
                 AnnotationSizeSlider(
                     thickness: $thickness, identifier: "annotation-mark-toolbar-size",
                     onEditEnded: onStyleEditEnded, onDragging: onSizeDragging)
+            }
+            if let arrowStyle {
+                variantPicker(
+                    "Arrow shape", id: "arrow-style", selection: arrowStyle,
+                    options: [
+                        (.straight, Text("Straight"), "straight"),
+                        (.curved, Text("Curved"), "curved"),
+                        (.elbow, Text("Elbow"), "elbow"),
+                    ])
+            }
+            if let stroke {
+                variantPicker(
+                    "Stroke style", id: "stroke", selection: stroke,
+                    options: [
+                        (.clean, Text("Clean"), "clean"),
+                        (.handDrawn, Text("Hand-drawn"), "hand-drawn"),
+                    ])
             }
             duplicateButton
         }
@@ -158,6 +179,18 @@ struct AnnotationMarkToolbar: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Selected mark")
         .accessibilityIdentifier("annotation-mark-toolbar")
+    }
+
+    private func variantPicker<Value: Hashable>(
+        _ label: LocalizedStringKey, id: String, selection: Binding<Value>,
+        options: [(Value, Text, String)]
+    ) -> some View {
+        TokenSegmentedPicker(
+            options: options.map { (value: $0.0, label: $0.1) }, selection: selection,
+            optionIdentifiers: options.map { "annotation-mark-toolbar-\($0.2)" }
+        )
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("annotation-mark-toolbar-\(id)")
     }
 
     @ViewBuilder private var duplicateButton: some View {
