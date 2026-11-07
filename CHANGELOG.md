@@ -175,6 +175,9 @@ can never drift.
 
 ### Changed
 
+- Vitrine loads its syntax highlighter at launch only when a global hotkey is set to quick
+  capture. Otherwise it loads with the first render, and the menu bar app uses about 16 MB
+  less until then.
 - Gather the Library's preset actions in one menu beside the preset picker. Export is
   labeled Export Saved Presets… because it writes every saved preset to one file.
 - Move Pin snapshot and Make This Window the Default into the toolbar's More menu until
