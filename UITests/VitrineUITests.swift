@@ -802,6 +802,43 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
     }
 
+    /// The code gutter and the selection actions both edit the marks the inspector shows.
+    @MainActor
+    func testCodeGutterAndSelectionActionsMarkLines() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        // The gutter is the text view's leading inset; line 1 sits just below the top inset.
+        editor.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: 20, dy: 20)).click()
+        let highlight = app.menuItems["code-lane-highlight"]
+        assertExists(highlight, in: app, timeout: 3)
+        for id in ["code-lane-redact", "code-lane-clear", "code-lane-focus"] {
+            assertExists(app.menuItems[id], in: app)
+        }
+        chooseMenuItem(highlight)
+
+        editor.click()
+        editor.typeKey("a", modifierFlags: .command)
+        assertExists(element("code-selection-actions", in: app), in: app, timeout: 3)
+        let redact = element("code-selection-redact", in: app)
+        assertExists(redact, in: app)
+        assertExists(element("code-selection-highlight", in: app), in: app)
+        redact.click()
+
+        element("inspector-disclosure-lines", in: app).click()
+        let field = element("highlight-lines-field", in: app)
+        assertExists(field, in: app, timeout: 3)
+        XCTAssertEqual(field.value as? String, "1")
+        // The demo capture has 12 lines, all selected.
+        let clearRedactions = element("clear-redactions-button", in: app)
+        assertExists(clearRedactions, in: app)
+        XCTAssertEqual(clearRedactions.value as? String, "1-12")
+    }
+
     /// A selected mark's toolbar sits beside it in Select mode, clear of its delete badge.
     @MainActor
     func testSelectedMarkToolbarSitsBesideTheMark() throws {

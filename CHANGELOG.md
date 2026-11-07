@@ -14,6 +14,13 @@ can never drift.
 
 ### Added
 
+- The code editor has a line-number gutter that shows each line's highlight and redaction.
+  Click a number to highlight, redact or clear that line, or to turn on Focus highlighted;
+  ⇧-click marks a range. Selecting code offers Highlight and Redact for the lines it covers,
+  also in Edit ▸ Highlight Selected Lines / Redact Selected Lines and the editor's context
+  menu. Mark edits can be undone, and highlights and redactions now stay on their text when
+  you add or remove lines above them. Terminal captures keep their row-based redaction and
+  show no gutter.
 - A Balance switch under Padding (inspector and Settings ▸ Style) measures the padding to the
   card and the visible part of its shadow, and sets the card a little above center, in the
   window and in fixed-size destinations. `vitrine render --padding-mode balanced` does the

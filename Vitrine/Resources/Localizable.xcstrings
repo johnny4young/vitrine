@@ -188,6 +188,135 @@
         }
       }
     },
+    "line-mark.none" : {
+      "comment" : "Line-mark menu item that removes every mark from the line",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "None" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ninguna" } }
+      }
+    },
+    "Mark Lines" : {
+      "comment" : "Undo action name for a line highlight or redaction edit",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcar líneas"
+          }
+        }
+      }
+    },
+    "Highlight Selected Lines" : {
+      "comment" : "Edit and context menu command that highlights the lines the selection touches",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar líneas seleccionadas"
+          }
+        }
+      }
+    },
+    "Redact Selected Lines" : {
+      "comment" : "Edit and context menu command that redacts the lines the selection touches",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar líneas seleccionadas"
+          }
+        }
+      }
+    },
+    "Line %lld" : {
+      "comment" : "Gutter menu header naming one line",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea %lld"
+          }
+        }
+      }
+    },
+    "Lines %@" : {
+      "comment" : "Gutter menu header naming a run of lines, e.g. 4–6",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas %@"
+          }
+        }
+      }
+    },
+    "Highlight" : {
+      "comment" : "Gutter menu item that highlights the line",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar"
+          }
+        }
+      }
+    },
+    "Redact" : {
+      "comment" : "Gutter menu item and selection action that hides the line's code",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar"
+          }
+        }
+      }
+    },
+    "Remove redaction" : {
+      "comment" : "Selection action that shows redacted lines again",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar ocultamiento"
+          }
+        }
+      }
+    },
+    "Remove highlight" : {
+      "comment" : "Selection action that removes the highlight",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar resaltado"
+          }
+        }
+      }
+    },
+    "Highlight line %lld" : {
+      "comment" : "Selection action that highlights one line",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar línea %lld"
+          }
+        }
+      }
+    },
+    "Highlight lines %@" : {
+      "comment" : "Selection action that highlights a run of lines, e.g. 4–6",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar líneas %@"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
