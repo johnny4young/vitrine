@@ -21,6 +21,11 @@ can never drift.
   removing and switching steps can be undone, and pasting a whole document keeps the steps.
   A step can't hold a detected secret, and steps can't be switched while a capture has
   redactions, blur boxes or terminal output. Exports show the current code only.
+- Social card templates. Release, Snippet and Announcement each pick a layout and the fields
+  they fill. Run one from the command palette (⌘K) to open the Social Card with the editor's
+  code, or open a `vitrine://card?template=release&title=…` link from Shortcuts or a script.
+  A link keeps the card it replaced: Undo in the confirmation or the restore button in the
+  Social Card toolbar puts it back, even after a relaunch.
 - Clicking a part of the preview opens the inspector section that styles it: the background,
   the drop shadow, the window chrome, the header, or, from the card around the code, its
   typography (the frame, for an image). In canvas mode it opens the dock's popover instead. A

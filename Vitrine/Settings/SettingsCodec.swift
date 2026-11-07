@@ -85,6 +85,8 @@ enum SettingsCodec {
         /// `SocialCardModel`. App-global (there is one working card, like the
         /// working document), so it is not part of `EditorPreferencesSnapshot`.
         static let socialCard = "socialCard"
+        /// The card a `vitrine://card` link replaced, kept until it is restored.
+        static let replacedSocialCard = "replacedSocialCard"
         /// Whether the user has confirmed the first-use URL-capture privacy
         /// disclosure. Defaults false; URL capture shows the disclosure once
         /// until confirmed, and the Settings transparency row can revoke it.
@@ -134,7 +136,8 @@ enum SettingsCodec {
             webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,
             webCaptureMode, webWaitKind, webWaitSeconds, webUsesLoggedInSession,
             webAllowsLoopbackCapture, recentLanguages,
-            fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
+            fontName, fontLigatures, selectedPreset, socialCard, replacedSocialCard,
+            urlCaptureConsent,
             hasSeenWelcome, lastSeenWhatsNewVersion, menuBarNoticeVersion, userStylePresets,
             userCustomThemes,
             workspaceRecipeAssociations, brandKit, brandKitEnabled,
@@ -295,8 +298,10 @@ enum SettingsCodec {
     /// blob yields a fresh default card. The model's decoder re-normalizes its
     /// text fields, re-truncates the excerpt, and re-clamps the font size, so an
     /// out-of-range or hand-edited value can never reach the renderer.
-    static func readSocialCard(from defaults: UserDefaults) -> SocialCardModel {
-        guard let data = defaults.data(forKey: Keys.socialCard),
+    static func readSocialCard(
+        from defaults: UserDefaults, key: String = Keys.socialCard
+    ) -> SocialCardModel {
+        guard let data = defaults.data(forKey: key),
             var decoded = try? JSONDecoder().decode(SocialCardModel.self, from: data)
         else { return SocialCardModel() }
         // The model resolves only built-in themes; a custom one comes from the store.
@@ -416,12 +421,16 @@ enum SettingsCodec {
     /// Persists the social card as a JSON-encoded `SocialCardModel` so every field
     /// round-trips. An encode failure drops the key so a later read restores
     /// a fresh default card rather than leaving a stale blob behind.
-    static func persistSocialCard(_ card: SocialCardModel, to defaults: UserDefaults) {
-        guard let data = try? JSONEncoder().encode(card) else {
-            defaults.removeObject(forKey: Keys.socialCard)
-            Log.settings.error("Social card encode failed; persisting default on next change")
+    static func persistSocialCard(
+        _ card: SocialCardModel?, to defaults: UserDefaults, key: String = Keys.socialCard
+    ) {
+        guard let card, let data = try? JSONEncoder().encode(card) else {
+            defaults.removeObject(forKey: key)
+            if card != nil {
+                Log.settings.error("Social card encode failed; persisting default on next change")
+            }
             return
         }
-        defaults.set(data, forKey: Keys.socialCard)
+        defaults.set(data, forKey: key)
     }
 }

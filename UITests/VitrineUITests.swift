@@ -1777,6 +1777,51 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testCardLinkFillsTheSocialCardTemplate() {
+        continueAfterFailure = false
+        let app = launch(arguments: [
+            "--skip-onboarding", "--open-card-url",
+            "vitrine://card?template=announcement&title=Vitrine%201.3.0&handle=%40jane",
+        ])
+        defer { app.terminate() }
+        assertExists(element("social-card-window", in: app), in: app, timeout: 8)
+        let title = app.textFields["social-card-title-field"]
+        assertExists(title, in: app, timeout: 3)
+        XCTAssertEqual(title.value as? String, "Vitrine 1.3.0")
+        XCTAssertEqual(app.textFields["social-card-author-field"].value as? String, "@jane")
+        XCTAssertTrue(app.buttons["social-card-template-headline"].isSelected)
+
+        // The replaced card is kept, so the toolbar can put it back.
+        let restore = app.buttons["social-card-restore-button"]
+        assertExists(restore, in: app, timeout: 3)
+        restore.click()
+        XCTAssertTrue(restore.waitForNonExistence(timeout: 3))
+        XCTAssertNotEqual(title.value as? String, "Vitrine 1.3.0")
+        XCTAssertTrue(app.buttons["social-card-template-standard"].isSelected)
+    }
+
+    @MainActor
+    func testPaletteOpensASocialCardFromATemplate() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--open-command-palette"])
+        defer { app.terminate() }
+        let field = element("command-palette-field", in: app)
+        assertExists(field, in: app, timeout: 8)
+        field.typeText("card snippet")
+        let command = element("command-palette-command-card.snippet", in: app)
+        XCTAssertTrue(command.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        app.typeKey(.return, modifierFlags: [])
+        assertExists(element("social-card-window", in: app), in: app, timeout: 5)
+        let codeFocus = app.buttons["social-card-template-codeFocus"]
+        assertExists(codeFocus, in: app, timeout: 3)
+        XCTAssertTrue(codeFocus.isSelected, "The Snippet template draws with Code focus")
+        XCTAssertFalse(
+            (app.textViews["social-card-excerpt-editor"].value as? String ?? "").isEmpty,
+            "The palette fills the card with the editor's code")
+    }
+
+    @MainActor
     func testMainMenuExposesPrimaryCommands() {
         continueAfterFailure = false
         let app = launch(arguments: ["--demo", "--open-editor", "--standard-activation"])
