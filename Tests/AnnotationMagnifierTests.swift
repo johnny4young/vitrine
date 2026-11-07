@@ -89,6 +89,40 @@ struct AnnotationMagnifierTests {
         return config
     }
 
+    /// The largest channel difference between two renders inside `region`.
+    private func maxDifference(_ a: CGImage, _ b: CGImage, in region: CGRect) throws -> Int {
+        let first = try pixels(a)
+        let second = try pixels(b)
+        var largest = 0
+        for y in Int(region.minY)..<Int(region.maxY) {
+            for x in Int(region.minX)..<Int(region.maxX) {
+                let index = (y * a.width + x) * 4
+                for channel in 0..<3 {
+                    largest = max(
+                        largest, abs(Int(first[index + channel]) - Int(second[index + channel])))
+                }
+            }
+        }
+        return largest
+    }
+
+    private func region(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double) -> CGRect {
+        CGRect(
+            x: x0 * size.width, y: y0 * size.height, width: (x1 - x0) * size.width,
+            height: (y1 - y0) * size.height)
+    }
+
+    /// The same capture with a different secret on the lines around the canvas centre.
+    private func withOtherSecrets(_ config: SnapshotConfig) -> SnapshotConfig {
+        var other = config
+        other.code = code.split(separator: "\n").enumerated().map { index, line in
+            (2...7).contains(index)
+                ? line.replacingOccurrences(of: "Q7XW2MZK9PLR4TV8", with: "ZB3HN8YC0RJSU5EG")
+                : String(line)
+        }.joined(separator: "\n")
+        return other
+    }
+
     // MARK: - Redaction
 
     @Test func aMagnifierNeverSharpensABlurBox() throws {
@@ -113,6 +147,38 @@ struct AnnotationMagnifierTests {
         #expect(sharp > covered * 3, "the enlarged text under the box must be blurred")
     }
 
+    /// A small blur box at the lens centre: the lens shows its enlarged copy around the box,
+    /// where the box itself does not reach. Two different secrets must look the same there.
+    @Test func theEnlargedCopyOfABlurBoxHidesItsContent() throws {
+        let blur = Annotation(
+            kind: .blur, start: CGPoint(x: 0.45, y: 0.45), end: CGPoint(x: 0.55, y: 0.55))
+        // Inside the lens and outside the box: the enlarged copy of the box's own content.
+        let copy = region(0.56, 0.47, 0.6, 0.53)
+        let sharp = try maxDifference(
+            image(config([lens()])), image(withOtherSecrets(config([lens()]))), in: copy)
+        let covered = try maxDifference(
+            image(config([lens(), blur])), image(withOtherSecrets(config([lens(), blur]))),
+            in: copy)
+        #expect(sharp > 100, "the region must show the secret without the box")
+        // The blur filter rounds to within one level; no glyph detail survives.
+        #expect(covered <= 2, "the enlarged blur must not differ with the secret")
+    }
+
+    /// Two overlapping lenses with a blur box over their overlap: whichever lens wins the
+    /// overlap, the box blurs what ends up there.
+    @Test func aBlurBoxOverOverlappingLensesBlursTheOverlap() throws {
+        let left = lens(CGPoint(x: 0.2, y: 0.3), CGPoint(x: 0.55, y: 0.7))
+        let right = lens(CGPoint(x: 0.45, y: 0.3), CGPoint(x: 0.8, y: 0.7))
+        let blur = Annotation(
+            kind: .blur, start: CGPoint(x: 0.45, y: 0.3), end: CGPoint(x: 0.55, y: 0.7))
+        let overlap = region(0.47, 0.42, 0.53, 0.58)
+        let sharp = try edgeEnergy(image(config([left, right])), in: overlap)
+        let covered = try edgeEnergy(image(config([left, right, blur])), in: overlap)
+        #expect(sharp > covered * 5, "the overlap must be blurred")
+        #expect(
+            try png(config([left, right])) != png(config([right])), "both lenses must draw")
+    }
+
     @Test func aMagnifierShowsRedactedLinesAsRedacted() throws {
         var base = config([lens()])
         var other = base
@@ -123,6 +189,8 @@ struct AnnotationMagnifierTests {
 
         base.redactedLineRanges = [5...5]
         other.redactedLineRanges = [5...5]
+        let inside = region(0.37, 0.37, 0.63, 0.63)
+        #expect(try maxDifference(image(base), image(other), in: inside) == 0)
         #expect(try png(base) == png(other), "a magnified redacted line must not reveal its text")
     }
 
@@ -184,13 +252,16 @@ struct AnnotationMagnifierTests {
 
     /// Lenses past the cap draw exactly like plain boxes: no lens and no ring.
     @Test func theCanvasDrawsLensesPastTheCapAsBoxes() throws {
+        // One extra lens sits inside the first, so it is also drawn enlarged as a box.
+        var inner = lens(CGPoint(x: 0.4, y: 0.4), CGPoint(x: 0.5, y: 0.5))
+        inner.color = RGBAColor(red: 0, green: 0.8, blue: 0.2, opacity: 1)
         let extra = lenses(3).map {
             var lens = $0
             lens.start = CGPoint(x: 0.6, y: 0.6)
             lens.end = CGPoint(x: 0.95, y: 0.95)
             return lens
         }
-        let uncapped = config(lenses(Annotation.maxMagnifiers) + extra)
+        let uncapped = config(lenses(Annotation.maxMagnifiers) + extra + [inner])
         var boxes = uncapped
         for index in Annotation.maxMagnifiers..<boxes.annotations.count {
             boxes.annotations[index].variant = .standard

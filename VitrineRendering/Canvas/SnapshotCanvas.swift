@@ -256,7 +256,8 @@ public struct SnapshotCanvas: View, Equatable {
     private var lensMarks: some View {
         GeometryReader { proxy in
             ZStack {
-                ForEach(config.annotations.filter { !$0.isMagnifier }) { annotation in
+                ForEach(config.annotations.cappingMagnifiers().filter { !$0.isMagnifier }) {
+                    annotation in
                     AnnotationMarkView(annotation: annotation, size: proxy.size)
                 }
             }
