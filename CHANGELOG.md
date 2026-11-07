@@ -19,6 +19,18 @@ can never drift.
   small for the capture then keeps that part in view instead of cutting off the end of the code.
   Exports without a focal point are unchanged, and captures with marks or PDF output keep every
   size centered. The focal point resets when the capture's content changes.
+- Add an optional stats header to diffs, with the file path, added and removed line counts
+  and a diffstat bar, and a context slider that folds unchanged lines around each change.
+  The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
+  links keep the full patch.
+- Crop a terminal capture to some rows and columns of its final screen from the inspector's
+  Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
+  and redacted rows keep counting the whole screen, and text exports and share links carry only
+  the kept cells. Clearing the fields restores the rest.
+- A preview of the copied image floats in the bottom corner of the screen after Copy image,
+  a quick capture or a copy from Recents. Drag it into another app or into Finder, click it
+  to go back to the editor or Recents, or dismiss it. It skips copies marked confidential and
+  can be turned off in Settings › Output.
 - A selected mark gets a small toolbar beside it on the stage with its color, size and
   Duplicate. It sits clear of the mark and its handles whenever the stage has room, hides while
   you draw, drag or resize, and is never part of an export.

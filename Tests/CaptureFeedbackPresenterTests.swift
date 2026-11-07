@@ -23,12 +23,14 @@ struct CaptureFeedbackPresenterTests {
         var loadedConfigs: [SnapshotConfig] = []
         var editorPresentations = 0
         var webSnapshotURLs: [String?] = []
+        var recentsPresentations = 0
 
         var port: CaptureRecoveryRouting {
             CaptureRecoveryRouting(
                 loadPrimaryEditor: { [weak self] in self?.loadedConfigs.append($0) },
                 presentEditor: { [weak self] in self?.editorPresentations += 1 },
-                presentWebSnapshot: { [weak self] in self?.webSnapshotURLs.append($0) })
+                presentWebSnapshot: { [weak self] in self?.webSnapshotURLs.append($0) },
+                presentRecents: { [weak self] in self?.recentsPresentations += 1 })
         }
     }
 

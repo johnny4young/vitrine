@@ -75,6 +75,14 @@ public struct SnapshotConfig: Equatable {
     /// to the row layout to band each changed line.
     public var diffDecorations: Bool = false
 
+    /// Draw the file path and added/removed counts above a diff. Off by default.
+    public var showDiffStats: Bool = false
+
+    /// Unchanged lines to keep around each change in a diff, or `nil` to show them all
+    /// (the default). The fold is visual: sidecars and links carry the full patch, which
+    /// would no longer apply with lines removed.
+    public var diffContextLines: Int?
+
     /// Freeform marks drawn over the snapshot — arrows, text callouts, and
     /// blur/redaction boxes. Empty by default, so the default render and
     /// every golden are unchanged until the user adds one. Stored in normalized
@@ -139,6 +147,15 @@ public struct SnapshotConfig: Equatable {
     /// text a capture exports is the output alone.
     public var terminalCursor: TerminalCursorStyle = .hidden
 
+    /// The part of a `.terminal` capture's final screen its image and text keep. Content-bound
+    /// like redactions, whose rows keep numbering the whole screen.
+    public var terminalCrop = TerminalCrop()
+
+    /// The crop a render applies: only terminal text has a screen to crop.
+    public var activeTerminalCrop: TerminalCrop {
+        language == .terminal && !usesImageContent ? terminalCrop : TerminalCrop()
+    }
+
     /// Soft-wrap long code lines at this column count, or `nil` to let a line run as wide
     /// as it needs (the default). Unlike `terminalColumns`, this is a persisted document
     /// style the user toggles in the Style pane: when set, the card is sized to the wrap
@@ -169,7 +186,21 @@ public struct SnapshotConfig: Equatable {
     /// as a single `Text`, so the default render is byte-for-byte unchanged.
     public var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
-            || diffDecorations
+            || diffDecorations || (diffOptionsApply && diffContextLines != nil)
+    }
+
+    /// Whether the stats header and context fold apply. Diff bands alone do not qualify:
+    /// they outlive a diff session, and a fold on other code would drop the user's rows.
+    public var diffOptionsApply: Bool { !usesImageContent && language == .diff }
+
+    /// Blur boxes are placed relative to the canvas, so the controls that resize a diff lock
+    /// while one exists and the box stays on the text it covers.
+    public var diffLayoutIsLocked: Bool { annotations.contains { $0.kind == .blur } }
+
+    /// The parsed diff, only when an option on the canvas needs it.
+    public var diffDocument: DiffDocument? {
+        guard diffOptionsApply, showDiffStats || diffContextLines != nil else { return nil }
+        return DiffDocument(source: code)
     }
 
     /// The neutral replacement used anywhere a redacted line would otherwise expose
@@ -186,17 +217,28 @@ public struct SnapshotConfig: Equatable {
         guard !usesImageContent else { return "" }
         if language == .terminal {
             return ANSIRenderer.plainText(
-                code, columns: terminalColumns, redacting: redactedLineRanges)
+                code, columns: terminalColumns, redacting: redactedLineRanges, crop: terminalCrop)
         }
         return replacingRedactedLines(in: code)
     }
 
+    /// `sidecarText` before any crop, numbered the way redactions are, for secret scans.
+    public var uncroppedSidecarText: String {
+        var screen = self
+        screen.terminalCrop = TerminalCrop()
+        return screen.sidecarText
+    }
+
     /// Source for portable text and share links. Unredacted terminal captures retain
-    /// their ANSI transcript for faithful reopening; once any rows are redacted, only
-    /// the sanitized final screen may leave the app, never the original transcript.
+    /// their ANSI transcript for faithful reopening; once any rows are redacted or cropped,
+    /// only the final screen may leave the app, never the original transcript. A cropped one
+    /// keeps its colors; a redacted one is plain text.
     public var richClipboardText: String {
         guard !usesImageContent else { return "" }
         if language == .terminal, !redactedLineRanges.isEmpty { return sidecarText }
+        if language == .terminal, !terminalCrop.isEmpty {
+            return ANSIRenderer.styledText(code, columns: terminalColumns, crop: terminalCrop)
+        }
         return replacingRedactedLines(in: code)
     }
 
@@ -220,7 +262,7 @@ public struct SnapshotConfig: Equatable {
     /// Whether the document carries marks that a content replacement would discard.
     public var hasContentMarks: Bool {
         altText != nil || !annotations.isEmpty || !highlightedLineRanges.isEmpty
-            || !redactedLineRanges.isEmpty
+            || !redactedLineRanges.isEmpty || !terminalCrop.isEmpty
     }
 
     /// Clears the marks tied to *this specific content* — alternative text, free-form annotations
@@ -233,6 +275,7 @@ public struct SnapshotConfig: Equatable {
         annotations = []
         highlightedLineRanges = []
         redactedLineRanges = []
+        terminalCrop = TerminalCrop()
         foregroundImage = nil
     }
 
@@ -242,7 +285,10 @@ public struct SnapshotConfig: Equatable {
 
         var lines = text.components(separatedBy: "\n")
         for index in lines.indices where LineHighlight.contains(redactions, line: index + 1) {
-            lines[index] = Self.redactedLinePlaceholder
+            lines[index] =
+                language == .diff
+                ? DiffDocument.maskedRow(lines[index], placeholder: Self.redactedLinePlaceholder)
+                : Self.redactedLinePlaceholder
         }
         return lines.joined(separator: "\n")
     }
