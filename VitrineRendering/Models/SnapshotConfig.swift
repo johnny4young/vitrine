@@ -26,6 +26,21 @@ public struct SnapshotConfig: Equatable {
     /// change and never reflows the code.
     public var fontLigatures: Bool = false
     public var padding: Double = 32
+    /// `.balanced` reads `padding` as the visible margin; `.manual` keeps the geometric one.
+    public var paddingMode: PaddingMode = .manual
+
+    /// The on/off view of `paddingMode` that the Balance switches bind to.
+    public var balancesPadding: Bool {
+        get { paddingMode == .balanced }
+        set {
+            guard !locksPaddingMode else { return }
+            paddingMode = newValue ? .balanced : .manual
+        }
+    }
+
+    /// Blur boxes sit at canvas coordinates, and a new mode resizes the canvas and moves the
+    /// card, so it would slide them off the code they hide.
+    public var locksPaddingMode: Bool { annotations.contains { $0.kind == .blur } }
     public var background: BackgroundStyle = .gradient(.aurora)
     public var showChrome: Bool = true
 
@@ -82,6 +97,9 @@ public struct SnapshotConfig: Equatable {
     /// (the default). The fold is visual: sidecars and links carry the full patch, which
     /// would no longer apply with lines removed.
     public var diffContextLines: Int?
+
+    /// Lay a diff out in one column (the default) or with old and new side by side.
+    public var diffView: DiffViewMode = .unified
 
     /// Freeform marks drawn over the snapshot — arrows, text callouts, and
     /// blur/redaction boxes. Empty by default, so the default render and
@@ -164,6 +182,12 @@ public struct SnapshotConfig: Equatable {
     /// byte-for-byte unchanged, so the goldens are untouched.
     public var wrapColumns: Int?
 
+    /// Earlier and later states of the code, in order, which the editor's stage animates
+    /// between. Content-bound like redactions, and never drawn by an export.
+    public var codeSteps: [String] = []
+    /// The step the editor text was loaded from, which a step change saves edits back into.
+    public var activeCodeStep: Int?
+
     /// Whether soft-wrap is on — the single source of truth for the optional→Bool mapping
     /// shared by the wrap toggle's binding and the wrap-width control's visibility, so the
     /// two can never drift if "off" stops meaning `nil`.
@@ -187,7 +211,10 @@ public struct SnapshotConfig: Equatable {
     public var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
             || diffDecorations || (diffOptionsApply && diffContextLines != nil)
+            || diffUsesSplitView
     }
+
+    public var diffUsesSplitView: Bool { diffOptionsApply && diffView == .split }
 
     /// Whether the stats header and context fold apply. Diff bands alone do not qualify:
     /// they outlive a diff session, and a fold on other code would drop the user's rows.
@@ -199,7 +226,8 @@ public struct SnapshotConfig: Equatable {
 
     /// The parsed diff, only when an option on the canvas needs it.
     public var diffDocument: DiffDocument? {
-        guard diffOptionsApply, showDiffStats || diffContextLines != nil else { return nil }
+        guard diffOptionsApply, showDiffStats || diffContextLines != nil || diffView == .split
+        else { return nil }
         return DiffDocument(source: code)
     }
 
@@ -262,7 +290,7 @@ public struct SnapshotConfig: Equatable {
     /// Whether the document carries marks that a content replacement would discard.
     public var hasContentMarks: Bool {
         altText != nil || !annotations.isEmpty || !highlightedLineRanges.isEmpty
-            || !redactedLineRanges.isEmpty || !terminalCrop.isEmpty
+            || !redactedLineRanges.isEmpty || !codeSteps.isEmpty || !terminalCrop.isEmpty
     }
 
     /// Clears the marks tied to *this specific content* — alternative text, free-form annotations
@@ -277,6 +305,8 @@ public struct SnapshotConfig: Equatable {
         redactedLineRanges = []
         terminalCrop = TerminalCrop()
         foregroundImage = nil
+        codeSteps = []
+        activeCodeStep = nil
     }
 
     private func replacingRedactedLines(in text: String) -> String {

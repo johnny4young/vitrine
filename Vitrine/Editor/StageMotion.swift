@@ -5,8 +5,8 @@ import VitrineRendering
 // MARK: - Theme cross-fade
 
 /// The canvases the stage draws: the live one, and the previous one while a theme change
-/// fades in over it. The fade exists only when the theme is all that differs, so the two
-/// always show the same code. Any other change during a fade ends it at once.
+/// fades in over it. The fade exists only when the theme is all that differs, or when the
+/// stage asks for one to change code steps. Any other change during a fade ends it at once.
 struct PreviewThemeFade: Equatable {
     struct Layer: Identifiable, Equatable {
         let id: Int
@@ -27,7 +27,11 @@ struct PreviewThemeFade: Equatable {
 
     var layers: [Layer] { [outgoing, live].compactMap(\.self) }
 
-    func applying(_ canvas: SnapshotCanvas, animated: Bool) -> PreviewThemeFade {
+    func applying(
+        _ canvas: SnapshotCanvas, animated: Bool, forced: Bool = false
+    )
+        -> PreviewThemeFade
+    {
         guard canvas != live.canvas else { return self }
         var next = self
         if outgoing != nil {
@@ -35,7 +39,7 @@ struct PreviewThemeFade: Equatable {
             // in place and would otherwise show the stage through it.
             next.outgoing = nil
             next.live = Layer(id: live.id + 1, canvas: canvas)
-        } else if animated, Self.differsOnlyInTheme(live.canvas, canvas) {
+        } else if animated, forced || Self.differsOnlyInTheme(live.canvas, canvas) {
             next.outgoing = live
             next.live = Layer(id: live.id + 1, canvas: canvas)
         } else {
@@ -101,11 +105,14 @@ struct ThemeFadeLayerCountKey: PreferenceKey {
 /// not evaluated again and the incoming one highlights once.
 struct ThemeFadingCanvas: View {
     let canvas: SnapshotCanvas
+    /// A new value fades the next canvas in, even under Reduce Motion, which keeps dissolves.
+    var fadeGeneration = 0
 
     /// What the canvas was, and whether a burst is cooling down. Not observed, because an
     /// ordinary style change must not cost this view a second pass.
     private final class Memory {
         var canvas: SnapshotCanvas
+        var fadeGeneration = 0
         private(set) var isCoolingDown = false
         private var cooldown: Task<Void, Never>?
 
@@ -131,9 +138,12 @@ struct ThemeFadingCanvas: View {
     @State private var liveLayer = 0
     @State private var revealedLayer = 0
 
-    init(canvas: SnapshotCanvas) {
+    init(canvas: SnapshotCanvas, fadeGeneration: Int = 0) {
         self.canvas = canvas
-        _memory = State(initialValue: Memory(canvas: canvas))
+        self.fadeGeneration = fadeGeneration
+        let memory = Memory(canvas: canvas)
+        memory.fadeGeneration = fadeGeneration
+        _memory = State(initialValue: memory)
     }
 
     private var settled: PreviewThemeFade {
@@ -142,19 +152,24 @@ struct ThemeFadingCanvas: View {
     }
 
     private var fades: Bool { !reduceMotion && !memory.isCoolingDown }
+    private var forced: Bool { fadeGeneration != memory.fadeGeneration }
 
     var body: some View {
         // Derived here too: `onChange` runs after this pass, which must already hold
         // the old canvas rather than draw the new theme over it.
-        let current = settled.applying(canvas, animated: fades)
+        let current = settled.applying(
+            canvas, animated: fades || (forced && !memory.isCoolingDown), forced: forced)
         ThemeFadeLayers(fade: current, progress: revealedLayer == current.live.id ? 1 : 0)
             .onChange(of: canvas) { _, canvas in record(canvas) }
+            .onChange(of: fadeGeneration) { _, generation in memory.fadeGeneration = generation }
     }
 
     private func record(_ canvas: SnapshotCanvas) {
         let previous = settled
-        let next = previous.applying(canvas, animated: fades)
+        let next = previous.applying(
+            canvas, animated: fades || (forced && !memory.isCoolingDown), forced: forced)
         memory.canvas = canvas
+        memory.fadeGeneration = fadeGeneration
         if previous.outgoing != nil || memory.isCoolingDown { memory.coolDown() }
         guard next.live.id != previous.live.id else { return }
         liveLayer = next.live.id

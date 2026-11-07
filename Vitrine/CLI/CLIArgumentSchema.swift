@@ -32,6 +32,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case noFontLigatures
     case fontSize
     case padding
+    case paddingMode
     case cornerRadius
     case shadowRadius
     case terminalWidth
@@ -93,6 +94,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case noLineNumbers
     case chrome
     case shadow
+    case lines
     case highlightLines
     case redactLines
     case redactSecrets
@@ -100,6 +102,7 @@ nonisolated enum CLIOptionID: String, CaseIterable, Hashable, Sendable {
     case diffBands
     case diffStats
     case diffContext
+    case diffView
     case recursive
     case failOnSkipped
     case failOnEmpty
@@ -258,6 +261,12 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .padding, ["--padding"], .value("n"), synopsis: "--padding <n>",
             description: "Canvas padding in points (16-64)."),
+        definition(
+            .paddingMode, ["--padding-mode"], .value("manual|balanced"),
+            synopsis: "--padding-mode <manual|balanced>",
+            description:
+                "Balanced measures the padding to the card and its shadow and sets the card a little above center."
+        ),
         definition(
             .cornerRadius, ["--corner-radius"], .value("n"), synopsis: "--corner-radius <n>",
             description: "Code-card corner radius in points (0-48)."),
@@ -490,6 +499,11 @@ nonisolated enum CLIArgumentSchema {
             .shadow, ["--shadow", "--no-shadow"], .flag, synopsis: "--shadow / --no-shadow",
             description: "Show or hide the rendered drop shadow."),
         definition(
+            .lines, ["--lines"], .value("first-last"), synopsis: "--lines <first-last>",
+            description:
+                "Render only these source lines, numbered as in the file, with the project and file name as the window title (for example 142-146)."
+        ),
+        definition(
             .highlightLines, ["--highlight-lines"], .value("spec"),
             synopsis: "--highlight-lines <spec>",
             description: "Highlight 1-based lines/ranges (for example 3,7-9,12)."),
@@ -498,7 +512,8 @@ nonisolated enum CLIArgumentSchema {
             description: "Redact 1-based lines/ranges; sidecars replace them with [redacted]."),
         definition(
             .redactSecrets, ["--redact-secrets"], .flag, synopsis: "--redact-secrets",
-            description: "Scan for likely secrets and redact matching rows."),
+            description: "Scan for likely secrets and redact matching rows.",
+            terminalCaptureAllowed: true),
         definition(
             .focusLines, ["--focus-lines", "--no-focus-lines"], .flag,
             synopsis: "--focus-lines / --no-focus-lines",
@@ -514,6 +529,10 @@ nonisolated enum CLIArgumentSchema {
         definition(
             .diffContext, ["--diff-context"], .value("0...5"), synopsis: "--diff-context <0...5>",
             description: "Fold a diff to this many unchanged lines around each change."),
+        definition(
+            .diffView, ["--diff-view"], .value("unified|split"),
+            synopsis: "--diff-view <unified|split>",
+            description: "Lay a diff out in one column or with old and new side by side."),
         definition(
             .recursive, ["--recursive"], .flag, synopsis: "--recursive",
             description: "Batch only: include nested folders and preserve relative output paths.",

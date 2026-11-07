@@ -17,9 +17,16 @@ public struct SnapshotCanvas: View, Equatable {
     /// card is centered and the background fills the frame.
     public var fixedSize: CGSize?
 
-    public init(config: SnapshotConfig, fixedSize: CGSize? = nil) {
+    /// The stage's step change in flight, drawn in place of the plain code text.
+    public var codeStepAnimation: CodeStepAnimation?
+
+    public init(
+        config: SnapshotConfig, fixedSize: CGSize? = nil,
+        codeStepAnimation: CodeStepAnimation? = nil
+    ) {
         self.config = config
         self.fixedSize = fixedSize
+        self.codeStepAnimation = codeStepAnimation
     }
 
     public var body: some View {
@@ -95,7 +102,10 @@ public struct SnapshotCanvas: View, Equatable {
             // within it. `.clipped()` guarantees the render never exceeds the
             // requested size even if the card is larger than the frame.
             styledContent
-                .frame(width: fixedSize.width, height: fixedSize.height)
+                .frame(
+                    width: fixedSize.width, height: fixedSize.height,
+                    alignment: config.canvasAlignment
+                )
                 .background(BackgroundView(style: config.background))
                 .clipped()
         } else {
@@ -107,7 +117,7 @@ public struct SnapshotCanvas: View, Equatable {
 
     /// The padded content card — the shared unit both canvas paths frame and back.
     private var styledContent: some View {
-        contentCard.padding(config.padding)
+        contentCard.canvasPart(.card).padding(config.canvasInsets)
     }
 
     /// The card body: a beautified framed image ("beautify any image"), or the code card.
@@ -115,9 +125,9 @@ public struct SnapshotCanvas: View, Equatable {
     @ViewBuilder
     private var contentCard: some View {
         if config.usesImageContent, let reference = config.foregroundImage {
-            imageCard(reference)
+            imageCard(reference).reportsSnapCard()
         } else {
-            codeCard
+            codeCard.reportsSnapCard()
         }
     }
 
@@ -188,7 +198,10 @@ public struct SnapshotCanvas: View, Equatable {
     private var framedCanvas: some View {
         if let fixedSize {
             styledContent
-                .frame(width: fixedSize.width, height: fixedSize.height)
+                .frame(
+                    width: fixedSize.width, height: fixedSize.height,
+                    alignment: config.canvasAlignment
+                )
                 .background(BackgroundView(style: config.background))
         } else {
             styledContent
@@ -276,7 +289,9 @@ public struct SnapshotCanvas: View, Equatable {
             if config.showChrome {
                 WindowChrome(
                     title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines),
-                    titleColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
+                    titleColor: HighlightManager.shared.gutterForegroundColor(for: config.theme)
+                )
+                .canvasPart(.chrome)
             }
             // Optional metadata header (filename/title/caption/language badge),
             // shown only when configured so the default render is unchanged.
@@ -288,6 +303,7 @@ public struct SnapshotCanvas: View, Equatable {
                     language: config.language,
                     theme: config.theme
                 )
+                .canvasPart(.header)
                 Divider()
                     .overlay(
                         HighlightManager.shared.gutterForegroundColor(for: config.theme)
@@ -301,7 +317,8 @@ public struct SnapshotCanvas: View, Equatable {
                         family: config.fontName, size: DiffStatsHeader.fontSize, ligatures: false),
                     textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
             }
-            codeBody(diff: diff)
+            codeBody(diff: diff).canvasPart(.code)
+                .reportsSnapCode(config, lineSpacing: Self.codeLineSpacing)
             if let cue = config.slideCue, cue.rangeLabel != nil || cue.continuationLabel != nil {
                 slideCueFooter(cue)
             }
@@ -378,11 +395,12 @@ public struct SnapshotCanvas: View, Equatable {
     @ViewBuilder
     private func codeRows(diff: DiffDocument?) -> some View {
         if config.usesLineRows {
-            CodeLinesView(
+            let displayRows = config.diffContextLines.flatMap {
+                diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
+            }
+            let lines = CodeLinesView(
                 rows: highlightedCodeLines,
-                displayRows: config.diffContextLines.flatMap {
-                    diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
-                },
+                displayRows: displayRows,
                 showLineNumbers: config.showLineNumbers,
                 firstLineNumber: config.firstLineNumber + terminalCrop.rowOffset,
                 highlightedRanges: terminalCrop.localRanges(
@@ -397,7 +415,27 @@ public struct SnapshotCanvas: View, Equatable {
                 dimsUnfocused: config.focusHighlightedLines,
                 diffDecorations: config.diffDecorations
             )
-            .textSelection(.enabled)
+            // An empty capture's placeholder is not a diff, so it shows once, full width.
+            if config.diffUsesSplitView, !config.code.isEmpty, let diff {
+                SplitDiffLinesView(
+                    lines: lines,
+                    rows: diff.splitRows(
+                        displayRows ?? diff.rowKinds.indices.map { .line($0 + 1) },
+                        firstLineNumber: config.firstLineNumber,
+                        redacting: config.redactedLineRanges)
+                )
+                .textSelection(.enabled)
+            } else {
+                lines.textSelection(.enabled)
+            }
+        } else if let animation = codeStepAnimation, animation.to == config.code,
+            config.language != .terminal, wrapWidth == nil
+        {
+            CodeStepMorphView(
+                animation: animation, text: highlightedCode, font: codeFont,
+                lineSpacing: Self.codeLineSpacing
+            )
+            .id(animation.id)
         } else {
             let code = highlightedCode
             Text(code)
@@ -411,19 +449,7 @@ public struct SnapshotCanvas: View, Equatable {
         }
     }
 
-    /// The exported card's drop shadow: the `Brand.Shadow.elevated` recipe, or a true
-    /// no-op style when shadows are disabled. A zero-radius shadow with non-zero offsets
-    /// draws a crisp duplicate of the card contents in SwiftUI, so disabling the feature
-    /// must clear the whole recipe rather than just the blur radius.
-    private var cardShadow: Brand.ShadowStyle {
-        guard config.showShadow else { return .none }
-        return Brand.ShadowStyle(
-            color: Brand.Shadow.elevated.color,
-            radius: config.effectiveShadowRadius,
-            x: Brand.Shadow.elevated.x,
-            y: Brand.Shadow.elevated.y
-        )
-    }
+    private var cardShadow: Brand.ShadowStyle { config.cardShadow }
 
     /// The resolved code font (the named font, or a monospaced system fallback),
     /// shared by highlighting and the line-number gutter so the gutter column is

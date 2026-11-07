@@ -134,13 +134,9 @@ struct BrandKitLockedPreviewTests {
 
 @Suite("Library preset row")
 struct LibraryPresetRowTests {
-    private func popUpButtons(in view: NSView) -> [NSPopUpButton] {
-        view.subviews.flatMap { subview in
-            (subview as? NSPopUpButton).map { [$0] } ?? popUpButtons(in: subview)
-        }
-    }
-
-    /// The menu is the only route to Rename and Delete, so it must stay in the pane's width.
+    /// The menu is the only route to Rename and Delete, so a long saved name must not widen
+    /// the section past the pane and push it out. Measured as layout: macOS 27 draws the picker
+    /// and menu itself, without the NSPopUpButtons macOS 26 hosts.
     @Test func aLongPresetNameKeepsTheActionsMenuInsideThePane() throws {
         let defaults = testDefaults()
         let settings = AppSettings(defaults: defaults)
@@ -149,18 +145,11 @@ struct LibraryPresetRowTests {
 
         let host = NSHostingView(
             rootView: StylePresetsSection(
-                settings: settings, store: store, themes: CustomThemeStore(defaults: defaults)
-            )
-            .frame(width: 478))
-        host.frame = NSRect(x: 0, y: 0, width: 478, height: 200)
+                settings: settings, store: store, themes: CustomThemeStore(defaults: defaults)))
+        // A popup lists its items, and so takes their width, only once it has been laid out.
+        let paneWidth: CGFloat = 478
+        host.frame = NSRect(x: 0, y: 0, width: paneWidth, height: 200)
         host.layoutSubtreeIfNeeded()
-
-        let controls = popUpButtons(in: host)
-        #expect(controls.count == 2)
-        for control in controls {
-            let frame = control.convert(control.bounds, to: host)
-            #expect(frame.maxX <= host.bounds.maxX)
-            #expect(frame.width > 0)
-        }
+        #expect(host.fittingSize.width <= paneWidth)
     }
 }

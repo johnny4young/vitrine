@@ -41,18 +41,38 @@ enum ExportFeedback {
     }
 
     static func saveOutcome(
-        _ outcome: ExportManager.SaveOutcome
+        _ outcome: ExportManager.SaveOutcome, embedding plan: EmbeddedProject.Plan = .off
     ) -> Notifier.CaptureFeedback? {
-        switch outcome {
-        case .saved:
+        switch (outcome, plan) {
+        case (.saved, .withheld(let reason)):
+            Notifier.confirmation(String(localized: "Image saved"), detail: withheldDetail(reason))
+        case (.saved, _):
             Notifier.confirmation(String(localized: "Image saved"))
-        case .failed:
+        case (.failed, _):
             Notifier.failure(String(localized: "Couldn't save the image"))
-        case .renderFailed(let error):
+        case (.renderFailed(let error), _):
             renderFailure(error)
-        case .cancelled:
+        case (.cancelled, _):
             nil
         }
+    }
+
+    /// Names why an opted-in save went out without its editable project.
+    static func withheldDetail(_ reason: EmbeddedProject.Withheld) -> Notifier.Detail {
+        let text =
+            switch reason {
+            case .redactedLines:
+                String(localized: "Editable project left out: the capture has redacted lines")
+            case .blurBoxes:
+                String(localized: "Editable project left out: the capture has blur boxes")
+            case .terminal:
+                String(localized: "Editable project left out: terminal captures are never embedded")
+            case .secret:
+                String(localized: "Editable project left out: it may contain a secret")
+            case .tooLarge:
+                String(localized: "Editable project left out: it's too large")
+            }
+        return Notifier.Detail(text: text, spokenText: text)
     }
 
     static var shareFailure: Notifier.CaptureFeedback {

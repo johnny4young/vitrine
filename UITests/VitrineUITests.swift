@@ -251,6 +251,7 @@ final class VitrineUITests: XCTestCase {
         assertHittable("canvas-dock-canvas", in: app, "The dock must be reachable")
         element("canvas-dock-canvas", in: app).click()
         assertExists(element("padding-slider", in: app), in: app, timeout: 3)
+        assertExists(element("padding-balance-toggle", in: app), in: app)
         // Pressing the open pane's button closes it rather than reopening it.
         element("canvas-dock-canvas", in: app).click()
         XCTAssertTrue(element("padding-slider", in: app).waitForNonExistence(timeout: 3))
@@ -269,6 +270,93 @@ final class VitrineUITests: XCTestCase {
         app.typeKey(.return, modifierFlags: [])
         assertExists(element("canvas-dock", in: app), in: app, timeout: 3)
         XCTAssertTrue(element("editor-inspector", in: app).waitForNonExistence(timeout: 3))
+    }
+
+    /// A click on the rendered code, which is selectable text, and one on the padding beside
+    /// it open the dock's matching popovers.
+    @MainActor
+    func testStageRegionsOpenTheirDockSectionsInCanvasMode() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--canvas-mode"])
+        defer { app.terminate() }
+        assertExists(element("canvas-dock", in: app), in: app, timeout: 8)
+        let code = renderedCode(in: app)
+        assertExists(code, in: app, timeout: 3)
+        let scale = previewScale(in: app)
+
+        stageRegionPoint(.chrome, of: code, scale: scale).click()
+        assertExists(element("padding-slider", in: app), in: app, timeout: 3)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("padding-slider", in: app).waitForNonExistence(timeout: 3))
+        // A stage click right after a popover closes only closes it.
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+
+        stageRegionPoint(.background, of: code, scale: scale).click()
+        assertExists(
+            element("inspector-background-gradient-preset", in: app), in: app, timeout: 3)
+    }
+
+    /// With the column scrolled to its end, a click on the window chrome brings the Canvas
+    /// section back into view.
+    @MainActor
+    func testStageRegionScrollsTheInspectorToItsSection() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        let code = renderedCode(in: app)
+        assertExists(code, in: app, timeout: 8)
+        // Opening the last section scrolls the column to its end, past the Canvas section.
+        let disclosure = element("inspector-disclosure-presets", in: app)
+        let inspector = element("editor-inspector", in: app)
+        for _ in 0..<5 where !disclosure.isHittable {
+            inspector.swipeUp()
+        }
+        disclosure.click()
+        assertExists(element("inspector-preset-thumbnails", in: app), in: app, timeout: 3)
+        let chromeToggle = element("window-chrome-toggle", in: app)
+        for _ in 0..<5 where chromeToggle.isHittable {
+            inspector.swipeUp()
+        }
+        try XCTSkipIf(chromeToggle.isHittable, "The whole inspector fits on this display")
+        stageRegionPoint(.chrome, of: code, scale: previewScale(in: app)).click()
+        assertHittable(
+            "window-chrome-toggle", in: app, "The chrome opens the Canvas section", timeout: 3)
+    }
+
+    private enum StageRegionTarget { case chrome, background }
+
+    @MainActor private func renderedCode(in app: XCUIApplication) -> XCUIElement {
+        element("editor-preview-stage", in: app).staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
+    }
+
+    /// The status capsule prints the fit percentage once the card is scaled down.
+    @MainActor private func previewScale(in app: XCUIApplication) -> CGFloat {
+        // The capsule's identifier can resolve to more than one element on the CI image.
+        let capsule = app.descendants(matching: .any)
+            .matching(identifier: "editor-status-capsule").firstMatch
+        let value = capsule.value as? String ?? ""
+        guard let match = value.firstMatch(of: /(\d+)\s?%/), let zoom = Double(match.1) else {
+            return 1
+        }
+        return zoom / 100
+    }
+
+    /// The demo's text element spans the whole rendered canvas, so points are measured from its
+    /// edges: the default 32 pt padding, then the card's 28 pt window chrome.
+    @MainActor private func stageRegionPoint(
+        _ target: StageRegionTarget, of canvas: XCUIElement, scale: CGFloat
+    ) -> XCUICoordinate {
+        let origin = canvas.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0))
+        switch target {
+        case .chrome:
+            return origin.withOffset(CGVector(dx: canvas.frame.width / 2, dy: 46 * scale))
+        case .background:
+            return origin.withOffset(CGVector(dx: 8 * scale, dy: canvas.frame.height / 2))
+        }
     }
 
     @MainActor
@@ -321,6 +409,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("inspector-privacy-footer", in: app), in: app)
 
         // Advanced controls start behind the collapsed Output disclosure.
+        revealInInspector("inspector-disclosure-output", in: app)
         element("inspector-disclosure-output", in: app).click()
         assertExists(element("editor-destination-preset-picker", in: app), in: app, timeout: 3)
         assertExists(element("inspector-resolution-picker", in: app), in: app)
@@ -411,6 +500,42 @@ final class VitrineUITests: XCTestCase {
         XCTAssertFalse(copy.exists)
     }
 
+    @MainActor
+    func testEmbeddedProjectIsOptInAndADroppedOneAsksBeforeOpening() throws {
+        continueAfterFailure = false
+        let settings = launch(arguments: VitrineLaunchArguments.settings)
+        assertExists(element("settings-general-pane", in: settings), in: settings, timeout: 8)
+        element("settings-nav-output", in: settings).click()
+        let toggle = element("embed-project-toggle", in: settings)
+        assertExists(toggle, in: settings, timeout: 3)
+        XCTAssertEqual(toggle.value as? Int, 0, "Embedding the source must be opt-in")
+        let ask = element("ask-embedded-project-toggle", in: settings)
+        assertExists(ask, in: settings)
+        XCTAssertEqual(ask.value as? Int, 1, "A dropped project asks by default")
+        settings.terminate()
+
+        try skipUnlessADisplayFitsTheEditor()
+        let asImage = launch(arguments: ["--open-editor", "--demo-embedded-project"])
+        let useImage = element("embedded-project-image-button", in: asImage)
+        assertExists(useImage, in: asImage, timeout: 8)
+        assertExists(element("embedded-project-open-button", in: asImage), in: asImage)
+        assertExists(element("embedded-project-dont-ask-button", in: asImage), in: asImage)
+        useImage.click()
+        assertExists(element("copy-image-text-button", in: asImage), in: asImage, timeout: 5)
+        asImage.terminate()
+
+        let editable = launch(arguments: ["--open-editor", "--demo-embedded-project"])
+        defer { editable.terminate() }
+        let open = element("embedded-project-open-button", in: editable)
+        assertExists(open, in: editable, timeout: 8)
+        open.click()
+        let editor = element("code-editor-text-view", in: editable)
+        assertExists(editor, in: editable, timeout: 5)
+        let loaded = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value CONTAINS %@", "Hello, Vitrine"), object: editor)
+        XCTAssertEqual(XCTWaiter().wait(for: [loaded], timeout: 5), .completed)
+    }
+
     // MARK: - Multi-window editing and restoration
 
     @MainActor
@@ -439,6 +564,41 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testCodeStepsSwitchTheDocumentBetweenStates() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        let editor = EditorRobot(testCase: self, app: app)
+        assertExists(editor.codeTextView, in: app, timeout: 8)
+
+        let first = try XCTUnwrap(editor.codeTextView.value as? String)
+        assertHittable("code-step-add", in: app, "Add Step is not reachable")
+        element("code-step-add", in: app).click()
+        assertExists(element("code-steps", in: app), in: app, timeout: 3)
+
+        // Add Step copies the active step and makes the copy active, so typing edits step 2.
+        element("code-step-add", in: app).click()
+        assertHittable("code-step-2", in: app, "The second step is not reachable")
+        let second = "struct Step {\n    let answer = 42\n}"
+        editor.codeTextView.click()
+        editor.codeTextView.typeKey("a", modifierFlags: .command)
+        editor.codeTextView.typeText(second)
+
+        element("code-step-1", in: app).click()
+        let deadline = Date().addingTimeInterval(3)
+        while editor.codeTextView.value as? String != first, Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        XCTAssertEqual(editor.codeTextView.value as? String, first)
+
+        assertHittable("code-step-remove", in: app, "Remove Step is not reachable")
+        element("code-step-remove", in: app).click()
+        XCTAssertTrue(element("code-step-2", in: app).waitForNonExistence(timeout: 3))
+        assertExists(element("code-step-1", in: app), in: app)
+    }
+
+    @MainActor
     func testInspectorOffersDiffViewControlsForDiffContent() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
@@ -456,6 +616,12 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("diff-stats-toggle", in: app), in: app, timeout: 3)
         assertExists(element("diff-context-slider", in: app), in: app)
         XCTAssertFalse(element("diff-view-locked-note", in: app).exists)
+
+        assertExists(element("diff-view-picker", in: app), in: app)
+        let split = element("diff-view-split", in: app)
+        assertExists(split, in: app)
+        split.click()
+        XCTAssertTrue(split.wait(for: \.isSelected, toEqual: true, timeout: 3))
     }
 
     @MainActor
@@ -477,6 +643,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("diff-view-locked-note", in: app), in: app, timeout: 3)
         XCTAssertFalse(element("diff-context-slider", in: app).isEnabled)
         XCTAssertFalse(element("diff-stats-toggle", in: app).isEnabled)
+        XCTAssertFalse(element("diff-view-split", in: app).isEnabled)
     }
 
     @MainActor
@@ -643,6 +810,7 @@ final class VitrineUITests: XCTestCase {
         let delete = app.buttons["Delete annotation"]
         for fixedCanvas in [false, true] {
             if fixedCanvas {
+                revealInInspector("inspector-disclosure-output", in: app)
                 element("inspector-disclosure-output", in: app).click()
                 let destinations = element("editor-destination-preset-picker", in: app)
                 assertExists(destinations, in: app, timeout: 3)
@@ -661,9 +829,12 @@ final class VitrineUITests: XCTestCase {
             XCTAssertFalse(delete.exists, "A click must not create a zero-size arrow")
             let start = center.withOffset(CGVector(dx: -30, dy: -20))
             let end = center.withOffset(CGVector(dx: 30, dy: 20))
-            start.press(
-                forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                start.press(
+                    forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             assertExists(delete, in: app)
             revealToolbarAction(
                 "annotation-tool-select", from: "annotation-tool-picker", in: app
@@ -675,15 +846,21 @@ final class VitrineUITests: XCTestCase {
 
             let beforeMove = delete.frame
             let movedCenter = center.withOffset(CGVector(dx: 15, dy: 0))
-            center.press(
-                forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                center.press(
+                    forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeMove.minX, 15, accuracy: 3)
             let beforeResize = delete.frame
             let movedEnd = end.withOffset(CGVector(dx: 15, dy: 0))
-            movedEnd.press(
-                forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
-                withVelocity: dragVelocity, thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                movedEnd.press(
+                    forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
+                    withVelocity: dragVelocity, thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeResize.minX, 15, accuracy: 3)
             let beforeKey = delete.frame
             app.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [.shift])
@@ -714,9 +891,11 @@ final class VitrineUITests: XCTestCase {
             assertExists(delete, in: app)
             let beforeTextMove = delete.frame
             let textTarget = center.withOffset(CGVector(dx: 15, dy: 0))
-            center.press(
-                forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            XCUIElement.perform(withKeyModifiers: .command) {
+                center.press(
+                    forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeTextMove.minX, 15, accuracy: 3)
             XCTAssertFalse(field.exists, "A move must not reopen the text field")
             textTarget.doubleClick()
@@ -779,6 +958,43 @@ final class VitrineUITests: XCTestCase {
         assertExists(delete, in: app)
         delete.click()
         XCTAssertTrue(field.waitForNonExistence(timeout: 3))
+    }
+
+    /// The code gutter and the selection actions both edit the marks the inspector shows.
+    @MainActor
+    func testCodeGutterAndSelectionActionsMarkLines() throws {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 8))
+        // The gutter is the text view's leading inset; line 1 sits just below the top inset.
+        editor.coordinate(withNormalizedOffset: .zero)
+            .withOffset(CGVector(dx: 20, dy: 20)).click()
+        let highlight = app.menuItems["code-lane-highlight"]
+        assertExists(highlight, in: app, timeout: 3)
+        for id in ["code-lane-redact", "code-lane-clear", "code-lane-focus"] {
+            assertExists(app.menuItems[id], in: app)
+        }
+        chooseMenuItem(highlight)
+
+        editor.click()
+        editor.typeKey("a", modifierFlags: .command)
+        assertExists(element("code-selection-actions", in: app), in: app, timeout: 3)
+        let redact = element("code-selection-redact", in: app)
+        assertExists(redact, in: app)
+        assertExists(element("code-selection-highlight", in: app), in: app)
+        redact.click()
+
+        element("inspector-disclosure-lines", in: app).click()
+        let field = element("highlight-lines-field", in: app)
+        assertExists(field, in: app, timeout: 3)
+        XCTAssertEqual(field.value as? String, "1")
+        // The demo capture has 12 lines, all selected.
+        let clearRedactions = element("clear-redactions-button", in: app)
+        assertExists(clearRedactions, in: app)
+        XCTAssertEqual(clearRedactions.value as? String, "1-12")
     }
 
     /// A selected mark's toolbar sits beside it in Select mode, clear of its delete badge.
@@ -922,6 +1138,32 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testMagicBackgroundAppliesAndShuffles() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+
+        XCTAssertTrue(element("code-editor-text-view", in: app).waitForExistence(timeout: 8))
+        XCTAssertFalse(element("inspector-background-magic-shuffle", in: app).exists)
+        assertHittable(
+            "inspector-background-magic", in: app, "The Magic swatch must be reachable")
+        element("inspector-background-magic", in: app).click()
+        let shuffle = element("inspector-background-magic-shuffle", in: app)
+        assertExists(shuffle, in: app, timeout: 3)
+        // Only a preset prints a readout, so it leaves once the derived gradient applies.
+        XCTAssertTrue(
+            element("inspector-value-background", in: app).waitForNonExistence(timeout: 3))
+        // Every variant has its own angle, so the custom-gradient angle shows the change.
+        let angle = element("custom-gradient-angle", in: app)
+        assertExists(angle, in: app, timeout: 3)
+        let before = angle.value as? String
+        shuffle.click()
+        let changed = NSPredicate(format: "value != %@", before ?? "")
+        wait(for: [expectation(for: changed, evaluatedWith: angle)], timeout: 3)
+        assertExists(shuffle, in: app)
+    }
+
+    @MainActor
     func testPresetThumbnailApplies() throws {
         continueAfterFailure = false
         let app = launch(arguments: VitrineLaunchArguments.emptyEditor)
@@ -976,6 +1218,29 @@ final class VitrineUITests: XCTestCase {
         attachment.name = "style-defaults"
         attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    /// Choosing a gallery card selects that association for the Manage actions.
+    @MainActor
+    func testRecipeGalleryCardSelectsTheAssociation() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.settings + ["--demo-recipe-gallery"])
+        defer { app.terminate() }
+        let settings = SettingsRobot(testCase: self, app: app)
+        settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+        assertExists(element("workspace-recipe-gallery", in: app), in: app, timeout: 5)
+        assertExists(element("workspace-recipe-card-2", in: app), in: app, timeout: 3)
+        let apply = element("apply-workspace-recipe-button", in: app)
+        XCTAssertFalse(apply.isEnabled, "Nothing is selected before a card is chosen")
+
+        assertHittable("workspace-recipe-card-0", in: app, "A gallery card should be reachable")
+        element("workspace-recipe-card-0", in: app).click()
+        let enabled = expectation(
+            for: NSPredicate(format: "isEnabled == true"), evaluatedWith: apply)
+        let pickerShowsCard = expectation(
+            for: NSPredicate(format: "value CONTAINS %@", "pr-review.vitrine-recipe.json"),
+            evaluatedWith: element("workspace-recipe-picker", in: app))
+        wait(for: [enabled, pickerShowsCard], timeout: 3)
     }
 
     /// Deletion, default replacement and reload are unit-tested in `LibraryDeletionTests`;
@@ -1109,7 +1374,7 @@ final class VitrineUITests: XCTestCase {
             "carousel-prefer-blank-lines", "carousel-line-numbers", "carousel-page-badge",
             "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
             "carousel-output-summary", "carousel-filmstrip", "carousel-slide-tile-0",
-            "carousel-show-dividers",
+            "carousel-show-dividers", "carousel-slide-size", "carousel-output-format",
         ] {
             assertExists(element(identifier, in: app), in: app, timeout: 3)
         }
@@ -1297,6 +1562,7 @@ final class VitrineUITests: XCTestCase {
         assertExists(appearance, in: app, timeout: 3)
         assertExists(element("settings-terminal-palette-picker", in: app), in: app)
         assertExists(element("settings-terminal-cursor-picker", in: app), in: app)
+        assertExists(element("settings-padding-balance-toggle", in: app), in: app)
         lines.click()
         XCTAssertTrue(lines.wait(for: \.isSelected, toEqual: true, timeout: 3))
         XCTAssertFalse(appearance.isSelected)
@@ -1313,64 +1579,6 @@ final class VitrineUITests: XCTestCase {
     }
 
     // MARK: - Web Snapshot
-
-    @MainActor
-    func testWebSignInAffordanceRequiresExplicitSessionOptIn() {
-        continueAfterFailure = false
-        let app = launch(arguments: VitrineLaunchArguments.webSnapshot)
-        defer { app.terminate() }
-
-        assertExists(element("web-snapshot-window", in: app), in: app, timeout: 8)
-        let requiresDirect =
-            ProcessInfo.processInfo.environment["VITRINE_REQUIRE_DIRECT_WEB_SESSION"] == "1"
-        if !requiresDirect {
-            // Without network access the window opens on HTML and explains why.
-            assertExists(element("web-snapshot-html-editor", in: app), in: app, timeout: 3)
-            assertExists(element("web-snapshot-url-badge", in: app), in: app, timeout: 3)
-            hittableElement("web-snapshot-url-why-button", in: app).click()
-            assertExists(
-                element("web-snapshot-url-unavailable-note", in: app), in: app, timeout: 3)
-            app.typeKey(.escape, modifierFlags: [])
-            hittableElement("web-snapshot-mode-url", in: app).click()
-        }
-        let urlField = app.textFields["web-snapshot-url-field"]
-        assertExists(urlField, in: app, timeout: 3)
-        urlField.click()
-        // Entering a URL must not load it. This test never captures or opens the
-        // sign-in window, so it needs neither a website nor credentials.
-        urlField.typeText("https://example.com")
-
-        let hint = element("web-snapshot-sign-in-hint", in: app)
-        let signIn = element("web-snapshot-sign-in-button", in: app)
-        if !requiresDirect {
-            // The ordinary UI suite uses App Store-compatible entitlements. It must
-            // not offer sign-in merely because the Debug binary was compiled with
-            // VITRINE_DIRECT_DOWNLOAD; runtime capability is the signed entitlement.
-            XCTAssertFalse(hint.exists)
-            XCTAssertFalse(signIn.exists)
-            return
-        }
-
-        XCTAssertFalse(
-            element("web-snapshot-url-badge", in: app).exists,
-            "The signed Direct lane lost network capability")
-        assertExists(hint, in: app, timeout: 3)
-        XCTAssertFalse(signIn.exists, "The default-off session must not offer sign-in")
-
-        hittableElement("web-advanced-disclosure", in: app).click()
-        let toggle = element("web-logged-in-session-toggle", in: app)
-        assertExists(toggle, in: app, timeout: 3)
-        XCTAssertEqual(toggle.value as? Int, 0, "Persistent sessions must default to off")
-
-        toggle.click()
-        assertExists(signIn, in: app, timeout: 3)
-        XCTAssertTrue(signIn.label.contains("example.com"))
-        XCTAssertFalse(hint.exists)
-
-        toggle.click()
-        assertExists(hint, in: app, timeout: 3)
-        XCTAssertFalse(signIn.exists, "Turning off persistence must withdraw sign-in")
-    }
 
     @MainActor
     func testWebSnapshotRendersAndCopiesMultipleLocalHTMLViewports() throws {
@@ -1582,6 +1790,51 @@ final class VitrineUITests: XCTestCase {
         let copied = try XCTUnwrap(copiedImage, "Copy card did not place a PNG on the pasteboard")
         XCTAssertEqual(copied.pixelsWide, 2400)
         XCTAssertEqual(copied.pixelsHigh, 1260)
+    }
+
+    @MainActor
+    func testCardLinkFillsTheSocialCardTemplate() {
+        continueAfterFailure = false
+        let app = launch(arguments: [
+            "--skip-onboarding", "--open-card-url",
+            "vitrine://card?template=announcement&title=Vitrine%201.3.0&handle=%40jane",
+        ])
+        defer { app.terminate() }
+        assertExists(element("social-card-window", in: app), in: app, timeout: 8)
+        let title = app.textFields["social-card-title-field"]
+        assertExists(title, in: app, timeout: 3)
+        XCTAssertEqual(title.value as? String, "Vitrine 1.3.0")
+        XCTAssertEqual(app.textFields["social-card-author-field"].value as? String, "@jane")
+        XCTAssertTrue(app.buttons["social-card-template-headline"].isSelected)
+
+        // The replaced card is kept, so the toolbar can put it back.
+        let restore = app.buttons["social-card-restore-button"]
+        assertExists(restore, in: app, timeout: 3)
+        restore.click()
+        XCTAssertTrue(restore.waitForNonExistence(timeout: 3))
+        XCTAssertNotEqual(title.value as? String, "Vitrine 1.3.0")
+        XCTAssertTrue(app.buttons["social-card-template-standard"].isSelected)
+    }
+
+    @MainActor
+    func testPaletteOpensASocialCardFromATemplate() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--open-command-palette"])
+        defer { app.terminate() }
+        let field = element("command-palette-field", in: app)
+        assertExists(field, in: app, timeout: 8)
+        field.typeText("card snippet")
+        let command = element("command-palette-command-card.snippet", in: app)
+        XCTAssertTrue(command.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        app.typeKey(.return, modifierFlags: [])
+        assertExists(element("social-card-window", in: app), in: app, timeout: 5)
+        let codeFocus = app.buttons["social-card-template-codeFocus"]
+        assertExists(codeFocus, in: app, timeout: 3)
+        XCTAssertTrue(codeFocus.isSelected, "The Snippet template draws with Code focus")
+        XCTAssertFalse(
+            (app.textViews["social-card-excerpt-editor"].value as? String ?? "").isEmpty,
+            "The palette fills the card with the editor's code")
     }
 
     @MainActor
@@ -1842,6 +2095,57 @@ final class VitrineUITests: XCTestCase {
         divider.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.5)).click()
         XCTAssertTrue(sliderCaption.waitForNonExistence(timeout: 3))
         XCTAssertEqual(position(), settled, "That click only closes the caption")
+    }
+
+    @MainActor
+    func testRecentsMakesThemeVariantsFromOneCapture() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.recents,
+            environment: ["VITRINE_RECENTS_TEST_MAX_WIDTH": "560"])
+        defer { app.terminate() }
+
+        hittableElement("recents-compare-button", in: app).click()
+        XCTAssertFalse(
+            element("recents-theme-variants-button", in: app).exists,
+            "Theme variants start from exactly one capture")
+        let cards = app.descendants(matching: .any).matching(identifier: "recents-card")
+        cards.element(boundBy: 0).click()
+        assertHittable(
+            "recents-theme-variants-button", in: app, "One selected capture offers its variants")
+        XCTAssertFalse(element("recents-create-comparison-button", in: app).exists)
+        cards.element(boundBy: 1).click()
+        assertHittable(
+            "recents-create-comparison-button", in: app, "Two captures make a board again")
+        cards.element(boundBy: 1).click()
+        hittableElement("recents-theme-variants-button", in: app).click()
+
+        assertExists(element("comparison-board-window", in: app), in: app, timeout: 10)
+        assertExists(element("comparison-board-variants", in: app), in: app, timeout: 5)
+        // Every seeded capture uses a theme from the variant list, so it adds none of its own.
+        let chips = app.buttons.matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH 'comparison-board-variant-'"
+                    + " AND identifier != 'comparison-board-variants'"))
+        XCTAssertEqual(chips.count, 5)
+        assertExists(element("comparison-board-variant-github", in: app), in: app)
+        assertExists(element("comparison-board-label-3", in: app), in: app)
+
+        // One Light is always among the first four, GitHub Dark never is.
+        let githubDark = element("comparison-board-variant-github-dark", in: app)
+        XCTAssertFalse(githubDark.isEnabled, "A full board takes no fifth capture")
+        element("comparison-board-variant-one-light", in: app).click()
+        XCTAssertTrue(element("comparison-board-label-3", in: app).waitForNonExistence(timeout: 3))
+        assertHittable(
+            "comparison-board-variant-github-dark", in: app, "Removing a theme frees a place")
+        githubDark.click()
+        let added = element("comparison-board-label-3", in: app)
+        assertExists(added, in: app, timeout: 3)
+        assertValue("GitHub Dark", of: added)
+        XCTAssertTrue(
+            githubDark.wait(for: \.isSelected, toEqual: true, timeout: 3),
+            "A theme on the board reads as selected")
     }
 
     @MainActor
@@ -2336,6 +2640,7 @@ final class VitrineUITests: XCTestCase {
         let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
         assertExists(element("inspector-disclosure-output", in: app), in: app, timeout: 8)
+        revealInInspector("inspector-disclosure-output", in: app)
         element("inspector-disclosure-output", in: app).click()
 
         let draft = element("alternative-text-draft-button", in: app)

@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     enum HandoffRoute: Equatable {
         case edit
         case sharedSnapshot
+        case cardTemplate
     }
 
     private var hotkeyTask: Task<Void, Never>?
@@ -25,6 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let launchArguments: AppLaunchArgumentHandler
     let mainMenu: AppMenu
     private let loadEditor: @MainActor (SnapshotConfig) -> Void
+    private let openCard: @MainActor (CardTemplate.Fill) -> Void
 
     override init() {
         let environment = AppEnvironment.shared
@@ -32,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.environment = environment
         self.feedback = feedback
         loadEditor = Self.presentEditor
+        openCard = Self.presentCard
         launchArguments = AppLaunchArgumentHandler(environment: environment)
         mainMenu = AppMenu(
             environment: environment,
@@ -44,11 +47,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         environment: AppEnvironment,
         feedback: CaptureFeedbackPresenter,
         editorPresentation: EditorPresentation,
-        loadEditor: @escaping @MainActor (SnapshotConfig) -> Void = AppDelegate.presentEditor
+        loadEditor: @escaping @MainActor (SnapshotConfig) -> Void = AppDelegate.presentEditor,
+        openCard: @escaping @MainActor (CardTemplate.Fill) -> Void = AppDelegate.presentCard
     ) {
         self.environment = environment
         self.feedback = feedback
         self.loadEditor = loadEditor
+        self.openCard = openCard
         launchArguments = AppLaunchArgumentHandler(environment: environment)
         mainMenu = AppMenu(
             environment: environment,
@@ -173,6 +178,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             && environment["XCTestConfigurationFilePath"] == nil
     }
 
+    /// Whether launch warms the highlighter: only when a global hotkey is set to quick
+    /// capture, the one path that renders before the user has opened anything.
+    static func prewarmsHighlighter(
+        shortcut: KeyboardShortcuts.Shortcut?, action: HotkeyAction
+    ) -> Bool {
+        shortcut != nil && action == .quickCapture
+    }
+
     /// Chooses the status-item owner without leaking helper processes into tests.
     /// Unit tests exercise `StatusItemController` explicitly, while UI tests keep the
     /// item in-process so XCUIAutomation can reach it through the launched app.
@@ -206,6 +219,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch url.host?.lowercased() {
         case EditorHandoff.editHost: return .edit
         case SnapshotShareLink.host: return .sharedSnapshot
+        case CardTemplateLink.host: return .cardTemplate
         default: return nil
         }
     }
@@ -215,6 +229,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch Self.handoffRoute(for: url) {
         case .edit: openEditHandoff(url)
         case .sharedSnapshot: openSharedSnapshot(url)
+        case .cardTemplate: openCardTemplate(url)
         case nil: break
         }
     }
@@ -246,6 +261,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         snapshot.apply(to: &config)
         loadEditor(config)
         Log.app.notice("Opened a shared snapshot link in the editor")
+    }
+
+    /// Opens a card-template link (`vitrine://card`) in the Social Card window. A link
+    /// the strict parser refuses is a no-op, like a malformed share link.
+    private func openCardTemplate(_ url: URL) {
+        let fill: CardTemplate.Fill
+        do {
+            fill = try CardTemplateLink.fill(from: url)
+        } catch let error as CardTemplate.FillError {
+            Log.app.notice("Ignored a card template link: \(error.logLabel, privacy: .public)")
+            return
+        } catch {
+            return
+        }
+        openCard(fill)
+        Log.app.notice("Opened a card template link")
+    }
+
+    static func presentCard(_ fill: CardTemplate.Fill) {
+        SocialCardWindowController.shared.openLink(fill)
     }
 
     static func presentEditor(_ config: SnapshotConfig) {
@@ -328,11 +363,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Task(priority: .utility) { SoftwareUpdater.startBackgroundScheduler() }
         }
 
-        // Pay the syntax highlighter's one-time cold start now, off the render path, so
-        // a user whose first interaction is a quick capture doesn't eat the
-        // JavaScriptCore + theme-CSS warm-up inside the "instant" gesture. Low priority
-        // so it never contends with the menu bar coming up or a hotkey already firing.
-        Task(priority: .utility) { HighlightManager.shared.prewarm() }
+        // A quick-capture hotkey can render before any window has, so pay the syntax
+        // highlighter's JavaScriptCore cold start now when one is set. Without it the
+        // engine stays unloaded, about 16 MB at rest, until the first render needs it.
+        if Self.prewarmsHighlighter(
+            shortcut: KeyboardShortcuts.getShortcut(for: .quickCapture),
+            action: environment.appSettings.hotkeyAction)
+        {
+            Task(priority: .utility) { HighlightManager.shared.prewarm() }
+        }
 
         // Decode the persisted background and foreground before anything draws them. The
         // canvas resolves an image reference synchronously inside its `body` — it has to,

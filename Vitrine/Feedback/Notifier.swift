@@ -33,12 +33,15 @@ enum Notifier {
     enum RecoveryAction: Equatable {
         /// Open the editor window so the user can paste or write code themselves.
         case openEditor
+        /// Put back the social card a `vitrine://card` link replaced.
+        case undoCardReplacement
 
         /// The button label shown for this action. Localized through the String
         /// Catalog; the `accessibilityToken` below stays non-localized.
         var title: String {
             switch self {
             case .openEditor: String(localized: "Open Editor")
+            case .undoCardReplacement: String(localized: "Undo")
             }
         }
 
@@ -48,6 +51,7 @@ enum Notifier {
         var accessibilityToken: String {
             switch self {
             case .openEditor: "open-editor"
+            case .undoCardReplacement: "undo-card-replacement"
             }
         }
     }

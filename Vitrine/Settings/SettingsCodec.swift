@@ -19,6 +19,7 @@ enum SettingsCodec {
         static let languageID = "languageID"
         static let fontSize = "fontSize"
         static let padding = "padding"
+        static let paddingMode = "paddingMode"
         static let cornerRadius = "cornerRadius"
         /// The drop-shadow blur radius ("Shadow depth" in the inspector). Added late:
         /// the slider shipped without a codec key, so the value silently reset to the
@@ -37,6 +38,7 @@ enum SettingsCodec {
         static let diffDecorations = "diffDecorations"
         static let showDiffStats = "showDiffStats"
         static let diffContextLines = "diffContextLines"
+        static let diffView = "diffView"
         /// Snapshot annotations, stored as a JSON-encoded `[Annotation]`.
         /// Part of the document/style, so it seeds new editor windows.
         static let annotations = "annotations"
@@ -52,6 +54,8 @@ enum SettingsCodec {
         static let colorProfile = "colorProfile"
         static let richClipboard = "richClipboard"
         static let concealClipboard = "concealClipboard"
+        static let embedEditableProject = "embedEditableProject"
+        static let askToOpenEmbeddedProjects = "askToOpenEmbeddedProjects"
         static let textSidecar = "textSidecar"
         static let hotkeyAction = "hotkeyAction"
         static let acknowledgedMacOSHotkey = "acknowledgedMacOSHotkey"
@@ -81,6 +85,8 @@ enum SettingsCodec {
         /// `SocialCardModel`. App-global (there is one working card, like the
         /// working document), so it is not part of `EditorPreferencesSnapshot`.
         static let socialCard = "socialCard"
+        /// The card a `vitrine://card` link replaced, kept until it is restored.
+        static let replacedSocialCard = "replacedSocialCard"
         /// Whether the user has confirmed the first-use URL-capture privacy
         /// disclosure. Defaults false; URL capture shows the disclosure once
         /// until confirmed, and the Settings transparency row can revoke it.
@@ -113,22 +119,25 @@ enum SettingsCodec {
         /// store without an app reinstall. The schema version key is reset by
         /// the migration step that runs afterward.
         static let all = [
-            themeID, languageID, fontSize, padding, cornerRadius, shadowRadius, showChrome,
+            themeID, languageID, fontSize, padding, paddingMode, cornerRadius, shadowRadius,
+            showChrome,
             windowTitle,
             showShadow, showLineNumbers, wrapColumns, terminalPalette, terminalCursor,
             highlightedLines, focusHighlightedLines,
-            diffDecorations, showDiffStats, diffContextLines, annotations, metadata,
+            diffDecorations, showDiffStats, diffContextLines, diffView, annotations, metadata,
             gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, showsCopyPreview,
             exportScale, exportFormat,
-            colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction,
+            colorProfile, richClipboard, textSidecar, concealClipboard, embedEditableProject,
+            askToOpenEmbeddedProjects, hotkeyAction,
             acknowledgedMacOSHotkey, appLanguage,
             treatURLs,
             reindentOnPaste,
             webViewportKind, webViewports, webCustomViewportWidth, webCustomViewportHeight,
             webCaptureMode, webWaitKind, webWaitSeconds, webUsesLoggedInSession,
             webAllowsLoopbackCapture, recentLanguages,
-            fontName, fontLigatures, selectedPreset, socialCard, urlCaptureConsent,
+            fontName, fontLigatures, selectedPreset, socialCard, replacedSocialCard,
+            urlCaptureConsent,
             hasSeenWelcome, lastSeenWhatsNewVersion, menuBarNoticeVersion, userStylePresets,
             userCustomThemes,
             workspaceRecipeAssociations, brandKit, brandKitEnabled,
@@ -167,6 +176,11 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.padding) as? Double {
             config.padding = SettingsDefaults.clampPadding(value)
+        }
+        if let value = defaults.string(forKey: Keys.paddingMode).flatMap(
+            PaddingMode.init(rawValue:))
+        {
+            config.paddingMode = value
         }
         if let value = defaults.object(forKey: Keys.cornerRadius) as? Double {
             config.cornerRadius = SettingsDefaults.clampCornerRadius(value)
@@ -214,6 +228,10 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.diffContextLines) as? Int {
             config.diffContextLines = SettingsDefaults.clampDiffContextLines(value)
+        }
+        if let raw = defaults.string(forKey: Keys.diffView), let view = DiffViewMode(rawValue: raw)
+        {
+            config.diffView = view
         }
         // Highlighted lines persist as the canonical spec string ("3, 7-9"); a
         // missing or malformed value parses to no highlight rather than trapping.
@@ -280,8 +298,10 @@ enum SettingsCodec {
     /// blob yields a fresh default card. The model's decoder re-normalizes its
     /// text fields, re-truncates the excerpt, and re-clamps the font size, so an
     /// out-of-range or hand-edited value can never reach the renderer.
-    static func readSocialCard(from defaults: UserDefaults) -> SocialCardModel {
-        guard let data = defaults.data(forKey: Keys.socialCard),
+    static func readSocialCard(
+        from defaults: UserDefaults, key: String = Keys.socialCard
+    ) -> SocialCardModel {
+        guard let data = defaults.data(forKey: key),
             var decoded = try? JSONDecoder().decode(SocialCardModel.self, from: data)
         else { return SocialCardModel() }
         // The model resolves only built-in themes; a custom one comes from the store.
@@ -318,6 +338,7 @@ enum SettingsCodec {
         defaults.set(config.fontLigatures, forKey: Keys.fontLigatures)
         defaults.set(config.fontSize, forKey: Keys.fontSize)
         defaults.set(config.padding, forKey: Keys.padding)
+        defaults.set(config.paddingMode.rawValue, forKey: Keys.paddingMode)
         defaults.set(config.cornerRadius, forKey: Keys.cornerRadius)
         defaults.set(config.shadowRadius, forKey: Keys.shadowRadius)
         defaults.set(config.showChrome, forKey: Keys.showChrome)
@@ -341,6 +362,7 @@ enum SettingsCodec {
         } else {
             defaults.removeObject(forKey: Keys.diffContextLines)
         }
+        defaults.set(config.diffView.rawValue, forKey: Keys.diffView)
         defaults.set(
             LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
         // `redactedLineRanges` is deliberately NOT persisted here: redactions hide secrets
@@ -399,12 +421,16 @@ enum SettingsCodec {
     /// Persists the social card as a JSON-encoded `SocialCardModel` so every field
     /// round-trips. An encode failure drops the key so a later read restores
     /// a fresh default card rather than leaving a stale blob behind.
-    static func persistSocialCard(_ card: SocialCardModel, to defaults: UserDefaults) {
-        guard let data = try? JSONEncoder().encode(card) else {
-            defaults.removeObject(forKey: Keys.socialCard)
-            Log.settings.error("Social card encode failed; persisting default on next change")
+    static func persistSocialCard(
+        _ card: SocialCardModel?, to defaults: UserDefaults, key: String = Keys.socialCard
+    ) {
+        guard let card, let data = try? JSONEncoder().encode(card) else {
+            defaults.removeObject(forKey: key)
+            if card != nil {
+                Log.settings.error("Social card encode failed; persisting default on next change")
+            }
             return
         }
-        defaults.set(data, forKey: Keys.socialCard)
+        defaults.set(data, forKey: key)
     }
 }

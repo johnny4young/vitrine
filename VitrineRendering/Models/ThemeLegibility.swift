@@ -9,7 +9,7 @@ import VitrineDomain
 /// that is known exactly, because a gradient or an image varies under the text.
 public struct ThemeLegibility: Equatable {
     /// One text color on one surface in the capture.
-    public struct Ink: Equatable, Identifiable {
+    nonisolated public struct Ink: Equatable, Identifiable, Sendable {
         public let id: String
         public let hex: String
         public let ratio: Double
@@ -69,12 +69,12 @@ public struct ThemeLegibility: Equatable {
         }
     }
 
-    static let illegibleRatio = 2.0
-    static let illegibleShare = 0.05
-    static let faintRatio = 3.0
-    static let faintShare = 0.5
-    static let majorityShare = 0.5
-    public static let threshold = Brand.Contrast.aaNormal
+    nonisolated static let illegibleRatio = 2.0
+    nonisolated static let illegibleShare = 0.05
+    nonisolated static let faintRatio = 3.0
+    nonisolated static let faintShare = 0.5
+    nonisolated static let majorityShare = 0.5
+    nonisolated public static let threshold = Brand.Contrast.aaNormal
     static let maximumTerminalBytes = 64 * 1024
     /// Plaintext runs Highlight.js's auto-detection, which takes seconds on a large document.
     static let maximumAutoDetectedBytes = 8 * 1024
@@ -87,7 +87,9 @@ public struct ThemeLegibility: Equatable {
 
     /// Whether enough of the text is hard to read. A few comments under AA stay quiet: most
     /// stock themes dim them on purpose.
-    public var isWeak: Bool {
+    public var isWeak: Bool { Self.isWeak(inks) }
+
+    nonisolated static func isWeak(_ inks: [Ink]) -> Bool {
         func share(under limit: Double) -> Double {
             inks.filter { $0.ratio < limit }.reduce(0) { $0 + $1.share }
         }
@@ -100,32 +102,82 @@ public struct ThemeLegibility: Equatable {
     /// measurable text, a terminal or auto-detected document too large to read cheaply, or a
     /// surface it doesn't know exactly.
     public static func measure(_ input: Input) -> ThemeLegibility? {
-        guard !input.usesImageContent else { return nil }
-        if input.language == .terminal, input.code.utf8.count > maximumTerminalBytes { return nil }
-        if input.language == .plaintext, input.code.utf8.count > maximumAutoDetectedBytes {
-            return nil
-        }
-        guard
+        guard isMeasurable(input),
             let card = cardColor(
                 theme: input.theme, language: input.language, palette: input.terminalPalette),
-            let surface = surface(under: card, input: input)
+            let surface = surface(under: card, input: input),
+            let samples = samples(input, card: card)
         else { return nil }
+        return ThemeLegibility(inks: samples.inks(on: surface))
+    }
 
-        let counts = glyphCounts(in: text(of: input), input: input)
-        let total = counts.values.reduce(0) { $0 + $1.count }
-        guard total > 0 else { return nil }
-
-        let inks = counts.map { key, entry in
-            var below = entry.band.map { Brand.Contrast.composite($0, over: surface) } ?? surface
-            if let own = entry.runBackground { below = Brand.Contrast.composite(own, over: below) }
-            let ratio = Brand.Contrast.ratio(
-                Color(nsColor: Brand.Contrast.composite(entry.color, over: below)),
-                on: Color(nsColor: below))
-            return Ink(
-                id: key, hex: entry.hex, ratio: ratio, share: Double(entry.count) / Double(total))
+    /// The measured glyphs of one capture, which rate over any surface off the main actor.
+    nonisolated public struct Samples: Sendable {
+        struct Entry: Sendable {
+            let key: String
+            let color: NSColor
+            let hex: String
+            let band: NSColor?
+            let runBackground: NSColor?
+            let count: Int
         }
-        return ThemeLegibility(
-            inks: inks.sorted { ($0.ratio, $0.id) < ($1.ratio, $1.id) })
+
+        let card: NSColor
+        let entries: [Entry]
+
+        /// Every ink over `surface`, the opaque color right under the text's row.
+        func inks(on surface: NSColor) -> [Ink] {
+            let total = entries.reduce(0) { $0 + $1.count }
+            return entries.map { entry in
+                var below =
+                    entry.band.map { Brand.Contrast.composite($0, over: surface) } ?? surface
+                if let own = entry.runBackground {
+                    below = Brand.Contrast.composite(own, over: below)
+                }
+                let ratio = Brand.Contrast.ratio(
+                    Color(nsColor: Brand.Contrast.composite(entry.color, over: below)),
+                    on: Color(nsColor: below))
+                return Ink(
+                    id: entry.key, hex: entry.hex, ratio: ratio,
+                    share: Double(entry.count) / Double(total))
+            }
+            .sorted { ($0.ratio, $0.id) < ($1.ratio, $1.id) }
+        }
+
+        /// Every ink over an opaque `backdrop` seen through the card.
+        func inks(over backdrop: NSColor) -> [Ink] {
+            inks(on: Brand.Contrast.composite(card, over: backdrop))
+        }
+    }
+
+    /// The capture's glyphs whatever the canvas background, or `nil` when there is nothing
+    /// `measure` could rate.
+    static func samples(_ input: Input) -> Samples? {
+        guard isMeasurable(input),
+            let card = cardColor(
+                theme: input.theme, language: input.language, palette: input.terminalPalette)
+        else { return nil }
+        return samples(input, card: card)
+    }
+
+    private static func isMeasurable(_ input: Input) -> Bool {
+        guard !input.usesImageContent else { return false }
+        if input.language == .terminal, input.code.utf8.count > maximumTerminalBytes {
+            return false
+        }
+        return input.language != .plaintext || input.code.utf8.count <= maximumAutoDetectedBytes
+    }
+
+    private static func samples(_ input: Input, card: NSColor) -> Samples? {
+        let counts = glyphCounts(in: text(of: input), input: input)
+        guard counts.values.contains(where: { $0.count > 0 }) else { return nil }
+        return Samples(
+            card: card,
+            entries: counts.map { key, count in
+                Samples.Entry(
+                    key: key, color: count.color, hex: count.hex, band: count.band,
+                    runBackground: count.runBackground, count: count.count)
+            })
     }
 
     /// A stock theme to offer instead, only when the same measurement says it reads.
@@ -139,7 +191,7 @@ public struct ThemeLegibility: Equatable {
     }
 
     /// The card fill the canvas draws, in sRGB.
-    fileprivate static func cardColor(
+    static func cardColor(
         theme: Theme, language: Language, palette: TerminalPaletteMode
     ) -> NSColor? {
         (language == .terminal

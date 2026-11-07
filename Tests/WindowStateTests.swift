@@ -93,6 +93,7 @@ struct EditorWindowStateTests {
         config.fontSize = 18
         config.fontLigatures = true
         config.padding = 48
+        config.paddingMode = .balanced
         config.cornerRadius = 18
         config.shadowRadius = 40
         config.showChrome = false
@@ -112,6 +113,7 @@ struct EditorWindowStateTests {
         config.diffDecorations = true
         config.showDiffStats = true
         config.diffContextLines = 2
+        config.diffView = .split
         config.annotations = [
             Annotation(
                 kind: .counter, start: CGPoint(x: 0.2, y: 0.3), end: CGPoint(x: 0.25, y: 0.35),
@@ -123,6 +125,8 @@ struct EditorWindowStateTests {
         config.foregroundImage = ImageReference(fileName: "beautified.png")
         config.imageFrame = .macOSWindow
         config.imageFrameAppearance = .dark
+        config.codeSteps = ["let answer = 41", "let answer = 42\nprint(answer)"]
+        config.activeCodeStep = 0
         // Not carried by the bridge. They hold non-default values so `expectedAfterRestore`
         // actually asserts the omission instead of comparing two type defaults.
         config.watermark = Watermark(text: "@vitrine")
@@ -172,7 +176,10 @@ struct EditorWindowStateTests {
         #expect(restored.diffDecorations == original.diffDecorations)
         #expect(restored.showDiffStats == original.showDiffStats)
         #expect(restored.diffContextLines == original.diffContextLines)
+        #expect(restored.diffView == original.diffView)
         #expect(restored.annotations == original.annotations)
+        #expect(restored.codeSteps == original.codeSteps)
+        #expect(restored.activeCodeStep == original.activeCodeStep)
     }
 
     /// Restoration is wholesale — `config()` starts from a fresh `SnapshotConfig` — so a
@@ -340,6 +347,24 @@ struct EditorWindowStateTests {
         #expect(config.fontName == fallback.fontName)
         #expect(config.padding == fallback.padding)
         #expect(config.background == fallback.background)
+        #expect(config.codeSteps.isEmpty)
+    }
+
+    @Test func aMalformedStepListRestoresWithoutSteps() throws {
+        let state = try #require(
+            EditorWindowState.decoded(from: Data(#"{"code":"x","codeSteps":"x"}"#.utf8)))
+        #expect(state.config().code == "x")
+        #expect(state.config().codeSteps.isEmpty)
+    }
+
+    @Test func aMissingOrStaleActiveStepPicksTheStepTheTextCameFrom() {
+        var config = SnapshotConfig(code: "b", language: .swift)
+        config.codeSteps = ["a", "b", "c"]
+        config.activeCodeStep = 7
+        #expect(EditorWindowState(config: config).config().activeCodeStep == 1)
+        config.code = "edited"
+        config.activeCodeStep = nil
+        #expect(EditorWindowState(config: config).config().activeCodeStep == 2)
     }
 
     @Test func anUnknownThemeIDFallsBackToTheDefaultTheme() {

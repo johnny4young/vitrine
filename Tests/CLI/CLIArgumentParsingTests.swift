@@ -503,6 +503,23 @@ struct CLIArgumentParsingTests: CLITestSupport {
         ])
         #expect(batch.showDiffStats == true)
         #expect(batch.diffContextLines == 0)
+
+        let split = try CLIArguments.parse([
+            "render", "changes.diff", "-o", "o.png", "--diff-view", "Split",
+        ])
+        #expect(split.makeConfig(code: "", language: .diff).diffView == .split)
+        let unified = try CLIArguments.parse(["render", "changes.diff", "-o", "o.png"])
+        #expect(unified.diffView == nil)
+        #expect(unified.makeConfig(code: "", language: .diff).diffView == .unified)
+    }
+
+    @Test(arguments: ["side", ""])
+    func diffViewRejectsUnknownLayouts(_ value: String) {
+        #expect(throws: CLIError.invalidValue(flag: "--diff-view", value: value)) {
+            try CLIArguments.parse([
+                "render", "changes.diff", "-o", "o.png", "--diff-view", value,
+            ])
+        }
     }
 
     @Test(arguments: ["-1", "6", "all", ""])
@@ -514,7 +531,9 @@ struct CLIArgumentParsingTests: CLITestSupport {
         }
     }
 
-    @Test(arguments: [["--diff-stats"], ["--no-diff-stats"], ["--diff-context", "1"]])
+    @Test(arguments: [
+        ["--diff-stats"], ["--no-diff-stats"], ["--diff-context", "1"], ["--diff-view", "split"],
+    ])
     func diffViewOptionsAreCodeOnly(_ flags: [String]) {
         #expect(
             throws: CLIError.incompatibleOptions(
