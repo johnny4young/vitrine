@@ -39,6 +39,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolveDiffView(_ raw: String, flag: String) throws -> DiffViewMode {
+        guard let value = DiffViewMode(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     func containsControlCharacter(_ value: String) -> Bool {
         value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }
@@ -359,6 +366,13 @@ extension CLIArgumentParser {
     /// Parses and range-checks the canvas padding in points (Style pane bounds).
     func resolvePadding(_ raw: String, flag: String) throws -> Double {
         guard let value = Double(raw), SettingsDefaults.paddingRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
+    func resolvePaddingMode(_ raw: String, flag: String) throws -> PaddingMode {
+        guard let value = PaddingMode(rawValue: raw.lowercased()) else {
             throw CLIError.invalidValue(flag: flag, value: raw)
         }
         return value

@@ -26,6 +26,8 @@ public struct DiffDocument: Equatable, Sendable {
     public private(set) var additions = 0
     public private(set) var deletions = 0
     public private(set) var hasHunks = false
+    /// The old and new start lines each well-formed hunk header names, keyed by its 0-based row.
+    public private(set) var hunkStarts: [Int: DiffLinePair] = [:]
 
     public init(source: String) {
         let lines = source.split(
@@ -72,6 +74,7 @@ public struct DiffDocument: Equatable, Sendable {
                 let columns = line.prefix { $0 == "@" }.count - 1
                 combinedColumns = columns > 1 ? columns : nil
                 remaining = columns > 1 ? nil : Self.hunkLineCounts(line, limit: lines.count)
+                hunkStarts[index] = Self.hunkStart(line)
                 (inHunk, fileHasBody) = (true, true)
                 continue
             }
@@ -220,6 +223,24 @@ public struct DiffDocument: Equatable, Sendable {
             let new = lineCount(parts[2], marker: "+", limit: limit)
         else { return nil }
         return (old, new)
+    }
+
+    /// The highest start line a hunk header may name; pasted text is untrusted, and a larger
+    /// one leaves its hunk unnumbered rather than overflowing the count.
+    public static let maximumHunkStart = 10_000_000
+
+    /// The first `-a` and the `+c` in a hunk header, which a combined diff also ends with.
+    private static func hunkStart(_ header: Substring) -> DiffLinePair? {
+        func start(_ marker: Character) -> Int? {
+            let parts = header.split(separator: " ").dropFirst()
+            guard let range = parts.first(where: { $0.first == marker }),
+                let value = Int(range.dropFirst().prefix { $0 != "," }),
+                (0...maximumHunkStart).contains(value)
+            else { return nil }
+            return value
+        }
+        guard let old = start("-"), let new = start("+") else { return nil }
+        return DiffLinePair(old: old, new: new)
     }
 
     private static func lineCount(_ range: Substring, marker: Character, limit: Int) -> Int? {

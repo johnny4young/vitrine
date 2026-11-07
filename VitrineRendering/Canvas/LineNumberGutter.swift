@@ -98,7 +98,7 @@ struct CodeLinesView: View {
 
     /// Stands in for folded lines, aligned with the code column. A glyph rather than
     /// copy, so the exported image does not depend on the locale.
-    private func foldMarker(metrics: GutterMetrics) -> some View {
+    func foldMarker(metrics: GutterMetrics) -> some View {
         Text(verbatim: "⋯")
             .font(Font(font))
             .foregroundStyle(textColor.opacity(0.4))
@@ -110,9 +110,12 @@ struct CodeLinesView: View {
             .accessibilityHidden(true)
     }
 
+    /// `gutterLabel` replaces the drawn number; the split layout numbers each side itself.
+    /// `fillsHeight` stretches the band to a row the other side made taller.
     @ViewBuilder
-    private func row(
-        _ line: AttributedString, lineNumber: Int, metrics: GutterMetrics
+    func row(
+        _ line: AttributedString, lineNumber: Int, metrics: GutterMetrics,
+        gutterLabel: String? = nil, fillsHeight: Bool = false
     )
         -> some View
     {
@@ -123,7 +126,7 @@ struct CodeLinesView: View {
                 // Verbatim: a line number is a locale-neutral numeral, not catalog
                 // copy — and this also keeps Xcode's extractor from emitting a bare
                 // "%@" key into the String Catalog.
-                Text(verbatim: "\(lineNumber + firstLineNumber - 1)")
+                Text(verbatim: gutterLabel ?? "\(lineNumber + firstLineNumber - 1)")
                     .font(Font(font))
                     .monospacedDigit()
                     .foregroundStyle(textColor.opacity(isHighlighted ? 0.85 : 0.4))
@@ -142,6 +145,7 @@ struct CodeLinesView: View {
         // whole card width, behind both the gutter number and the code.
         .padding(.horizontal, Brand.Spacing.xs)
         .padding(.vertical, lineSpacing / 2)
+        .fillingHeight(fillsHeight)
         .background(rowBackground(line: line, isHighlighted: isHighlighted))
         // Negative inset cancels the horizontal padding so highlighted and plain
         // rows share the same left edge; the band simply extends past the text.
@@ -204,6 +208,13 @@ struct CodeLinesView: View {
         case "-": DiffColor.removed.opacity(0.18)
         default: nil
         }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    fileprivate func fillingHeight(_ fills: Bool) -> some View {
+        if fills { frame(maxHeight: .infinity, alignment: .top) } else { self }
     }
 }
 

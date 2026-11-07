@@ -202,6 +202,12 @@ struct EditorInspectorView: View {
                                     if !settings.style.redactedLineRanges.isEmpty {
                                         Button("Clear") { settings.style.redactedLineRanges = [] }
                                             .accessibilityLabel("Clear redactions")
+                                            // Names the redacted lines for VoiceOver.
+                                            .accessibilityValue(
+                                                Text(
+                                                    verbatim: LineHighlight.describe(
+                                                        settings.style.redactedLineRanges))
+                                            )
                                             .accessibilityIdentifier("clear-redactions-button")
                                     }
                                 }
@@ -499,6 +505,21 @@ struct EditorInspectorView: View {
                     label: "Padding", value: $settings.style.padding,
                     range: SettingsDefaults.paddingRange,
                     step: 4, identifier: "padding-slider", width: 92)
+            }
+            InspectorRow(label: Text("Balance")) {
+                Toggle("Balance", isOn: $settings.style.balancesPadding)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .disabled(settings.style.locksPaddingMode)
+                    .help(
+                        settings.style.locksPaddingMode
+                            ? Text(
+                                "Remove the blur boxes first: they would slide off what they hide.")
+                            : Text(
+                                "Counts the shadow in the padding and sets the card a little above center."
+                            )
+                    )
+                    .accessibilityIdentifier("padding-balance-toggle")
             }
             InspectorRow(label: Text("Corner radius")) {
                 ValueSlider(

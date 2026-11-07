@@ -224,20 +224,27 @@ struct RecentsGalleryView: View {
         if isSelectingForComparison {
             Button("Cancel") { endComparisonSelection() }
                 .accessibilityIdentifier("recents-compare-cancel")
-            Button("Create Board (\(comparisonSelection.count))") {
-                createComparisonBoard()
+            // One slot: a single selection makes variants, so the row fits a narrow window.
+            if comparisonSelection.count == 1 {
+                Button("Theme Variants") { createThemeVariantsBoard() }
+                    .accentProminentButtonStyle()
+                    .accessibilityIdentifier("recents-theme-variants-button")
+            } else {
+                Button("Create Board (\(comparisonSelection.count))") {
+                    createComparisonBoard()
+                }
+                .disabled(!comparisonSelection.canCreateBoard)
+                .accentProminentButtonStyle()
+                .accessibilityIdentifier("recents-create-comparison-button")
             }
-            .disabled(!comparisonSelection.canCreateBoard)
-            .accentProminentButtonStyle()
-            .accessibilityIdentifier("recents-create-comparison-button")
         } else {
             Button {
                 beginComparisonSelection()
             } label: {
                 Label("Compare", systemImage: "rectangle.on.rectangle.angled")
             }
-            .disabled(recents.captures.count < ComparisonBoard.itemCountRange.lowerBound)
-            .help("Select two to four captures for one comparison board")
+            .disabled(recents.captures.isEmpty)
+            .help("Select one capture for theme variants, or two to four for a board")
             .accessibilityIdentifier("recents-compare-button")
         }
     }
@@ -382,6 +389,13 @@ struct RecentsGalleryView: View {
         let selected = comparisonSelection.resolved(in: recents.captures)
         guard ComparisonBoard.itemCountRange.contains(selected.count) else { return }
         navigation.showComparisonBoard(selected)
+        endComparisonSelection()
+    }
+
+    private func createThemeVariantsBoard() {
+        let selected = comparisonSelection.resolved(in: recents.captures)
+        guard selected.count == 1, let capture = selected.first else { return }
+        navigation.showThemeVariants(of: capture)
         endComparisonSelection()
     }
 
