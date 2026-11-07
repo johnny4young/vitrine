@@ -100,6 +100,28 @@
         }
       }
     },
+    "· overrides %@" : {
+      "comment" : "Workspace recipe gallery: this nested folder's recipe wins over the named parent recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· reemplaza a %@"
+          }
+        }
+      }
+    },
+    "· parent of %@" : {
+      "comment" : "Workspace recipe gallery: the named recipes of nested folders win over this one inside them.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· contiene %@"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {

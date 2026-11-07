@@ -996,6 +996,29 @@ final class VitrineUITests: XCTestCase {
         add(attachment)
     }
 
+    /// Choosing a gallery card selects that association for the Manage actions.
+    @MainActor
+    func testRecipeGalleryCardSelectsTheAssociation() {
+        continueAfterFailure = false
+        let app = launch(arguments: VitrineLaunchArguments.settings + ["--demo-recipe-gallery"])
+        defer { app.terminate() }
+        let settings = SettingsRobot(testCase: self, app: app)
+        settings.open(navigation: "settings-nav-library", pane: "settings-library-pane")
+        assertExists(element("workspace-recipe-gallery", in: app), in: app, timeout: 5)
+        assertExists(element("workspace-recipe-card-2", in: app), in: app, timeout: 3)
+        let apply = element("apply-workspace-recipe-button", in: app)
+        XCTAssertFalse(apply.isEnabled, "Nothing is selected before a card is chosen")
+
+        assertHittable("workspace-recipe-card-0", in: app, "A gallery card should be reachable")
+        element("workspace-recipe-card-0", in: app).click()
+        let enabled = expectation(
+            for: NSPredicate(format: "isEnabled == true"), evaluatedWith: apply)
+        let pickerShowsCard = expectation(
+            for: NSPredicate(format: "value CONTAINS %@", "pr-review.vitrine-recipe.json"),
+            evaluatedWith: element("workspace-recipe-picker", in: app))
+        wait(for: [enabled, pickerShowsCard], timeout: 3)
+    }
+
     /// Deletion, default replacement and reload are unit-tested in `LibraryDeletionTests`;
     /// this proves the named confirmations keep Cancel as the safe default.
     @MainActor
