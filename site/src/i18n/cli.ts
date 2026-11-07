@@ -35,13 +35,23 @@ const both = (en: string, es: string): LocalizedText => ({ en, es });
 
 export const cliCommands: CLICommandDoc[] = [
   {
+    id: 'run',
+    name: 'run',
+    syntax: 'vitrine run [--copy | --edit] [--terminal-width <n>] [--no-context] [--title-from-command] [--redact-secrets] [--] <command> [args…]',
+    summary: both('Run a command and copy its output', 'Ejecutar un comando y copiar su salida'),
+    detail: both(
+      'Free, like vgrab, with no shell setup. It runs the command you typed in a pseudo-terminal so it keeps its colors, then copies a terminal image or opens the output in the editor. The header shows the program only; --title-from-command adds the arguments with likely credentials masked. It exits with the command\'s status, and the output never leaves your Mac.',
+      'Gratis, como vgrab, y sin configurar la shell. Ejecuta el comando que escribiste en una pseudoterminal para conservar sus colores y luego copia una imagen de terminal o abre la salida en el editor. El encabezado muestra solo el programa; --title-from-command añade los argumentos con las credenciales probables ocultas. Termina con el código de salida del comando y la salida nunca sale de tu Mac.',
+    ),
+  },
+  {
     id: 'terminal-capture',
     name: 'terminal-capture',
-    syntax: 'vitrine terminal-capture <capture-file> (--copy [--conceal-clipboard] [--filename <text>] [--title <text>] | --edit) [--terminal-width <n>]',
+    syntax: 'vitrine terminal-capture <capture-file> (--copy [--conceal-clipboard] [--filename <text>] [--title <text>] | --edit) [--terminal-width <n>] [--redact-secrets]',
     summary: both('Free path behind vgrab', 'Ruta gratuita de vgrab'),
     detail: both(
-      'The constrained local command emitted by vgrab. It accepts terminal width and context, but no general styling, file output, sidecars, or batch automation.',
-      'El comando local y limitado que usa vgrab. Acepta ancho y contexto de terminal, pero no estilos generales, salida a archivo, archivos auxiliares ni automatización por lotes.',
+      'The constrained local command emitted by vgrab. It accepts terminal width, context and secret redaction, but no general styling, file output, sidecars, or batch automation.',
+      'El comando local y limitado que usa vgrab. Acepta ancho de terminal, contexto y ocultación de secretos, pero no estilos generales, salida a archivo, archivos auxiliares ni automatización por lotes.',
     ),
   },
   {
@@ -160,7 +170,7 @@ export const cliExamples: CLIExample[] = [
       'vgrab preserves color and adds the project, Git branch when available, and exact command above the result.',
       'vgrab conserva el color y añade el proyecto, la rama Git cuando existe y el comando exacto sobre el resultado.',
     ),
-    code: 'vgrab npm test\nvgrab -e git status\nvgrab --no-context date',
+    code: 'vgrab npm test\nvgrab -e git status\nvgrab --no-context date\nvitrine run -- swift test',
     note: both(
       'Basic vgrab capture is free. Use --no-context whenever arguments, paths, or branch names should stay private.',
       'La captura básica con vgrab es gratis. Usa --no-context cuando los argumentos, rutas o nombres de rama deban mantenerse privados.',
@@ -274,6 +284,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--font-ligatures, --no-font-ligatures', description: both('Enable or disable programming ligatures.', 'Activa o desactiva ligaduras de programación.') },
       { flags: '--font-size', value: '<10...20>', description: both('Code font size in points.', 'Tamaño de la fuente en puntos.') },
       { flags: '--padding', value: '<16...64>', description: both('Canvas padding in points.', 'Relleno del lienzo en puntos.') },
+      { flags: '--padding-mode', value: '<manual|balanced>', description: both('Balanced measures the padding to the card and its shadow and sets the card a little above center.', 'Balanced mide el relleno hasta la tarjeta y su sombra, y sube un poco la tarjeta sobre el centro.') },
       { flags: '--corner-radius', value: '<0...48>', description: both('Code-card corner radius.', 'Radio de las esquinas de la tarjeta.') },
       { flags: '--shadow-radius', value: '<0...40>', description: both('Drop-shadow blur radius.', 'Radio de desenfoque de la sombra.') },
       { flags: '--terminal-width', value: '<1...1000>', description: both('Pin terminal reconstruction width; vgrab -w sets this automatically.', 'Fija el ancho de reconstrucción; vgrab -w lo define automáticamente.') },
@@ -349,6 +360,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--highlighter', value: '<x1,y1,x2,y2>', description: both('Highlight a repeatable region.', 'Resalta una región repetible.') },
       { flags: '--highlighter-color', value: '<hex>', description: both('Shared marker color.', 'Color compartido del resaltador.') },
       { flags: '--blur-box', value: '<x1,y1,x2,y2>', description: both('Visually blur a region; this does not sanitize sidecars.', 'Desenfoca visualmente una región; no limpia los archivos auxiliares.') },
+      { flags: '--lines', value: '<first-last>', description: both('Render one span of a file numbered as in the file, titled with the project and file name. Highlight and redaction specs then name file lines.', 'Renderiza un tramo de un archivo con su numeración original y el proyecto y el archivo como título. Las especificaciones de resaltado y ocultación usan entonces las líneas del archivo.') },
       { flags: '--highlight-lines', value: '<spec>', description: both('Highlight 1-based rows such as 3,7-9,12.', 'Resalta filas desde 1, como 3,7-9,12.') },
       { flags: '--redact-lines', value: '<spec>', description: both('Redact rows in the image and replace them in sidecars.', 'Oculta filas en la imagen y las sustituye en los archivos auxiliares.') },
       { flags: '--redact-secrets', description: both('Scan for likely secrets and redact matching rows.', 'Busca secretos probables y oculta las filas correspondientes.') },
@@ -356,6 +368,7 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--diff-bands, --no-diff-bands', description: both('Show or hide GitHub-style added and removed bands.', 'Muestra u oculta bandas de cambios al estilo GitHub.') },
       { flags: '--diff-stats, --no-diff-stats', description: both('Show or hide the file path and +/- counts above a diff.', 'Muestra u oculta la ruta del archivo y los conteos +/- sobre un diff.') },
       { flags: '--diff-context', value: '<0...5>', description: both('Fold a diff to this many unchanged lines around each change.', 'Pliega un diff a esta cantidad de líneas sin cambios alrededor de cada cambio.') },
+      { flags: '--diff-view', value: '<unified|split>', description: both('Lay a diff out in one column or with old and new side by side.', 'Muestra un diff en una columna o con la versión anterior y la nueva lado a lado.') },
     ],
   },
   {

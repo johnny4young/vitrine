@@ -20,6 +20,8 @@ struct BackgroundControls: View {
     var imageStore: BackgroundImageStore = .container
     /// Keeps each surface's accessibility identifiers distinct (e.g. "social-card-").
     var identifierPrefix = ""
+    /// Derives gradients from the capture; `nil` hides the Magic swatch.
+    var magic: MagicBackgroundControl? = nil
 
     /// The preset to return to when the Gradient kind is chosen again.
     @State private var lastPreset: GradientPreset?
@@ -31,6 +33,7 @@ struct BackgroundControls: View {
             if selectedPreset != nil { presetSwatches }
         case .inspector:
             presetSwatches
+            if magicIndex != nil { magicRow }
             if selectedPreset == nil { kindRow }
         }
         if selectedPreset == nil { detail }
@@ -46,6 +49,13 @@ struct BackgroundControls: View {
                 }
                 .chipScrollItem(id: preset.id, isSelected: selectedPreset == preset)
             }
+            if magic != nil {
+                MagicBackgroundSwatch(isSelected: magicIndex != nil, size: swatchSize) {
+                    applyMagic(advancing: false)
+                }
+                .accessibilityIdentifier("\(identifierPrefix)background-magic")
+                .chipScrollItem(id: "magic", isSelected: magicIndex != nil)
+            }
             if layout == .inspector {
                 CustomBackgroundSwatch(size: swatchSize) { switchKind(to: .solid) }
             }
@@ -53,6 +63,9 @@ struct BackgroundControls: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Gradient preset")
         .accessibilityIdentifier("\(identifierPrefix)background-gradient-preset")
+        // Any other write wins over a derivation still running, and so does closing.
+        .onChange(of: background) { magic?.model.cancel() }
+        .onDisappear { magic?.model.cancel() }
     }
 
     /// In Settings the picker takes the row's whole width: the Spanish labels leave no room
@@ -127,6 +140,26 @@ struct BackgroundControls: View {
         }
     }
 
+    private var magicRow: some View {
+        InspectorRow(label: Text("Magic")) {
+            Button {
+                applyMagic(advancing: true)
+            } label: {
+                Label("Shuffle", systemImage: "shuffle")
+            }
+            .accessibilityIdentifier("\(identifierPrefix)background-magic-shuffle")
+        }
+    }
+
+    private var magicIndex: Int? { magic?.model.index(of: background) }
+
+    private func applyMagic(advancing: Bool) {
+        guard let magic else { return }
+        magic.model.request(
+            advancing: advancing, current: background, input: magic.input, derive: magic.derive,
+            apply: magic.apply)
+    }
+
     private var swatchSize: CGFloat { layout == .settings ? 26 : 28 }
 
     private var selectedPreset: GradientPreset? {
@@ -148,6 +181,15 @@ struct BackgroundControls: View {
         background = kind.makeDefault(
             from: background, lastPreset: lastPreset, imageStore: imageStore)
     }
+}
+
+/// What the Magic swatch needs from its surface: where results live, what a derivation reads,
+/// how to derive, and how to apply one with undo.
+struct MagicBackgroundControl {
+    let model: MagicBackgroundModel
+    let input: () -> MagicBackgroundModel.Input
+    let derive: () async -> [CustomGradient]
+    let apply: (CustomGradient) -> Void
 }
 
 /// The selectable background kinds shown in the editor's kind picker.

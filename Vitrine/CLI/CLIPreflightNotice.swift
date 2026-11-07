@@ -7,11 +7,15 @@ enum CLIPreflightNotice {
     static func message(for config: SnapshotConfig, source: String? = nil) -> String? {
         let report = ExportPreflight(config, payload: .text)
         guard !report.isClean else { return nil }
+        // Name the rows by the numbers the gutter shows, which `--lines` starts past 1.
+        let offset = config.firstLineNumber - 1
         let places = report.findings.map { finding in
             let place: String
             switch finding.location {
-            case .lines(let range) where range.count == 1: place = "line \(range.lowerBound)"
-            case .lines(let range): place = "lines \(range.lowerBound)-\(range.upperBound)"
+            case .lines(let range) where range.count == 1:
+                place = "line \(range.lowerBound + offset)"
+            case .lines(let range):
+                place = "lines \(range.lowerBound + offset)-\(range.upperBound + offset)"
             case .terminalTranscript: place = "terminal transcript"
             case .label: place = "header or annotation text"
             }

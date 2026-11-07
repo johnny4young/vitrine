@@ -231,7 +231,8 @@ Open **Recents**, choose **Compare**, then select two to four captures in the or
 want to explain them. Vitrine renders each selection once into a temporary board where
 you can edit labels and details, reorder or remove items, and choose automatic, row,
 column, grid, or (for two captures) slider layout before copying, saving, or sharing the
-finished image. The board
+finished image. Select one capture and choose **Theme Variants** instead to see it in up
+to four themes on one board. The board
 is session-only and path-free: it stores neither source-file locations nor references
 back into Recents. See [Comparison boards](docs/COMPARISON-BOARDS.md).
 
@@ -274,7 +275,7 @@ The share sheet gains **Post to X / LinkedIn / Bluesky** compose targets — the
 staged on the clipboard and the compose page opens, one paste from posting.
 Destination presets cover **OpenGraph** (1200×630), an **Instagram Story**, and a
 **GitHub banner**. [PRO](#vitrine-pro) adds **multi-size one-pass export**, **carousel
-export** (a long snippet split into numbered 4:5 slides), and the bundled
+export** (a long snippet split into numbered slides, as PNGs or a PDF), and the bundled
 **`vitrine` CLI** that renders the same pixels from your terminal.
 
 ### Social card templates
@@ -337,7 +338,7 @@ Shortcuts and App Intents.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format, **HEIC** as a compact option for docs sites and wikis, and **AVIF** when the active ImageIO stack can encode it (Tahoe and newer). Shared preview/export budgets reject unsafe dimensions, pixel counts, or estimated working memory before bitmap allocation and return actionable errors. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
 - 📣 **Post to X / LinkedIn / Bluesky** — compose targets in the share sheet: the image is staged on the clipboard and the network's compose page opens with a paste hint. One paste from posting; Vitrine sends nothing anywhere.
-- 🎠 **Carousel export** *(PRO)* — split a long snippet into numbered 4:5 slides (`carousel-01.png` …) for a LinkedIn/Instagram carousel. Pick the lines per slide; the split balances so the last slide never trails, and every slide carries your style and brand mark.
+- 🎠 **Carousel export** *(PRO)* — split a long snippet into numbered slides for LinkedIn (4:5), Instagram (1:1), X (16:9) or a story (9:16), as `carousel-01.png` …, a one-file `carousel.pdf` for a LinkedIn document post, or both. Pick the lines per slide and the type sizes itself to fill the slide; the split balances so the last slide never trails, and every slide carries your style and brand mark.
 - 📌 **Pinned snapshot** — pin the current render in a floating window that stays above every app and follows you across Spaces, so the error or design you're working against stays visible while you code.
 - 🔤 **Copy text from image** — one click runs on-device OCR (Vision) on a beautified screenshot and puts the recognized text on the clipboard. Nothing leaves the Mac. Progress is visible and cancellable; replacing the image or closing its editor discards outstanding results. Copy feedback reflects whether the clipboard write succeeded.
 - 📐 **Safe-area guides** — an editor-only overlay that draws the margin platforms may crop over a fixed-size destination, with a live "lines × widest column" chip; never part of the export.
@@ -556,6 +557,7 @@ vitrine render Sources/App.swift --out launch-card.png \
 | Validate or inspect a portable style recipe | `vitrine recipe` |
 | Discover valid theme, language, preset, font, frame, or format IDs | `vitrine list` |
 | Verify the installed version and build | `vitrine --version` |
+| Run a command and copy an image of its colored output | `vitrine run` |
 | Enable `vgrab` and `vpane` terminal helpers | `vitrine shell-init` |
 
 Run `vitrine render --help` for the exact reference shipped by your installed build, or
@@ -593,6 +595,14 @@ eval "$(vitrine shell-init zsh)"
 vgrab npm test
 vgrab -e git status                 # finish styling or annotating in the editor
 vgrab --no-context date             # output only: no project, branch, or command header
+vitrine run -- swift test           # the same capture, free, with no shell setup
+```
+
+**Show where a snippet comes from.** `--lines` renders one span of a file, numbers the
+gutter from the file's own line, and titles the window with the project and file name.
+
+```bash
+vitrine render Sources/ForecastClient.swift --lines 142-146 --copy
 ```
 
 See [Terminal capture](docs/TERMINAL.md) for `vpane`, full-screen TUIs, color-preserving
@@ -669,6 +679,17 @@ this Mac. A clean capture is not interrupted; otherwise it names the flagged row
 redact, continue anyway, or cancel. Quick capture asks before it touches the clipboard. The
 CLI cannot ask, so `render` and `batch` leave the output unchanged and warn on stderr with
 row numbers and kinds, never the matched text. The check reads text, not image pixels.
+
+**Editable project in PNGs (opt-in):** **Settings → Export → Embed editable project in PNG
+files** is off by default. When it is on, the editor's Save Image and quick capture's **Also
+save to a file** write PNGs whose XMP metadata contains the source code, style, header,
+annotations and alt text: the same payload as a share link. Anyone with the file can extract
+that source code, wherever the image is posted. Clipboard copies, multi-size and carousel
+exports, comparison boards, Recents, Services, App Intents and the CLI never embed it. The
+project is left out, and the save confirmation says why, when the capture has redacted lines
+or blur boxes, is a terminal capture, or the secret check finds anything; "continue anyway"
+covers the image only. Dropping such a PNG on the editor asks whether to open it as an
+editable project (one undo returns to the previous document) or use it as an image.
 
 **Confidential clipboard exports (v1.3.0 and later):** enable **Settings → Export →
 Clipboard → Mark clipboard exports as confidential**, or pass

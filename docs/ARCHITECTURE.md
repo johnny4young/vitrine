@@ -549,13 +549,13 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--font-ligatures`, `--no-font-ligatures`, `--transparent`, `--background <id>`,
 `--background-color <hex>`, `--background-image <path>`, `--background-fit <fill|fit>`,
 `--background-blur <0...40>`, `--background-dimming <0...1>`, style controls
-(`--font-size`, `--padding`, `--corner-radius`, `--shadow-radius`, `--wrap-columns`,
-`--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
+(`--font-size`, `--padding`, `--padding-mode`, `--corner-radius`, `--shadow-radius`,
+`--wrap-columns`, `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
 `--diff-bands`, `--no-diff-bands`, `--diff-stats`, `--no-diff-stats`,
-`--diff-context <0...5>`), and the header controls (`--window-title`,
-`--filename`, `--title`, `--caption`, `--language-badge`, `--no-language-badge`) and an
-explicit `--recipe <path>` override individual choices.
+`--diff-context <0...5>`, `--diff-view <unified|split>`), and the header controls
+(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`,
+`--no-language-badge`) and an explicit `--recipe <path>` override individual choices.
 Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation fails
 loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
 same deterministic `SecretScanner` as the editor and merges detected rows with any
@@ -577,6 +577,26 @@ explicit `--format` is present, the extension must match so automation never rec
 mislabeled bytes. For piped input, `--stdin-name <name>` supplies filename context for
 extension-based language inference and default metadata while still reading the source
 only from standard input.
+
+`--lines <first-last>` renders one span of a file or stdin. `CLISourceLines` slices rows at
+U+000A, the same rule as `LineSplitter.lineCount` and the redaction pass, and the gutter
+starts at the span's first line (`SnapshotConfig.firstLineNumber`). `--highlight-lines` and
+`--redact-lines` name file lines and are remapped onto rendered rows; a redaction wholly
+outside the span, `--format-code`, `--edit`, Git diffs, images, batches and terminal output
+are refused. The stderr secret warning names file lines too. For a file, `CLISourceOrigin`
+titles the window with the work tree's folder and file name, reading `.git` and `HEAD` as
+small regular files (never running Git) and never naming the home folder or `/`.
+
+`vitrine run [options] [--] <command…>` (`CLIRunCommand`) is `vgrab` without the shell hook.
+It validates its options as `terminal-capture` options (so it stays free), then starts
+`/usr/bin/script -q -e` with `posix_spawn` in the CLI's own process group, so `script` can
+own the terminal, and waits for it. The capture lives in a 0700 `mkdtemp` folder that
+`CLIRunScratch` removes when the run ends or when SIGHUP, SIGINT or SIGTERM arrives, before
+the CLI dies of that signal. The exit status is the command's, even when rendering fails;
+`script` reports a command killed by a signal as the signal's number. The header shows only
+the program (`CLIRunHeader.program`); `--title-from-command` shows the arguments with
+credential-shaped values masked (`CLIRunHeader.command`, plus `SecretScanner`). The app
+never runs commands.
 
 Raster availability is capability-driven rather than version-switched:
 `ExportFormat.availableCases` (`VitrineRendering/Export/ExportFormat+Encoding.swift`) caches
@@ -685,7 +705,9 @@ the same POSIX single-quote encoder. Command-generation tests inspect strings on
 base64url representation. The decoder rejects padding, whitespace, standard base64
 characters, impossible lengths, non-ASCII input, and non-zero unused tail bits before
 bounded zlib expansion and JSON decoding. A deterministic seeded adversarial corpus guards
-that contract against future normalization or Foundation decoder changes.
+that contract against future normalization or Foundation decoder changes. The schema
+version stays 1 when a style field is added, so an earlier build drops fields it does not
+know: a link with balanced padding (`paddingMode`) opens there with manual padding.
 
 **Card-template links.** `vitrine://card?template=release&title=…` fills a built-in
 `CardTemplate` (Release, Snippet, Announcement) and opens it in the Social Card window.
@@ -1004,6 +1026,9 @@ Vitrine/
 │   ├── CLIRecipeCommand.swift # stateless recipe validate/show inspection
 │   ├── CLIOptions.swift       # parsed options → SnapshotConfig (app-matching defaults)
 │   ├── CLIRenderer.swift      # stable render/multi-size/edit/batch operation facade
+│   ├── CLISourceLines.swift   # --lines slicing and row remap; CLISourceOrigin (work tree, branch)
+│   ├── CLIRunCommand.swift    # `vitrine run`: posix_spawn of script, CLIRunScratch cleanup
+│   ├── CLIRunHeader.swift     # `vitrine run` header: program only, or masked arguments
 │   ├── CLIRenderResources.swift # invocation-scoped backgrounds and watermark logos
 │   ├── CLIBatchRenderer.swift # folder discovery, output planning, manifests, reports
 │   ├── CLIOutputWriter.swift  # ExportManager encoding, artifact preflight, sidecars

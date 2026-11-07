@@ -797,6 +797,16 @@ extension AppSettings {
         )
     }
 
+    var diffViewSelection: Binding<DiffViewMode> {
+        Binding(
+            get: { self.style.diffView },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
+                self.style.diffView = value
+            }
+        )
+    }
+
     /// The context-lines slider's stops: each count, then one past the range for "All".
     static var diffContextSliderRange: ClosedRange<Double> {
         let range = SettingsDefaults.diffContextLinesRange

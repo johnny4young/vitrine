@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import VitrineDomain
 import VitrineRendering
 
 @testable import Vitrine
@@ -21,6 +22,7 @@ struct RecentsGalleryCompositionTests {
         var editorPresentationCount = 0
         var loadedConfigs: [SnapshotConfig] = []
         var comparisonBoards: [[Capture]] = []
+        var themeVariants: [Capture] = []
 
         var navigation: RecentsGalleryNavigation {
             RecentsGalleryNavigation(
@@ -32,6 +34,9 @@ struct RecentsGalleryCompositionTests {
                 },
                 presentComparisonBoard: { [weak self] captures in
                     self?.comparisonBoards.append(captures)
+                },
+                presentThemeVariants: { [weak self] capture in
+                    self?.themeVariants.append(capture)
                 })
         }
     }
@@ -58,6 +63,7 @@ struct RecentsGalleryCompositionTests {
             Capture(code: "after", languageID: "swift", themeID: "one-dark"),
         ]
         root.navigation.showComparisonBoard(captures)
+        root.navigation.showThemeVariants(of: captures[1])
 
         #expect(controller.environment === environment)
         #expect(root.environment === environment)
@@ -67,6 +73,24 @@ struct RecentsGalleryCompositionTests {
         #expect(navigation.editorPresentationCount == 1)
         #expect(navigation.loadedConfigs.map(\.code) == ["print(\"recents\")"])
         #expect(navigation.comparisonBoards.map { $0.map(\.code) } == [["before", "after"]])
+        #expect(navigation.themeVariants.map(\.code) == ["after"])
+    }
+
+    @Test func boardControllerRendersAVariantPerThemeWithTheCaptureThemeFirst() throws {
+        let environment = AppEnvironment(defaults: testDefaults())
+        let controller = ComparisonBoardWindowController(
+            environment: environment, feedback: .noOp, presentation: .noOp)
+        let capture = Capture(code: "let x = 1", languageID: "swift", themeID: "nord")
+
+        let draft = try controller.makeVariantDraft(of: capture)
+
+        #expect(
+            draft.variants.map(\.theme.id) == [
+                "nord", "one-dark", "one-light", "dracula", "github", "github-dark",
+            ])
+        #expect(draft.items.map(\.label) == ["Nord", "One Dark", "One Light", "Dracula"])
+        #expect(draft.items.allSatisfy { $0.asset.pixelWidth > 0 })
+        #expect(draft.isValid)
     }
 
     @Test func galleryViewContainsNoProcessGlobalCompositionLookups() throws {

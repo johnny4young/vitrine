@@ -38,11 +38,14 @@ final class CaptureFeedbackPresenter {
     /// recovery action and record the result in the same recents store. Routine success
     /// shows the HUD only; dead ends show the HUD with inline recovery buttons.
     func present(_ result: QuickCapture.Result, environment: AppEnvironment) {
-        let feedback = Notifier.feedback(
+        var feedback = Notifier.feedback(
             for: result.outcome,
             copiedToClipboard: result.copiedToClipboard,
             savedToFile: result.savedToFile,
             copiedPNGBytes: result.copiedPNGBytes)
+        if let withheld = result.withheldProject {
+            feedback.detail = ExportFeedback.withheldDetail(withheld)
+        }
 
         lastFeedback = feedback
         display(feedback) { [weak self] action in

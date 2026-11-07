@@ -29,6 +29,8 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
     public var fontLigatures: Bool
     /// Canvas padding in points, clamped to the Style slider range on decode.
     public var padding: Double
+    /// `nil` for manual padding, so styles that never turned balance on encode as before.
+    public var paddingMode: PaddingMode?
     /// Code-card corner radius in points, clamped to its documented range.
     public var cornerRadius: Double
     /// Whether the window chrome (traffic lights) is drawn.
@@ -60,6 +62,7 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
         fontSize: Double = SettingsDefaults.fontSize,
         fontLigatures: Bool = false,
         padding: Double = SettingsDefaults.padding,
+        paddingMode: PaddingMode? = nil,
         cornerRadius: Double = SettingsDefaults.cornerRadius,
         showChrome: Bool = true,
         showShadow: Bool = true,
@@ -75,6 +78,7 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
         self.fontSize = SettingsDefaults.clampFontSize(fontSize)
         self.fontLigatures = fontLigatures
         self.padding = SettingsDefaults.clampPadding(padding)
+        self.paddingMode = paddingMode == .manual ? nil : paddingMode
         self.cornerRadius = SettingsDefaults.clampCornerRadius(cornerRadius)
         self.showChrome = showChrome
         self.showShadow = showShadow
@@ -96,7 +100,7 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
     // MARK: Codable — re-validate every field so a corrupt file cannot crash
 
     private enum CodingKeys: String, CodingKey {
-        case themeID, fontName, fontSize, fontLigatures, padding, cornerRadius
+        case themeID, fontName, fontSize, fontLigatures, padding, paddingMode, cornerRadius
         case showChrome, showShadow, shadowRadius, showLineNumbers, wrapColumns, background
         case terminalPalette, terminalCursor
     }
@@ -122,6 +126,8 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
         fontLigatures = try value(Bool.self, .fontLigatures) ?? false
         padding = SettingsDefaults.clampPadding(
             try value(Double.self, .padding) ?? SettingsDefaults.padding)
+        let mode = try value(PaddingMode.self, .paddingMode)
+        paddingMode = mode == .manual ? nil : mode
         cornerRadius = SettingsDefaults.clampCornerRadius(
             try value(Double.self, .cornerRadius) ?? SettingsDefaults.cornerRadius)
         showChrome = try value(Bool.self, .showChrome) ?? true
@@ -141,4 +147,12 @@ public struct StyleSnapshot: Hashable, Codable, Sendable {
         let decodedBackground = try value(BackgroundStyle.self, .background) ?? .gradient(.aurora)
         background = Self.portableBackground(decodedBackground)
     }
+}
+
+/// How the canvas padding is laid out around the card.
+public enum PaddingMode: String, Codable, CaseIterable, Sendable {
+    /// The same padding on every edge of the card.
+    case manual
+    /// The padding is the visible margin around the card and its shadow, set a little above center.
+    case balanced
 }

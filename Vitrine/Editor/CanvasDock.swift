@@ -68,6 +68,8 @@ struct CanvasDock: View {
     let entitlements: Entitlements
     let legibility: LegibilityModel
     let presetThumbnails: PresetThumbnailModel
+    var stageRegions: StageRegionModel? = nil
+    let magicBackground: MagicBackgroundModel
     let presentFramePaywall: () -> Void
 
     @State private var openPane: InspectorPane?
@@ -94,7 +96,8 @@ struct CanvasDock: View {
                         EditorInspectorView(
                             settings: settings, themes: themes, presets: presets,
                             entitlements: entitlements, legibility: legibility,
-                            presetThumbnails: presetThumbnails, pane: pane,
+                            presetThumbnails: presetThumbnails, magicBackground: magicBackground,
+                            pane: pane,
                             presentFramePaywall: {
                                 openPane = nil
                                 presentFramePaywall()
@@ -121,6 +124,12 @@ struct CanvasDock: View {
         .accessibilityIdentifier("canvas-dock")
         // The swapped panes' popover closes with its button; it must not reopen on return.
         .onChange(of: style.usesImageContent) { openPane = nil }
+        .onChange(of: stageRegions?.reveal) { _, reveal in
+            guard case .pane(let pane) = reveal?.target else { return }
+            openPane = DockPopoverClose.pane(
+                afterStageReveal: pane, open: openPane, lastClose: lastClose,
+                now: ProcessInfo.processInfo.systemUptime)
+        }
         #if DEBUG
             .task {
                 let arguments = ProcessInfo.processInfo.arguments
@@ -146,6 +155,15 @@ struct DockPopoverClose: Equatable {
     ) -> InspectorPane? {
         if open == pane { return nil }
         if let lastClose, lastClose.pane == pane, now - lastClose.uptime < 0.5 { return nil }
+        return pane
+    }
+
+    /// A stage click that just closed any popover only closes it, as a click elsewhere would.
+    static func pane(
+        afterStageReveal pane: InspectorPane, open: InspectorPane?, lastClose: DockPopoverClose?,
+        now: TimeInterval
+    ) -> InspectorPane? {
+        if let lastClose, now - lastClose.uptime < 0.5 { return open }
         return pane
     }
 }

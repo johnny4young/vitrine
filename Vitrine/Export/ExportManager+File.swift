@@ -14,26 +14,39 @@ extension ExportManager {
     /// `.saved` when a file was written, `.cancelled` when the user dismissed the
     /// panel, `.renderFailed` when rendering or encoding failed, and `.failed` when
     /// the final write failed. The result is discardable for callers that do not care.
+    /// `embeddedProject` is a link from `EmbeddedProject.plan`; it applies to PNG only.
     @discardableResult
     static func saveToFile(
         _ config: SnapshotConfig, scale: CGFloat = 2, format: ExportFormat = .png,
-        fixedSize: CGSize? = nil, profile: ColorProfile = .sRGB
+        fixedSize: CGSize? = nil, profile: ColorProfile = .sRGB, embeddedProject: String? = nil
     ) -> SaveOutcome {
         let payload: (data: Data, type: UTType, ext: String)
         do {
-            payload = try encodedPayloadChecked(
-                format,
-                raster: { () throws(RenderBudgetError) -> CGImage in
-                    try renderCGImageChecked(
-                        config, scale: scale, fixedSize: fixedSize, profile: profile)
-                },
-                pdf: { pdfData(config, fixedSize: fixedSize) })
+            payload = try filePayload(
+                config, scale: scale, format: format, fixedSize: fixedSize, profile: profile,
+                embeddedProject: embeddedProject)
         } catch let error {
             Log.export.error("Save to file failed: render rejected or encode failed")
             return .renderFailed(error)
         }
         return saveToFile(
             payload: payload, suggestedName: SuggestedFilename.basename(for: config))
+    }
+
+    static func filePayload(
+        _ config: SnapshotConfig, scale: CGFloat, format: ExportFormat, fixedSize: CGSize?,
+        profile: ColorProfile, embeddedProject: String?
+    ) throws(RenderBudgetError) -> (data: Data, type: UTType, ext: String) {
+        let raster = { () throws(RenderBudgetError) -> CGImage in
+            try renderCGImageChecked(config, scale: scale, fixedSize: fixedSize, profile: profile)
+        }
+        if let embeddedProject, format == .png {
+            guard let data = EmbeddedProject.pngData(from: try raster(), embedding: embeddedProject)
+            else { throw .encodingFailed }
+            return (data, .png, "png")
+        }
+        return try encodedPayloadChecked(
+            format, raster: raster, pdf: { pdfData(config, fixedSize: fixedSize) })
     }
 
     /// Saves an **already-rendered** raster `cgImage` as PNG, HEIC, or AVIF: the
@@ -43,10 +56,16 @@ extension ExportManager {
     /// accept it; callers save PDF through the `config`-based `saveToFile` above.
     @discardableResult
     static func saveToFile(
-        cgImage: CGImage, format: ExportFormat, suggestedName: String
+        cgImage: CGImage, format: ExportFormat, suggestedName: String,
+        embeddedProject: String? = nil
     ) -> SaveOutcome {
-        guard let data = rasterData(from: cgImage, format: format),
-            let metadata = rasterMetadata(for: format)
+        let encoded =
+            if let embeddedProject, format == .png {
+                EmbeddedProject.pngData(from: cgImage, embedding: embeddedProject)
+            } else {
+                rasterData(from: cgImage, format: format)
+            }
+        guard let data = encoded, let metadata = rasterMetadata(for: format)
         else {
             Log.export.error("Save to file failed: raster encode returned nil or PDF via cgImage")
             return .renderFailed(.encodingFailed)

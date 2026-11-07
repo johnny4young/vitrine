@@ -11,7 +11,7 @@ extension Brand {
         /// WCAG AA threshold for normal-size body text.
         public nonisolated static let aaNormal = 4.5
         /// WCAG AA threshold for large text (>= ~18 pt, or 14 pt bold).
-        public static let aaLarge = 3.0
+        public nonisolated static let aaLarge = 3.0
 
         /// The WCAG contrast ratio (1...21) between two opaque colors, computed
         /// from their relative luminance.

@@ -1,6 +1,564 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Some lines don't fit the slide" : {
+      "comment" : "Carousel sheet note: lines overflow the slide even at the smallest type size.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algunas líneas no caben en la diapositiva"
+          }
+        }
+      }
+    },
+    "Split the snippet into numbered slides for a carousel post." : {
+      "comment" : "Subtitle of the carousel export sheet.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide el fragmento en diapositivas numeradas para una publicación en carrusel."
+          }
+        }
+      }
+    },
+    "Split the snippet into numbered carousel slides" : {
+      "comment" : "Tooltip of the toolbar's carousel button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide el fragmento en diapositivas de carrusel numeradas"
+          }
+        }
+      }
+    },
+    "Size" : {
+      "comment" : "Label of the carousel slide size picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño"
+          }
+        }
+      }
+    },
+    "Story 9:16" : {
+      "comment" : "Carousel slide size for a vertical story.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historia 9:16"
+          }
+        }
+      }
+    },
+    "PNG set" : {
+      "comment" : "Carousel output: one PNG file per slide.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serie PNG"
+          }
+        }
+      }
+    },
+    "Both" : {
+      "comment" : "Carousel output: PNG files and a PDF.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambos"
+          }
+        }
+      }
+    },
+    "Unified" : {
+      "comment" : "Editor lines: diff layout option with old and new lines in one column.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unificada"
+          }
+        }
+      }
+    },
+    "Split" : {
+      "comment" : "Editor lines: diff layout option with the old and new file side by side.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dividida"
+          }
+        }
+      }
+    },
+    "· overrides %@" : {
+      "comment" : "Workspace recipe gallery: this nested folder's recipe wins over the named parent recipe.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· reemplaza a %@"
+          }
+        }
+      }
+    },
+    "· parent of %@" : {
+      "comment" : "Workspace recipe gallery: the named recipes of nested folders win over this one inside them.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "· contiene %@"
+          }
+        }
+      }
+    },
+    "Theme Variants" : {
+      "comment" : "Recents comparison button that opens one capture in several themes on a board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variantes de tema"
+          }
+        }
+      }
+    },
+    "Theme variants" : {
+      "comment" : "Comparison board inspector section listing the themes one capture was rendered in.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Variantes de tema"
+          }
+        }
+      }
+    },
+    "Select one capture for theme variants, or two to four for a board" : {
+      "comment" : "Help for the Recents comparison action.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selecciona una captura para ver variantes de tema, o de dos a cuatro para un tablero"
+          }
+        }
+      }
+    },
+    "Remove the blur boxes first: they would slide off what they hide." : {
+      "comment" : "Help for the padding Balance switch while blur boxes lock it",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quita primero las cajas de desenfoque: se saldrían de lo que ocultan."
+          }
+        }
+      }
+    },
+    "Balance" : {
+      "comment" : "Switch that measures the canvas padding to the card and its shadow",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Equilibrio"
+          }
+        }
+      }
+    },
+    "Counts the shadow in the padding and sets the card a little above center." : {
+      "comment" : "Help for the padding Balance switch",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cuenta la sombra en el relleno y sube un poco la tarjeta sobre el centro."
+          }
+        }
+      }
+    },
+    "line-mark.none" : {
+      "comment" : "Line-mark menu item that removes every mark from the line",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "None" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Ninguna" } }
+      }
+    },
+    "Mark Lines" : {
+      "comment" : "Undo action name for a line highlight or redaction edit",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcar líneas"
+          }
+        }
+      }
+    },
+    "Highlight Selected Lines" : {
+      "comment" : "Edit and context menu command that highlights the lines the selection touches",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar líneas seleccionadas"
+          }
+        }
+      }
+    },
+    "Redact Selected Lines" : {
+      "comment" : "Edit and context menu command that redacts the lines the selection touches",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar líneas seleccionadas"
+          }
+        }
+      }
+    },
+    "Line %lld" : {
+      "comment" : "Gutter menu header naming one line",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Línea %lld"
+          }
+        }
+      }
+    },
+    "Lines %@" : {
+      "comment" : "Gutter menu header naming a run of lines, e.g. 4–6",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas %@"
+          }
+        }
+      }
+    },
+    "Highlight" : {
+      "comment" : "Gutter menu item that highlights the line",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar"
+          }
+        }
+      }
+    },
+    "Redact" : {
+      "comment" : "Gutter menu item and selection action that hides the line's code",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar"
+          }
+        }
+      }
+    },
+    "Remove redaction" : {
+      "comment" : "Selection action that shows redacted lines again",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar ocultamiento"
+          }
+        }
+      }
+    },
+    "Remove highlight" : {
+      "comment" : "Selection action that removes the highlight",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar resaltado"
+          }
+        }
+      }
+    },
+    "Highlight line %lld" : {
+      "comment" : "Selection action that highlights one line",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar línea %lld"
+          }
+        }
+      }
+    },
+    "Highlight lines %@" : {
+      "comment" : "Selection action that highlights a run of lines, e.g. 4–6",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resaltar líneas %@"
+          }
+        }
+      }
+    },
+    "Change Background" : {
+      "comment" : "Undo action name for picking a derived background or its next variant.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambiar fondo"
+          }
+        }
+      }
+    },
+    "Magic" : {
+      "comment" : "Background swatch and inspector row for a gradient derived from the capture's own colors.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mágico"
+          }
+        }
+      }
+    },
+    "Shuffle" : {
+      "comment" : "Button that switches the derived background to its next gradient variant.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otra variante"
+          }
+        }
+      }
+    },
+    "Saved PNGs include the source code, and anyone with the file can extract it. Left out for redactions, terminal captures and possible secrets." : {
+      "comment" : "Caption under the embed-project toggle in Settings › Output",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los PNG guardados incluyen el código fuente, y cualquiera con el archivo puede extraerlo. Se omite si hay contenido oculto, capturas de terminal o posibles secretos."
+          }
+        }
+      }
+    },
+    "Ask to open dropped PNGs as projects" : {
+      "comment" : "Settings › Output toggle: ask before a dropped PNG with an embedded project opens as code",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preguntar si abrir como proyecto los PNG que sueltes"
+          }
+        }
+      }
+    },
+    "Don't Ask Again" : {
+      "comment" : "Dialog button: use the dropped PNG as an image and stop asking about embedded projects",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No volver a preguntar"
+          }
+        }
+      }
+    },
+    "Open Editable Project" : {
+      "comment" : "Undo menu action name after opening a dropped PNG's embedded project",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir proyecto editable"
+          }
+        }
+      }
+    },
+    "Editable project left out: the capture has redacted lines" : {
+      "comment" : "Detail under the save confirmation when redacted lines block the embedded project",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proyecto editable omitido: la captura tiene líneas ocultas"
+          }
+        }
+      }
+    },
+    "Editable project left out: the capture has blur boxes" : {
+      "comment" : "Detail under the save confirmation when blur boxes block the embedded project",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proyecto editable omitido: la captura tiene cajas de desenfoque"
+          }
+        }
+      }
+    },
+    "Editable project left out: terminal captures are never embedded" : {
+      "comment" : "Detail under the save confirmation for a terminal capture",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proyecto editable omitido: las capturas de terminal nunca se incrustan"
+          }
+        }
+      }
+    },
+    "Editable project left out: it may contain a secret" : {
+      "comment" : "Detail under the save confirmation when the secret scan finds something",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proyecto editable omitido: podría contener un secreto"
+          }
+        }
+      }
+    },
+    "Editable project left out: it's too large" : {
+      "comment" : "Detail under the save confirmation when the project exceeds the share-link size limit",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proyecto editable omitido: es demasiado grande"
+          }
+        }
+      }
+    },
+    "Embed editable project in PNG files" : {
+      "comment" : "Settings › Output toggle that stores the code and style inside saved PNG files",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incrustar el proyecto editable en archivos PNG"
+          }
+        }
+      }
+    },
+    "Open This Image as a Project?" : {
+      "comment" : "Dialog title after dropping a PNG that carries an editable Vitrine project",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Abrir esta imagen como proyecto?"
+          }
+        }
+      }
+    },
+    "Open Editable" : {
+      "comment" : "Dialog button that reopens the dropped image's embedded project as code",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir editable"
+          }
+        }
+      }
+    },
+    "Use as Image" : {
+      "comment" : "Dialog button that beautifies the dropped image instead of opening its project",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usar como imagen"
+          }
+        }
+      }
+    },
+    "Edit Background" : {
+      "comment" : "Accessibility action on the editor's preview: opens the Background settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar fondo"
+          }
+        }
+      }
+    },
+    "Edit Shadow" : {
+      "comment" : "Accessibility action on the editor's preview: opens the drop shadow settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar sombra"
+          }
+        }
+      }
+    },
+    "Edit Window Chrome" : {
+      "comment" : "Accessibility action on the editor's preview: opens the window chrome settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar marco de ventana"
+          }
+        }
+      }
+    },
+    "Edit Header" : {
+      "comment" : "Accessibility action on the editor's preview: opens the Header settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar encabezado"
+          }
+        }
+      }
+    },
+    "Edit Typography" : {
+      "comment" : "Accessibility action on the editor's preview: opens the Typography settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar tipografía"
+          }
+        }
+      }
+    },
+    "Edit Frame" : {
+      "comment" : "Accessibility action on the editor's preview of an image: opens the Frame settings.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar marco"
+          }
+        }
+      }
+    },
     "Card replaced" : {
       "comment" : "HUD message after a vitrine://card link replaced the social card",
       "localizations" : {
@@ -318,7 +876,7 @@
       }
     },
     "All" : {
-      "comment" : "Placeholder of a terminal crop field when every row or column is kept",
+      "comment" : "Placeholder of a terminal crop field when every row or column is kept; also the context-lines slider value meaning every line is shown",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1616,17 +2174,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Líneas de contexto"
-          }
-        }
-      }
-    },
-    "All" : {
-      "comment" : "Editor lines: context-lines slider value meaning every line is shown.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todas"
           }
         }
       }
@@ -11070,17 +11617,6 @@
         }
       }
     },
-    "Split the snippet into numbered 4:5 slides for a carousel post." : {
-      "comment" : "Carousel export sheet subtitle.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Divide el fragmento en diapositivas 4:5 numeradas para un carrusel."
-          }
-        }
-      }
-    },
     "Carousel export isn't available for terminal captures" : {
       "comment" : "Help for the disabled carousel export button on a terminal capture.",
       "localizations" : {
@@ -11099,17 +11635,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quita las cajas de desenfoque, o usa Ocultar secretos, para exportar un carrusel"
-          }
-        }
-      }
-    },
-    "Split the snippet into numbered carousel slides (4:5)" : {
-      "comment" : "Help for the carousel export toolbar button.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Divide el fragmento en diapositivas de carrusel numeradas (4:5)"
           }
         }
       }
@@ -15418,17 +15943,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fila"
-          }
-        }
-      }
-    },
-    "Select two to four captures for one comparison board" : {
-      "comment" : "Help for the Recents comparison action.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selecciona de dos a cuatro capturas para un tablero comparativo"
           }
         }
       }

@@ -214,8 +214,11 @@ before calling that runtime certified.
 The separate **Xcode 27 preview** workflow is a weekly/manual, non-required early-warning
 lane on GitHub's `xcode-27` preview image. That image pairs the preview Xcode/SDK with a
 host macOS that GitHub has changed during the preview, so each run records the exact host
-in its job summary. The lane runs lint, a Debug build, and unit tests only. It does not run
-on pull requests, does not publish, and is not a claim of macOS 27 runtime support. Promote it to
+in its job summary. The lane runs lint, a Debug build, and unit tests only. The image cannot
+compile Vision's on-device text-recognition model, so the unit step there skips the four
+recognition cases and a separate step runs them and only warns; they still gate on
+`macos-26`. It does not run on pull requests, does not publish, and is
+not a claim of macOS 27 runtime support. Promote it to
 the required compatibility matrix only after GitHub provides the corresponding macOS
 runner as GA and the full runtime, UI, visual, performance, and clean-Mac evidence exists.
 
@@ -1203,7 +1206,10 @@ CI's Tahoe build runs strict comparisons with the Xcode build recorded in the
 golden manifest, selected for that step only; every other step uses the latest
 stable Xcode. A missing Xcode build fails the lane and records review candidates on
 the default Xcode. The runner OS image can still change: that is a qualification
-failure requiring baseline review, not permission to skip pixels. Ordinary unit tests run render smoke;
+failure requiring baseline review, not permission to skip pixels. When a review shows the
+recorded renders are pixel-identical on another image (for example while GitHub rolls
+an image out), the manifest may list it under `qualifiedImages`; strict comparisons
+then run on either image. Ordinary unit tests run render smoke;
 `make test-goldens GOLDEN_MODE=smoke` requests that contract explicitly. Smoke is not
 visual regression certification. Result bundles and logs identify each comparison.
 
