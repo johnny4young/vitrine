@@ -240,9 +240,11 @@ enum CarouselPaginator {
 
     /// What one slide renders: `base` with only this page's lines. Highlighted and
     /// redacted lines follow their lines onto the slide; positional annotations are
-    /// dropped because they are placed against the whole canvas.
+    /// dropped because they are placed against the whole canvas. Without a `fontSize`,
+    /// the document's own size is kept above the carousel floor.
     static func slideConfig(
-        _ base: SnapshotConfig, slide: Slide, at index: Int, of count: Int, cues: Cues
+        _ base: SnapshotConfig, slide: Slide, at index: Int, of count: Int, cues: Cues,
+        fontSize: Double? = nil
     ) -> SnapshotConfig {
         var config = base
         config.clearContentMarks()
@@ -252,10 +254,12 @@ enum CarouselPaginator {
         // Focus dims every row outside a highlight, which is all of them without one.
         config.focusHighlightedLines =
             base.focusHighlightedLines && !config.highlightedLineRanges.isEmpty
-        config.fontSize = max(config.fontSize, ExportManager.carouselMinimumFontSize)
+        config.fontSize = fontSize ?? max(config.fontSize, ExportManager.carouselMinimumFontSize)
         // A diff's stats and context fold describe the whole patch, not one slide.
         config.showDiffStats = false
         config.diffContextLines = nil
+        // Slides cut a hunk by source rows, which only the unified layout keeps intact.
+        config.diffView = .unified
 
         switch cues.lineNumbers {
         case nil:
@@ -300,20 +304,33 @@ enum CarouselPaginator {
         String(format: "carousel-%02d.png", index + 1)
     }
 
+    static let pdfFilename = "carousel.pdf"
+
+    /// The files `output` asks for, slide PNGs first and the PDF last.
+    static func requestedFilenames(slideCount: Int, output: CarouselOutput) -> [String] {
+        guard slideCount > 0 else { return [] }
+        let images = output.writesPNG ? (0..<slideCount).map(outputFilename(forSlideAt:)) : []
+        return images + (output.writesPDF ? [pdfFilename] : [])
+    }
+
     /// The names the export will write: the writer's own plan once a folder is chosen, so
     /// the sheet shows `carousel-01-2.png` when `carousel-01.png` is already there.
-    static func plannedFilenames(slideCount: Int, in directory: URL?) -> [String] {
-        let requested = (0..<slideCount).map(outputFilename(forSlideAt:))
+    static func plannedFilenames(
+        slideCount: Int, output: CarouselOutput = .pngSet, in directory: URL?
+    ) -> [String] {
+        let requested = requestedFilenames(slideCount: slideCount, output: output)
         guard let directory,
             let plan = try? BatchOutputFiles.plan(filenames: requested, in: directory)
         else { return requested }
         return plan.map(\.image.lastPathComponent)
     }
 
-    /// `carousel-01.png … 04.png · ~1.4 MB`; the size is left out until it is known.
+    /// `carousel-01.png … 04.png + carousel.pdf · ~1.4 MB`; the size is left out until known.
     static func outputSummary(filenames: [String], estimatedBytes: Int?) -> String {
-        var names = filenames.first ?? ""
-        if let last = lastFilenameSuffix(filenames) { names += " … " + last }
+        let (images, others) = splitImages(filenames)
+        var names = images.first ?? ""
+        if let last = lastFilenameSuffix(images) { names += " … " + last }
+        names = ([names] + others).filter { !$0.isEmpty }.joined(separator: " + ")
         guard let estimatedBytes else { return names }
         return "\(names) · \(ExportSizeEstimate.shown(estimatedBytes))"
     }
@@ -322,12 +339,19 @@ enum CarouselPaginator {
     static func spokenOutputSummary(
         filenames: [String], estimatedBytes: Int?, bundle: Bundle = .main
     ) -> String {
-        var names = filenames.first ?? ""
-        if let last = lastFilenameSuffix(filenames) {
+        let (images, others) = splitImages(filenames)
+        var names = images.first ?? ""
+        if let last = lastFilenameSuffix(images) {
             names = String(localized: "\(names) to \(last)", bundle: bundle)
         }
+        names = ([names] + others).filter { !$0.isEmpty }.joined(separator: ", ")
         guard let estimatedBytes else { return names }
         return "\(names), \(ExportSizeEstimate.spoken(estimatedBytes, bundle: bundle))"
+    }
+
+    private static func splitImages(_ filenames: [String]) -> ([String], [String]) {
+        let isImage = { (name: String) in name.hasSuffix(".png") }
+        return (filenames.filter(isImage), filenames.filter { !isImage($0) })
     }
 
     private static func lastFilenameSuffix(_ filenames: [String]) -> String? {

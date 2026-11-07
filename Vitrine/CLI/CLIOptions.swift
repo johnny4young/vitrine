@@ -132,6 +132,7 @@ struct CLIOptions: Equatable {
     /// Optional canvas-padding override, in points. Uses the same bounds as the editor's
     /// Style pane.
     var padding: Double?
+    var paddingMode: PaddingMode?
     /// Optional code-card corner radius, in points. Nil preserves the app/preset default.
     var cornerRadius: Double?
     /// Optional drop-shadow blur radius, in points. Nil preserves the app/preset default.
@@ -260,6 +261,7 @@ struct CLIOptions: Equatable {
     var diffDecorations: Bool?
     var showDiffStats: Bool?
     var diffContextLines: Int?
+    var diffView: DiffViewMode?
     /// For `batch`, walk nested input folders and preserve their relative paths under
     /// the output folder. Off by default so existing batch jobs keep their top-level
     /// behavior unless they opt in.
@@ -493,6 +495,8 @@ struct CLIOptions: Equatable {
         config.annotations.append(
             contentsOf: highlighters.map { $0.modelValue(kind: .highlighter) })
         config.annotations.append(contentsOf: blurBoxes.map { $0.modelValue(kind: .blur) })
+        // Matches the app: a recipe or preset can't balance a canvas that has blur boxes.
+        if config.locksPaddingMode { config.paddingMode = .manual }
         if let imageFrame { config.imageFrame = imageFrame.modelValue }
         if let frameAppearance { config.imageFrameAppearance = frameAppearance.modelValue }
         config.terminalColumns = terminalColumns
@@ -500,6 +504,7 @@ struct CLIOptions: Equatable {
         if let fontLigatures { config.fontLigatures = fontLigatures }
         if let fontSize { config.fontSize = fontSize }
         if let padding { config.padding = padding }
+        if let paddingMode { config.paddingMode = paddingMode }
         if let cornerRadius { config.cornerRadius = cornerRadius }
         if let shadowRadius { config.shadowRadius = shadowRadius }
         if let wrapColumns { config.wrapColumns = wrapColumns }
@@ -523,6 +528,7 @@ struct CLIOptions: Equatable {
         if let diffDecorations { config.diffDecorations = diffDecorations }
         if let showDiffStats { config.showDiffStats = showDiffStats }
         if let diffContextLines { config.diffContextLines = diffContextLines }
+        if let diffView { config.diffView = diffView }
         let inferredMetadataFilename: String? =
             if gitDiffSource != nil {
                 GitDiffInputLoader.defaultFilename(paths: gitDiffPaths)

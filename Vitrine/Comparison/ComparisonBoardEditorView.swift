@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import VitrineDomain
 import VitrineRendering
 
 /// A session-only editor for arranging and exporting two to four recent captures.
@@ -221,6 +222,10 @@ struct ComparisonBoardEditorView: View {
     private var inspector: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: VitrineTokens.Spacing.lg) {
+                if !draft.variants.isEmpty {
+                    inspectorSection("Theme variants") { variantChips }
+                }
+
                 inspectorSection("Layout") {
                     // Wraps rather than overflows when five labels outgrow the column.
                     TokenSegmentedPicker(
@@ -314,6 +319,21 @@ struct ComparisonBoardEditorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("comparison-board-inspector")
+    }
+
+    private var variantChips: some View {
+        FlowLayout(spacing: VitrineTokens.Spacing.sm, lineSpacing: VitrineTokens.Spacing.sm) {
+            ForEach(draft.variants) { variant in
+                ThemeChip(theme: variant.theme, isSelected: draft.isOnBoard(variant)) {
+                    if editingCaption == variant.id { endEditing() }
+                    draft.toggleVariant(id: variant.id)
+                }
+                .disabled(!draft.canToggle(variant))
+                .accessibilityIdentifier("comparison-board-variant-\(variant.theme.id)")
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("comparison-board-variants")
     }
 
     private func captureEditor(item: ComparisonBoardDraft.Item, index: Int) -> some View {

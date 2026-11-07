@@ -182,6 +182,16 @@ struct LocalizationTests {
         return try JSONDecoder().decode(Catalog.self, from: data)
     }
 
+    /// JSON decoding keeps the last of two equal keys, so a clean text merge can hide a duplicate.
+    @Test func catalogKeysAreUnique() throws {
+        let text = try String(contentsOf: Self.catalogURL, encoding: .utf8)
+        let keyLine = try Regex(#"^    ("(?:[^"\\]|\\.)*") : \{$"#).anchorsMatchLineEndings()
+        let keys = text.matches(of: keyLine).map { String(text[$0.range]) }
+        let duplicates = Dictionary(grouping: keys, by: { $0 }).filter { $0.value.count > 1 }.keys
+        #expect(duplicates.isEmpty, "Duplicate catalog keys: \(duplicates.sorted())")
+        #expect(keys.count > 100)
+    }
+
     @Test func catalogSourceLanguageIsEnglish() throws {
         let catalog = try decodedCatalog()
         #expect(catalog.sourceLanguage == "en")

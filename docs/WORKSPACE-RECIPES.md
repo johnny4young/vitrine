@@ -44,6 +44,13 @@ into the editor applies the most-specific matching recipe before loading the sou
 Nested associations therefore override parent folders, while an unavailable nested
 recipe can fall back to a usable parent association.
 
+Below the association picker, a gallery shows one card per association: the recipe's style
+rendered on a fixed sample, its theme and output values as the JSON spells them, and the
+folder's name. When one associated folder sits inside another, the nested card says which
+recipe it overrides and the parent card names the nested recipes. A file that is missing or
+no longer valid shows as unavailable. The gallery reads each recipe file when Library opens
+or an association changes.
+
 When a recipe applies, a bar over the editor's stage names it and its folder and counts
 the style fields that differ from what it applied; code edits and language changes don't
 count, and a refresh of a live file keeps the bar. **Revert** restores those fields and can
