@@ -110,7 +110,7 @@ public struct SnapshotCanvas: View, Equatable {
 
     /// The padded content card — the shared unit both canvas paths frame and back.
     private var styledContent: some View {
-        contentCard.padding(config.canvasInsets)
+        contentCard.canvasPart(.card).padding(config.canvasInsets)
     }
 
     /// The card body: a beautified framed image ("beautify any image"), or the code card.
@@ -282,7 +282,9 @@ public struct SnapshotCanvas: View, Equatable {
             if config.showChrome {
                 WindowChrome(
                     title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines),
-                    titleColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
+                    titleColor: HighlightManager.shared.gutterForegroundColor(for: config.theme)
+                )
+                .canvasPart(.chrome)
             }
             // Optional metadata header (filename/title/caption/language badge),
             // shown only when configured so the default render is unchanged.
@@ -294,6 +296,7 @@ public struct SnapshotCanvas: View, Equatable {
                     language: config.language,
                     theme: config.theme
                 )
+                .canvasPart(.header)
                 Divider()
                     .overlay(
                         HighlightManager.shared.gutterForegroundColor(for: config.theme)
@@ -307,7 +310,7 @@ public struct SnapshotCanvas: View, Equatable {
                         family: config.fontName, size: DiffStatsHeader.fontSize, ligatures: false),
                     textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme))
             }
-            codeBody(diff: diff)
+            codeBody(diff: diff).canvasPart(.code)
                 .reportsSnapCode(config, lineSpacing: Self.codeLineSpacing)
             if let cue = config.slideCue, cue.rangeLabel != nil || cue.continuationLabel != nil {
                 slideCueFooter(cue)

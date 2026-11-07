@@ -14,6 +14,12 @@ can never drift.
 
 ### Added
 
+- Clicking a part of the preview opens the inspector section that styles it: the background,
+  the drop shadow, the window chrome, the header, or, from the card around the code, its
+  typography (the frame, for an image). In canvas mode it opens the dock's popover instead. A
+  dashed outline marks the part under the pointer, and VoiceOver offers the same routes as
+  actions on the preview. Clicks on the code text still select it, and clicks that select, draw
+  or move a mark are unchanged.
 - Settings ▸ Output ▸ Embed editable project in PNG files (off by default) stores the source
   code, style, header, marks and alt text inside PNGs written by the editor's Save Image and
   quick capture's Also save to a file, as the same payload a share link carries. Anyone with
