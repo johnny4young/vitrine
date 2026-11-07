@@ -129,8 +129,11 @@ struct EditorWindowState: Codable, Equatable {
     var wrapColumns: Int?
     var terminalPalette: TerminalPaletteMode?
     var terminalCursor: TerminalCursorStyle?
+    var terminalCrop: TerminalCrop?
     var focusHighlightedLines: Bool
     var diffDecorations: Bool
+    var showDiffStats: Bool
+    var diffContextLines: Int?
     var annotations: [Annotation]
     var codeSteps: [String]
     var activeCodeStep: Int?
@@ -168,8 +171,11 @@ struct EditorWindowState: Codable, Equatable {
         wrapColumns = config.wrapColumns
         terminalPalette = config.terminalPalette
         terminalCursor = config.terminalCursor
+        terminalCrop = config.terminalCrop.isEmpty ? nil : config.terminalCrop
         focusHighlightedLines = config.focusHighlightedLines
         diffDecorations = config.diffDecorations
+        showDiffStats = config.showDiffStats
+        diffContextLines = config.diffContextLines
         annotations = config.annotations
         codeSteps = config.codeSteps
         activeCodeStep = config.activeCodeStep
@@ -234,8 +240,11 @@ struct EditorWindowState: Codable, Equatable {
         config.wrapColumns = wrapColumns.map(SettingsDefaults.clampWrapColumns)
         config.terminalPalette = terminalPalette ?? .theme
         config.terminalCursor = terminalCursor ?? .hidden
+        config.terminalCrop = terminalCrop ?? TerminalCrop()
         config.focusHighlightedLines = focusHighlightedLines
         config.diffDecorations = diffDecorations
+        config.showDiffStats = showDiffStats
+        config.diffContextLines = diffContextLines.map(SettingsDefaults.clampDiffContextLines)
         config.annotations = annotations
         config.codeSteps = codeSteps
         // Older or damaged archives get the step the text came from, else the last one.
@@ -252,7 +261,8 @@ struct EditorWindowState: Codable, Equatable {
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
         case codeSteps, activeCodeStep
-        case terminalPalette, terminalCursor
+        case showDiffStats, diffContextLines
+        case terminalPalette, terminalCursor, terminalCrop
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
 
@@ -307,11 +317,15 @@ struct EditorWindowState: Codable, Equatable {
             TerminalPaletteMode.self, forKey: .terminalPalette)
         terminalCursor = try? container.decodeIfPresent(
             TerminalCursorStyle.self, forKey: .terminalCursor)
+        terminalCrop = try? container.decodeIfPresent(TerminalCrop.self, forKey: .terminalCrop)
         focusHighlightedLines =
             (try? container.decode(Bool.self, forKey: .focusHighlightedLines))
             ?? fallback.focusHighlightedLines
         diffDecorations =
             (try? container.decode(Bool.self, forKey: .diffDecorations)) ?? fallback.diffDecorations
+        showDiffStats =
+            (try? container.decode(Bool.self, forKey: .showDiffStats)) ?? fallback.showDiffStats
+        diffContextLines = try? container.decodeIfPresent(Int.self, forKey: .diffContextLines)
         annotations =
             (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
             .compactMap(\.value) ?? fallback.annotations

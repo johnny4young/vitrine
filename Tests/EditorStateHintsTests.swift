@@ -299,36 +299,36 @@ struct EditorStateHintsTests {
     }
 
     @Test(arguments: [false, true])
-    func theReportedSizeIsThePNGOnThePasteboard(richText: Bool) throws {
+    func theReportedBytesAreThePNGOnThePasteboard(richText: Bool) throws {
         let pasteboard = pasteboard(holding: nil)
         defer { pasteboard.releaseGlobally() }
-        var reported: Int?
+        var reported: Data?
         let outcome = ExportManager.copyToPasteboardOutcome(
             demoConfig(), scale: 1, richText: richText, pasteboard: pasteboard,
             onCopied: { reported = $0 })
 
         #expect(outcome == .copied)
         let png = try #require(pasteboard.data(forType: .png))
-        #expect(reported == png.count)
+        #expect(reported == png)
     }
 
-    @Test func aRenderedRasterReportsItsSizeOnBothCopyPaths() throws {
+    @Test func aRenderedRasterReportsItsBytesOnBothCopyPaths() throws {
         let pasteboard = pasteboard(holding: nil)
         defer { pasteboard.releaseGlobally() }
         let raster = try ExportManager.renderCGImageChecked(demoConfig(), scale: 1)
 
-        var plain: Int?
+        var plain: Data?
         #expect(
             ExportManager.copyPNGToPasteboardOutcome(
                 raster, to: pasteboard, onCopied: { plain = $0 }) == .copied)
-        #expect(plain == pasteboard.data(forType: .png)?.count)
+        #expect(plain == pasteboard.data(forType: .png))
 
-        var rich: Int?
+        var rich: Data?
         #expect(
             RichPasteboard.copyOutcome(
                 cgImage: raster, config: demoConfig(), includeRichText: true, to: pasteboard,
                 onCopied: { rich = $0 }) == .copied)
-        #expect(rich == pasteboard.data(forType: .png)?.count)
+        #expect(rich == pasteboard.data(forType: .png))
     }
 
     @Test func aCaptureReportsTheSizeOfThePNGItCopied() {
@@ -339,13 +339,13 @@ struct EditorStateHintsTests {
         settings.outputBehavior.alsoSaveToFile = false
         let copied = QuickCapture.renderText(
             "let answer = 42", settings: settings, recents: nil, pasteboard: pasteboard)
-        #expect(copied.copiedPNGBytes != nil)
-        #expect(copied.copiedPNGBytes == pasteboard.data(forType: .png)?.count)
+        #expect(copied.copiedPNG != nil)
+        #expect(copied.copiedPNG == pasteboard.data(forType: .png))
 
         settings.export.richClipboard = true
         let rich = QuickCapture.renderText(
             "let answer = 42", settings: settings, recents: nil, pasteboard: pasteboard)
-        #expect(rich.copiedPNGBytes == pasteboard.data(forType: .png)?.count)
+        #expect(rich.copiedPNG == pasteboard.data(forType: .png))
 
         settings.outputBehavior.autoCopy = false
         let unsent = QuickCapture.renderText(

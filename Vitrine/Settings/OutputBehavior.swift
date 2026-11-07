@@ -24,6 +24,11 @@ final class OutputBehavior {
         didSet { defaults.set(closeAfterCopy, forKey: Keys.closeAfterCopy) }
     }
 
+    /// Float a draggable preview of each copied image near the screen corner.
+    var showsCopyPreview: Bool {
+        didSet { defaults.set(showsCopyPreview, forKey: Keys.showsCopyPreview) }
+    }
+
     /// Ask cooperating clipboard managers to conceal exports.
     var concealClipboard: Bool {
         didSet { defaults.set(concealClipboard, forKey: Keys.concealClipboard) }
@@ -37,6 +42,7 @@ final class OutputBehavior {
         autoCopy = defaults.object(forKey: Keys.autoCopy) as? Bool ?? true
         alsoSaveToFile = defaults.object(forKey: Keys.alsoSaveToFile) as? Bool ?? false
         closeAfterCopy = defaults.object(forKey: Keys.closeAfterCopy) as? Bool ?? true
+        showsCopyPreview = defaults.object(forKey: Keys.showsCopyPreview) as? Bool ?? true
         concealClipboard = defaults.object(forKey: Keys.concealClipboard) as? Bool ?? false
     }
 
@@ -45,6 +51,7 @@ final class OutputBehavior {
         autoCopy = true
         alsoSaveToFile = false
         closeAfterCopy = true
+        showsCopyPreview = true
         concealClipboard = false
     }
 }
