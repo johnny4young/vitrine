@@ -217,6 +217,12 @@ extension CLIArgumentParser {
             || highlightedLineRanges != nil || redactedLineRanges != nil
             || redactSecrets || focusHighlightedLines != nil || diffDecorations != nil
 
+        // A blur box is placed on the whole canvas, so a crop would slide content out from under it.
+        if terminalCrop != nil, !annotations.blurBoxes.points.isEmpty {
+            throw CLIError.incompatibleOptions(
+                "Cannot combine --blur-box with --terminal-crop-rows or --terminal-crop-columns.")
+        }
+
         if imageInputPath != nil {
             if recipe != nil {
                 throw CLIError.incompatibleOptions(
@@ -229,7 +235,7 @@ extension CLIArgumentParser {
             let codeOnlyOptionsRequested =
                 themeID != nil || languageID != nil || fontName != nil || fontLigatures != nil
                 || fontSize != nil || terminalColumns != nil || wrapColumns != nil || formatCode
-                || terminalPalette != nil || terminalCursor != nil
+                || terminalPalette != nil || terminalCursor != nil || terminalCrop != nil
                 || metadataFilename != nil || metadataTitle != nil
                 || metadataCaption != nil || showLanguageBadge != nil || showLineNumbers != nil
                 || showChrome != nil || highlightedLineRanges != nil || redactedLineRanges != nil
@@ -291,6 +297,10 @@ extension CLIArgumentParser {
             if terminalCursor != nil {
                 throw CLIError.incompatibleOptions(
                     "Cannot combine --edit with --terminal-cursor.")
+            }
+            if terminalCrop != nil {
+                throw CLIError.incompatibleOptions(
+                    "Cannot combine --edit with --terminal-crop-rows or --terminal-crop-columns.")
             }
             if styleOptionsRequested || themeID != nil {
                 throw CLIError.incompatibleOptions(
@@ -401,6 +411,7 @@ extension CLIArgumentParser {
             terminalColumns: terminalColumns,
             terminalPalette: terminalPalette,
             terminalCursor: terminalCursor,
+            terminalCrop: terminalCrop,
             wrapColumns: wrapColumns,
             formatCode: formatCode,
             format: resolvedFormat,

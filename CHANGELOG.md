@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Crop a terminal capture to some rows and columns of its final screen from the inspector's
+  Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
+  and redacted rows keep counting the whole screen, and text exports and share links carry only
+  the kept cells. Clearing the fields restores the rest.
 - A preview of the copied image floats in the bottom corner of the screen after Copy image,
   a quick capture or a copy from Recents. Drag it into another app or into Finder, click it
   to go back to the editor or Recents, or dismiss it. It skips copies marked confidential and
