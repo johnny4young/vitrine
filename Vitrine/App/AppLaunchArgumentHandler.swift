@@ -64,6 +64,8 @@ import VitrineRendering
         /// `--demo-recent` seeds one local capture; `--demo-recents` seeds a varied set;
         /// `--open-editor` / `--open-settings` / `--open-recents` open a window;
         /// `--open-menu-panel` opens the real panel at a deterministic automation anchor;
+        /// `--copy-preview-stays` keeps the copy preview until it is dismissed, and
+        /// `--demo-copy-preview` shows one of the current document without copying;
         /// `--show-help` / `--show-welcome` force those windows open past their gates;
         /// `--seen-old-version` seeds an older last-seen version and then presents What's
         /// New through its real version gate; `--skip-onboarding` just marks the
@@ -207,6 +209,14 @@ import VitrineRendering
                 demo.language = .diff
                 demo.windowTitle = "Greeter.swift"
                 demo.diffDecorations = true
+                demo.showDiffStats = true
+                if arguments.contains("--demo-diff-blur") {
+                    demo.annotations = [
+                        Annotation(
+                            kind: .blur, start: CGPoint(x: 0.2, y: 0.5),
+                            end: CGPoint(x: 0.6, y: 0.6))
+                    ]
+                }
                 demo.showLineNumbers = true
                 demo.cornerRadius = 16
                 settings.config = demo
@@ -223,6 +233,18 @@ import VitrineRendering
             if arguments.contains("--open-editor") {
                 EditorWindowController.shared.show()
                 didOpenWindow = true
+            }
+            if arguments.contains("--copy-preview-stays") {
+                CopyPreviewController.shared.holdsUntilDismissed = true
+            }
+            // Renders without touching the clipboard, for screenshots of the preview.
+            if arguments.contains("--demo-copy-preview"),
+                let image = try? ExportManager.renderCGImageChecked(settings.exportConfig),
+                let png = ExportManager.pngData(from: image)
+            {
+                CopyPreviewController.shared.holdsUntilDismissed = true
+                CopyPreviewController.shared.present(
+                    CopyPreview.Item(png: png) { EditorWindowController.shared.show() })
             }
             if arguments.contains("--open-command-palette") {
                 // The editor reads this same argument in its own `.task` and opens the

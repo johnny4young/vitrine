@@ -106,6 +106,7 @@ struct RecipeAppliedBar: View {
                 .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
                 .allowsHitTesting(false)
         )
+        .markToolbarAvoids()
         .padding(.horizontal, 12)
         // 6 + 26 stays inside the 36 pt the stage keeps above a height-fitted card.
         .padding(.top, 6)

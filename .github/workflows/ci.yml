@@ -49,6 +49,39 @@ jobs:
         id: classify
         run: python3 scripts/classify-ci-changes.py --event pull_request --base HEAD^1 >> "$GITHUB_OUTPUT"
 
+  # A squash merge of a pull request that was up to date with main lands the exact tree that
+  # pull request's CI already tested, so a push reuses that evidence instead of rerunning the
+  # macOS gates. Any doubt, a version bump or an error answers "false" and everything runs.
+  reuse:
+    name: Reuse pull request evidence
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
+      pull-requests: read
+    outputs:
+      reuse: ${{ steps.decide.outputs.reuse }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 2
+      - name: Compare this commit with its pull request
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          python3 scripts/ci-reuse-pr-evidence.py --commit "${GITHUB_SHA}" --before "${BEFORE}" \
+            --required "Static checks (Linux)" \
+            --required "Build & test · Tahoe 26" \
+            --required "UI tests · Tahoe 26" \
+            --required "Visual tour · Tahoe 26" \
+            2> "${RUNNER_TEMP}/reuse.log" >> "${GITHUB_OUTPUT}"
+          { echo "### Pull request evidence"; echo '```'; cat "${RUNNER_TEMP}/reuse.log"; echo '```'; } \
+            | tee -a "${GITHUB_STEP_SUMMARY}"
+
   docs-checks:
     name: Documentation checks · Tahoe 26
     needs: changes
@@ -247,8 +280,8 @@ jobs:
     # Literal names, not a matrix: a skipped matrix job reports its unexpanded name,
     # which never satisfies the required check.
     name: Build & test · Tahoe 26
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}
+    needs: [changes, reuse]
+    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' && needs.reuse.outputs.reuse != 'true' }}
     runs-on: macos-26
     # Cap the job well under the 6-hour default: a wedged SPM resolve or hung
     # xcodebuild should surface in minutes, not burn six hours of macOS minutes.
@@ -533,8 +566,8 @@ jobs:
   # blocks the build job's artifacts.
   ui-test:
     name: UI tests · Tahoe 26
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}
+    needs: [changes, reuse]
+    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' && needs.reuse.outputs.reuse != 'true' }}
     runs-on: macos-26
     # The suite hangs (rather than fails) if automation init wedges; cap the job
     # so a wedged run surfaces in minutes, not after the 6-hour default.
@@ -668,8 +701,8 @@ jobs:
   # trip about as long as the build.
   visual-tour:
     name: Visual tour · Tahoe 26
-    needs: changes
-    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' }}
+    needs: [changes, reuse]
+    if: ${{ !cancelled() && needs.changes.outputs.app != 'false' && needs.reuse.outputs.reuse != 'true' }}
     runs-on: macos-26
     timeout-minutes: 45
     steps:

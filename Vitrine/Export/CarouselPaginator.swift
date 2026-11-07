@@ -255,6 +255,9 @@ enum CarouselPaginator {
         config.focusHighlightedLines =
             base.focusHighlightedLines && !config.highlightedLineRanges.isEmpty
         config.fontSize = fontSize ?? max(config.fontSize, ExportManager.carouselMinimumFontSize)
+        // A diff's stats and context fold describe the whole patch, not one slide.
+        config.showDiffStats = false
+        config.diffContextLines = nil
 
         switch cues.lineNumbers {
         case nil:

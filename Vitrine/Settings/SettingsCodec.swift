@@ -35,6 +35,8 @@ enum SettingsCodec {
         static let highlightedLines = "highlightedLines"
         static let focusHighlightedLines = "focusHighlightedLines"
         static let diffDecorations = "diffDecorations"
+        static let showDiffStats = "showDiffStats"
+        static let diffContextLines = "diffContextLines"
         /// Snapshot annotations, stored as a JSON-encoded `[Annotation]`.
         /// Part of the document/style, so it seeds new editor windows.
         static let annotations = "annotations"
@@ -44,6 +46,7 @@ enum SettingsCodec {
         static let autoCopy = "autoCopy"
         static let alsoSaveToFile = "alsoSaveToFile"
         static let closeAfterCopy = "closeAfterCopy"
+        static let showsCopyPreview = "showsCopyPreview"
         static let exportScale = "exportScale"
         static let exportFormat = "exportFormat"
         static let colorProfile = "colorProfile"
@@ -114,8 +117,10 @@ enum SettingsCodec {
             windowTitle,
             showShadow, showLineNumbers, wrapColumns, terminalPalette, terminalCursor,
             highlightedLines, focusHighlightedLines,
-            diffDecorations, annotations, metadata, gradientPreset,
-            backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, exportScale, exportFormat,
+            diffDecorations, showDiffStats, diffContextLines, annotations, metadata,
+            gradientPreset,
+            backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, showsCopyPreview,
+            exportScale, exportFormat,
             colorProfile, richClipboard, textSidecar, concealClipboard, hotkeyAction,
             acknowledgedMacOSHotkey, appLanguage,
             treatURLs,
@@ -203,6 +208,12 @@ enum SettingsCodec {
         }
         if let value = defaults.object(forKey: Keys.diffDecorations) as? Bool {
             config.diffDecorations = value
+        }
+        if let value = defaults.object(forKey: Keys.showDiffStats) as? Bool {
+            config.showDiffStats = value
+        }
+        if let value = defaults.object(forKey: Keys.diffContextLines) as? Int {
+            config.diffContextLines = SettingsDefaults.clampDiffContextLines(value)
         }
         // Highlighted lines persist as the canonical spec string ("3, 7-9"); a
         // missing or malformed value parses to no highlight rather than trapping.
@@ -324,6 +335,12 @@ enum SettingsCodec {
         defaults.set(config.terminalCursor.rawValue, forKey: Keys.terminalCursor)
         defaults.set(config.focusHighlightedLines, forKey: Keys.focusHighlightedLines)
         defaults.set(config.diffDecorations, forKey: Keys.diffDecorations)
+        defaults.set(config.showDiffStats, forKey: Keys.showDiffStats)
+        if let lines = config.diffContextLines {
+            defaults.set(lines, forKey: Keys.diffContextLines)
+        } else {
+            defaults.removeObject(forKey: Keys.diffContextLines)
+        }
         defaults.set(
             LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
         // `redactedLineRanges` is deliberately NOT persisted here: redactions hide secrets
