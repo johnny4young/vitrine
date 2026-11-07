@@ -173,6 +173,31 @@ struct CLIReproductionCommandTests: CLITestSupport {
             command(style, scale: 3, format: .pdf, profile: .displayP3, watermark: watermark))
     }
 
+    @Test func aSplitDiffCarriesItsLayout() throws {
+        var style = SnapshotConfig()
+        style.language = .diff
+        style.diffView = .split
+        let line = try line(command(style).outcome())
+        #expect(line.contains("--diff-view split"))
+        try expectRoundTrip(command(style))
+        style.diffView = .unified
+        #expect(try !self.line(command(style).outcome()).contains("--diff-view"))
+    }
+
+    @Test func aFoldedDiffCarriesItsStatsAndContext() throws {
+        var style = SnapshotConfig()
+        style.language = .diff
+        style.showDiffStats = true
+        style.diffContextLines = 0
+        let line = try line(command(style).outcome())
+        #expect(line.contains("--diff-stats"))
+        #expect(line.contains("--diff-context 0"))
+        try expectRoundTrip(command(style))
+
+        style.language = .swift
+        #expect(try !self.line(command(style).outcome()).contains("--diff-"))
+    }
+
     @Test func backgroundsAndCornerWatermarksMapToTheirFlags() throws {
         var style = SnapshotConfig()
         for gradient in GradientPreset.allCases where gradient != .aurora {

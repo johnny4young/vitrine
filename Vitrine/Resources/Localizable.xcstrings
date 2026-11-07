@@ -1,6 +1,105 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Some lines don't fit the slide" : {
+      "comment" : "Carousel sheet note: lines overflow the slide even at the smallest type size.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Algunas líneas no caben en la diapositiva"
+          }
+        }
+      }
+    },
+    "Split the snippet into numbered slides for a carousel post." : {
+      "comment" : "Subtitle of the carousel export sheet.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide el fragmento en diapositivas numeradas para una publicación en carrusel."
+          }
+        }
+      }
+    },
+    "Split the snippet into numbered carousel slides" : {
+      "comment" : "Tooltip of the toolbar's carousel button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Divide el fragmento en diapositivas de carrusel numeradas"
+          }
+        }
+      }
+    },
+    "Size" : {
+      "comment" : "Label of the carousel slide size picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamaño"
+          }
+        }
+      }
+    },
+    "Story 9:16" : {
+      "comment" : "Carousel slide size for a vertical story.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historia 9:16"
+          }
+        }
+      }
+    },
+    "PNG set" : {
+      "comment" : "Carousel output: one PNG file per slide.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serie PNG"
+          }
+        }
+      }
+    },
+    "Both" : {
+      "comment" : "Carousel output: PNG files and a PDF.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambos"
+          }
+        }
+      }
+    },
+    "Unified" : {
+      "comment" : "Editor lines: diff layout option with old and new lines in one column.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unificada"
+          }
+        }
+      }
+    },
+    "Split" : {
+      "comment" : "Editor lines: diff layout option with the old and new file side by side.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dividida"
+          }
+        }
+      }
+    },
     "· overrides %@" : {
       "comment" : "Workspace recipe gallery: this nested folder's recipe wins over the named parent recipe.",
       "localizations" : {
@@ -252,7 +351,7 @@
       }
     },
     "All" : {
-      "comment" : "Placeholder of a terminal crop field when every row or column is kept",
+      "comment" : "Placeholder of a terminal crop field when every row or column is kept; also the context-lines slider value meaning every line is shown",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1550,17 +1649,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Líneas de contexto"
-          }
-        }
-      }
-    },
-    "All" : {
-      "comment" : "Editor lines: context-lines slider value meaning every line is shown.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todas"
           }
         }
       }
@@ -11004,17 +11092,6 @@
         }
       }
     },
-    "Split the snippet into numbered 4:5 slides for a carousel post." : {
-      "comment" : "Carousel export sheet subtitle.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Divide el fragmento en diapositivas 4:5 numeradas para un carrusel."
-          }
-        }
-      }
-    },
     "Carousel export isn't available for terminal captures" : {
       "comment" : "Help for the disabled carousel export button on a terminal capture.",
       "localizations" : {
@@ -11033,17 +11110,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Quita las cajas de desenfoque, o usa Ocultar secretos, para exportar un carrusel"
-          }
-        }
-      }
-    },
-    "Split the snippet into numbered carousel slides (4:5)" : {
-      "comment" : "Help for the carousel export toolbar button.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Divide el fragmento en diapositivas de carrusel numeradas (4:5)"
           }
         }
       }
