@@ -439,6 +439,47 @@ final class VitrineUITests: XCTestCase {
     }
 
     @MainActor
+    func testInspectorOffersDiffViewControlsForDiffContent() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--demo-showcase"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+
+        assertExists(element("diff-stats-toggle", in: app), in: app, timeout: 3)
+        assertExists(element("diff-context-slider", in: app), in: app)
+        XCTAssertFalse(element("diff-view-locked-note", in: app).exists)
+    }
+
+    @MainActor
+    func testBlurBoxLocksDiffViewControls() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--demo-showcase", "--demo-diff-blur"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+
+        assertExists(element("diff-view-locked-note", in: app), in: app, timeout: 3)
+        XCTAssertFalse(element("diff-context-slider", in: app).isEnabled)
+        XCTAssertFalse(element("diff-stats-toggle", in: app).isEnabled)
+    }
+
+    @MainActor
     func testEditorPrettyPrintsCompactHTML() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()

@@ -47,6 +47,8 @@ struct CodeLinesView: View {
     /// line (each keeping its colors) and cached by `HighlightManager`, so the
     /// character-by-character split does not rebuild on every `body` pass.
     let rows: [AttributedString]
+    /// The rows to draw when a diff folds some away; `nil` draws every row.
+    var displayRows: [DiffDisplayRow]?
     /// Whether to draw the leading line-number gutter.
     let showLineNumbers: Bool
     /// The number drawn on the first row. Highlight and redaction ranges stay row-based.
@@ -79,11 +81,33 @@ struct CodeLinesView: View {
     var body: some View {
         let metrics = GutterMetrics(font: font, lineCount: rows.count + firstLineNumber - 1)
         VStack(alignment: .leading, spacing: lineSpacing) {
-            ForEach(Array(rows.enumerated()), id: \.offset) { index, line in
-                row(line, lineNumber: index + 1, metrics: metrics)
+            let shown = displayRows ?? rows.indices.map { .line($0 + 1) }
+            ForEach(Array(shown.enumerated()), id: \.offset) { _, shownRow in
+                switch shownRow {
+                case .line(let number) where rows.indices.contains(number - 1):
+                    row(rows[number - 1], lineNumber: number, metrics: metrics)
+                case .line:
+                    EmptyView()
+                case .fold:
+                    foldMarker(metrics: metrics)
+                }
             }
         }
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Stands in for folded lines, aligned with the code column. A glyph rather than
+    /// copy, so the exported image does not depend on the locale.
+    private func foldMarker(metrics: GutterMetrics) -> some View {
+        Text(verbatim: "⋯")
+            .font(Font(font))
+            .foregroundStyle(textColor.opacity(0.4))
+            .padding(
+                .leading,
+                showLineNumbers ? metrics.numberWidth + GutterMetrics.trailingGap : 0
+            )
+            .padding(.vertical, lineSpacing / 2)
+            .accessibilityHidden(true)
     }
 
     @ViewBuilder
@@ -176,11 +200,17 @@ struct CodeLinesView: View {
     /// otherwise — the GitHub-style diff coloring (the first glyph is the diff marker).
     static func diffBand(firstCharacter: Character?) -> Color? {
         switch firstCharacter {
-        case "+": Color(hex: "#2EA043").opacity(0.18)
-        case "-": Color(hex: "#F85149").opacity(0.18)
+        case "+": DiffColor.added.opacity(0.18)
+        case "-": DiffColor.removed.opacity(0.18)
         default: nil
         }
     }
+}
+
+/// The added and removed hues shared by diff bands and the stats header.
+enum DiffColor {
+    static let added = Color(hex: "#2EA043")
+    static let removed = Color(hex: "#F85149")
 }
 
 /// Splits text and attributed text into lines on `\n`, preserving empty interior

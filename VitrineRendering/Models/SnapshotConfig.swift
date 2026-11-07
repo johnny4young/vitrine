@@ -75,6 +75,14 @@ public struct SnapshotConfig: Equatable {
     /// to the row layout to band each changed line.
     public var diffDecorations: Bool = false
 
+    /// Draw the file path and added/removed counts above a diff. Off by default.
+    public var showDiffStats: Bool = false
+
+    /// Unchanged lines to keep around each change in a diff, or `nil` to show them all
+    /// (the default). The fold is visual: sidecars and links carry the full patch, which
+    /// would no longer apply with lines removed.
+    public var diffContextLines: Int?
+
     /// Freeform marks drawn over the snapshot — arrows, text callouts, and
     /// blur/redaction boxes. Empty by default, so the default render and
     /// every golden are unchanged until the user adds one. Stored in normalized
@@ -174,7 +182,21 @@ public struct SnapshotConfig: Equatable {
     /// as a single `Text`, so the default render is byte-for-byte unchanged.
     public var usesLineRows: Bool {
         showLineNumbers || !highlightedLineRanges.isEmpty || !redactedLineRanges.isEmpty
-            || diffDecorations
+            || diffDecorations || (diffOptionsApply && diffContextLines != nil)
+    }
+
+    /// Whether the stats header and context fold apply. Diff bands alone do not qualify:
+    /// they outlive a diff session, and a fold on other code would drop the user's rows.
+    public var diffOptionsApply: Bool { !usesImageContent && language == .diff }
+
+    /// Blur boxes are placed relative to the canvas, so the controls that resize a diff lock
+    /// while one exists and the box stays on the text it covers.
+    public var diffLayoutIsLocked: Bool { annotations.contains { $0.kind == .blur } }
+
+    /// The parsed diff, only when an option on the canvas needs it.
+    public var diffDocument: DiffDocument? {
+        guard diffOptionsApply, showDiffStats || diffContextLines != nil else { return nil }
+        return DiffDocument(source: code)
     }
 
     /// The neutral replacement used anywhere a redacted line would otherwise expose
@@ -259,7 +281,10 @@ public struct SnapshotConfig: Equatable {
 
         var lines = text.components(separatedBy: "\n")
         for index in lines.indices where LineHighlight.contains(redactions, line: index + 1) {
-            lines[index] = Self.redactedLinePlaceholder
+            lines[index] =
+                language == .diff
+                ? DiffDocument.maskedRow(lines[index], placeholder: Self.redactedLinePlaceholder)
+                : Self.redactedLinePlaceholder
         }
         return lines.joined(separator: "\n")
     }

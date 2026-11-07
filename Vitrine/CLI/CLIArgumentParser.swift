@@ -70,6 +70,8 @@ struct CLIArgumentParser {
     var redactSecrets = false
     var focusHighlightedLines: Bool?
     var diffDecorations: Bool?
+    var showDiffStats: Bool?
+    var diffContextLines: Int?
     var recursiveBatch = false
     var failOnSkipped = false
     var failOnEmpty = false
@@ -337,6 +339,10 @@ struct CLIArgumentParser {
             focusHighlightedLines = token == "--focus-lines"
         case .diffBands:
             diffDecorations = token == "--diff-bands"
+        case .diffStats:
+            showDiffStats = token == "--diff-stats"
+        case .diffContext:
+            diffContextLines = try resolveDiffContextLines(value, flag: token)
         case .recursive:
             recursiveBatch = true
         case .failOnSkipped:

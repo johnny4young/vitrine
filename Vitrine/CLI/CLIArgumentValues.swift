@@ -32,6 +32,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolveDiffContextLines(_ raw: String, flag: String) throws -> Int {
+        guard let value = Int(raw), SettingsDefaults.diffContextLinesRange.contains(value) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     func containsControlCharacter(_ value: String) -> Bool {
         value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }

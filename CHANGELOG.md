@@ -14,6 +14,10 @@ can never drift.
 
 ### Added
 
+- Add an optional stats header to diffs, with the file path, added and removed line counts
+  and a diffstat bar, and a context slider that folds unchanged lines around each change.
+  The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
+  links keep the full patch.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only

@@ -258,6 +258,8 @@ struct CLIOptions: Equatable {
     var focusHighlightedLines: Bool?
     /// Optional GitHub-style diff-band override. Nil preserves the app/preset default.
     var diffDecorations: Bool?
+    var showDiffStats: Bool?
+    var diffContextLines: Int?
     /// For `batch`, walk nested input folders and preserve their relative paths under
     /// the output folder. Off by default so existing batch jobs keep their top-level
     /// behavior unless they opt in.
@@ -519,6 +521,8 @@ struct CLIOptions: Equatable {
         }
         if let focusHighlightedLines { config.focusHighlightedLines = focusHighlightedLines }
         if let diffDecorations { config.diffDecorations = diffDecorations }
+        if let showDiffStats { config.showDiffStats = showDiffStats }
+        if let diffContextLines { config.diffContextLines = diffContextLines }
         let inferredMetadataFilename: String? =
             if gitDiffSource != nil {
                 GitDiffInputLoader.defaultFilename(paths: gitDiffPaths)

@@ -209,6 +209,14 @@ import VitrineRendering
                 demo.language = .diff
                 demo.windowTitle = "Greeter.swift"
                 demo.diffDecorations = true
+                demo.showDiffStats = true
+                if arguments.contains("--demo-diff-blur") {
+                    demo.annotations = [
+                        Annotation(
+                            kind: .blur, start: CGPoint(x: 0.2, y: 0.5),
+                            end: CGPoint(x: 0.6, y: 0.6))
+                    ]
+                }
                 demo.showLineNumbers = true
                 demo.cornerRadius = 16
                 settings.config = demo

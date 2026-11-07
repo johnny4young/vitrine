@@ -3,6 +3,8 @@ import Highlightr
 import SwiftUI
 import VitrineDomain
 
+import class Highlightr.Theme
+
 /// Wraps Highlightr (Highlight.js) to produce a syntax-highlighted
 /// `NSAttributedString` and the theme's own background color.
 ///
@@ -36,6 +38,8 @@ public final class HighlightManager {
         let isDark: Bool
     }
     var builtInChrome: [VitrineDomain.Theme.Source: ThemeChrome] = [:]
+    /// Each bundled stylesheet parsed once, keyed by name. See `selectBuiltInTheme`.
+    var parsedStylesheets: [String: Theme] = [:]
 
     /// Cache key for highlighted code. `VitrineDomain.Theme.Source` captures the immutable stylesheet name for
     /// a built-in or the complete value-typed palette for a custom theme, so changing a palette

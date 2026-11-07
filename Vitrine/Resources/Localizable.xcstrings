@@ -1499,6 +1499,72 @@
         }
       }
     },
+    "Locked while a blur box is on the canvas." : {
+      "comment" : "Editor lines: why the diff stats and context controls are disabled.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloqueado mientras haya un cuadro de desenfoque en el lienzo."
+          }
+        }
+      }
+    },
+    "Stats header" : {
+      "comment" : "Editor lines: toggle for the file path and +/- counts above a diff.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encabezado de estadísticas"
+          }
+        }
+      }
+    },
+    "Context lines" : {
+      "comment" : "Editor lines: slider for unchanged lines kept around each diff change.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Líneas de contexto"
+          }
+        }
+      }
+    },
+    "All" : {
+      "comment" : "Editor lines: context-lines slider value meaning every line is shown.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todas"
+          }
+        }
+      }
+    },
+    "Added: %lld, removed: %lld" : {
+      "comment" : "Accessibility: added and removed line counts in a diff stats header.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregadas: %1$lld, eliminadas: %2$lld"
+          }
+        }
+      }
+    },
+    "Files: %lld" : {
+      "comment" : "Accessibility: number of changed files in a diff stats header.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archivos: %lld"
+          }
+        }
+      }
+    },
     "%lld by %lld" : {
       "comment" : "Menu bar capture summary, read aloud: output width by height in pixels.",
       "localizations" : {

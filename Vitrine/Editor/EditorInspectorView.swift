@@ -186,6 +186,7 @@ struct EditorInspectorView: View {
                                     )
                                     .accessibilityIdentifier("diff-decorations-toggle")
                             }
+                            DiffViewInspectorRows(settings: settings)
                             InspectorRow(label: Text("Redact secrets")) {
                                 HStack(spacing: 6) {
                                     Button("Scan", action: scanForSecrets)
