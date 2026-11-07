@@ -38,8 +38,10 @@ enum QuickCapture {
         var outcome: Outcome
         var copiedToClipboard: Bool
         var savedToFile: Bool
-        /// The size of the PNG that reached the clipboard.
-        var copiedPNGBytes: Int? = nil
+        /// The exact PNG that reached the clipboard.
+        var copiedPNG: Data? = nil
+        /// Whether history kept this capture, so its preview can open Recents.
+        var savedToRecents = false
         /// Why an opted-in also-saved PNG went out without its editable project.
         var withheldProject: EmbeddedProject.Withheld? = nil
         /// The document to open when the capture defers to the editor. It carries the
@@ -50,6 +52,8 @@ enum QuickCapture {
         static func nonProducing(_ outcome: Outcome) -> Result {
             Result(outcome: outcome, copiedToClipboard: false, savedToFile: false)
         }
+
+        var copiedPNGBytes: Int? { copiedPNG?.count }
     }
 
     /// Internal export result that keeps a pre-allocation render rejection separate
@@ -57,7 +61,7 @@ enum QuickCapture {
     /// only the render category needed for actionable feedback.
     private enum ExportAttempt {
         case completed(
-            didCopy: Bool, didSave: Bool, copiedPNGBytes: Int?,
+            didCopy: Bool, didSave: Bool, copiedPNG: Data?,
             withheldProject: EmbeddedProject.Withheld?)
         case renderFailed(RenderBudgetError)
     }
@@ -151,20 +155,20 @@ enum QuickCapture {
         let attempt = copyAndSave(plan, settings: settings)
         let didCopy: Bool
         let didSave: Bool
-        let copiedPNGBytes: Int?
+        let copiedPNG: Data?
         let withheldProject: EmbeddedProject.Withheld?
         switch attempt {
-        case .completed(let copied, let saved, let bytes, let withheld):
+        case .completed(let copied, let saved, let png, let withheld):
             didCopy = copied
             didSave = saved
-            copiedPNGBytes = bytes
+            copiedPNG = png
             withheldProject = withheld
         case .renderFailed(let error):
             Log.capture.error("Quick capture stopped: render failed safely")
             return .nonProducing(.renderFailed(error))
         }
 
-        recents.record(config, consent: historyConsent)
+        let retention = recents.record(config, consent: historyConsent)
 
         Log.capture.notice(
             "Quick capture complete (\(didCopy ? "copied" : "rendered", privacy: .public))")
@@ -172,7 +176,8 @@ enum QuickCapture {
             outcome: didCopy ? .copied : .rendered,
             copiedToClipboard: didCopy,
             savedToFile: didSave,
-            copiedPNGBytes: copiedPNGBytes,
+            copiedPNG: copiedPNG,
+            savedToRecents: retention == .saved,
             withheldProject: didSave ? withheldProject : nil)
     }
 
@@ -220,7 +225,7 @@ enum QuickCapture {
         }
 
         var didCopy = false
-        var copiedPNGBytes: Int?
+        var copiedPNG: Data?
         var deferredRenderFailure: RenderBudgetError?
         // `autoCopy` implies `needsRaster`, so the binding always succeeds here;
         // it simply keeps the optional handling explicit.
@@ -231,7 +236,7 @@ enum QuickCapture {
                     includeRichText: settings.export.richClipboard,
                     includePlainText: settings.export.textSidecar,
                     concealed: settings.outputBehavior.concealClipboard, to: pasteboard,
-                    onCopied: { copiedPNGBytes = $0 })
+                    onCopied: { copiedPNG = $0 })
                 {
                 case .copied:
                     didCopy = true
@@ -243,7 +248,7 @@ enum QuickCapture {
             } else {
                 switch ExportManager.copyPNGToPasteboardOutcome(
                     cgImage, concealed: settings.outputBehavior.concealClipboard, to: pasteboard,
-                    onCopied: { copiedPNGBytes = $0 })
+                    onCopied: { copiedPNG = $0 })
                 {
                 case .copied:
                     didCopy = true
@@ -283,7 +288,7 @@ enum QuickCapture {
         var withheld: EmbeddedProject.Withheld?
         if case .withheld(let reason) = projectPlan { withheld = reason }
         return .completed(
-            didCopy: didCopy, didSave: didSave, copiedPNGBytes: copiedPNGBytes,
+            didCopy: didCopy, didSave: didSave, copiedPNG: copiedPNG,
             withheldProject: withheld)
     }
 
@@ -381,27 +386,28 @@ enum QuickCapture {
         let attempt = copyAndSave(plan, settings: settings, pasteboard: pasteboard)
         let didCopy: Bool
         let didSave: Bool
-        let copiedPNGBytes: Int?
+        let copiedPNG: Data?
         let withheldProject: EmbeddedProject.Withheld?
         switch attempt {
-        case .completed(let copied, let saved, let bytes, let withheld):
+        case .completed(let copied, let saved, let png, let withheld):
             didCopy = copied
             didSave = saved
-            copiedPNGBytes = bytes
+            copiedPNG = png
             withheldProject = withheld
         case .renderFailed(let error):
             Log.capture.error("Text capture stopped: render failed safely")
             return .nonProducing(.renderFailed(error))
         }
 
-        recents?.record(config, consent: historyConsent)
+        let retention = recents?.record(config, consent: historyConsent)
         Log.capture.notice(
             "Rendered text capture (\(didCopy ? "copied" : "rendered", privacy: .public))")
         return Result(
             outcome: didCopy ? .copied : .rendered,
             copiedToClipboard: didCopy,
             savedToFile: didSave,
-            copiedPNGBytes: copiedPNGBytes,
+            copiedPNG: copiedPNG,
+            savedToRecents: retention == .saved,
             withheldProject: didSave ? withheldProject : nil)
     }
 

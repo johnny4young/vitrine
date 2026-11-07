@@ -88,11 +88,24 @@ extension HighlightManager {
     /// stylesheet and otherwise leaves the previously selected theme active. A bad
     /// catalog entry must therefore move explicitly to One Dark rather than render
     /// with whichever theme happened to run immediately before it.
+    ///
+    /// Highlightr merges a stylesheet's rules in dictionary order, which differs between
+    /// parses, so a class two rules style can change color from one parse to the next.
+    /// Reusing one parse per stylesheet keeps every render in a session consistent.
     func selectBuiltInTheme(_ theme: VitrineDomain.Theme) -> Bool {
         guard let highlightr else { return false }
         let requested = theme.hlJsTheme ?? Self.fallbackBuiltInThemeName
-        if highlightr.setTheme(to: requested) { return true }
-        return highlightr.setTheme(to: Self.fallbackBuiltInThemeName)
+        for name in [requested, Self.fallbackBuiltInThemeName] {
+            if let parsed = parsedStylesheets[name] {
+                highlightr.theme = parsed
+                return true
+            }
+            if highlightr.setTheme(to: name) {
+                parsedStylesheets[name] = highlightr.theme
+                return true
+            }
+        }
+        return false
     }
 
     /// Whether `color` is dark enough that light overlays/text read best on it,

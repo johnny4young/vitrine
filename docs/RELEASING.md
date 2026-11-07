@@ -51,6 +51,12 @@ each check counts, so a flaky job that passes when re-run in CI unblocks the tag
 the failed `verify` job afterwards, as you would after CI outlasts the wait. A real failure
 means fixing `main` and moving the tag to a commit whose CI passed.
 
+Most pushes to `main` skip the macOS jobs and reuse their pull request's evidence (see
+*Continuous integration*), but a commit that changes `project.yml` always runs them, so
+tag the version-bump commit. If `verify` reports skipped checks on another commit, run
+CI on the tag with `gh workflow run ci.yml --ref "v${VERSION}"`, then re-run `verify`
+once that run passes.
+
 The tag run **does not** create a GitHub release, change Homebrew, deploy the production
 appcast, or refresh the website. A fresh runner downloads that candidate, verifies its
 manifest and SHA-256, and runs `scripts/qa-release.sh`; the run is successful only after
@@ -131,6 +137,15 @@ CI is a release gate, not just a compile check.
   classifier lists both sides of a rename, so a move into `docs/` still counts as an
   app change. Pushes, schedules and manual runs skip the classification and run every
   gate, and a failed classification runs them too.
+- **Pushes to `main` reuse pull-request evidence.** A squash merge of a pull request that
+  was up to date with `main` lands the exact tree its CI tested. The
+  `Reuse pull request evidence` job (`scripts/ci-reuse-pr-evidence.py`) skips the build,
+  UI and visual-tour jobs on the push only when the push added that single merge commit,
+  its tree equals the pull request head's, and the newest run of every required check on
+  that head succeeded, read with the release gate's rules. A commit that changes
+  `project.yml` always runs them, because a release tags the version bump and its gate
+  reads that commit's own checks. Any other doubt, or an API error, runs the full gate;
+  scheduled and manual runs never reuse.
 - **`.xcresult` on failure.** The build and test steps pass `RESULT_BUNDLE=…` to
   `make`, and on any failure CI uploads the resulting `.xcresult` bundles (plus the
   golden-diff and launch-gallery artifacts) so a failure can be triaged offline
@@ -409,8 +424,9 @@ five-megabyte source-import ceiling.
 
 ### Running the UI tests
 
-**The full UI suite (`make test-ui`) runs in CI on every PR and push to `main`**,
-as the dedicated `UI tests` job in `ci.yml`, which compiles and executes the tests.
+**The full UI suite (`make test-ui`) runs in CI on every PR and on each push to `main`
+that cannot reuse its pull request's run**, as the dedicated `UI tests` job in `ci.yml`,
+which compiles and executes the tests.
 `make build-ui-tests` compiles them locally when automation permission is unavailable.
 The `macos-26` Tahoe row must finish; the matrix does not cancel one runtime merely
 because another failed.
@@ -489,7 +505,7 @@ assertions valid across accessibility-tree changes between macOS releases.
 
 The release gate neither builds nor runs UI tests: `verify` requires the
 `UI tests · Tahoe 26` and `Visual tour · Tahoe 26` checks to have passed on the tagged
-commit, which `ci.yml` ran when that commit landed on `main`. Run `make test-ui` locally
+commit, which `ci.yml` ran when that version-bump commit landed on `main`. Run `make test-ui` locally
 before tagging if the release includes UI changes that never went through a PR.
 Commits merged before the visual tour became its own job have no
 `Visual tour · Tahoe 26` check, so tag only commits that ran the current CI.
@@ -506,8 +522,8 @@ The validator then exports stable filenames plus a dimension/hash manifest under
 confidential-clipboard Settings states outside the strict manifest; CI publishes them
 as the `clipboard-privacy-ui` artifact.
 
-CI runs this gate on every pull request and push to `main` and uploads the friendly
-evidence even on success. For a local run, keep Vitrine frontmost and avoid launching
+CI runs this gate on every pull request and on each push to `main` that cannot reuse
+its pull request's run, and uploads the friendly evidence even on success. For a local run, keep Vitrine frontmost and avoid launching
 other applications until the tour finishes. This is intentional: visual evidence
 that contains an interrupting browser, terminal, or IDE must fail rather than be
 mistaken for a valid Vitrine screenshot.

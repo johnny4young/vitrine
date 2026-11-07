@@ -325,7 +325,8 @@ struct EmbeddedProjectTests {
         let presenter = CaptureFeedbackPresenter(
             display: FeedbackDisplay { feedback, _ in shown.append(feedback) },
             routing: CaptureRecoveryRouting(
-                loadPrimaryEditor: { _ in }, presentEditor: {}, presentWebSnapshot: { _ in }))
+                loadPrimaryEditor: { _ in }, presentEditor: {}, presentWebSnapshot: { _ in },
+                presentRecents: {}))
         let result = QuickCapture.Result(
             outcome: .copied, copiedToClipboard: true, savedToFile: true,
             withheldProject: .secret)
