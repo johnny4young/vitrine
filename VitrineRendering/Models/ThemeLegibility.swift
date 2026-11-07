@@ -31,6 +31,7 @@ public struct ThemeLegibility: Equatable {
         let theme: Theme
         let terminalPalette: TerminalPaletteMode
         let terminalColumns: Int?
+        let terminalCrop: TerminalCrop
         let redactedLineRanges: [ClosedRange<Int>]
         let highlightedLineRanges: [ClosedRange<Int>]
         let focusHighlightedLines: Bool
@@ -49,8 +50,9 @@ public struct ThemeLegibility: Equatable {
             theme = config.theme
             terminalPalette = config.terminalPalette
             terminalColumns = config.terminalColumns
-            redactedLineRanges = config.redactedLineRanges
-            highlightedLineRanges = config.highlightedLineRanges
+            terminalCrop = config.activeTerminalCrop
+            redactedLineRanges = terminalCrop.localRanges(config.redactedLineRanges)
+            highlightedLineRanges = terminalCrop.localRanges(config.highlightedLineRanges)
             focusHighlightedLines = config.focusHighlightedLines
             diffDecorations = config.diffDecorations
             usesLineRows = config.usesLineRows
@@ -213,7 +215,7 @@ public struct ThemeLegibility: Equatable {
             ? ANSIRenderer.attributedString(
                 input.code, font: input.font,
                 palette: .resolved(for: input.theme, mode: input.terminalPalette),
-                columns: input.terminalColumns)
+                columns: input.terminalColumns, crop: input.terminalCrop)
             : HighlightManager.shared.attributedString(
                 for: input.code, language: input.language, theme: input.theme, font: input.font)
     }
