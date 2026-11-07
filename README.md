@@ -661,6 +661,17 @@ redact, continue anyway, or cancel. Quick capture asks before it touches the cli
 CLI cannot ask, so `render` and `batch` leave the output unchanged and warn on stderr with
 row numbers and kinds, never the matched text. The check reads text, not image pixels.
 
+**Editable project in PNGs (opt-in):** **Settings → Export → Embed editable project in PNG
+files** is off by default. When it is on, the editor's Save Image and quick capture's **Also
+save to a file** write PNGs whose XMP metadata contains the source code, style, header,
+annotations and alt text: the same payload as a share link. Anyone with the file can extract
+that source code, wherever the image is posted. Clipboard copies, multi-size and carousel
+exports, comparison boards, Recents, Services, App Intents and the CLI never embed it. The
+project is left out, and the save confirmation says why, when the capture has redacted lines
+or blur boxes, is a terminal capture, or the secret check finds anything; "continue anyway"
+covers the image only. Dropping such a PNG on the editor asks whether to open it as an
+editable project (one undo returns to the previous document) or use it as an image.
+
 **Confidential clipboard exports (v1.3.0 and later):** enable **Settings → Export →
 Clipboard → Mark clipboard exports as confidential**, or pass
 `--copy --conceal-clipboard` to the CLI.

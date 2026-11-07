@@ -263,11 +263,7 @@ extension EditorView {
     /// A cancelled save panel is silent.
     func saveImage() {
         guard clearsPreflight(.save, EditorPresentation.savePayload(of: settings)) else { return }
-        let outcome = ExportManager.saveToFile(
-            settings.exportConfig, scale: CGFloat(settings.effectiveExportScale),
-            format: settings.export.format, fixedSize: settings.effectiveFixedSize,
-            profile: settings.export.colorProfile)
-        if let feedback = ExportFeedback.saveOutcome(outcome) {
+        if let feedback = EditorImageSave.run(settings) {
             session.feedback(feedback)
         }
     }

@@ -14,6 +14,14 @@ can never drift.
 
 ### Added
 
+- Settings ▸ Output ▸ Embed editable project in PNG files (off by default) stores the source
+  code, style, header, marks and alt text inside PNGs written by the editor's Save Image and
+  quick capture's Also save to a file, as the same payload a share link carries. Anyone with
+  the file can extract the source. Clipboard copies, multi-size and carousel exports, boards,
+  Recents, Services, App Intents and the CLI never embed it, and redacted lines, blur boxes,
+  terminal captures or a secret-check finding leave it out with a note in the save
+  confirmation. Dropping such a PNG on the editor asks whether to open it as an editable
+  project, undoable in one step, or use it as an image.
 - `vitrine run -- <command>` runs a command you type in a pseudo-terminal, as `vgrab` does, and
   copies a terminal image of its colored output with the project, branch and program name above
   it. It needs no shell setup, is free like `vgrab`, keeps the output on this Mac, and exits with

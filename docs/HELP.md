@@ -55,6 +55,14 @@ webpage loads on this Mac, but the website still receives a request. See the
 [capability reference](CAPABILITIES.md) and [permissions](PERMISSIONS.md) for
 retention, consent, and channel details. Review web capture's network use in **Settings ▸ Input**.
 
+**Embed editable project in PNG files** (**Settings ▸ Output**, off by default) puts the
+source code, style, header, annotations and alt text inside saved PNGs. Anyone with the file
+can extract that source code. Only the editor's Save Image and quick capture's **Also save to
+a file** embed it; clipboard copies, multi-size and carousel exports, comparison boards,
+Recents, Services, App Intents and the CLI never do. Redacted lines, blur boxes, terminal
+captures and anything the secret check flags keep the project out of the file. Dropping such
+a PNG on the editor asks whether to open it as a project or use it as an image.
+
 ## What's New
 
 Vitrine shows version-aware release notes once per new version (**Help ▸ What's
