@@ -85,11 +85,14 @@ jobs:
             2> "${RUNNER_TEMP}/reuse.log" >> "${GITHUB_OUTPUT}"
           { echo "### Pull request evidence"; echo '```'; cat "${RUNNER_TEMP}/reuse.log"; echo '```'; } \
             | tee -a "${GITHUB_STEP_SUMMARY}"
-      # Anything but a clean single-commit diff counts as a bump, so the full gate runs.
+      # Anything but a single pushed commit that leaves project.yml alone counts as a bump.
       - name: Detect a version bump
         id: bump
+        env:
+          BEFORE: ${{ github.event.before }}
         run: |
-          if changed="$(git diff --name-only HEAD^ HEAD)" && ! grep -qx project.yml <<<"${changed}"; then
+          if [ "$(git rev-parse HEAD^ 2>/dev/null)" = "${BEFORE}" ] \
+            && changed="$(git diff --name-only HEAD^ HEAD)" && ! grep -qx project.yml <<<"${changed}"; then
             echo "version_bump=false" >> "${GITHUB_OUTPUT}"
           else
             echo "version_bump=true" >> "${GITHUB_OUTPUT}"
@@ -638,9 +641,9 @@ jobs:
           fi
           make test-ui RESULT_BUNDLE="${RUNNER_TEMP}/test-ui.xcresult" TEST_UI_ONLY="${UI_TESTS}" 2>&1 | tee test-ui.log
 
-      # The documentation journey is not in the smoke list, so only a whole-suite run has it.
+      # The documentation journey is not in the smoke list, so only a run that includes it has it.
       - name: Export documentation package UI evidence
-        if: ${{ needs.changes.outputs.ui_tests == '' }}
+        if: ${{ needs.changes.outputs.ui_tests == '' || contains(needs.changes.outputs.ui_tests, 'DocumentationExportUITests') }}
         run: |
           xcrun xcresulttool export attachments \
             --test-id 'DocumentationExportUITests/testDocumentationPackageInBothAppearancesAndWindowSizes()' \

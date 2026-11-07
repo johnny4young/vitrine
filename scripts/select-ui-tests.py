@@ -35,7 +35,7 @@ TOUR_FILES = (
     "scripts/validate-screenshot-tour.py",
 )
 CLASS = re.compile(r"^\s*(?:final\s+)?class\s+(\w+)\s*:\s*XCTestCase\b")
-FUNC = re.compile(r"^\s*(?:@\w+\s+)*(?:(?:private|fileprivate|internal|static)\s+)*func\s+(\w+)\s*\(")
+TEST = re.compile(r"^(\s*)(?:@\w+(?:\([^)]*\))?\s+)*(?:\w+\s+)*func\s+(test\w*)\s*[(<]")
 HUNK = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
 
 
@@ -49,25 +49,31 @@ def is_shared(path: str) -> bool:
 
 
 def touched(source: str, lines: set[int]) -> set[str]:
-    """`Class/test` ids whose bodies contain `lines`; a line outside a test names its class."""
+    """`Class/test` ids whose bodies contain `lines`; a line outside a test body names its class.
+
+    A test body ends at the closing brace at its own indentation, which swift-format keeps.
+    """
     owners: list[tuple[str | None, str | None]] = []
     current_class: str | None = None
-    current_func: str | None = None
+    current_test: str | None = None
+    test_indent = 0
     for text in source.splitlines():
         if match := CLASS.match(text):
-            current_class, current_func = match.group(1), None
-        elif match := FUNC.match(text):
-            current_func = match.group(1)
-        owners.append((current_class, current_func))
+            current_class, current_test = match.group(1), None
+        elif current_test is None and current_class and (match := TEST.match(text)):
+            current_test, test_indent = match.group(2), len(match.group(1))
+        owners.append((current_class, current_test))
+        indent = len(text) - len(text.lstrip())
+        stripped = text.strip()
+        if current_test and indent == test_indent and (
+                stripped.startswith("}") or stripped.endswith("}")):
+            current_test = None
     found: set[str] = set()
     for line in lines:
-        test_class, function = owners[min(max(line, 1), len(owners)) - 1] if owners else (None, None)
+        test_class, test = owners[min(max(line, 1), len(owners)) - 1] if owners else (None, None)
         if test_class is None:
             continue
-        if function is None or not function.startswith("test"):
-            found.add(test_class)
-        else:
-            found.add(f"{test_class}/{function}")
+        found.add(f"{test_class}/{test}" if test else test_class)
     return found
 
 
@@ -133,7 +139,15 @@ def run_self_test() -> int:
         "        let y = 2",                              # 8
         "    }",                                          # 9
         "    private func helper() {}",                   # 10
-        "}",                                              # 11
+        "    func testGamma() {",                         # 11
+        "        func local() -> Int { 3 }",              # 12
+        "        let z = local()",                        # 13
+        "    }",                                          # 14
+        "    override func setUpWithError() throws {",    # 15
+        "        continueAfterFailure = false",           # 16
+        "    }",                                          # 17
+        "    private let timeout = 5.0",                  # 18
+        "}",                                              # 19
     ])
     smoke_ids = ["VitrineUITests/testSmoke"]
     path = "UITests/VitrineUITests.swift"
@@ -143,6 +157,12 @@ def run_self_test() -> int:
     expect(not visual, "a smoke-suite edit does not run the tour")
     ids, _ = select({path: {10}}, {path: source}, smoke_ids)
     expect(ids == ["VitrineUITests", PURGE], f"a helper change runs its class: {ids}")
+    ids, _ = select({path: {13}}, {path: source}, smoke_ids)
+    expect(ids == ["VitrineUITests/testGamma", "VitrineUITests/testSmoke", PURGE],
+           f"a line after a nested function stays in its test: {ids}")
+    for line in (16, 18):
+        ids, _ = select({path: {line}}, {path: source}, smoke_ids)
+        expect(ids == ["VitrineUITests", PURGE], f"class scope after a test runs the class: {ids}")
     ids, _ = select({"Vitrine/App/AppDelegate.swift": set()}, {}, smoke_ids)
     expect(ids == ["VitrineUITests/testSmoke", PURGE], "product changes run the smoke list")
     expect(select({"UITests/Robots/EditorRobot.swift": {1}}, {}, smoke_ids) == ([], True),
@@ -182,7 +202,7 @@ def main(argv: list[str]) -> int:
             sources = {path: text for path, text in sources.items() if text is not None}
             ids, visual = select(changed, sources, smoke((ROOT / SMOKE_LIST).read_text()))
             reason = f"{len(ids)} selected" if ids else "shared UI-test code changed"
-        except (OSError, subprocess.CalledProcessError) as error:
+        except Exception as error:  # Any failure runs everything rather than failing the job.
             ids, visual, reason = [], True, f"selection failed ({error}); running everything"
     print(f"UI tests: {reason}; visual tour {'runs' if visual else 'skipped'}.", file=sys.stderr)
     print(f"ui_tests={' '.join(ids)}")

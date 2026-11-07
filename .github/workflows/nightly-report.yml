@@ -12,8 +12,9 @@ permissions:
   contents: read
   issues: write
 
+# Keyed by the triggering event so a pull request's completion never displaces a nightly report.
 concurrency:
-  group: nightly-report
+  group: nightly-report-${{ github.event.workflow_run.event }}
   cancel-in-progress: false
 
 jobs:
@@ -21,7 +22,7 @@ jobs:
     name: Report the nightly CI result
     if: >-
       github.event.workflow_run.event == 'schedule'
-      && contains(fromJSON('["success", "failure", "timed_out"]'), github.event.workflow_run.conclusion)
+      && !contains(fromJSON('["skipped", "neutral", "stale"]'), github.event.workflow_run.conclusion)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

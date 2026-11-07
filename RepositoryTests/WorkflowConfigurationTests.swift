@@ -346,15 +346,24 @@ struct WorkflowConfigurationTests {
         #expect(changes.contains("--event pull_request --base HEAD^1"))
         #expect(changes.contains("fetch-depth: 2"))
         // A failed or missing classification runs the gates instead of skipping them.
-        for name in ["build", "ui-test", "visual-tour"] {
+        let failOpen =
+            "!cancelled() && needs.changes.outputs.app != 'false' && needs.reuse.outputs.reuse != 'true'"
+        let conditions = [
+            "build": "",
+            "ui-test":
+                " && (github.event_name != 'push' || needs.reuse.outputs.version_bump != 'false')",
+            "visual-tour":
+                " && ((github.event_name == 'pull_request' && needs.changes.outputs.visual != 'false')"
+                + " || (github.event_name == 'push' && needs.reuse.outputs.version_bump != 'false')"
+                + " || (github.event_name != 'pull_request' && github.event_name != 'push'))",
+        ]
+        for (name, extra) in conditions {
             let job = try Self.job(name, in: ci)
             #expect(
                 job.contains("needs: [changes, reuse]"),
                 "\(name) must wait for the classification")
             #expect(
-                job.contains(
-                    "if: ${{ !cancelled() && needs.changes.outputs.app != 'false' && needs.reuse.outputs.reuse != 'true'"
-                ), "\(name) must fail open")
+                job.contains("\n    if: ${{ \(failOpen)\(extra) }}\n"), "\(name) must fail open")
         }
         // App, CLI and repository suites all read documentation, so every unit suite runs.
         let docs = try Self.job("docs-checks", in: ci)
@@ -742,6 +751,12 @@ struct WorkflowConfigurationTests {
         #expect(report.contains("workflow_run:") && report.contains("workflows: [CI]"))
         #expect(report.contains("github.event.workflow_run.event == 'schedule'"))
         #expect(report.contains("issues: write"))
+        #expect(
+            report.contains("group: nightly-report-${{ github.event.workflow_run.event }}"),
+            "a pull request's report run must not displace the nightly's")
+        #expect(
+            report.contains(#"!contains(fromJSON('["skipped", "neutral", "stale"]')"#),
+            "every nightly that did not pass, including a startup failure, is reported")
         #expect(!report.contains("actions/checkout"), "the report never runs repository code")
         #expect(!ci.contains("issues: write"), "CI itself stays read-only")
     }
@@ -763,7 +778,10 @@ struct WorkflowConfigurationTests {
         #expect(ui.contains(#"TEST_UI_ONLY="${UI_TESTS}""#))
         #expect(ui.contains("::notice title=UI test selection::"))
         #expect(ui.contains("needs.reuse.outputs.version_bump != 'false'"))
-        #expect(ui.contains("if: ${{ needs.changes.outputs.ui_tests == '' }}"))
+        #expect(
+            ui.contains(
+                "if: ${{ needs.changes.outputs.ui_tests == '' || contains(needs.changes.outputs.ui_tests, 'DocumentationExportUITests') }}"
+            ), "a selection that includes the documentation journey still exports its evidence")
 
         let tour = try Self.job("visual-tour", in: ci)
         #expect(tour.contains("needs.changes.outputs.visual != 'false'"))
@@ -772,6 +790,9 @@ struct WorkflowConfigurationTests {
         let reuse = try Self.job("reuse", in: ci)
         #expect(reuse.contains("version_bump: ${{ steps.bump.outputs.version_bump }}"))
         #expect(reuse.contains("grep -qx project.yml"))
+        #expect(
+            reuse.contains(#"[ "$(git rev-parse HEAD^ 2>/dev/null)" = "${BEFORE}" ]"#),
+            "a push of several commits counts as a version bump")
 
         let make = try Self.makefile()
         #expect(make.contains("$(foreach t,$(TEST_UI_ONLY),'-only-testing:VitrineUITests/$(t)')"))
