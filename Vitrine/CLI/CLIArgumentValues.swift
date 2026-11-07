@@ -39,6 +39,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolveDiffView(_ raw: String, flag: String) throws -> DiffViewMode {
+        guard let value = DiffViewMode(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     func containsControlCharacter(_ value: String) -> Bool {
         value.unicodeScalars.contains { CharacterSet.controlCharacters.contains($0) }
     }
@@ -364,6 +371,13 @@ extension CLIArgumentParser {
         return value
     }
 
+    func resolvePaddingMode(_ raw: String, flag: String) throws -> PaddingMode {
+        guard let value = PaddingMode(rawValue: raw.lowercased()) else {
+            throw CLIError.invalidValue(flag: flag, value: raw)
+        }
+        return value
+    }
+
     /// Parses and range-checks the code-card corner radius in points.
     func resolveCornerRadius(_ raw: String, flag: String) throws -> Double {
         guard let value = Double(raw), SettingsDefaults.cornerRadiusRange.contains(value) else {
@@ -416,6 +430,13 @@ extension CLIArgumentParser {
         }
 
         return LineHighlight.normalize(ranges)
+    }
+
+    /// `--lines` takes one span, so the gutter has a single first number.
+    func resolveSourceLines(_ raw: String, flag: String) throws -> ClosedRange<Int> {
+        let ranges = try resolveLineRanges(raw, flag: flag)
+        guard ranges.count == 1 else { throw CLIError.invalidValue(flag: flag, value: raw) }
+        return ranges[0]
     }
 
     func positiveLine(_ text: Substring) -> Int? {

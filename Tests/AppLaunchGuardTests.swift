@@ -1,5 +1,8 @@
+import AppKit
 import Foundation
+import KeyboardShortcuts
 import Testing
+import VitrineDomain
 
 @testable import Vitrine
 
@@ -52,6 +55,18 @@ struct AppLaunchGuardTests {
                 "XCTestConfigurationFilePath": "/tmp/x.xctestconfiguration"
             ]))
         #expect(!AppDelegate.shouldStartUpdateScheduler(ProcessInfo.processInfo.environment))
+    }
+
+    // MARK: - Highlighter warm-up
+
+    /// The warm-up keeps JavaScriptCore resident from launch, so it runs only for a hotkey
+    /// that renders straight away: a quick-capture shortcut, not one that opens the editor.
+    @Test func warmsTheHighlighterOnlyForAQuickCaptureHotkey() {
+        let shortcut = KeyboardShortcuts.Shortcut(.s, modifiers: [.command, .shift])
+        #expect(AppDelegate.prewarmsHighlighter(shortcut: shortcut, action: .quickCapture))
+        #expect(!AppDelegate.prewarmsHighlighter(shortcut: shortcut, action: .openEditor))
+        #expect(!AppDelegate.prewarmsHighlighter(shortcut: nil, action: .quickCapture))
+        #expect(!AppDelegate.prewarmsHighlighter(shortcut: nil, action: .openEditor))
     }
 
 }

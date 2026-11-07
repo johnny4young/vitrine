@@ -25,7 +25,7 @@ extension EditorView {
         for provider in providers {
             do {
                 if let reference = try await readImageReference(from: provider) {
-                    applyImage(reference)
+                    await offerImage(reference)
                     return
                 }
             } catch is CancellationError {
@@ -264,6 +264,72 @@ extension EditorView {
         settings.noteDocumentReplaced()
         Log.capture.info("Editor drop loaded a foreground image")
     }
+
+    /// A PNG saved with an embedded project asks whether to reopen it as code; any other
+    /// image, or one whose project is missing or invalid, is beautified as before.
+    func offerImage(_ reference: ImageReference) async {
+        guard settings.outputBehavior.asksToOpenEmbeddedProjects,
+            let url = foregroundImageStore.url(for: reference),
+            let snapshot = await EmbeddedProject.snapshot(inPNGAt: url)
+        else { return applyImage(reference) }
+        pendingProject = PendingEmbeddedProject(image: reference, snapshot: snapshot)
+    }
+
+    func resolvePendingProject(_ choice: EmbeddedProjectChoice) {
+        guard let pending = pendingProject else { return }
+        pendingProject = nil
+        switch choice {
+        case .image:
+            applyImage(pending.image)
+        case .imageFromNowOn:
+            settings.outputBehavior.asksToOpenEmbeddedProjects = false
+            applyImage(pending.image)
+        case .editable:
+            session.livingSnapshot.stop()
+            pendingDocumentUndo = Self.openProject(pending.snapshot, in: settings)
+            Log.capture.info("Editor drop opened an embedded project")
+        }
+    }
+
+    /// Replaces the document with `snapshot` on a fresh config, like a share link, so
+    /// nothing from the current document leaks in. Returns the replaced document.
+    static func openProject(_ snapshot: SharedSnapshot, in settings: AppSettings) -> SnapshotConfig
+    {
+        let previous = settings.config
+        var config = SnapshotConfig()
+        snapshot.apply(to: &config)
+        settings.config = config
+        settings.noteDocumentReplaced()
+        return previous
+    }
+
+    /// One undo step back to `previous`. Registered only after the code editor has synced
+    /// the new text, because that sync clears the window's undo stack.
+    static func registerDocumentUndo(
+        restoring previous: SnapshotConfig, in settings: AppSettings, undoManager: UndoManager?
+    ) {
+        undoManager?.registerUndo(withTarget: settings) { settings in
+            settings.config = previous
+            settings.noteDocumentReplaced()
+        }
+        undoManager?.setActionName(String(localized: "Open Editable Project"))
+    }
+
+    #if DEBUG
+        /// Dev hook: offers a generated PNG with an embedded project through the drop path.
+        func offerEmbeddedProjectDemo() async {
+            var demo = SnapshotConfig()
+            demo.code = "let greeting = \"Hello, Vitrine\""
+            demo.language = .swift
+            guard let link = EmbeddedProject.plan(for: demo, format: .png, enabled: true).link,
+                let image = ExportManager.renderCGImage(demo, scale: 1),
+                let data = EmbeddedProject.pngData(from: image, embedding: link),
+                let reference = try? await foregroundImageStore.importImageConcurrently(
+                    data: data, preferredExtension: "png")
+            else { return }
+            await offerImage(reference)
+        }
+    #endif
 
     /// Reads a dropped file's URL from a provider, or `nil` when it carries none.
     /// The coerced item is a `URL` (or URL bytes), which `FileInputLoader` then

@@ -167,6 +167,150 @@ struct ComparisonBoardDraftTests {
         #expect(twoX.profile == .displayP3)
     }
 
+    @Test func variantsRenderEveryThemeOnceAndBoardTheFirstFour() throws {
+        var config = SnapshotConfig()
+        config.code = "let x = 1"
+        config.language = .python
+        var renderedThemes: [String] = []
+        var renderedScales: [CGFloat] = []
+        let themes = ComparisonBoardDraft.variantThemes(startingWith: .nord)
+
+        let draft = try ComparisonBoardDraft(
+            variantsOf: config, themes: themes, profile: .sRGB, renderScale: 2,
+            render: { config, scale, _ in
+                #expect(config.code == "let x = 1")
+                renderedThemes.append(config.theme.id)
+                renderedScales.append(scale)
+                return solidImage()
+            })
+
+        #expect(
+            renderedThemes == ["nord", "one-dark", "one-light", "dracula", "github", "github-dark"])
+        #expect(renderedScales.allSatisfy { $0 == 2 })
+        #expect(draft.variants.map(\.theme.id) == renderedThemes)
+        #expect(draft.items.map(\.id) == draft.variants.prefix(4).map(\.id))
+        #expect(draft.items.map(\.label) == ["Nord", "One Dark", "One Light", "Dracula"])
+        #expect(draft.items.allSatisfy { $0.detail == Language.python.displayName })
+        #expect(draft.isValid)
+    }
+
+    @Test func variantThemesLeadWithTheSourceWithoutRepeatingIt() {
+        #expect(
+            ComparisonBoardDraft.variantThemes(startingWith: .dracula).map(\.id) == [
+                "dracula", "one-dark", "one-light", "github", "github-dark",
+            ])
+    }
+
+    @Test func variantsNeedTwoDistinctThemesAndASupportedScale() {
+        #expect(throws: ComparisonBoardDraft.CreationError.invalidSelection(1)) {
+            try ComparisonBoardDraft(
+                variantsOf: SnapshotConfig(), themes: [.oneDark, .oneDark], profile: .sRGB,
+                render: { _, _, _ in solidImage() })
+        }
+        #expect(throws: ComparisonBoardDraft.CreationError.invalidRenderScale(4)) {
+            try ComparisonBoardDraft(
+                variantsOf: SnapshotConfig(), themes: [.oneDark, .github], profile: .sRGB,
+                renderScale: 4, render: { _, _, _ in solidImage() })
+        }
+    }
+
+    @Test func variantRenderFailureNamesTheTheme() {
+        func render(
+            _ config: SnapshotConfig, _ scale: CGFloat, _ profile: ColorProfile
+        ) throws(RenderBudgetError) -> CGImage {
+            _ = scale
+            _ = profile
+            guard config.theme.id == "one-dark" else { throw .allocationFailed }
+            return solidImage()
+        }
+
+        #expect(
+            throws: ComparisonBoardDraft.CreationError.renderFailure(
+                index: 1, .allocationFailed)
+        ) {
+            try ComparisonBoardDraft(
+                variantsOf: SnapshotConfig(), themes: [.oneDark, .github], profile: .sRGB,
+                render: render)
+        }
+    }
+
+    @Test func togglingVariantsStaysWithinTheBoardRange() throws {
+        let draft = try ComparisonBoardDraft(
+            variantsOf: SnapshotConfig(),
+            themes: ComparisonBoardDraft.variantThemes(startingWith: .oneDark),
+            profile: .sRGB, render: { _, _, _ in solidImage() })
+        let variants = draft.variants
+        #expect(variants.count == 5)
+        #expect(!draft.canToggle(variants[4]))
+        draft.toggleVariant(id: variants[4].id)
+        #expect(draft.items.count == 4)
+
+        draft.toggleVariant(id: variants[1].id)
+        draft.toggleVariant(id: variants[2].id)
+        #expect(draft.items.map(\.id) == [variants[0].id, variants[3].id])
+        #expect(!draft.canToggle(variants[0]))
+        draft.toggleVariant(id: variants[0].id)
+        #expect(draft.items.count == 2)
+
+        draft.items[0].label = "Edited"
+        draft.layout = .slider
+        draft.toggleVariant(id: variants[4].id)
+        #expect(draft.items.map(\.id) == [variants[0].id, variants[3].id, variants[4].id])
+        #expect(draft.items[2].label == "GitHub Dark")
+        #expect(draft.items[0].label == "Edited")
+        #expect(draft.layout == .automatic)
+        #expect(draft.isOnBoard(variants[4]))
+        draft.toggleVariant(id: UUID())
+        #expect(draft.items.count == 3)
+    }
+
+    @Test func longOrMultilineThemeNamesStillMakeAValidBoard() throws {
+        let long = Theme(
+            id: "mine", displayName: "My team's\nvery long custom theme name for the docs site",
+            hlJsTheme: "github")
+        let blank = Theme(id: "blank", displayName: " \n ", hlJsTheme: "github")
+        let draft = try ComparisonBoardDraft(
+            variantsOf: SnapshotConfig(), themes: [long, blank], profile: .sRGB,
+            render: { _, _, _ in solidImage() })
+
+        #expect(draft.items[0].label.count == ComparisonBoard.maximumLabelLength)
+        #expect(draft.items[0].label.hasPrefix("My team's very long"))
+        #expect(draft.items[1].label == "blank")
+        #expect(draft.isValid)
+    }
+
+    @Test func aVariantAddedBackKeepsItsCaptionAndThemeOrder() throws {
+        let draft = try ComparisonBoardDraft(
+            variantsOf: SnapshotConfig(),
+            themes: ComparisonBoardDraft.variantThemes(startingWith: .oneDark),
+            profile: .sRGB, render: { _, _, _ in solidImage() })
+        let variants = draft.variants
+        draft.items[1].label = "Light option"
+        draft.items[1].detail = "For docs"
+
+        draft.toggleVariant(id: variants[1].id)
+        draft.toggleVariant(id: variants[4].id)
+        #expect(draft.items.map(\.id) == [0, 2, 3, 4].map { variants[$0].id })
+        draft.toggleVariant(id: variants[4].id)
+        draft.toggleVariant(id: variants[1].id)
+
+        #expect(draft.items.map(\.id) == [0, 1, 2, 3].map { variants[$0].id })
+        #expect(draft.items[1].label == "Light option")
+        #expect(draft.items[1].detail == "For docs")
+
+        // The captures list's remove button keeps the caption too.
+        draft.items[2].label = "Vampire"
+        draft.removeItem(id: variants[2].id)
+        draft.toggleVariant(id: variants[2].id)
+        #expect(draft.items[2].id == variants[2].id)
+        #expect(draft.items[2].label == "Vampire")
+    }
+
+    @Test func boardsFromSeveralCapturesOfferNoVariants() throws {
+        let draft = try makeDraft(captures: [capture("one"), capture("two")])
+        #expect(draft.variants.isEmpty)
+    }
+
     private func makeDraft(captures: [Capture]) throws -> ComparisonBoardDraft {
         try ComparisonBoardDraft(
             captures: captures,

@@ -10,6 +10,9 @@ struct GoldenManifest: Codable, Equatable {
     /// The runner image the committed PNGs were recorded on. The strict pixel
     /// comparison requires the live runner to equal this.
     var pinnedImage: RunnerImage
+    /// Other images whose recorded renders were reviewed as pixel-identical, so a strict
+    /// run stays strict while GitHub rolls a runner image out.
+    var qualifiedImages: [RunnerImage]? = nil
     /// Per-scenario metadata: the expected pixel dimensions and a content hash of
     /// the deterministic config, keyed by the scenario's raw name.
     var scenarios: [String: ScenarioRecord]
@@ -20,6 +23,10 @@ struct GoldenManifest: Codable, Equatable {
 
     /// The on-disk file name for the manifest within the golden fixtures directory.
     static let fileName = "manifest.json"
+
+    func qualifies(_ image: RunnerImage) -> Bool {
+        pinnedImage == image || (qualifiedImages ?? []).contains(image)
+    }
 
     /// The identity of a macOS/Xcode runner image, captured from values that are
     /// stable on a given image and differ across OS/toolchain versions.
