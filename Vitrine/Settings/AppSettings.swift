@@ -37,6 +37,10 @@ final class AppSettings {
                 renderConfiguration.diffHunks = nil
             }
             guard oldValue != documentCode else { return }
+            // An edited patch no longer matches the range it came from.
+            if renderConfiguration.diffSource != nil {
+                renderConfiguration.diffSource = nil
+            }
             // Parsed only when a pinned comment, here or in undo, has to follow the edit.
             var edit: DiffLineAnchor.Edit?
             func lineEdit() -> DiffLineAnchor.Edit {
@@ -101,6 +105,7 @@ final class AppSettings {
         }
         set {
             let previousPick = renderConfiguration.diffHunks
+            let previousSource = renderConfiguration.diffSource
             if documentCode != newValue.code {
                 documentCode = newValue.code
             }
@@ -111,6 +116,12 @@ final class AppSettings {
                 normalized.diffHunks == previousPick
             {
                 normalized.diffHunks = nil
+            }
+            // A new load brings a new `loadID`; the same one means an edit carried it forward.
+            if let previousSource, renderConfiguration.diffSource == nil,
+                let carried = normalized.diffSource, carried.loadID == previousSource.loadID
+            {
+                normalized.diffSource = nil
             }
             if renderConfiguration != normalized {
                 renderConfiguration = normalized

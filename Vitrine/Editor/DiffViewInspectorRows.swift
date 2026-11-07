@@ -99,45 +99,57 @@ struct DiffViewInspectorRows: View {
     }
 }
 
-/// Where the diff came from. The sandboxed app can't run Git, so Refresh copies the command
-/// that hands the same range to the editor again.
+/// Where the diff came from, shown only for a CLI range or staged set. The sandboxed app
+/// can't run Git, so Copy Command hands over the line that brings the diff back instead.
 struct DiffSourceRows: View {
     @Bindable var settings: AppSettings
     var feedback: FeedbackDisplay
 
     var body: some View {
-        let source = settings.style.diffSource
-        InspectorRow(label: Text("Source")) {
-            HStack(spacing: 6) {
-                Text(kindLabel(source))
-                    .font(.system(size: VitrineTokens.FontSize.caption))
-                    .foregroundStyle(VitrineTokens.Text.secondary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(Capsule().fill(VitrineTokens.Chrome.segmentTrack))
-                    .accessibilityIdentifier("diff-source-chip")
-                if let source {
-                    Button("Refresh") { feedback(Self.copyRefresh(source, settings: settings)) }
-                        .controlSize(.small)
-                        .help("Copy the command that renders this diff again")
-                        .accessibilityIdentifier("diff-source-refresh-button")
+        if let source = settings.style.diffSource {
+            InspectorRow(
+                label: Text(String(localized: "diff.source.label", defaultValue: "Source"))
+            ) {
+                HStack(spacing: 6) {
+                    Text(source.kind == .range ? "Revision range" : "Staged")
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(VitrineTokens.Text.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(VitrineTokens.Chrome.segmentTrack))
+                        .accessibilityIdentifier("diff-source-chip")
+                    Button("Copy Command") {
+                        feedback(Self.copyCommand(source, settings: settings))
+                    }
+                    .controlSize(.small)
+                    .help("Copy the command that renders this diff again")
+                    .accessibilityIdentifier("diff-source-copy-command-button")
                 }
             }
-        }
-        if let source {
-            Text(
-                verbatim: [source.gitSummary, source.repository].compactMap { $0 }
-                    .joined(separator: " · ")
-            )
-            .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
-            .foregroundStyle(VitrineTokens.Text.tertiary)
-            .lineLimit(1)
-            .truncationMode(.middle)
-            .accessibilityIdentifier("diff-source-summary")
+            let summary = [source.gitSummary, source.repository].compactMap { $0 }
+                .joined(separator: " · ")
+            Text(verbatim: summary)
+                .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .textSelection(.enabled)
+                .help(Text(verbatim: summary))
+                .accessibilityIdentifier("diff-source-summary")
             Toggle("Include in share links", isOn: sharesInLinks)
                 .toggleStyle(.checkbox)
                 .font(.system(size: VitrineTokens.FontSize.caption))
                 .accessibilityIdentifier("diff-source-share-toggle")
+            if !source.linkDetails.isEmpty {
+                let details = source.linkDetails.joined(separator: ", ")
+                Text("Shares: \(details)")
+                    .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .help(Text(verbatim: details))
+                    .accessibilityIdentifier("diff-source-share-details")
+            }
         }
     }
 
@@ -147,15 +159,9 @@ struct DiffSourceRows: View {
             set: { settings.style.diffSource?.sharesInLinks = $0 })
     }
 
-    private func kindLabel(_ source: DiffSource?) -> LocalizedStringKey {
-        switch source?.kind {
-        case .range: "Branch range"
-        case .staged: "Staged"
-        case nil: "Pasted patch"
-        }
-    }
-
-    static func copyRefresh(
+    /// Pathspecs are root-relative, so the line runs at the root. A name from a share link is
+    /// someone else's text and never goes into the instruction.
+    static func copyCommand(
         _ source: DiffSource, settings: AppSettings,
         copy: (String, Bool) -> Bool = { ClipboardWriter.copy($0, concealed: $1) }
     ) -> Notifier.CaptureFeedback {
@@ -163,10 +169,14 @@ struct DiffSourceRows: View {
         guard copy(line, settings.outputBehavior.concealClipboard) else {
             return Notifier.failure(String(localized: "Couldn't copy the command"))
         }
-        guard let repository = source.repository else {
-            return Notifier.confirmation(String(localized: "Copied. Run it in the repository."))
+        guard let repository = source.repository, !source.isReceived,
+            DiffSource.isValidRepository(repository)
+        else {
+            return Notifier.confirmation(
+                String(localized: "Copied. Run it at the repository root."))
         }
-        return Notifier.confirmation(String(localized: "Copied. Run it in \(repository)."))
+        return Notifier.confirmation(
+            String(localized: "Copied. Run it at the root of \(repository)."))
     }
 }
 

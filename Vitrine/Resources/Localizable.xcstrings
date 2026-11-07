@@ -1,13 +1,64 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Branch range" : {
+    "Revision range" : {
       "comment" : "Diff source chip: the diff came from a Git revision range",
       "localizations" : {
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rango de ramas"
+            "value" : "Rango de revisiones"
+          }
+        }
+      }
+    },
+    "Copied. Run it at the repository root." : {
+      "comment" : "HUD after copying the command that renders a diff again",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Ejecútalo en la raíz del repositorio."
+          }
+        }
+      }
+    },
+    "Copied. Run it at the root of %@." : {
+      "comment" : "HUD after copying the diff command; %@ is the repository folder name",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Ejecútalo en la raíz de %@."
+          }
+        }
+      }
+    },
+    "Shares: %@" : {
+      "comment" : "Diff source: what a share link would carry; %@ is a list of range, folder and paths",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparte: %@"
+          }
+        }
+      }
+    },
+    "diff.source.label" : {
+      "comment" : "Inspector row label: where a diff came from (a Git range or staged changes).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Origen"
           }
         }
       }
@@ -18,29 +69,7 @@
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Preparado"
-          }
-        }
-      }
-    },
-    "Pasted patch" : {
-      "comment" : "Diff source chip: the diff was pasted or opened as a file",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Parche pegado"
-          }
-        }
-      }
-    },
-    "Refresh" : {
-      "comment" : "Button that copies the command which renders the diff again",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Actualizar"
+            "value" : "Cambios preparados"
           }
         }
       }
@@ -63,28 +92,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Incluir en enlaces compartidos"
-          }
-        }
-      }
-    },
-    "Copied. Run it in the repository." : {
-      "comment" : "HUD after copying the diff refresh command",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiado. Ejecútalo en el repositorio."
-          }
-        }
-      }
-    },
-    "Copied. Run it in %@." : {
-      "comment" : "HUD after copying the diff refresh command; %@ is the repository folder name",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copiado. Ejecútalo en %@."
           }
         }
       }

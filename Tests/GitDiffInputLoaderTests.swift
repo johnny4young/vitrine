@@ -250,5 +250,7 @@ struct GitDiffInputLoaderTests {
         #expect(dotfiles?.repository == nil)
         #expect(dotfiles?.kind == .staged)
         #expect(provenance(.staged, cwd: "/tmp", root: "/")?.repository == nil)
+        let spaced = provenance(.staged, cwd: "/code/My Project", root: "/code/My Project")
+        #expect(spaced?.kind == .staged && spaced?.repository == nil)
     }
 }

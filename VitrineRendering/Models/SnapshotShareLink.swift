@@ -109,10 +109,13 @@ public struct SharedSnapshot: Codable, Equatable {
         config.diffWordMarks = diffWordMarks ?? false
         config.diffHunks = diffHunks
         config.diffLineNumbers = diffLineNumbers ?? .rows
-        // The receiver decides again before passing it on.
-        config.diffSource = diffSource.map {
+        // Only a diff has a source. The receiver decides again before passing it on.
+        config.diffSource = diffSource.flatMap {
+            guard config.language == .diff else { return nil }
             var received = $0
             received.sharesInLinks = false
+            received.isReceived = true
+            received.loadID = UUID()
             return received
         }
         config.terminalColumns = terminalColumns

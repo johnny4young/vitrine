@@ -253,6 +253,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             language: handoff.language ?? interpreted.language)
         config.terminalColumns = handoff.columns
         config.diffSource = config.language == .diff ? handoff.diffSource : nil
+        config.diffSource?.loadID = UUID()
         return config
     }
 

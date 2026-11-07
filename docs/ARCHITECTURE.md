@@ -621,12 +621,17 @@ loaded source is tagged `.diff`, and diff bands default on unless the caller exp
 disables them.
 With `--edit`, the handoff URL also carries a `DiffSource`: the range or staged set, pathspecs
 made relative to the repository root (found by walking up to `.git`), a non-default context,
-and the root folder's name unless it is the home folder. The sandboxed app cannot run
-`/usr/bin/git`, so the inspector's Refresh copies `vitrine render --git-diff <range> --edit`,
-shell-quoted, instead of running anything. `DiffSource` validates on every way in (handoff,
-window restoration, share links): revisions allow only letters, digits and Git's revision
-punctuation, and pathspecs must stay inside the repository. Settings never store it, images
-never draw it, and share links carry it only after the user opts in for that document.
+and the root folder's name unless it is the home folder or not a plain folder name. The
+sandboxed app cannot run `/usr/bin/git`, so the inspector's Copy Command copies
+`vitrine render --git-diff <range> --edit`, shell-quoted, instead of running anything.
+`DiffSource` validates on every way in (handoff, window restoration, share links): revisions
+allow only ASCII letters, digits and Git's revision punctuation, folder names only ASCII
+letters, digits and `._-` up to 64 bytes, and pathspecs must stay inside the repository;
+limits count UTF-8 bytes. A text edit drops the source: each load stamps a `loadID`, and a
+config write that changes the text while carrying the same one forward is an edit. Settings
+never store it, images never draw it, and share links carry it only after the user opts in
+for that document. A received source applies only to a diff, and its folder name never
+appears in the confirmation.
 Local CLI background images are imported once into an invocation-scoped
 `BackgroundImageStore`; `CLIRenderer` threads that isolated store independently from
 the foreground-image store through `ExportManager`, then removes it after a single

@@ -678,6 +678,8 @@ final class VitrineUITests: XCTestCase {
         XCTAssertTrue(old.wait(for: \.isSelected, toEqual: true, timeout: 3))
 
         assertExists(element("diff-hunk-picker", in: app), in: app)
+        // A diff with no CLI source shows no Source row.
+        XCTAssertFalse(element("diff-source-chip", in: app).exists)
         let first = element("diff-hunk-toggle-1", in: app)
         let second = element("diff-hunk-toggle-2", in: app)
         assertExists(first, in: app)
@@ -790,7 +792,8 @@ final class VitrineUITests: XCTestCase {
 
         assertExists(element("diff-source-chip", in: app), in: app)
         assertExists(element("diff-source-summary", in: app), in: app)
-        XCTAssertTrue(element("diff-source-refresh-button", in: app).isEnabled)
+        XCTAssertTrue(element("diff-source-copy-command-button", in: app).isEnabled)
+        assertExists(element("diff-source-share-details", in: app), in: app)
         let share = element("diff-source-share-toggle", in: app)
         XCTAssertEqual(share.value as? Int, 0)
         share.click()

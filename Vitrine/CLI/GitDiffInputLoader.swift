@@ -98,9 +98,10 @@ enum GitDiffInputLoader {
         }
     }
 
-    /// Describes the diff for the editor's Refresh, relative to the repository root found by
-    /// walking up to a `.git` entry. `nil` when a pathspec can't be put relative to that root.
-    /// The root's name is left out when it is the home folder, which is the user's name.
+    /// Describes the diff for the editor's Copy Command, relative to the repository root found
+    /// by walking up to a `.git` entry. `nil` when a pathspec can't be put relative to that
+    /// root. The root's name is left out when it is the home folder (the user's name) or not
+    /// a plain folder name.
     static func provenance(
         source: Source, paths: [String], contextLines: Int,
         currentDirectoryURL: URL = URL(
@@ -132,7 +133,8 @@ enum GitDiffInputLoader {
             }
         }
         let isPrivate = rootPath == "/" || rootPath == homeDirectoryURL.standardizedFileURL.path
-        let repository = isPrivate ? nil : candidate.lastPathComponent
+        let name = candidate.lastPathComponent
+        let repository = isPrivate || !DiffSource.isValidRepository(name) ? nil : name
         let context = contextLines == defaultContextLines ? nil : contextLines
         return switch source {
         case .revision(let range):
