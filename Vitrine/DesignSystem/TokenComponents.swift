@@ -155,6 +155,9 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
                 RoundedRectangle(cornerRadius: 999, style: .continuous)
                     .fill(VitrineTokens.Chrome.segmentTrack)
             )
+            // Contained before the focus modifiers, or the first segment reports the whole
+            // track as its frame and a click at that frame's center misses it.
+            .accessibilityElement(children: .contain)
             // One key-view stop that follows the system keyboard-navigation setting, so a
             // mouse click never takes focus from the editor, like a native segmented control.
             .focusable(interactions: .activate)
