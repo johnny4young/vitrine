@@ -258,6 +258,8 @@ enum CarouselPaginator {
         // A diff's stats and context fold describe the whole patch, not one slide.
         config.showDiffStats = false
         config.diffContextLines = nil
+        // Slides cut a hunk by source rows, which only the unified layout keeps intact.
+        config.diffView = .unified
 
         switch cues.lineNumbers {
         case nil:

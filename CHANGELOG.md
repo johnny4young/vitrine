@@ -22,6 +22,9 @@ can never drift.
   and a diffstat bar, and a context slider that folds unchanged lines around each change.
   The CLI offers both through `--diff-stats` and `--diff-context`. Sidecars and shared
   links keep the full patch.
+- Show a diff split, with the old and new file side by side, from the Layout control in the
+  inspector's Lines section or with `--diff-view split` in the CLI. Each side keeps its own
+  line numbers and redacted rows stay hidden on both sides. Unified stays the default.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only

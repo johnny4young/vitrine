@@ -78,6 +78,28 @@
         }
       }
     },
+    "Unified" : {
+      "comment" : "Editor lines: diff layout option with old and new lines in one column.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unificada"
+          }
+        }
+      }
+    },
+    "Split" : {
+      "comment" : "Editor lines: diff layout option with the old and new file side by side.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dividida"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
@@ -307,7 +329,7 @@
       }
     },
     "All" : {
-      "comment" : "Placeholder of a terminal crop field when every row or column is kept",
+      "comment" : "Placeholder of a terminal crop field when every row or column is kept; also the context-lines slider value meaning every line is shown",
       "localizations" : {
         "es" : {
           "stringUnit" : {
@@ -1605,17 +1627,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Líneas de contexto"
-          }
-        }
-      }
-    },
-    "All" : {
-      "comment" : "Editor lines: context-lines slider value meaning every line is shown.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Todas"
           }
         }
       }
