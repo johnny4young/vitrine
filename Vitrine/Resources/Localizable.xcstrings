@@ -329,7 +329,7 @@
       }
     },
     "All" : {
-      "comment" : "Placeholder of a terminal crop field when every row or column is kept",
+      "comment" : "Placeholder of a terminal crop field when every row or column is kept; also the context-lines slider value meaning every line is shown",
       "localizations" : {
         "es" : {
           "stringUnit" : {
