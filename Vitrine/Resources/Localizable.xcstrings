@@ -210,6 +210,171 @@
         }
       }
     },
+    "Scenes" : {
+      "comment" : "Comparison board inspector section with saved views of the board.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escenas"
+          }
+        }
+      }
+    },
+    "Horizontal" : {
+      "comment" : "Comparison board slider that moves the current view left or right.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Horizontal"
+          }
+        }
+      }
+    },
+    "Vertical" : {
+      "comment" : "Comparison board slider that moves the current view up or down.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vertical"
+          }
+        }
+      }
+    },
+    "Add scene from view" : {
+      "comment" : "Comparison board button that saves the current view as a scene.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Agregar escena desde la vista"
+          }
+        }
+      }
+    },
+    "Carousel" : {
+      "comment" : "Comparison board button that saves each scene as a PNG.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carrusel"
+          }
+        }
+      }
+    },
+    "Save each scene as a PNG in a folder" : {
+      "comment" : "Help for the comparison board Carousel button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda cada escena como PNG en una carpeta"
+          }
+        }
+      }
+    },
+    "Save the scenes as pages of one PDF" : {
+      "comment" : "Help for the comparison board scenes PDF button.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda las escenas como páginas de un PDF"
+          }
+        }
+      }
+    },
+    "Scene name" : {
+      "comment" : "Placeholder for a comparison board scene name.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nombre de la escena"
+          }
+        }
+      }
+    },
+    "%lld s" : {
+      "comment" : "Duration of a comparison board scene in seconds.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld s"
+          }
+        }
+      }
+    },
+    "Scene %lld" : {
+      "comment" : "Default name of a comparison board scene.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escena %lld"
+          }
+        }
+      }
+    },
+    "Move scene earlier" : {
+      "comment" : "Comparison board button that moves a scene up the list.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover escena antes"
+          }
+        }
+      }
+    },
+    "Move scene later" : {
+      "comment" : "Comparison board button that moves a scene down the list.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mover escena después"
+          }
+        }
+      }
+    },
+    "Remove scene" : {
+      "comment" : "Comparison board button that deletes a scene.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar escena"
+          }
+        }
+      }
+    },
+    "Choose a folder for the scenes." : {
+      "comment" : "Folder panel message when exporting comparison board scenes.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige una carpeta para las escenas."
+          }
+        }
+      }
+    },
+    "Scenes exported" : {
+      "comment" : "Confirmation after comparison board scenes are written to a folder.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escenas exportadas"
+          }
+        }
+      }
+    },
     "Theme Variants" : {
       "comment" : "Recents comparison button that opens one capture in several themes on a board.",
       "localizations" : {

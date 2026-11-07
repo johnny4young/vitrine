@@ -15,6 +15,7 @@ struct ComparisonBoardEditorView: View {
     let environment: AppEnvironment
     let feedback: FeedbackDisplay
     let presentation: ComparisonBoardPresentation
+    let folders: BatchExportPresentation
 
     @State private var preview = ComparisonBoardPreview()
     @State private var editingCaption: UUID?
@@ -121,6 +122,10 @@ struct ComparisonBoardEditorView: View {
                             if draft.background == .transparent { TransparencyGrid() }
                         }
                         .shadow(color: .black.opacity(0.28), radius: 24, y: 18)
+                        .overlay {
+                            ComparisonBoardSceneFrames(
+                                scenes: draft.scenes, camera: draft.camera)
+                        }
                         .overlay {
                             captionLayer(
                                 scale: scale,
@@ -299,6 +304,8 @@ struct ComparisonBoardEditorView: View {
                         .accessibilityIdentifier("comparison-board-footer-toggle")
                 }
 
+                inspectorSection("Scenes") { scenesEditor }
+
                 inspectorSection("Captures") {
                     ForEach(Array(draft.items.enumerated()), id: \.element.id) { index, item in
                         VStack(spacing: VitrineTokens.Spacing.lg) {
@@ -319,6 +326,50 @@ struct ComparisonBoardEditorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("comparison-board-inspector")
+    }
+
+    private var scenesEditor: some View {
+        ComparisonBoardScenesEditor(
+            draft: draft, exportPNGs: exportScenePNGs, exportPDF: exportScenePDF)
+    }
+
+    private func exportScenePNGs() {
+        guard
+            let directory = folders.chooseDirectory(
+                message: String(localized: "Choose a folder for the scenes."))
+        else { return }
+        do {
+            _ = try ComparisonBoardExporter.writeScenePNGs(
+                for: draft, profile: settings.export.colorProfile, to: directory)
+            feedback(Notifier.confirmation(String(localized: "Scenes exported")))
+            folders.reveal(directory)
+        } catch let error as RenderBudgetError {
+            feedback(ExportFeedback.renderFailure(error))
+        } catch {
+            feedback(
+                Notifier.failure(
+                    String(
+                        localized:
+                            "Some export files couldn't be written. Check the folder and try again."
+                    )))
+        }
+    }
+
+    private func exportScenePDF() {
+        let data: Data
+        do {
+            data = try ComparisonBoardExporter.scenePDFChecked(
+                for: draft, profile: settings.export.colorProfile)
+        } catch let error {
+            feedback(ExportFeedback.renderFailure(error))
+            return
+        }
+        if let outcome = ExportFeedback.saveOutcome(
+            ExportManager.saveToFile(
+                payload: (data, .pdf, "pdf"), suggestedName: "vitrine-comparison-scenes"))
+        {
+            feedback(outcome)
+        }
     }
 
     private var variantChips: some View {

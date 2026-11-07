@@ -57,6 +57,9 @@ final class ComparisonBoardDraft {
     let exportScale: CGFloat
     /// Empty unless the board was made from one capture's theme variants.
     private(set) var variants: [Variant] = []
+    /// The view "Add scene from view" saves. Scenes only frame the finished board image.
+    var camera = ComparisonBoardViewport.whole
+    private(set) var scenes: [ComparisonBoardScene] = []
 
     init(
         captures: [Capture],
@@ -275,6 +278,38 @@ final class ComparisonBoardDraft {
             variants[index].detail = item.detail
         }
         items.removeAll { $0.id == id }
+    }
+
+    var canAddScene: Bool { scenes.count < ComparisonBoardScene.maximumCount }
+
+    func addSceneFromView() {
+        guard canAddScene else { return }
+        scenes.append(
+            ComparisonBoardScene(
+                id: UUID(), name: String(localized: "Scene \(scenes.count + 1)"),
+                seconds: ComparisonBoardScene.defaultDuration, viewport: camera))
+    }
+
+    func moveScene(id: ComparisonBoardScene.ID, offset: Int) {
+        guard let source = scenes.firstIndex(where: { $0.id == id }),
+            scenes.indices.contains(source + offset)
+        else { return }
+        scenes.swapAt(source, source + offset)
+    }
+
+    func removeScene(id: ComparisonBoardScene.ID) {
+        scenes.removeAll { $0.id == id }
+    }
+
+    func renameScene(id: ComparisonBoardScene.ID, to name: String) {
+        guard let index = scenes.firstIndex(where: { $0.id == id }) else { return }
+        scenes[index].name = String(name.prefix(ComparisonBoard.maximumLabelLength))
+    }
+
+    func setSeconds(_ seconds: Int, forScene id: ComparisonBoardScene.ID) {
+        guard let index = scenes.firstIndex(where: { $0.id == id }) else { return }
+        let range = ComparisonBoardScene.durationRange
+        scenes[index].seconds = min(max(seconds, range.lowerBound), range.upperBound)
     }
 
     private static func defaultLabel(index: Int, count: Int) -> String {
