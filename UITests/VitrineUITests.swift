@@ -661,9 +661,12 @@ final class VitrineUITests: XCTestCase {
             XCTAssertFalse(delete.exists, "A click must not create a zero-size arrow")
             let start = center.withOffset(CGVector(dx: -30, dy: -20))
             let end = center.withOffset(CGVector(dx: 30, dy: 20))
-            start.press(
-                forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                start.press(
+                    forDuration: 0.1, thenDragTo: end, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             assertExists(delete, in: app)
             revealToolbarAction(
                 "annotation-tool-select", from: "annotation-tool-picker", in: app
@@ -675,15 +678,21 @@ final class VitrineUITests: XCTestCase {
 
             let beforeMove = delete.frame
             let movedCenter = center.withOffset(CGVector(dx: 15, dy: 0))
-            center.press(
-                forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                center.press(
+                    forDuration: 0.1, thenDragTo: movedCenter, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeMove.minX, 15, accuracy: 3)
             let beforeResize = delete.frame
             let movedEnd = end.withOffset(CGVector(dx: 15, dy: 0))
-            movedEnd.press(
-                forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
-                withVelocity: dragVelocity, thenHoldForDuration: 0.15)
+            // ⌘ bypasses snapping, so the drags land exactly where the test aims.
+            XCUIElement.perform(withKeyModifiers: .command) {
+                movedEnd.press(
+                    forDuration: 0.1, thenDragTo: movedEnd.withOffset(CGVector(dx: 15, dy: 15)),
+                    withVelocity: dragVelocity, thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeResize.minX, 15, accuracy: 3)
             let beforeKey = delete.frame
             app.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [.shift])
@@ -714,9 +723,11 @@ final class VitrineUITests: XCTestCase {
             assertExists(delete, in: app)
             let beforeTextMove = delete.frame
             let textTarget = center.withOffset(CGVector(dx: 15, dy: 0))
-            center.press(
-                forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
-                thenHoldForDuration: 0.15)
+            XCUIElement.perform(withKeyModifiers: .command) {
+                center.press(
+                    forDuration: 0.1, thenDragTo: textTarget, withVelocity: dragVelocity,
+                    thenHoldForDuration: 0.15)
+            }
             XCTAssertEqual(delete.frame.minX - beforeTextMove.minX, 15, accuracy: 3)
             XCTAssertFalse(field.exists, "A move must not reopen the text field")
             textTarget.doubleClick()
