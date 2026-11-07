@@ -24,22 +24,28 @@ nonisolated struct ComparisonBoardViewport: Equatable, Sendable {
 
     enum Axis { case zoom, horizontal, vertical }
 
-    /// What the inspector sliders show: the zoom and the center, in percent.
+    /// What the inspector sliders show: the zoom in percent, and the center as a percent of
+    /// the distance it can travel, so every slider step moves the frame.
     func percent(_ axis: Axis) -> Double {
-        switch axis {
+        let travel = 1 - 1 / zoom
+        func share(_ value: CGFloat) -> Double {
+            travel > 0 ? (value - 0.5 / zoom) / travel * 100 : 50
+        }
+        return switch axis {
         case .zoom: zoom * 100
-        case .horizontal: center.x * 100
-        case .vertical: center.y * 100
+        case .horizontal: share(center.x)
+        case .vertical: share(center.y)
         }
     }
 
     func setting(_ axis: Axis, percent: Double) -> ComparisonBoardViewport {
-        let value = percent / 100
+        let position = 0.5 / zoom + (1 - 1 / zoom) * percent / 100
         return switch axis {
-        case .zoom: ComparisonBoardViewport(zoom: value, center: center)
+        case .zoom: ComparisonBoardViewport(zoom: percent / 100, center: center)
         case .horizontal:
-            ComparisonBoardViewport(zoom: zoom, center: CGPoint(x: value, y: center.y))
-        case .vertical: ComparisonBoardViewport(zoom: zoom, center: CGPoint(x: center.x, y: value))
+            ComparisonBoardViewport(zoom: zoom, center: CGPoint(x: position, y: center.y))
+        case .vertical:
+            ComparisonBoardViewport(zoom: zoom, center: CGPoint(x: center.x, y: position))
         }
     }
 

@@ -3,15 +3,26 @@ import SwiftUI
 /// The board's camera, its saved scenes, and their export, in the inspector.
 struct ComparisonBoardScenesEditor: View {
     @Bindable var draft: ComparisonBoardDraft
+    let progress: (completed: Int, total: Int)?
     let exportPNGs: () -> Void
+    let cancelPNGs: () -> Void
     let exportPDF: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: VitrineTokens.Spacing.sm) {
             InspectorRow(label: Text("Zoom")) {
-                ValueSlider(
-                    label: "Zoom", value: cameraBinding(.zoom), range: 100...400, step: 25,
-                    identifier: "comparison-board-view-zoom-slider")
+                HStack(spacing: 8) {
+                    Slider(value: cameraBinding(.zoom), in: 100...400, step: 25)
+                        .frame(width: 110)
+                        .accessibilityLabel("Zoom")
+                        .accessibilityValue(Text(verbatim: zoomText))
+                        .accessibilityIdentifier("comparison-board-view-zoom-slider")
+                    Text(verbatim: zoomText)
+                        .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                        .frame(width: 38, alignment: .trailing)
+                        .accessibilityHidden(true)
+                }
             }
             InspectorRow(label: Text("Horizontal")) {
                 ValueSlider(
@@ -39,14 +50,24 @@ struct ComparisonBoardScenesEditor: View {
             .accessibilityIdentifier("comparison-board-add-scene-button")
 
             InspectorRow(label: Text("Export")) {
-                Button("Carousel", action: exportPNGs)
-                    .help("Save each scene as a PNG in a folder")
-                    .accessibilityIdentifier("comparison-board-export-scenes-png")
-                Button(action: exportPDF) { Text(verbatim: "PDF") }
-                    .help("Save the scenes as pages of one PDF")
-                    .accessibilityIdentifier("comparison-board-export-scenes-pdf")
+                if let progress {
+                    ProgressView(
+                        value: Double(progress.completed), total: Double(max(progress.total, 1))
+                    )
+                    .frame(width: 90)
+                    .accessibilityIdentifier("comparison-board-export-scenes-progress")
+                    Button("Cancel", action: cancelPNGs)
+                        .accessibilityIdentifier("comparison-board-export-scenes-cancel")
+                } else {
+                    Button("Carousel", action: exportPNGs)
+                        .help("Save each scene as a PNG in a folder")
+                        .accessibilityIdentifier("comparison-board-export-scenes-png")
+                    Button(action: exportPDF) { Text(verbatim: "PDF") }
+                        .help("Save the scenes as pages of one PDF")
+                        .accessibilityIdentifier("comparison-board-export-scenes-pdf")
+                }
             }
-            .disabled(draft.scenes.isEmpty || !draft.isValid)
+            .disabled(progress == nil && (draft.scenes.isEmpty || !draft.isValid))
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("comparison-board-scenes")
@@ -64,14 +85,18 @@ struct ComparisonBoardScenesEditor: View {
                     set: { draft.renameScene(id: scene.id, to: $0) })
             )
             .accessibilityIdentifier("comparison-board-scene-name-\(index)")
+            Text("\(scene.seconds) s")
+                .monospacedDigit()
+                .accessibilityHidden(true)
             Stepper(
+                "Duration",
                 value: Binding(
                     get: { scene.seconds },
                     set: { draft.setSeconds($0, forScene: scene.id) }),
                 in: ComparisonBoardScene.durationRange
-            ) {
-                Text("\(scene.seconds) s").monospacedDigit()
-            }
+            )
+            .labelsHidden()
+            .accessibilityValue(Text("\(scene.seconds) s"))
             .accessibilityIdentifier("comparison-board-scene-duration-\(index)")
             Button {
                 draft.moveScene(id: scene.id, offset: -1)
@@ -103,6 +128,10 @@ struct ComparisonBoardScenesEditor: View {
         .buttonStyle(.borderless)
     }
 
+    private var zoomText: String {
+        Double(draft.camera.zoom).formatted(.number.precision(.fractionLength(0...2))) + "×"
+    }
+
     private func cameraBinding(_ axis: ComparisonBoardViewport.Axis) -> Binding<Double> {
         Binding(
             get: { draft.camera.percent(axis) },
@@ -116,22 +145,27 @@ struct ComparisonBoardSceneFrames: View {
     let camera: ComparisonBoardViewport
 
     var body: some View {
+        let slots = Self.badgeSlots(scenes)
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 ForEach(Array(scenes.enumerated()), id: \.element.id) { index, scene in
                     let frame = Self.frame(scene.viewport, in: proxy.size)
-                    Rectangle()
-                        .strokeBorder(
-                            .white.opacity(0.85), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])
-                        )
-                        .frame(width: frame.width, height: frame.height)
-                        .position(x: frame.midX, y: frame.midY)
+                    // Dark under light dashes reads on both light and dark boards.
+                    ZStack {
+                        Rectangle().strokeBorder(.black.opacity(0.55), lineWidth: 1.5)
+                        Rectangle().strokeBorder(
+                            .white, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
+                    }
+                    .frame(width: frame.width, height: frame.height)
+                    .position(x: frame.midX, y: frame.midY)
                     Text(verbatim: "\(index + 1)")
                         .font(.caption2.weight(.bold).monospacedDigit())
                         .foregroundStyle(.white)
                         .frame(width: 18, height: 18)
-                        .background(Circle().fill(.black.opacity(0.6)))
-                        .position(x: frame.minX + 12, y: frame.minY + 12)
+                        .background(Circle().fill(.black.opacity(0.7)))
+                        .overlay(Circle().strokeBorder(.white.opacity(0.8), lineWidth: 1))
+                        .position(
+                            x: frame.minX + 12 + CGFloat(slots[index]) * 22, y: frame.minY + 12)
                 }
                 if camera != .whole {
                     let frame = Self.frame(camera, in: proxy.size)
@@ -144,6 +178,18 @@ struct ComparisonBoardSceneFrames: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    /// How many earlier scenes share each scene's top-left corner, so their badges sit side
+    /// by side instead of on top of each other.
+    static func badgeSlots(_ scenes: [ComparisonBoardScene]) -> [Int] {
+        var seen: [String: Int] = [:]
+        return scenes.map { scene in
+            let corner = scene.viewport.rect.origin
+            let key = "\(Int((corner.x * 1000).rounded())),\(Int((corner.y * 1000).rounded()))"
+            defer { seen[key, default: 0] += 1 }
+            return seen[key, default: 0]
+        }
     }
 
     private static func frame(_ viewport: ComparisonBoardViewport, in size: CGSize) -> CGRect {

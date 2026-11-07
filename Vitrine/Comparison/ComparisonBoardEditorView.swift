@@ -19,6 +19,8 @@ struct ComparisonBoardEditorView: View {
 
     @State private var preview = ComparisonBoardPreview()
     @State private var editingCaption: UUID?
+    @State private var sceneExport: Task<Void, Never>?
+    @State private var sceneProgress: (completed: Int, total: Int)?
     @FocusState private var focusedField: Field?
 
     var settings: AppSettings { environment.appSettings }
@@ -330,28 +332,34 @@ struct ComparisonBoardEditorView: View {
 
     private var scenesEditor: some View {
         ComparisonBoardScenesEditor(
-            draft: draft, exportPNGs: exportScenePNGs, exportPDF: exportScenePDF)
+            draft: draft, progress: sceneProgress, exportPNGs: exportScenePNGs,
+            cancelPNGs: { sceneExport?.cancel() }, exportPDF: exportScenePDF)
     }
 
     private func exportScenePNGs() {
-        guard
+        guard sceneExport == nil,
             let directory = folders.chooseDirectory(
                 message: String(localized: "Choose a folder for the scenes."))
         else { return }
-        do {
-            _ = try ComparisonBoardExporter.writeScenePNGs(
-                for: draft, profile: settings.export.colorProfile, to: directory)
-            feedback(Notifier.confirmation(String(localized: "Scenes exported")))
-            folders.reveal(directory)
-        } catch let error as RenderBudgetError {
-            feedback(ExportFeedback.renderFailure(error))
-        } catch {
-            feedback(
-                Notifier.failure(
-                    String(
-                        localized:
-                            "Some export files couldn't be written. Check the folder and try again."
-                    )))
+        let expected = draft.scenes.count
+        sceneProgress = (0, expected)
+        sceneExport = Task {
+            let result = await ComparisonBoardExporter.exportScenePNGs(
+                for: draft, profile: settings.export.colorProfile, to: directory,
+                onProgress: { completed, total in sceneProgress = (completed, total) })
+            let cancelled = Task.isCancelled
+            sceneExport = nil
+            sceneProgress = nil
+            guard !cancelled else { return }
+            let completion = BatchExportCompletion(
+                written: result.written, failed: result.failed, expected: expected,
+                renderFailure: result.firstRenderFailure)
+            if completion.isComplete {
+                feedback(Notifier.confirmation(String(localized: "Scenes exported")))
+                folders.reveal(directory)
+            } else if let note = completion.failureNote {
+                feedback(Notifier.failure(note))
+            }
         }
     }
 

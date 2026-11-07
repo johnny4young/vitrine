@@ -210,6 +210,17 @@
         }
       }
     },
+    "Duration" : {
+      "comment" : "Accessibility label for the stepper that sets how long a comparison board scene shows.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duración"
+          }
+        }
+      }
+    },
     "Scenes" : {
       "comment" : "Comparison board inspector section with saved views of the board.",
       "localizations" : {

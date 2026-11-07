@@ -284,9 +284,13 @@ final class ComparisonBoardDraft {
 
     func addSceneFromView() {
         guard canAddScene else { return }
+        let names = Set(scenes.map(\.name))
+        var number = scenes.count + 1
+        while names.contains(String(localized: "Scene \(number)")) { number += 1 }
+        let name = String(localized: "Scene \(number)")
         scenes.append(
             ComparisonBoardScene(
-                id: UUID(), name: String(localized: "Scene \(scenes.count + 1)"),
+                id: UUID(), name: name,
                 seconds: ComparisonBoardScene.defaultDuration, viewport: camera))
     }
 
