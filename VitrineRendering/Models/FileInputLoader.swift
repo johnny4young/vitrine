@@ -95,8 +95,8 @@ public enum FileInputLoader {
     /// Why a file could not be loaded, each mapped to a clear user-facing message
     /// via `message`.
     public enum LoadError: Error, Equatable {
-        /// The file's bytes are not decodable text (a NUL byte was found or no
-        /// supported text encoding applied) — almost certainly a binary file.
+        /// The file contains a NUL text character or cannot be decoded with a
+        /// supported text encoding. The input is likely binary.
         case binaryFile
         /// The file is larger than `maximumByteCount`; refused so a huge or runaway
         /// file never freezes the editor.
@@ -252,8 +252,9 @@ public enum FileInputLoader {
     ///    UTF-16 text legitimately contains NUL bytes — every ASCII character has
     ///    a `0x00` high byte — so it must be recognized before the NUL-based binary
     ///    check below would wrongly reject it.
-    /// 2. **A NUL byte** in BOM-less data is the strongest, cheapest binary tell
-    ///    (text files do not contain one), so such data is rejected as binary.
+    /// 2. **A NUL text character** marks binary input, including in decoded
+    ///    UTF-16. Zero bytes belonging to an ordinary UTF-16 code unit are valid;
+    ///    a decoded U+0000 is not. BOM-less data is checked for a NUL byte directly.
     /// 3. **UTF-8** covers essentially every modern source file.
     /// 4. **Single-byte fallbacks** (Windows-1252, then ISO Latin-1) recover the
     ///    occasional legacy file without corrupting it. These always succeed for
@@ -270,13 +271,18 @@ public enum FileInputLoader {
         if bytes.starts(with: [0xFF, 0xFE]) || bytes.starts(with: [0xFE, 0xFF]) {
             // Foundation can silently discard an incomplete final UTF-16 byte.
             guard data.count.isMultiple(of: 2) else { return nil }
-            return String(data: data, encoding: .utf16)
+            // Reject NUL characters, not the zero bytes in ordinary UTF-16 code units.
+            guard let text = String(data: data, encoding: .utf16),
+                !text.utf16.contains(0)
+            else { return nil }
+            return text
         }
         if bytes.starts(with: [0xEF, 0xBB, 0xBF]) {
             let payload = data.dropFirst(3)
             // Only UTF-16 needs the exception to the binary NUL-byte check.
             guard !payload.contains(0) else { return nil }
-            return String(data: payload, encoding: .utf8)
+            // The encoding marker is already gone; a second U+FEFF is content.
+            return String(validating: payload, as: UTF8.self)
         }
 
         // 2. BOM-less data with a NUL byte is binary.

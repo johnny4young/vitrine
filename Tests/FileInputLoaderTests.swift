@@ -174,6 +174,36 @@ struct FileInputLoaderDecodeTextTests {
         }
     }
 
+    /// Zero bytes are normal in UTF-16, but a decoded U+0000 is still binary.
+    /// The UTF-32LE BOM starts with a UTF-16LE BOM and must not load as NUL-filled text.
+    @Test(
+        arguments: [
+            [0xFF, 0xFE, 0x00, 0x00],
+            [0xFE, 0xFF, 0x00, 0x00],
+            [0xFF, 0xFE, 0x61, 0x00, 0x00, 0x00],
+            [0xFE, 0xFF, 0x00, 0x61, 0x00, 0x00],
+            [0xFF, 0xFE, 0x61, 0x00, 0x00, 0x00, 0x62, 0x00],
+            [0xFE, 0xFF, 0x00, 0x61, 0x00, 0x00, 0x00, 0x62],
+            [0xFF, 0xFE, 0x00, 0x00, 0x61, 0x00, 0x00, 0x00],
+            [0x00, 0x00, 0xFE, 0xFF, 0x00, 0x00, 0x00, 0x61],
+        ] as [[UInt8]])
+    func nulUnicodeOrUnsupportedUTF32IsRejected(bytes: [UInt8]) {
+        let data = Data(bytes)
+        #expect(FileInputLoader.decodeText(from: data) == nil)
+        #expect(throws: FileInputLoader.LoadError.binaryFile) {
+            _ = try FileInputLoader.decode(data: data, filename: "binary.swift")
+        }
+    }
+
+    @Test(arguments: 0...4)
+    func utf8BOMStripsOnlyTheEncodingMarker(contentMarkers: Int) throws {
+        let source = String(repeating: "\u{FEFF}", count: contentMarkers) + "let café = \"你好 👍🏽\""
+        let data = Data([0xEF, 0xBB, 0xBF]) + Data(source.utf8)
+        #expect(FileInputLoader.decodeText(from: data)?.utf16.elementsEqual(source.utf16) == true)
+        let loaded = try FileInputLoader.decode(data: data, filename: "unicode.swift")
+        #expect(loaded.text.utf16.elementsEqual(source.utf16))
+    }
+
     /// A BOM on its own is still a valid empty document.
     @Test(arguments: [[0xFF, 0xFE], [0xFE, 0xFF], [0xEF, 0xBB, 0xBF]] as [[UInt8]])
     func bomOnlyFileRemainsEmptyText(bytes: [UInt8]) {
@@ -181,7 +211,7 @@ struct FileInputLoaderDecodeTextTests {
     }
 
     @Test func unicodeBOMsPreserveText() {
-        let text = "let café = \"你好 👍🏽 e\u{301}\"\n"
+        let text = "let café = \"你好 👍🏽 e\u{301} \u{100} \u{10000}\"\n"
         let utf8 = Data([0xEF, 0xBB, 0xBF]) + Data(text.utf8)
         let littleEndian = Data([0xFF, 0xFE]) + text.data(using: .utf16LittleEndian)!
         #expect(FileInputLoader.decodeText(from: utf8)?.utf16.elementsEqual(text.utf16) == true)
@@ -192,9 +222,8 @@ struct FileInputLoaderDecodeTextTests {
             FileInputLoader.decodeText(from: bigEndian)?.utf16.elementsEqual(text.utf16) == true)
     }
 
-    /// A UTF-8 BOM (common from Windows editors) must be stripped: decoding the
-    /// raw bytes as `.utf8` keeps the U+FEFF, and the invisible scalar would leak
-    /// into the editor, language detection, and sidecar text.
+    /// Remove one encoding BOM before validating UTF-8 so the signature does
+    /// not enter the editor. Any further U+FEFF scalar belongs to the source.
     @Test func utf8BOMIsStripped() {
         let text = "let x = 1"
         let data = Data([0xEF, 0xBB, 0xBF]) + Data(text.utf8)

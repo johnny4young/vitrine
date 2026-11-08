@@ -224,6 +224,12 @@ can never drift.
 
 ### Fixed
 
+- Reject a decoded NUL character in UTF-16 source input, including unsupported UTF-32LE
+  files whose BOM would otherwise be mistaken for UTF-16LE. Ordinary zero bytes in valid
+  UTF-16 text remain supported.
+- Preserve a leading U+FEFF in UTF-8 source content after removing the file's encoding BOM,
+  instead of stripping a second marker while decoding the payload.
+
 - Reject truncated or malformed BOM-marked source files instead of silently dropping a final
   UTF-16 byte or interpreting invalid Unicode as legacy text. A UTF-8 BOM no longer lets binary
   NUL bytes bypass file-input validation.
