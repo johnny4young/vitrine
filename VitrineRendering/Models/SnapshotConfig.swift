@@ -129,6 +129,9 @@ public struct SnapshotConfig: Equatable {
     /// seam and never persisted, so `nil` keeps every other render unchanged.
     public var slideCue: SlideCue?
 
+    /// What an overflowing fixed frame keeps in view, normalized over the padded content.
+    public var focalPoint: CGPoint?
+
     /// The "beautify any image" content: when set, the canvas renders this image —
     /// wrapped in `imageFrame` — as the card body instead of code, on the same
     /// background / padding / shadow. Stored *by reference* (a file in the app container,

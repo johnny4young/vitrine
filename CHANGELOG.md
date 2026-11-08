@@ -14,6 +14,11 @@ can never drift.
 
 ### Added
 
+- The Export Sizes sheet shows the capture rendered at every selected platform size at once.
+  Drag on a selected size, or focus it and use the arrow keys, to set a focal point: a size too
+  small for the capture then keeps that part in view instead of cutting off the end of the code.
+  Exports without a focal point are unchanged, and captures with marks or PDF output keep every
+  size centered. The focal point resets when the capture's content changes.
 - Code steps: the stack button in the code header stores the current code as a step, and
   choosing a numbered step saves your edits into the current one, loads the other and
   animates the preview to it. Tokens both steps share glide, removed ones fade out and new

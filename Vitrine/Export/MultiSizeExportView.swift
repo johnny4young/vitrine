@@ -2,9 +2,9 @@ import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
-/// The PRO multi-size one-pass export sheet: multi-select the platform
-/// presets, choose a folder, and write one correctly-sized file per preset in a
-/// single action.
+/// The PRO multi-size one-pass export sheet: the capture rendered at every platform preset at
+/// once, a shared focal point for sizes too small for it, and one file per selected preset
+/// written in a single action.
 ///
 /// This is the code/card export ladder fanned out over `ExportPreset` sizes (a
 /// publishing convenience) — distinct from the free multi-viewport web
@@ -14,6 +14,14 @@ struct MultiSizeExportView: View {
     /// What the running measurement depends on. `restarts` starts it again after a stop.
     private struct EstimateRequest: Equatable {
         var input: PresetSizeEstimator.Input
+        var selected: Set<String>
+        var isExporting: Bool
+        var restarts: Int
+    }
+
+    /// What the tiles depend on. A drag in progress waits for its release.
+    private struct BoardRequest: Equatable {
+        var config: SnapshotConfig
         var selected: Set<String>
         var isExporting: Bool
         var restarts: Int
@@ -48,6 +56,11 @@ struct MultiSizeExportView: View {
     @State private var estimator = PresetSizeEstimator()
     @State private var estimateRestarts = 0
 
+    @State private var board = EverySizeBoardModel()
+    @State private var focalPoint: CGPoint?
+    /// The focal point under a drag, shown on every tile before the tiles re-render.
+    @GestureState private var draggedFocalPoint: CGPoint?
+
     /// Whether an export is in flight — disables the buttons so the batch can't be
     /// re-triggered or the sheet dismissed mid-write.
     private var isExporting: Bool { progress != nil }
@@ -56,7 +69,7 @@ struct MultiSizeExportView: View {
         ExportSheetScaffold(
             title: "Export sizes",
             subtitle: "Write one image per platform size into a folder.",
-            width: 420,
+            width: 640,
             rootIdentifier: "multi-size-export-sheet",
             failureNote: failureNote,
             progress: progress,
@@ -84,10 +97,49 @@ struct MultiSizeExportView: View {
             await estimator.measure(
                 ExportPreset.all.filter { request.selected.contains($0.id) }, for: request.input)
         }
+        .task(id: boardRequest) {
+            guard !isExporting else {
+                board.stop()
+                return
+            }
+            let request = boardRequest
+            await board.render(
+                ExportPreset.all.filter { request.selected.contains($0.id) }, for: request.config)
+        }
+        // A point chosen on other content would aim at something else.
+        .onChange(of: baseConfig.code) { focalPoint = nil }
+        .onChange(of: baseConfig.foregroundImage) { focalPoint = nil }
+        .onAppear(perform: seedDemoFocalPoint)
+    }
+
+    private func seedDemoFocalPoint() {
+        #if DEBUG
+            if ProcessInfo.processInfo.arguments.contains("--demo-focal-point") {
+                focalPoint = CGPoint(x: 0.5, y: 0.85)
+            }
+        #endif
+    }
+
+    /// Marks sit at fixed canvas positions and the PDF path draws every size centered, so
+    /// either keeps the focal point out of the export.
+    private var acceptsFocalPoint: Bool {
+        format != .pdf && !FocalCrop.isBlocked(for: baseConfig)
+    }
+
+    private var exportConfig: SnapshotConfig {
+        var config = baseConfig
+        if acceptsFocalPoint { config.focalPoint = focalPoint }
+        return config
+    }
+
+    private var boardRequest: BoardRequest {
+        BoardRequest(
+            config: exportConfig, selected: selected, isExporting: isExporting,
+            restarts: estimateRestarts)
     }
 
     private var estimateInput: PresetSizeEstimator.Input {
-        PresetSizeEstimator.Input(config: baseConfig, format: format, profile: profile)
+        PresetSizeEstimator.Input(config: exportConfig, format: format, profile: profile)
     }
 
     private var estimateRequest: EstimateRequest {
@@ -96,30 +148,22 @@ struct MultiSizeExportView: View {
             restarts: estimateRestarts)
     }
 
-    /// The multi-size sheet's distinct body: the scrollable preset list and the
-    /// select-all/none controls.
+    /// The multi-size sheet's distinct body: a tile per preset and the selection controls.
     private var content: some View {
         VStack(alignment: .leading, spacing: 16) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 4) {
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: 130), spacing: 14, alignment: .top)],
+                    alignment: .leading, spacing: 14
+                ) {
                     ForEach(ExportPreset.all) { preset in
-                        Toggle(isOn: binding(for: preset)) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(verbatim: preset.displayName)
-                                    .font(.system(size: VitrineTokens.FontSize.body))
-                                    .foregroundStyle(VitrineTokens.Text.primary)
-                                Text(verbatim: preset.summary)
-                                    .font(.system(size: VitrineTokens.FontSize.caption))
-                                    .foregroundStyle(VitrineTokens.Text.tertiary)
-                            }
-                        }
-                        .toggleStyle(.checkbox)
-                        .accessibilityIdentifier("multi-size-preset-\(preset.id)")
+                        tile(preset)
                     }
                 }
                 .padding(.vertical, 4)
             }
-            .frame(maxHeight: 240)
+            .frame(maxHeight: 360)
+            .accessibilityIdentifier("multi-size-board")
 
             HStack(spacing: 10) {
                 Button("Select all") { selected = Set(ExportPreset.all.map(\.id)) }
@@ -130,11 +174,144 @@ struct MultiSizeExportView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(VitrineTokens.Accent.systemText)
                     .accessibilityIdentifier("multi-size-select-none")
+                if focalPoint != nil, acceptsFocalPoint {
+                    Button("Clear focal point") { focalPoint = nil }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(VitrineTokens.Accent.systemText)
+                        .disabled(isExporting)
+                        .accessibilityIdentifier("multi-size-focal-clear")
+                }
                 Spacer(minLength: 0)
                 sizeEstimate
             }
             .font(.system(size: VitrineTokens.FontSize.caption))
         }
+    }
+
+    private func tile(_ preset: ExportPreset) -> some View {
+        let frame = preset.sizing.fixedSize ?? CGSize(width: preset.sizing.aspectRatio, height: 1)
+        return VStack(alignment: .leading, spacing: 6) {
+            Color.clear
+                .aspectRatio(frame.width / frame.height, contentMode: .fit)
+                .overlay {
+                    GeometryReader { proxy in
+                        thumbnail(preset, frame: frame, size: proxy.size)
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 96, maxHeight: 96)
+            Toggle(isOn: binding(for: preset)) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: preset.displayName)
+                        .font(.system(size: VitrineTokens.FontSize.body))
+                        .foregroundStyle(VitrineTokens.Text.primary)
+                        .lineLimit(1)
+                    Text(verbatim: "\(Int(frame.width)) × \(Int(frame.height))")
+                        .font(.system(size: VitrineTokens.FontSize.caption))
+                        .foregroundStyle(VitrineTokens.Text.tertiary)
+                        .monospacedDigit()
+                }
+            }
+            .toggleStyle(.checkbox)
+            .accessibilityIdentifier("multi-size-preset-\(preset.id)")
+        }
+    }
+
+    @ViewBuilder
+    private func thumbnail(_ preset: ExportPreset, frame: CGSize, size: CGSize) -> some View {
+        let isSelected = selected.contains(preset.id)
+        let tile = isSelected ? board.tiles[preset.id] : nil
+        let shape = RoundedRectangle(cornerRadius: VitrineTokens.Radius.sm, style: .continuous)
+        let scale = size.width / frame.width
+        let canFocus =
+            acceptsFocalPoint && !isExporting && tile?.geometry.acceptsFocalPoint == true
+        ZStack(alignment: .topLeading) {
+            if let tile {
+                Image(decorative: tile.image, scale: 1)
+                    .resizable()
+                    .interpolation(.high)
+            } else {
+                shape.fill(VitrineTokens.Surface.inset)
+            }
+            if let tile, canFocus, let focal = draggedFocalPoint ?? focalPoint {
+                let point = tile.geometry.point(for: focal)
+                Circle()
+                    .fill(VitrineTokens.Accent.base)
+                    .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                    .frame(width: 11, height: 11)
+                    .position(x: point.x * scale, y: point.y * scale)
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .clipShape(shape)
+        .opacity(isSelected ? 1 : 0.45)
+        .contentShape(shape)
+        .gesture(
+            DragGesture(minimumDistance: 0)
+                .updating($draggedFocalPoint) { value, state, _ in
+                    state = focal(at: value.location, on: tile, scale: scale)
+                }
+                .onEnded { value in
+                    if let point = focal(at: value.location, on: tile, scale: scale) {
+                        focalPoint = point
+                    }
+                },
+            including: canFocus ? .all : .none
+        )
+        .focusable(canFocus, interactions: .activate)
+        .onKeyPress(keys: [.upArrow, .downArrow, .leftArrow, .rightArrow]) { press in
+            guard canFocus else { return .ignored }
+            switch press.key {
+            case .upArrow: nudgeFocalPoint(dx: 0, dy: -1)
+            case .downArrow: nudgeFocalPoint(dx: 0, dy: 1)
+            case .leftArrow: nudgeFocalPoint(dx: -1, dy: 0)
+            default: nudgeFocalPoint(dx: 1, dy: 0)
+            }
+            return .handled
+        }
+        .accessibilityElement()
+        .accessibilityLabel(Text("Focal point"))
+        .accessibilityValue(focalPointValue)
+        // A click places the point; without a role the value never reaches assistive apps.
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction(named: Text("Move focal point up")) {
+            if canFocus { nudgeFocalPoint(dx: 0, dy: -1) }
+        }
+        .accessibilityAction(named: Text("Move focal point down")) {
+            if canFocus { nudgeFocalPoint(dx: 0, dy: 1) }
+        }
+        .accessibilityAction(named: Text("Move focal point left")) {
+            if canFocus { nudgeFocalPoint(dx: -1, dy: 0) }
+        }
+        .accessibilityAction(named: Text("Move focal point right")) {
+            if canFocus { nudgeFocalPoint(dx: 1, dy: 0) }
+        }
+        // Set once the tile shows its render, so a test can wait for something to click.
+        .accessibilityIdentifier(
+            tile == nil ? "multi-size-tile-\(preset.id)-pending" : "multi-size-tile-\(preset.id)")
+    }
+
+    private func focal(
+        at location: CGPoint, on tile: EverySizeBoardModel.Tile?, scale: CGFloat
+    ) -> CGPoint? {
+        guard let tile, scale > 0 else { return nil }
+        return tile.geometry.focal(at: CGPoint(x: location.x / scale, y: location.y / scale))
+    }
+
+    private var focalPointValue: Text {
+        guard let focalPoint, acceptsFocalPoint else { return Text("None") }
+        let across = Int((focalPoint.x * 100).rounded())
+        let down = Int((focalPoint.y * 100).rounded())
+        return Text("\(across)% across, \(down)% down")
+    }
+
+    /// Steps of a tenth, starting from the center when no point is set yet.
+    private func nudgeFocalPoint(dx: CGFloat, dy: CGFloat) {
+        let current = focalPoint ?? CGPoint(x: 0.5, y: 0.5)
+        func step(_ value: CGFloat, _ delta: CGFloat) -> CGFloat {
+            min(max(((value + delta / 10) * 10).rounded() / 10, 0), 1)
+        }
+        focalPoint = CGPoint(x: step(current.x, dx), y: step(current.y, dy))
     }
 
     /// Shares the row with the selection buttons, so its arrival never resizes the sheet.
@@ -168,6 +345,7 @@ struct MultiSizeExportView: View {
 
         // The panel runs a modal loop, and renders would keep stealing time from it.
         estimator.stop()
+        board.stop()
         guard
             let directory = presentation.chooseDirectory(
                 message: String(localized: "Choose a folder for the exported images."))
@@ -183,7 +361,7 @@ struct MultiSizeExportView: View {
         // between presets, so the sheet stays responsive and shows live progress.
         Task {
             let result = await ExportManager.exportPresetSizes(
-                baseConfig, presets: presets, to: directory, format: format, profile: profile,
+                exportConfig, presets: presets, to: directory, format: format, profile: profile,
                 textSidecar: textSidecar,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil

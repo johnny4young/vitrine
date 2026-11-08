@@ -57,4 +57,9 @@ extension SnapshotConfig {
         paddingMode == .balanced
             ? Alignment(horizontal: .center, vertical: .opticalCenter) : .center
     }
+
+    /// The share of a fixed frame's free vertical space that `canvasAlignment` puts above.
+    public var canvasTopShare: CGFloat {
+        paddingMode == .balanced ? OpticalMargins.topShare : 0.5
+    }
 }
