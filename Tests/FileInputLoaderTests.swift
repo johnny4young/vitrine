@@ -150,6 +150,48 @@ struct FileInputLoaderDecodeTextTests {
         #expect(FileInputLoader.decodeText(from: data) == text)
     }
 
+    /// A recognized BOM commits to its Unicode encoding. Truncated UTF-16 must
+    /// not lose its final byte, and malformed Unicode must not become Latin-1.
+    @Test(
+        arguments: [
+            [0xFF, 0xFE, 0x61, 0x00, 0x62],
+            [0xFE, 0xFF, 0x00, 0x61, 0x00],
+            [0xFF, 0xFE, 0xFF, 0xD8],
+            [0xFE, 0xFF, 0xD8, 0xFF],
+            [0xFF, 0xFE, 0x00, 0xD8, 0x61, 0x00],
+            [0xEF, 0xBB, 0xBF, 0xC3],
+            [0xEF, 0xBB, 0xBF, 0xFF],
+            [0xEF, 0xBB, 0xBF, 0xC0, 0xAF],
+            [0xEF, 0xBB, 0xBF, 0xED, 0xA0, 0x80],
+            [0xEF, 0xBB, 0xBF, 0xF4, 0x90, 0x80, 0x80],
+            [0xEF, 0xBB, 0xBF, 0x61, 0x00],
+        ] as [[UInt8]])
+    func malformedOrBinaryBOMPayloadIsRejected(bytes: [UInt8]) {
+        let data = Data(bytes)
+        #expect(FileInputLoader.decodeText(from: data) == nil)
+        #expect(throws: FileInputLoader.LoadError.binaryFile) {
+            _ = try FileInputLoader.decode(data: data, filename: "truncated.swift")
+        }
+    }
+
+    /// A BOM on its own is still a valid empty document.
+    @Test(arguments: [[0xFF, 0xFE], [0xFE, 0xFF], [0xEF, 0xBB, 0xBF]] as [[UInt8]])
+    func bomOnlyFileRemainsEmptyText(bytes: [UInt8]) {
+        #expect(FileInputLoader.decodeText(from: Data(bytes)) == "")
+    }
+
+    @Test func unicodeBOMsPreserveText() {
+        let text = "let café = \"你好 👍🏽 e\u{301}\"\n"
+        let utf8 = Data([0xEF, 0xBB, 0xBF]) + Data(text.utf8)
+        let littleEndian = Data([0xFF, 0xFE]) + text.data(using: .utf16LittleEndian)!
+        #expect(FileInputLoader.decodeText(from: utf8)?.utf16.elementsEqual(text.utf16) == true)
+        let bigEndian = Data([0xFE, 0xFF]) + text.data(using: .utf16BigEndian)!
+        #expect(
+            FileInputLoader.decodeText(from: littleEndian)?.utf16.elementsEqual(text.utf16) == true)
+        #expect(
+            FileInputLoader.decodeText(from: bigEndian)?.utf16.elementsEqual(text.utf16) == true)
+    }
+
     /// A UTF-8 BOM (common from Windows editors) must be stripped: decoding the
     /// raw bytes as `.utf8` keeps the U+FEFF, and the invisible scalar would leak
     /// into the editor, language detection, and sidecar text.

@@ -224,6 +224,10 @@ can never drift.
 
 ### Fixed
 
+- Reject truncated or malformed BOM-marked source files instead of silently dropping a final
+  UTF-16 byte or interpreting invalid Unicode as legacy text. A UTF-8 BOM no longer lets binary
+  NUL bytes bypass file-input validation.
+
 - Keep accent-tinted buttons readable with bright macOS accent colors, in light and
   dark appearance.
 - Draw destructive buttons in Settings in red, so they no longer look like routine actions.

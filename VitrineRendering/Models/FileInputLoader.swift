@@ -264,8 +264,20 @@ public enum FileInputLoader {
     public nonisolated static func decodeText(from data: Data) -> String? {
         if data.isEmpty { return "" }
 
-        // 1. Explicit Unicode BOM — decode by it before the NUL heuristic runs.
-        if let text = decodeBOMText(from: data) { return text }
+        // A recognized BOM commits to that encoding. A malformed payload must
+        // not fall through to a single-byte encoding and turn into mojibake.
+        let bytes = [UInt8](data.prefix(3))
+        if bytes.starts(with: [0xFF, 0xFE]) || bytes.starts(with: [0xFE, 0xFF]) {
+            // Foundation can silently discard an incomplete final UTF-16 byte.
+            guard data.count.isMultiple(of: 2) else { return nil }
+            return String(data: data, encoding: .utf16)
+        }
+        if bytes.starts(with: [0xEF, 0xBB, 0xBF]) {
+            let payload = data.dropFirst(3)
+            // Only UTF-16 needs the exception to the binary NUL-byte check.
+            guard !payload.contains(0) else { return nil }
+            return String(data: payload, encoding: .utf8)
+        }
 
         // 2. BOM-less data with a NUL byte is binary.
         if data.contains(0) { return nil }
@@ -274,24 +286,6 @@ public enum FileInputLoader {
         let encodings: [String.Encoding] = [.utf8, .windowsCP1252, .isoLatin1]
         for encoding in encodings {
             if let text = String(data: data, encoding: encoding) { return text }
-        }
-        return nil
-    }
-
-    /// Decodes data that begins with a UTF-16 (LE/BE) or UTF-8 byte-order mark
-    /// using that encoding, or `nil` when there is no recognized BOM. Handled
-    /// separately because UTF-16 text contains NUL bytes and so must bypass the
-    /// NUL-based binary check.
-    nonisolated private static func decodeBOMText(from data: Data) -> String? {
-        let bytes = [UInt8](data.prefix(3))
-        if bytes.starts(with: [0xFF, 0xFE]) || bytes.starts(with: [0xFE, 0xFF]) {
-            return String(data: data, encoding: .utf16)
-        }
-        if bytes.starts(with: [0xEF, 0xBB, 0xBF]) {
-            // Drop the BOM bytes: unlike the .utf16 decode above, .utf8 keeps a
-            // leading U+FEFF in the string, and the invisible scalar would leak
-            // into the editor, detection, and sidecar text.
-            return String(data: data.dropFirst(3), encoding: .utf8)
         }
         return nil
     }
