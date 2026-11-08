@@ -310,4 +310,26 @@ struct EverySizeBoardTests {
         #expect(drawn == 0)
         #expect(model.tiles.isEmpty)
     }
+
+    @Test func growingPastTheCapClearsTheTilesOfTheShorterContent() async {
+        let model = EverySizeBoardModel(debounce: .zero, renderer: renderer())
+        await model.render([.linkedIn], for: config(lines: 2))
+        #expect(model.tiles["linkedin"] != nil)
+
+        var long = SnapshotConfig()
+        long.code = String(repeating: "x", count: EverySizeBoardModel.maximumRenderedBytes + 1)
+        await model.render([.linkedIn], for: long)
+        #expect(model.tiles.isEmpty)
+    }
+
+    @Test func balancedPaddingPlacesTheTileContentWhereTheCanvasDoes() async throws {
+        let model = EverySizeBoardModel(debounce: .zero, renderer: renderer())
+        var balanced = config(lines: 2)
+        balanced.paddingMode = .balanced
+        await model.render([.linkedIn], for: balanced)
+        let geometry = try #require(model.tiles["linkedin"]?.geometry)
+        let top = (628 - 900) * OpticalMargins.topShare
+        #expect(abs(geometry.point(for: .zero).y - top) < 0.001)
+        #expect(abs(geometry.focal(at: CGPoint(x: 0, y: top)).y) < 0.001)
+    }
 }

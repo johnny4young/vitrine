@@ -129,8 +129,7 @@ public struct SnapshotConfig: Equatable {
     /// seam and never persisted, so `nil` keeps every other render unchanged.
     public var slideCue: SlideCue?
 
-    /// The point, normalized over the content and its padding, that a fixed frame too small
-    /// for the content keeps in view. Set by the every-size board for its export only.
+    /// What an overflowing fixed frame keeps in view, normalized over the padded content.
     public var focalPoint: CGPoint?
 
     /// The "beautify any image" content: when set, the canvas renders this image —

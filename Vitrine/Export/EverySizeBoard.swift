@@ -20,8 +20,7 @@ final class EverySizeBoardModel {
         var draw: (SnapshotConfig, ExportPreset, FocalCrop?) -> CGImage?
     }
 
-    /// A tile at this size takes about 60 ms in a Debug build, 75 ms with a crop; at 4 KB it is
-    /// 170–250 ms, long enough to stall the sheet on every release of a drag.
+    /// Past this size a tile render stalls the sheet on every release of a drag.
     static let maximumRenderedBytes = 2 * 1024
     static let tilePixels: CGFloat = 320
 
@@ -47,7 +46,11 @@ final class EverySizeBoardModel {
     func render(_ presets: [ExportPreset], for config: SnapshotConfig) async {
         currentRun += 1
         let run = currentRun
-        guard config.code.utf8.count <= Self.maximumRenderedBytes else { return }
+        guard config.code.utf8.count <= Self.maximumRenderedBytes else {
+            tiles = [:]
+            renderedKeys = [:]
+            return
+        }
         try? await Task.sleep(for: debounce)
         for preset in presets {
             guard !Task.isCancelled, run == currentRun else { return }
@@ -72,7 +75,8 @@ final class EverySizeBoardModel {
                     image: image,
                     geometry: FocalTileGeometry(
                         frame: fixedSize ?? natural, natural: natural, crop: crop,
-                        wrapsToWidth: !content.usesImageContent))
+                        wrapsToWidth: !content.usesImageContent,
+                        topShare: content.canvasTopShare))
                 renderedKeys[preset.id] = key
             } else {
                 tiles[preset.id] = nil
@@ -107,6 +111,7 @@ struct FocalTileGeometry: Equatable {
     var natural: CGSize
     var crop: FocalCrop?
     var wrapsToWidth = true
+    var topShare: CGFloat = 0.5
 
     /// Code wider than its frame wraps, so the tile doesn't show the layout the point maps to.
     var acceptsFocalPoint: Bool {
@@ -118,7 +123,7 @@ struct FocalTileGeometry: Equatable {
         let origin = crop?.origin ?? .zero
         return CGPoint(
             x: (canvas.width - natural.width) / 2 - origin.x,
-            y: (canvas.height - natural.height) / 2 - origin.y)
+            y: (canvas.height - natural.height) * topShare - origin.y)
     }
 
     func point(for focal: CGPoint) -> CGPoint {

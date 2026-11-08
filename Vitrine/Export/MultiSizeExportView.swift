@@ -272,6 +272,8 @@ struct MultiSizeExportView: View {
         .accessibilityElement()
         .accessibilityLabel(Text("Focal point"))
         .accessibilityValue(focalPointValue)
+        // A click places the point; without a role the value never reaches assistive apps.
+        .accessibilityAddTraits(.isButton)
         .accessibilityAction(named: Text("Move focal point up")) {
             if canFocus { nudgeFocalPoint(dx: 0, dy: -1) }
         }
