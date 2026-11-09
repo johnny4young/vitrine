@@ -224,6 +224,8 @@ can never drift.
 
 ### Fixed
 
+- Place code-step animation tokens at their measured text positions after emoji and CJK
+  characters, while preserving the existing monospaced ASCII path.
 - Keep accent-tinted buttons readable with bright macOS accent colors, in light and
   dark appearance.
 - Draw destructive buttons in Settings in red, so they no longer look like routine actions.
