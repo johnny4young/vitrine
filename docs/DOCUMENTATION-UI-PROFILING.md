@@ -29,10 +29,12 @@ markers add measurement overhead and do not themselves optimize the test.
 Save the complete ordinary-UI job log for one OS and one attempt, then run:
 
 ```sh
-python3 scripts/summarize-documentation-ui.py job.log > timing.json
-python3 scripts/summarize-documentation-ui.py --self-test
+node scripts/summarize-documentation-ui.mjs job.log > timing.json
+node scripts/summarize-documentation-ui.mjs --self-test
 ```
 
+The summarizer uses Node.js built-ins with no npm dependencies. Its self-test reads
+the emitter source and synthetic logs; it does not launch the app or a compiler.
 The summary fails closed on missing states/phases, duplicates, malformed markers,
 unknown labels and nonfinite/negative durations or totals. A standalone marker may
 follow a job-log timestamp; its complete payload must match the emitted format.

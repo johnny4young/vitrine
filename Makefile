@@ -485,4 +485,4 @@ test-web-capture: project web-capture-check
 ## UI test emits, so a renamed phase cannot silently make CI logs unsummarizable.
 .PHONY: documentation-ui-profile-check
 documentation-ui-profile-check:
-	python3 scripts/summarize-documentation-ui.py --self-test
+	node scripts/summarize-documentation-ui.mjs --self-test
