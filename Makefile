@@ -296,7 +296,7 @@ perf: project
 ## swift-features-check: validate the upcoming-feature log guard without Xcode. CI runs
 ## the guard itself on the Debug build log.
 swift-features-check:
-	python3 scripts/check-swift-features.py --self-test
+	node scripts/check-swift-features.mjs --self-test
 
 ## perf-check: validate the performance drift comparison without Xcode. CI runs
 ## scripts/check-perf.py against scripts/perf-baselines/<platform>.json after `make perf`.
@@ -364,7 +364,7 @@ appcast-requirements-check:
 
 ## ci-changes-check: validate the pull-request classifier that skips the macOS gates
 ci-changes-check:
-	python3 scripts/classify-ci-changes.py --self-test
+	bash scripts/classify-ci-changes.sh --self-test
 
 ## ui-selection-check: validate the pull-request UI test selection and visual-tour decision
 ui-selection-check:

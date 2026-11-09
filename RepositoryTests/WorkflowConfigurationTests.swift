@@ -381,7 +381,7 @@ struct WorkflowConfigurationTests {
         let build = try Self.job("build", in: Self.ci())
         #expect(!build.contains("make build "), "no separate Debug build")
         let release = try #require(build.range(of: "make build-release"))
-        let features = try #require(build.range(of: "scripts/check-swift-features.py"))
+        let features = try #require(build.range(of: "scripts/check-swift-features.mjs"))
         #expect(release.lowerBound < features.lowerBound)
         #expect(build.contains(#"2>&1 | tee "${RUNNER_TEMP}/build.log""#))
         #expect(build.contains(#"COVERAGE_DERIVED_DATA="${RUNNER_TEMP}/coverage-derived-data""#))
@@ -514,12 +514,12 @@ struct WorkflowConfigurationTests {
         // is on; ci.yml keeps that log and runs the guard over it, and lint runs its self-test.
         #expect(ci.contains(#"| tee "${RUNNER_TEMP}/build.log""#))
         #expect(
-            ci.contains(#"run: python3 scripts/check-swift-features.py "${RUNNER_TEMP}/build.log""#)
+            ci.contains(#"run: node scripts/check-swift-features.mjs "${RUNNER_TEMP}/build.log""#)
         )
         #expect(lint.split(separator: " ").contains("swift-features-check"))
         #expect(
             make.contains(
-                "swift-features-check:\n\tpython3 scripts/check-swift-features.py --self-test"))
+                "swift-features-check:\n\tnode scripts/check-swift-features.mjs --self-test"))
         let baseline = try Self.text("scripts", "coverage-baselines", "tahoe.json")
         #expect(baseline.contains(#""schemaVersion": 1"#))
         #expect(baseline.contains(#""productionLineCoverage""#))

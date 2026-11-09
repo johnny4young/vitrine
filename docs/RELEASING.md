@@ -129,6 +129,9 @@ CI is a release gate, not just a compile check.
   **`UI tests`** and **`Visual tour`** jobs execute the XCUITest suite (`make test-ui`)
   and the strict visual evidence tour (`make test-visual`) on the same runtime — see
   *Running the UI tests* below for when each runs in full.
+  The compiler-log guard (`scripts/check-swift-features.mjs`) uses Node.js built-ins,
+  with no npm dependencies. `make swift-features-check` validates its synthetic logs;
+  those fixtures do not invoke a compiler.
 - **Pull requests run a UI selection.** `scripts/select-ui-tests.py` picks the smoke list
   in `UITests/SmokeTests.txt` (one journey per primary surface, about three minutes), every
   UI test whose body the pull request changes, and `ZZDefaultsSuitePurgeUITests`, which must
@@ -138,7 +141,7 @@ CI is a release gate, not just a compile check.
   touches the tour, its manifest or that shared code. The job summary lists the selection,
   and a selection that fails runs everything. `UI tests` and `Visual tour` stay required
   checks: a skipped job with a literal name satisfies them.
-- **Documentation-only pull requests.** `scripts/classify-ci-changes.py` reads the
+- **Documentation-only pull requests.** `scripts/classify-ci-changes.sh` reads the
   pull request's changed files. When every one sits under `docs/`, `site/`,
   `.design-sync/` or the issue templates, or is a root Markdown file or `LICENSE`, the
   build, UI and visual-tour jobs are skipped and `Documentation checks` runs
@@ -146,6 +149,8 @@ CI is a release gate, not just a compile check.
   classifier lists both sides of a rename, so a move into `docs/` still counts as an
   app change. Pushes, schedules and manual runs skip the classification and run every
   gate, and a failed classification runs them too.
+  The classifier needs only Bash 3.2 or later and Git. Run `make ci-changes-check`
+  for its synthetic Git fixtures, including renames, deletions, quoted paths and errors.
 - **Pushes to `main` run the build.** A push runs `Build & test` and the Linux checks; the
   UI suite and the visual tour run there only for a commit that changes `project.yml`,
   because a release tags the version bump and its gate reads that commit's own checks. A
