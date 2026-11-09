@@ -47,7 +47,7 @@ jobs:
           fetch-depth: 2
       - name: Classify the changed files
         id: classify
-        run: python3 scripts/classify-ci-changes.py --event pull_request --base HEAD^1 >> "$GITHUB_OUTPUT"
+        run: bash scripts/classify-ci-changes.sh --event pull_request --base HEAD^1 >> "$GITHUB_OUTPUT"
       # The smoke list plus the UI tests this pull request edits; empty runs the whole suite.
       - name: Select the UI tests and visual tour
         id: select

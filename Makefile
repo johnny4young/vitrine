@@ -364,7 +364,7 @@ appcast-requirements-check:
 
 ## ci-changes-check: validate the pull-request classifier that skips the macOS gates
 ci-changes-check:
-	python3 scripts/classify-ci-changes.py --self-test
+	bash scripts/classify-ci-changes.sh --self-test
 
 ## ui-selection-check: validate the pull-request UI test selection and visual-tour decision
 ui-selection-check:
