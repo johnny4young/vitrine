@@ -86,6 +86,24 @@ test('CLI writes JSON for an owned log path containing spaces', () => {
   assert.equal(result.stderr, '');
   assert.equal(JSON.parse(result.stdout).total_seconds, 20);
 });
+for (const [label, separator] of [['CRLF', '\r\n'], ['CR', '\r']]) {
+  test('CLI preserves universal-newline reading for ' + label + ' logs', () => {
+    const file = join(directory, label + '.log');
+    writeFileSync(file, valid.replaceAll('\n', separator));
+    const result = spawnSync(process.execPath, [guard, file], { encoding: 'utf8' });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.stderr, '');
+    assert.deepEqual(JSON.parse(result.stdout), summarize(valid));
+  });
+}
+test('CLI counts mixed CR, CRLF and LF lines in malformed-marker diagnostics', () => {
+  const file = join(directory, 'mixed-newlines.log');
+  writeFileSync(file, 'first\rsecond\r\nthird\nDOCUMENTATION_UI_SEGMENT');
+  const result = spawnSync(process.execPath, [guard, file], { encoding: 'utf8' });
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, '');
+  assert.match(result.stderr, /Malformed timing marker on line 4/);
+});
 test('CLI rejects a malformed log without success output', () => {
   const file = join(directory, 'malformed.log');
   writeFileSync(file, valid + '\nDOCUMENTATION_UI_SEGMENT');

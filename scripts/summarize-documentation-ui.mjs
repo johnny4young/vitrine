@@ -92,7 +92,9 @@ function main() {
   }
   try {
     // Malformed UTF-8 outside marker payloads is unrelated job-log text.
-    console.log(JSON.stringify(summarize(readFileSync(args.positionals[0], 'utf8')), null, 2));
+    // Preserve the previous file reader's universal-newline translation.
+    const text = readFileSync(args.positionals[0], 'utf8').replace(/\r\n?/g, '\n');
+    console.log(JSON.stringify(summarize(text), null, 2));
     return 0;
   } catch (error) {
     console.error('Invalid documentation UI timing evidence: ' + error.message);
