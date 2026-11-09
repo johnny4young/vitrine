@@ -296,7 +296,7 @@ perf: project
 ## swift-features-check: validate the upcoming-feature log guard without Xcode. CI runs
 ## the guard itself on the Debug build log.
 swift-features-check:
-	python3 scripts/check-swift-features.py --self-test
+	node scripts/check-swift-features.mjs --self-test
 
 ## perf-check: validate the performance drift comparison without Xcode. CI runs
 ## scripts/check-perf.py against scripts/perf-baselines/<platform>.json after `make perf`.

@@ -129,6 +129,9 @@ CI is a release gate, not just a compile check.
   **`UI tests`** and **`Visual tour`** jobs execute the XCUITest suite (`make test-ui`)
   and the strict visual evidence tour (`make test-visual`) on the same runtime — see
   *Running the UI tests* below for when each runs in full.
+  The compiler-log guard (`scripts/check-swift-features.mjs`) uses Node.js built-ins,
+  with no npm dependencies. `make swift-features-check` validates its synthetic logs;
+  those fixtures do not invoke a compiler.
 - **Pull requests run a UI selection.** `scripts/select-ui-tests.py` picks the smoke list
   in `UITests/SmokeTests.txt` (one journey per primary surface, about three minutes), every
   UI test whose body the pull request changes, and `ZZDefaultsSuitePurgeUITests`, which must
