@@ -1,10 +1,11 @@
+import CoreText
 import SwiftUI
 import VitrineDomain
 
 /// A preview-only change from one code step to the next, laid out once. Exports never
 /// carry one.
 public struct CodeStepAnimation: Equatable {
-    /// A token at its start and end grid cells (x is the column, y the line).
+    /// A token at its start and end cells (x is its measured advance, y the line).
     struct Glyph {
         let text: String
         let color: Color
@@ -26,6 +27,50 @@ public struct CodeStepAnimation: Equatable {
         }
     }
 
+    /// Resolves each source line once. A Character column is not a glyph advance: emoji,
+    /// CJK and font fallbacks can occupy more than one monospaced cell.
+    struct TokenLayout {
+        let text: NSAttributedString
+        let advance: CGFloat
+        private let usesUniformASCIIGrid: Bool
+        private var lines: [Int: (start: Int, line: CTLine)] = [:]
+
+        init?(text: NSAttributedString, source: String, font: NSFont) {
+            // HTML-backed themes can normalize newlines or Unicode. Source token offsets
+            // must never index a different UTF-16 sequence, even canonically equal text.
+            guard text.string.utf16.elementsEqual(source.utf16) else { return nil }
+            self.text = text
+            advance = CodeFont.advance(of: "0", in: font)
+            usesUniformASCIIGrid =
+                font.isFixedPitch
+                && source.utf8.allSatisfy {
+                    (0x20...0x7E).contains($0) || $0 == 0x0A || $0 == 0x0D
+                }
+        }
+
+        mutating func cell(for token: CodeToken) -> CGPoint {
+            // Keep the original constant-time grid for ordinary monospaced ASCII code.
+            if usesUniformASCIIGrid { return CGPoint(x: token.column, y: token.line) }
+            let layout: (start: Int, line: CTLine)
+            if let cached = lines[token.line] {
+                layout = cached
+            } else {
+                let range = (text.string as NSString).lineRange(
+                    for: NSRange(location: token.utf16Offset, length: 0))
+                layout = (
+                    range.location,
+                    CTLineCreateWithAttributedString(text.attributedSubstring(from: range))
+                )
+                lines[token.line] = layout
+            }
+            let offset = token.utf16Offset - layout.start
+            let start = CTLineGetOffsetForStringIndex(layout.line, offset, nil)
+            let end = CTLineGetOffsetForStringIndex(
+                layout.line, offset + token.text.utf16.count, nil)
+            return CGPoint(x: min(start, end) / advance, y: CGFloat(token.line))
+        }
+    }
+
     public static let duration = 0.6
 
     public let id: Int
@@ -33,7 +78,8 @@ public struct CodeStepAnimation: Equatable {
     let glyphs: [Glyph]
 
     /// `nil` when the change can't be drawn token by token: tabs, whose width the column
-    /// grid can't place, or steps past the diff's token limit.
+    /// grid can't place, steps past the diff's token limit, or highlighting that changes
+    /// the source's UTF-16 sequence.
     public init?(
         id: Int, from: String, to: String, language: Language, theme: VitrineDomain.Theme,
         font: NSFont
@@ -47,8 +93,11 @@ public struct CodeStepAnimation: Equatable {
         let new = highlighter.attributedString(
             for: to, language: language, theme: theme, font: font)
         let fallback = highlighter.gutterForegroundColor(for: theme)
+        guard var oldLayout = TokenLayout(text: old, source: from, font: font),
+            var newLayout = TokenLayout(text: new, source: to, font: font)
+        else { return nil }
         func glyph(
-            _ token: CodeToken, in text: NSAttributedString, from: CodeToken?, to: CodeToken?
+            _ token: CodeToken, in text: NSAttributedString, from: CGPoint?, to: CGPoint?
         )
             -> Glyph
         {
@@ -58,14 +107,17 @@ public struct CodeStepAnimation: Equatable {
                     as? NSColor : nil
             return Glyph(
                 text: token.text, color: color.map { Color(nsColor: $0) } ?? fallback,
-                from: from.map { CGPoint(x: $0.column, y: $0.line) },
-                to: to.map { CGPoint(x: $0.column, y: $0.line) })
+                from: from, to: to)
         }
         glyphs = transition.changes.map { change in
             switch change {
-            case .moved(let from, let to): glyph(to, in: new, from: from, to: to)
-            case .removed(let token): glyph(token, in: old, from: token, to: nil)
-            case .inserted(let token): glyph(token, in: new, from: nil, to: token)
+            case .moved(let from, let to):
+                glyph(
+                    to, in: new, from: oldLayout.cell(for: from), to: newLayout.cell(for: to))
+            case .removed(let token):
+                glyph(token, in: old, from: oldLayout.cell(for: token), to: nil)
+            case .inserted(let token):
+                glyph(token, in: new, from: nil, to: newLayout.cell(for: token))
             }
         }
         self.id = id

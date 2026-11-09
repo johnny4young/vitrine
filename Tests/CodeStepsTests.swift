@@ -222,6 +222,58 @@ struct CodeStepsTests {
         #expect(abs(threeLines.height - (3 * probe.lineHeight + 2 * 4)) <= 0.5)
     }
 
+    @Test(arguments: ["a 👍 bc", "你好 abc", "a 👨‍👩‍👧‍👦 bc", "a é bc"])
+    func tokensAfterUnicodeUseTheirNativePosition(_ code: String) throws {
+        let animation = try #require(
+            CodeStepAnimation(
+                id: 1, from: code, to: "  " + code, language: .swift, theme: .oneDark,
+                font: font))
+        let token = try #require(CodeToken.tokens(in: code)?.last)
+        let glyph = try #require(animation.glyphs.first { $0.text == token.text })
+        let prefix = (code as NSString).substring(to: token.utf16Offset)
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        let advance = CodeFont.advance(of: "0", in: font)
+        let oldX = (prefix as NSString).size(withAttributes: attributes).width
+        let newX = (("  " + prefix) as NSString).size(withAttributes: attributes).width
+        #expect(abs(try #require(glyph.from).x * advance - oldX) < 0.5)
+        #expect(abs(try #require(glyph.to).x * advance - newX) < 0.5)
+    }
+
+    @Test func nativeTokenPositionsKeepRowsAndResetAtEachNewline() throws {
+        let source = "a 👍 bc\r\n  你好 abc\nlast"
+        let text = NSAttributedString(string: source, attributes: [.font: font])
+        var layout = try #require(
+            CodeStepAnimation.TokenLayout(text: text, source: source, font: font))
+        let tokens = try #require(CodeToken.tokens(in: source))
+        let last = try #require(tokens.last)
+        #expect(layout.cell(for: last) == CGPoint(x: 0, y: 2))
+        let cjk = try #require(tokens.first { $0.text == "你好" })
+        #expect(layout.cell(for: cjk) == CGPoint(x: 2, y: 1))
+        // A cached line gives the same position when queried out of order.
+        #expect(layout.cell(for: last) == CGPoint(x: 0, y: 2))
+    }
+
+    @Test func proportionalASCIIUsesNativeTokenPositions() throws {
+        let font = NSFont.systemFont(ofSize: 14)
+        let source = "Wiii next"
+        let attributes: [NSAttributedString.Key: Any] = [.font: font]
+        let text = NSAttributedString(string: source, attributes: attributes)
+        var layout = try #require(
+            CodeStepAnimation.TokenLayout(text: text, source: source, font: font))
+        let token = try #require(CodeToken.tokens(in: source)?.last)
+        let prefix = (source as NSString).substring(to: token.utf16Offset)
+        let expected = (prefix as NSString).size(withAttributes: attributes).width
+        let measured = layout.cell(for: token).x * CodeFont.advance(of: "0", in: font)
+        #expect(abs(measured - expected) < 0.5)
+    }
+
+    @Test func normalizedHighlighterTextCannotUseSourceOffsets() {
+        for (source, rendered) in [("a\r\nb\r\nz", "a\nb\nz"), ("e\u{301} x", "é x")] {
+            let text = NSAttributedString(string: rendered, attributes: [.font: font])
+            #expect(CodeStepAnimation.TokenLayout(text: text, source: source, font: font) == nil)
+        }
+    }
+
     @Test func tokensGlideFadeOutAndFadeIn() throws {
         let animation = try #require(
             CodeStepAnimation(
