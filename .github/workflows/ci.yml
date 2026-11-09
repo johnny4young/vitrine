@@ -339,7 +339,7 @@ jobs:
       # The compiler invocations in the log are the resolved truth for every upcoming
       # feature, whatever project setting, xcconfig, or command-line override produced them.
       - name: Check upcoming Swift features
-        run: python3 scripts/check-swift-features.py "${RUNNER_TEMP}/build.log"
+        run: node scripts/check-swift-features.mjs "${RUNNER_TEMP}/build.log"
 
       - name: Test with code coverage (Swift Testing)
         run: |

@@ -98,7 +98,7 @@ struct ModuleImportContractTests {
     /// configuration in `project.yml` (bare or quoted key); every xcconfig the project names, a
     /// command line passes with `-xcconfig` or `XCODE_XCCONFIG_FILE`, or one of those includes;
     /// and the `xcodebuild` command lines in the Makefile, workflows, and scripts, whose
-    /// overrides beat every project setting. `scripts/check-swift-features.py` checks the same
+    /// overrides beat every project setting. `scripts/check-swift-features.mjs` checks the same
     /// thing on CI from what the compiler was actually invoked with.
     @Test func memberImportVisibilityStaysOnForEveryTarget() throws {
         let project = try String(
