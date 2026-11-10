@@ -4,6 +4,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { test } from 'node:test';
 import sharp from 'sharp';
 import { imageReferences } from './asset-contract.mjs';
+import { assertVisiblePixelsEqual } from './pixel-contract.mjs';
 
 const dist = new URL('../dist/', import.meta.url);
 const manifest = JSON.parse(await readFile(new URL('../src/generated/images.json', import.meta.url)));
@@ -50,14 +51,7 @@ test('responsive images are content-addressed lossless encodings of the resized 
       assert.equal(buffer.length, candidate.bytes);
       const expected = await sharp(input).resize({ width: candidate.width }).ensureAlpha().raw().toBuffer();
       const actual = await sharp(buffer).ensureAlpha().raw().toBuffer();
-      assert.equal(actual.length, expected.length);
-      // RGB under a fully transparent pixel is not visible and may be canonicalized.
-      for (let index = 0; index < actual.length; index += 4) {
-        assert.equal(actual[index + 3], expected[index + 3]);
-        if (actual[index + 3] !== 0) {
-          for (let channel = 0; channel < 3; channel++) assert.equal(actual[index + channel], expected[index + channel]);
-        }
-      }
+      assertVisiblePixelsEqual(actual, expected);
     }
   }
   assert.ok(fullSizeBytes < originalBytes * 0.7, 'Lossless assets should materially reduce bytes');
