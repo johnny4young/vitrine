@@ -44,13 +44,16 @@ test('responsive images are content-addressed lossless encodings of the resized 
     assert.equal(image.height, metadata.height);
     originalBytes += input.length;
     fullSizeBytes += image.candidates.at(-1).bytes;
-    for (const candidate of image.candidates) {
+    await Promise.all(image.candidates.map(async (candidate) => {
       const buffer = await readFile(new URL(candidate.src.slice(1), dist));
       assert.ok(candidate.src.includes(createHash('sha256').update(buffer).digest('hex').slice(0, 16)));
       assert.equal(buffer.length, candidate.bytes);
-      const expected = await sharp(input).resize({ width: candidate.width }).ensureAlpha().raw().toBuffer();
-      const actual = await sharp(buffer).ensureAlpha().raw().toBuffer();
+      const [expected, actual] = await Promise.all([
+        sharp(input).resize({ width: candidate.width }).ensureAlpha().raw().toBuffer(),
+        sharp(buffer).ensureAlpha().raw().toBuffer(),
+      ]);
       assert.equal(actual.length, expected.length);
+      if (actual.equals(expected)) return;
       // RGB under a fully transparent pixel is not visible and may be canonicalized.
       for (let index = 0; index < actual.length; index += 4) {
         assert.equal(actual[index + 3], expected[index + 3]);
@@ -58,7 +61,7 @@ test('responsive images are content-addressed lossless encodings of the resized 
           for (let channel = 0; channel < 3; channel++) assert.equal(actual[index + channel], expected[index + channel]);
         }
       }
-    }
+    }));
   }
   assert.ok(fullSizeBytes < originalBytes * 0.7, 'Lossless assets should materially reduce bytes');
   console.log(`Original PNG bytes: ${originalBytes}; largest selected WebP bytes: ${fullSizeBytes}`);
