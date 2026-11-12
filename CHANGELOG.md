@@ -206,9 +206,6 @@ can never drift.
 
 ### Changed
 
-- Vitrine loads its syntax highlighter at launch only when a global hotkey is set to quick
-  capture. Otherwise it loads with the first render, and the menu bar app uses about 16 MB
-  less until then.
 - Gather the Library's preset actions in one menu beside the preset picker. Export is
   labeled Export Saved Presets… because it writes every saved preset to one file.
 - Move Pin snapshot and Make This Window the Default into the toolbar's More menu until
@@ -222,12 +219,22 @@ can never drift.
   release for macOS 15 Sequoia and Intel Macs, and Sparkle no longer offers those Macs
   newer updates.
 
+### Performance
+
+- Load the syntax highlighter at launch only when a global hotkey is set to quick capture.
+  Otherwise it loads with the first render, which pays for it once. Measured on Release builds
+  of the menu bar app with no window open, the footprint at rest went from 34.6 to 18.3 MB,
+  and the first quick capture after launch took 122 ms instead of 90 ms (medians). The Mac
+  was busy during the measurement, so the figures are indicative.
+
 ### Fixed
 
+- Fall back to the Dock when Control Center hides both of Vitrine's menu bar icons: the
+  editor opens with an alert that links to Menu Bar settings, instead of Vitrine staying
+  open with no way to reach it.
 - Reject truncated or malformed BOM-marked source files instead of silently dropping a final
   UTF-16 byte or interpreting invalid Unicode as legacy text. A UTF-8 BOM no longer lets binary
   NUL bytes bypass file-input validation.
-
 - Place code-step animation tokens at their measured text positions after emoji and CJK
   characters, while preserving the existing monospaced ASCII path.
 - Keep accent-tinted buttons readable with bright macOS accent colors, in light and
@@ -236,6 +243,29 @@ can never drift.
 - Keep the editor preview's accessible text in sync when the source changes.
 - Preserve the selected code font and size in styled syntax tokens, including
   comments and Markdown emphasis in carousel and image exports.
+
+### Testing
+
+- Run the UI suite in English, only for the paths a UI test alone can prove, and without
+  fixed sleeps. Pull requests run a smoke selection plus the UI tests they edit, and the
+  visual tour only when they touch it; the whole suite and the tour run every night, and a
+  failed nightly run opens an issue. Documentation-only pull requests run the repository
+  contracts instead of the macOS gates.
+- Let a push to `main` reuse its pull request's checks when it lands the same tree, and run
+  WebKit integration only when its sign-in case changes. A version bump changes
+  `project.yml`, so release commits still run every gate.
+- Qualify the golden baselines on macOS 26.7.2 and accept a reviewed second runner image
+  during a rollout, set the on-device OCR cases apart on the Xcode 27 preview image, and
+  check the Library preset row by its laid-out width.
+- Delete the preferences suites and shortcut keys that UI tests and the memory smoke create.
+  CI path classification, compiler feature checks and documentation timing summaries no
+  longer need Python.
+
+### Security
+
+- Override the website's `undici` to 7.30.1 for GHSA-xjj6-f33q-929c, GHSA-f72v-6w45-q472
+  and GHSA-4qv8-2p9j-2685. Only the site's local development and deploy tools use it; the
+  app does not include it.
 
 ## [1.3.0] - 2026-10-14
 
