@@ -41,7 +41,8 @@ distribution-channel contract in one place. A new user can follow the
 
 ## Technology
 
-- Swift 6.2, SwiftUI, and focused AppKit integration
+- Swift 6.2, SwiftUI, and focused AppKit integration; why it stays Swift is recorded in
+  [ADR 0002](decisions/0002-swift-stack-rust-on-demand.md)
 - XcodeGen, with `project.yml` as the project source of truth
 - Highlightr behind a narrow rendering adapter for syntax highlighting; the maintenance
   tradeoff and replacement gates are recorded in

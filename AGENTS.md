@@ -30,6 +30,18 @@ Guidance for AI agents and contributors. Keep it short; only non-obvious rules l
   planning identifiers, private work-item names, or local-document references in tracked files.
 - No network code in the core. Sandboxed without `network.client`; user content never
   leaves the Mac.
+- **Licenses:** never copy code from GPL or AGPL projects; read them for ideas only.
+  Check the license before bringing in any third-party code, dependency or asset. If a
+  Rust UI ever uses GPUI (Apache-2.0), never depend on or copy Zed's GPL-3.0 crates `ui`,
+  `theme`, `editor`, `component`, `terminal` or `terminal_view`.
+
+## CI
+
+- **Probes share five macOS runners with every repository on the account.** A temporary
+  or diagnostic workflow, or a dispatch used as one, always sets `timeout-minutes`; one
+  that fans out (a matrix, repeated runs) also sets `strategy.max-parallel: 2`. Run it
+  between 07:00 and 11:00 UTC when it can wait. Nightly, release and full-suite runs are
+  not probes.
 
 ## Prose & language
 
