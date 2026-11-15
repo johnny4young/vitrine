@@ -51,15 +51,15 @@ struct BuiltInStylesheet {
 
         func append(_ text: Substring) {
             guard !text.isEmpty else { return }
-            let attributes =
-                cache[stack]
-                ?? {
-                    let resolved = attributes(for: stack, font: font, fonts: &fonts)
-                    cache[stack] = resolved
-                    return resolved
-                }()
+            let styled: [NSAttributedString.Key: Any]
+            if let cached = cache[stack] {
+                styled = cached
+            } else {
+                styled = attributes(for: stack, font: font, fonts: &fonts)
+                cache[stack] = styled
+            }
             result.append(
-                NSAttributedString(string: Self.decodingEntities(text), attributes: attributes))
+                NSAttributedString(string: Self.decodingEntities(text), attributes: styled))
         }
 
         var rest = html[...]
