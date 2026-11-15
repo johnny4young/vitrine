@@ -9,7 +9,7 @@ import VitrineDomain
 /// it from the app container and a test resolves a fixture without touching it. A missing
 /// file degrades to a neutral placeholder rather than blanking the canvas.
 ///
-/// The enclosing `SnapshotCanvas.imageCard` applies the corner radius, border, and shadow,
+/// The enclosing `ImageCard` in `SnapshotCanvas` applies the corner radius, border, and shadow,
 /// so this view only produces the frame chrome + image content.
 struct FramedImageView: View {
     public let reference: ImageReference
@@ -59,6 +59,56 @@ struct FramedImageView: View {
     /// (SHA-256) foreground image file name, so a given name maps to one immutable
     /// sample. Mirrors `DecodedImageCache.imageCache`.
     @MainActor private static let autoChromeCache = NSCache<NSString, FrameChromeBox>()
+
+    /// The color this view paints edge to edge when it covers its rounded bounds opaquely,
+    /// or `nil` when something behind it would show through.
+    func opaqueFill(in store: BackgroundImageStore) -> Color? {
+        guard let image = store.image(for: reference) else { return nil }
+        switch frame {
+        case .none:
+            return Self.isOpaque(image, key: reference.fileName) ? .black : nil
+        case .macOSWindow, .browser:
+            let bar = chrome(for: image).bar
+            return NSColor(bar).alphaComponent < 1 ? nil : bar
+        case .macBook, .iPhone:
+            return nil
+        }
+    }
+
+    /// Keyed by the content-addressed file name, like `autoChromeCache`.
+    @MainActor private static let opacityCache = NSCache<NSString, NSNumber>()
+
+    private static func isOpaque(_ image: NSImage, key: String) -> Bool {
+        if let cached = opacityCache.object(forKey: key as NSString) { return cached.boolValue }
+        let opaque = hasNoTransparentPixels(image)
+        opacityCache.setObject(NSNumber(value: opaque), forKey: key as NSString)
+        return opaque
+    }
+
+    static func hasNoTransparentPixels(_ image: NSImage) -> Bool {
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            return false
+        }
+        switch cgImage.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast: return true
+        default: break
+        }
+        let width = cgImage.width
+        let height = cgImage.height
+        guard
+            let context = CGContext(
+                data: nil, width: width, height: height, bitsPerComponent: 8,
+                bytesPerRow: width * 4, space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
+            let data = context.data
+        else { return false }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        let bytes = data.bindMemory(to: UInt8.self, capacity: width * height * 4)
+        for index in stride(from: 3, to: width * height * 4, by: 4) where bytes[index] < 255 {
+            return false
+        }
+        return true
+    }
 
     public var body: some View {
         if let image = store.image(for: reference) {
