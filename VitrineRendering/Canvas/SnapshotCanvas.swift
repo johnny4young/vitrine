@@ -131,39 +131,16 @@ public struct SnapshotCanvas: View, Equatable {
         }
     }
 
-    /// The framed image as a card: the image (optionally wrapped in a window/browser
-    /// frame), elevated with the same shadow recipe as the code card. The card treatment is
-    /// frame-aware so each frame reads as one integrated object rather than a generic card:
-    /// - a **device** mockup (MacBook/iPhone) defines its own silhouette, so it gets only the
-    ///   shadow — no rounded-rect clip or hairline border boxing the device;
-    /// - a **window/browser** frame is its own edge (it fills with the chrome color), so it is
-    ///   rounded but carries no extra hairline that would read as a separation line;
-    /// - a **plain** image keeps the rounded clip + hairline, which gives a borderless
-    ///   screenshot a crisp edge against the background.
-    @ViewBuilder
     private func imageCard(_ reference: ImageReference) -> some View {
-        let framed = FramedImageView(
-            reference: reference,
-            frame: config.imageFrame,
-            appearance: config.imageFrameAppearance,
-            title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        )
-        let rounded = RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous)
-
-        switch config.imageFrame {
-        case .macBook, .iPhone:
-            framed.brandShadow(cardShadow)
-        case .macOSWindow, .browser:
-            framed.clipShape(rounded).brandShadow(cardShadow)
-        case .none:
-            framed
-                .clipShape(rounded)
-                .overlay(
-                    rounded.strokeBorder(
-                        Brand.Palette.exportedCardBorder, lineWidth: Brand.Stroke.hairline)
-                )
-                .brandShadow(cardShadow)
-        }
+        ImageCard(
+            framed: FramedImageView(
+                reference: reference,
+                frame: config.imageFrame,
+                appearance: config.imageFrameAppearance,
+                title: config.windowTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            ),
+            cornerRadius: config.cornerRadius,
+            shadow: cardShadow)
     }
 
     /// The canvas with annotations composited on top: the sharp canvas, a
@@ -343,7 +320,10 @@ public struct SnapshotCanvas: View, Equatable {
         )
         .modifier(
             CardShadow(
-                cornerRadius: config.cornerRadius, fill: cardBackgroundColor, shadow: cardShadow))
+                cornerRadius: config.cornerRadius,
+                opaqueFill: NSColor(cardBackgroundColor).alphaComponent < 1
+                    ? nil : cardBackgroundColor,
+                shadow: cardShadow))
     }
 
     private static let cardHorizontalInset: CGFloat = 26
@@ -544,25 +524,61 @@ public struct SnapshotCanvas: View, Equatable {
     }
 }
 
+/// The framed image as a card, elevated with the code card's shadow. The treatment is
+/// frame-aware so each frame reads as one object:
+/// - a **device** mockup defines its own silhouette, so it gets only the shadow;
+/// - a **window/browser** frame is its own edge, so it is rounded with no hairline;
+/// - a **plain** image keeps the rounded clip and hairline for a crisp edge.
+private struct ImageCard: View {
+    let framed: FramedImageView
+    let cornerRadius: CGFloat
+    let shadow: Brand.ShadowStyle
+
+    @Environment(\.foregroundImageStore) private var store
+
+    var body: some View {
+        let rounded = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+        switch framed.frame {
+        case .macBook, .iPhone:
+            framed.brandShadow(shadow)
+        case .macOSWindow, .browser:
+            framed.clipShape(rounded).modifier(cardShadow)
+        case .none:
+            framed
+                .clipShape(rounded)
+                .overlay(
+                    rounded.strokeBorder(
+                        Brand.Palette.exportedCardBorder, lineWidth: Brand.Stroke.hairline)
+                )
+                .modifier(cardShadow)
+        }
+    }
+
+    private var cardShadow: CardShadow {
+        CardShadow(
+            cornerRadius: cornerRadius, opaqueFill: framed.opaqueFill(in: store), shadow: shadow)
+    }
+}
+
 /// Casts the card's shadow from a plain rounded rectangle behind it, so RenderBox does not
-/// rasterize and blur the whole card. A translucent card would show that fill through, so
-/// it keeps the shadow on the card itself.
+/// rasterize and blur the whole card. Only a card that paints `opaqueFill` edge to edge can
+/// hide that rectangle; any other card, or an unblurred shadow, stays on the card itself.
 private struct CardShadow: ViewModifier {
     let cornerRadius: CGFloat
-    let fill: Color
+    let opaqueFill: Color?
     let shadow: Brand.ShadowStyle
 
     func body(content: Content) -> some View {
-        if NSColor(fill).alphaComponent < 1 {
-            content.brandShadow(shadow)
-        } else {
+        if let opaqueFill, shadow.radius > 0 {
             content.background {
                 // Inset so the fill stays out of the card's anti-aliased edge.
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .inset(by: 0.5)
-                    .fill(fill)
+                    .fill(opaqueFill)
                     .brandShadow(shadow)
             }
+        } else {
+            content.brandShadow(shadow)
         }
     }
 }

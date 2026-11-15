@@ -231,6 +231,11 @@ can never drift.
   lines with the Release CLI went from 0.62 to 0.40 s, 1.8 to 0.4 s of CPU, and 318 to 137 MB
   at peak. The shadow keeps its recipe; it no longer shows through a light card around the
   text.
+- Draw a beautified image's shadow the same way when the image or its window or browser frame
+  is opaque. A 2880×1800 screenshot exported at 2× went from 80 to 31 ms with no frame, 94 to
+  33 ms in a window and 103 to 34 ms in a browser frame. Window and browser frames now cast
+  one shadow, like the code card, instead of a shadow per layer that darkened the title bar
+  and the edge below it. Images with transparent pixels and device frames are unchanged.
 
 ### Fixed
 
