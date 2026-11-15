@@ -20,13 +20,15 @@ final class HighlightJSEngine {
         self.hljs = hljs
     }
 
-    /// Tokenizes `code` into Highlight.js HTML with the same call Highlightr makes, so
+    /// Tokenizes `code` into Highlight.js HTML with the arguments Highlightr passes, so
     /// built-in themes keep their token classification: the named grammar without
     /// ignoring illegal input, then auto-detection when that fails or no name is given.
     func html(for code: String, languageName: String?) -> String? {
         var result: JSValue?
         if let languageName {
-            result = hljs.invokeMethod("highlight", withArguments: [languageName, code, false])
+            result = hljs.invokeMethod(
+                "highlight",
+                withArguments: [code, ["language": languageName, "ignoreIllegals": false]])
         }
         if result == nil || result?.isUndefined == true {
             result = hljs.invokeMethod("highlightAuto", withArguments: [code])

@@ -341,17 +341,9 @@ public struct SnapshotCanvas: View, Equatable {
             RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous)
                 .strokeBorder(Brand.Palette.exportedCardBorder, lineWidth: Brand.Stroke.hairline)
         )
-        .background { cardShadowCaster }
-    }
-
-    /// Casts the card's drop shadow from a plain rounded rectangle. Shadowing the whole
-    /// card made RenderBox rasterize, blur and rescale all of it, most of an export's CPU.
-    /// The half-point inset keeps the fill out of the card's anti-aliased edge.
-    private var cardShadowCaster: some View {
-        RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous)
-            .inset(by: 0.5)
-            .fill(cardBackgroundColor)
-            .brandShadow(cardShadow)
+        .modifier(
+            CardShadow(
+                cornerRadius: config.cornerRadius, fill: cardBackgroundColor, shadow: cardShadow))
     }
 
     private static let cardHorizontalInset: CGFloat = 26
@@ -549,5 +541,28 @@ public struct SnapshotCanvas: View, Equatable {
         }
         return HighlightManager.shared.swiftUIAttributedLines(
             for: source, language: config.language, theme: config.theme, font: codeFont)
+    }
+}
+
+/// Casts the card's shadow from a plain rounded rectangle behind it, so RenderBox does not
+/// rasterize and blur the whole card. A translucent card would show that fill through, so
+/// it keeps the shadow on the card itself.
+private struct CardShadow: ViewModifier {
+    let cornerRadius: CGFloat
+    let fill: Color
+    let shadow: Brand.ShadowStyle
+
+    func body(content: Content) -> some View {
+        if NSColor(fill).alphaComponent < 1 {
+            content.brandShadow(shadow)
+        } else {
+            content.background {
+                // Inset so the fill stays out of the card's anti-aliased edge.
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .inset(by: 0.5)
+                    .fill(fill)
+                    .brandShadow(shadow)
+            }
+        }
     }
 }

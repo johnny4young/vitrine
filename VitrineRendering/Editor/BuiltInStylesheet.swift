@@ -200,25 +200,54 @@ struct BuiltInStylesheet {
         return NSColor(red: channels[0], green: channels[1], blue: channels[2], alpha: 1)
     }
 
-    /// Decodes the entities Highlight.js escapes, plus numeric references.
+    /// Decodes the entities Highlight.js escapes, plus numeric references. Scanned by hand
+    /// because a Swift `Regex` costs tens of microseconds per run, and most runs carry one.
     private static func decodingEntities(_ text: Substring) -> String {
         guard text.contains("&") else { return String(text) }
-        return String(text).replacing(/&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);/) { match in
-            let entity = match.output.1
-            let scalar: UInt32? =
-                switch entity {
-                case "amp": 0x26
-                case "lt": 0x3C
-                case "gt": 0x3E
-                case "quot": 0x22
-                case "apos": 0x27
-                default:
-                    entity.hasPrefix("#x")
-                        ? UInt32(entity.dropFirst(2), radix: 16)
-                        : entity.hasPrefix("#") ? UInt32(entity.dropFirst()) : nil
-                }
-            return scalar.flatMap(Unicode.Scalar.init).map { String(Character($0)) }
-                ?? String(match.output.0)
+        var decoded = ""
+        decoded.reserveCapacity(text.utf8.count)
+        var rest = text
+        while let ampersand = rest.firstIndex(of: "&") {
+            decoded += rest[..<ampersand]
+            let start = rest.index(after: ampersand)
+            if let end = rest[start...].prefix(10).firstIndex(of: ";"),
+                let scalar = entityScalar(rest[start..<end])
+            {
+                decoded.unicodeScalars.append(scalar)
+                rest = rest[rest.index(after: end)...]
+            } else {
+                decoded.append("&")
+                rest = rest[start...]
+            }
         }
+        decoded += rest
+        return decoded
+    }
+
+    private static func entityScalar(_ entity: Substring) -> Unicode.Scalar? {
+        let value: UInt32? =
+            switch entity {
+            case "amp": 0x26
+            case "lt": 0x3C
+            case "gt": 0x3E
+            case "quot": 0x22
+            case "apos": 0x27
+            default:
+                if entity.hasPrefix("#x") {
+                    numeric(entity.dropFirst(2), radix: 16)
+                } else if entity.hasPrefix("#") {
+                    numeric(entity.dropFirst(), radix: 10)
+                } else {
+                    nil
+                }
+            }
+        return value.flatMap(Unicode.Scalar.init)
+    }
+
+    private static func numeric(_ digits: Substring, radix: Int) -> UInt32? {
+        guard !digits.isEmpty, digits.allSatisfy({ ($0.hexDigitValue ?? radix) < radix }) else {
+            return nil
+        }
+        return UInt32(digits, radix: radix)
     }
 }

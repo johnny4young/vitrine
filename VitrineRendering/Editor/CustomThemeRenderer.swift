@@ -10,10 +10,8 @@ import VitrineDomain
 ///
 /// ## Why a separate path
 ///
-/// Highlightr can only load a theme from a stylesheet **bundled** with it; its CSS
-/// parser has no public entry point for injecting a user stylesheet. Rather than
-/// fork the dependency, this renderer asks the shared `HighlightJSEngine` to tokenize the code into Highlight.js HTML
-/// (so token classification is identical to the built-in themes), wraps that HTML
+/// A palette is not a bundled stylesheet, so this renderer asks the shared
+/// `HighlightJSEngine` to tokenize the code into Highlight.js HTML, wraps that HTML
 /// with the palette's synthesized stylesheet, and lets AppKit's HTML reader produce
 /// the attributed string. The result paints real, per-token palette colors over the
 /// palette's own background, and — because the palette is fixed sRGB — renders the

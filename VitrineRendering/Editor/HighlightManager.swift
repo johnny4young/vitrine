@@ -379,8 +379,8 @@ public final class HighlightManager {
     }
 
     /// The Highlight.js stylesheet names bundled with the engine, or `nil` if the
-    /// engine is unavailable. This is the authoritative contract for built-in
-    /// themes: `setTheme(to:)` otherwise fails without replacing the current theme.
+    /// resource bundle is missing. This is the authoritative contract for built-in
+    /// themes: a missing stylesheet otherwise renders as One Dark.
     public func supportedThemeNames() -> [String]? {
         HighlightJSEngine.stylesheetNames()
     }
