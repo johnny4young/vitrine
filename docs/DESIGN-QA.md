@@ -38,7 +38,7 @@ value-typed, the suite asserts the text-on-card contrast **statically**: the
 foreground and every syntax-token color must clear the WCAG AA normal-text threshold
 (4.5:1) against the card background, using the same `Brand.Contrast` utilities as the
 brand-palette checks. A built-in theme can't be checked this way because its
-syntax colors only exist inside Highlightr at render time.
+syntax colors only exist inside the highlighter at render time.
 
 > The app *chrome* already adapts to the system **Increase Contrast** setting via the
 > brand color set (see [DESIGN-SYSTEM.md](DESIGN-SYSTEM.md)); that is verified

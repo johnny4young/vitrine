@@ -24,7 +24,14 @@ package swap.
 Retain exact Highlightr 2.3.0 temporarily behind `VitrineRendering.HighlightManager`.
 Do not expose Highlightr types outside that adapter. Every built-in stylesheet name must
 exist in the engine catalog, and an unavailable stylesheet must fall back explicitly to
-One Dark rather than inheriting the mutable engine's previously selected theme.
+One Dark.
+
+Vitrine uses only Highlightr's bundled Highlight.js runtime and stylesheets. Highlightr's own
+stylesheet parser merges rules in dictionary order, which changes per process, and splits
+descendant selectors into plain classes, so the same capture could take different token
+colors from one launch to the next. `HighlightJSEngine` runs the bundled runtime with
+Highlightr's tokenizing call, and `BuiltInStylesheet` applies each stylesheet in source order,
+with descendant selectors scoped to their ancestors.
 
 No evaluated replacement met the complete language, theme, visual-parity, performance,
 memory, API-shape, and maintenance contract. Keeping the current engine is accepted

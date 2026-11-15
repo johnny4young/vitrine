@@ -1,5 +1,4 @@
 import AppKit
-import Highlightr
 import JavaScriptCore
 import SwiftUI
 import VitrineDomain
@@ -11,35 +10,17 @@ import VitrineDomain
 ///
 /// ## Why a separate path
 ///
-/// Highlightr can only load a theme from a stylesheet **bundled** with it; its CSS
-/// parser has no public entry point for injecting a user stylesheet. Rather than
-/// fork the dependency, this renderer loads the very same bundled `highlight.min.js`
-/// into its own `JSContext`, asks it to tokenize the code into Highlight.js HTML
-/// (so token classification is identical to the built-in themes), wraps that HTML
+/// A palette is not a bundled stylesheet, so this renderer asks the shared
+/// `HighlightJSEngine` to tokenize the code into Highlight.js HTML, wraps that HTML
 /// with the palette's synthesized stylesheet, and lets AppKit's HTML reader produce
 /// the attributed string. The result paints real, per-token palette colors over the
 /// palette's own background, and — because the palette is fixed sRGB — renders the
 /// same pixels on any Mac, keeping exported screenshots deterministic.
-///
-/// If the engine cannot be loaded (an unexpected packaging problem), the renderer is
-/// `nil` and the caller falls back to plain monospaced text.
 final class CustomThemeRenderer {
-    private let context: JSContext
-    private let hljs: JSValue
+    private let engine: HighlightJSEngine
 
-    /// Loads the bundled Highlight.js engine into a fresh context, or fails if the
-    /// resource cannot be found or evaluated.
-    init?() {
-        guard let context = JSContext(),
-            let scriptURL = Self.highlightScriptURL,
-            let script = try? String(contentsOf: scriptURL, encoding: .utf8)
-        else { return nil }
-        context.evaluateScript(script)
-        guard let hljs = context.objectForKeyedSubscript("hljs"), !hljs.isUndefined else {
-            return nil
-        }
-        self.context = context
-        self.hljs = hljs
+    init(engine: HighlightJSEngine) {
+        self.engine = engine
     }
 
     /// Renders `code` with the user's `palette`, using `language` as the grammar
@@ -79,13 +60,13 @@ final class CustomThemeRenderer {
     private func highlightedHTML(_ code: String, language: Language) -> String? {
         let result: JSValue?
         if language != .plaintext,
-            let named = hljs.invokeMethod(
+            let named = engine.hljs.invokeMethod(
                 "highlight", withArguments: [code, ["language": language.hljsName]]),
             !named.isUndefined
         {
             result = named
         } else {
-            result = hljs.invokeMethod("highlightAuto", withArguments: [code])
+            result = engine.hljs.invokeMethod("highlightAuto", withArguments: [code])
         }
         return result?.objectForKeyedSubscript("value")?.toString()
     }
@@ -95,28 +76,5 @@ final class CustomThemeRenderer {
     private func trimTrailingNewline(_ string: NSMutableAttributedString) {
         guard string.string.hasSuffix("\n") else { return }
         string.deleteCharacters(in: NSRange(location: string.length - 1, length: 1))
-    }
-
-    /// Locates the bundled `highlight.min.js` that ships inside Highlightr's resource
-    /// bundle, searching the app's nested package bundle first and falling back to
-    /// the main bundle (covering both the app and a unit-test host).
-    private static var highlightScriptURL: URL? {
-        let resource = "highlight.min"
-        let ext = "js"
-        // Highlightr's SwiftPM resources land in "Highlightr_Highlightr.bundle"
-        // nested under the host's Resources.
-        let nestedBundleNames = ["Highlightr_Highlightr", "Highlightr"]
-        for base in [Bundle.main] {
-            if let url = base.url(forResource: resource, withExtension: ext) { return url }
-            for name in nestedBundleNames {
-                if let nestedURL = base.url(forResource: name, withExtension: "bundle"),
-                    let nested = Bundle(url: nestedURL),
-                    let url = nested.url(forResource: resource, withExtension: ext)
-                {
-                    return url
-                }
-            }
-        }
-        return nil
     }
 }

@@ -1179,7 +1179,9 @@ definitions, and pass the full unit, performance, golden, and UI gates.
 Highlightr is isolated behind the rendering adapter because it is no longer actively
 maintained. [ADR 0001](decisions/0001-syntax-highlighting-engine.md) records the measured
 replacement review, rejected candidates, current fail-closed theme contract, and exact
-gates for reconsidering the dependency. `swift-syntax` and Splash cannot replace it
+gates for reconsidering the dependency. Only its bundled Highlight.js runtime and stylesheets
+are used: `BuiltInStylesheet` applies a stylesheet in source order, because Highlightr's parser
+merged rules in a per-process order and gave tokens a different color from launch to launch. `swift-syntax` and Splash cannot replace it
 because they cover Swift rather than Vitrine's 33-language contract; lower-level
 Tree-sitter infrastructure is not treated as a drop-in dependency update.
 

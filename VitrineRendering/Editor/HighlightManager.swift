@@ -1,14 +1,11 @@
 import AppKit
-import Highlightr
 import SwiftUI
 import VitrineDomain
 
-import class Highlightr.Theme
-
-/// Wraps Highlightr (Highlight.js) to produce a syntax-highlighted
+/// Wraps the bundled Highlight.js engine to produce a syntax-highlighted
 /// `NSAttributedString` and the theme's own background color.
 ///
-/// Built-in themes render on Highlightr's fast path with a bundled stylesheet. A
+/// Built-in themes paint the bundled engine's HTML with `BuiltInStylesheet`. A
 /// **custom** theme carries its own `VitrineDomain.ThemePalette` instead of a bundled
 /// stylesheet name, so it is rendered through `CustomThemeRenderer`, which reuses
 /// the same bundled Highlight.js engine for tokenization but paints the user's
@@ -21,14 +18,12 @@ public final class HighlightManager {
     static let fallbackBuiltInThemeName =
         VitrineDomain.Theme.oneDark.hlJsTheme ?? "atom-one-dark"
 
-    let highlightr = Highlightr()
-    /// Renders custom (user-palette) themes; created lazily so the extra JS context
-    /// is only spun up once a custom theme is actually used.
-    private lazy var customRenderer = CustomThemeRenderer()
+    lazy var engine = HighlightJSEngine()
+    private lazy var customRenderer = engine.map { CustomThemeRenderer(engine: $0) }
 
     /// Per-built-in-theme cached chrome (background color + luminance), derived from the
     /// Highlight.js stylesheet. The four color accessors all need only this, so resolving
-    /// it once per theme avoids re-running `setTheme` (a full CSS reparse) ~5× per canvas
+    /// it once per theme avoids resolving the stylesheet ~5× per canvas
     /// render — `body` re-runs on every keystroke. The cached value is identical to what the
     /// uncached path returns, so output is byte-for-byte unchanged. Only **built-in** themes
     /// are cached (the immutable stylesheet source is a stable key); a custom theme's palette can
@@ -38,8 +33,8 @@ public final class HighlightManager {
         let isDark: Bool
     }
     var builtInChrome: [VitrineDomain.Theme.Source: ThemeChrome] = [:]
-    /// Each bundled stylesheet parsed once, keyed by name. See `selectBuiltInTheme`.
-    var parsedStylesheets: [String: Theme] = [:]
+    /// Each bundled stylesheet parsed once, keyed by name; `nil` records a missing one.
+    var parsedStylesheets: [String: BuiltInStylesheet?] = [:]
 
     /// Cache key for highlighted code. `VitrineDomain.Theme.Source` captures the immutable stylesheet name for
     /// a built-in or the complete value-typed palette for a custom theme, so changing a palette
@@ -136,8 +131,8 @@ public final class HighlightManager {
     /// Pays the syntax highlighter's one-time cold start ahead of the user's first
     /// capture.
     ///
-    /// `Highlightr` creates its JavaScriptCore engine and parses the theme CSS lazily
-    /// on the first `highlight` call — a cost real enough that `PerformanceTests`
+    /// The JavaScriptCore engine and the theme CSS load lazily on the first
+    /// highlight — a cost real enough that `PerformanceTests`
     /// discards a warm-up pass. A user whose very first interaction is the ⇧⌘S quick
     /// capture would otherwise eat that cold start inside the gesture the product sells
     /// as "instant". Running one tiny highlight in a low-priority task after launch
@@ -151,7 +146,7 @@ public final class HighlightManager {
 
     /// Highlights `code` for `language`, using `theme` and the given `font`. Falls
     /// back to plain monospaced text if highlighting is unavailable. Built-in themes
-    /// use Highlightr; custom themes use `CustomThemeRenderer` with their palette.
+    /// use `BuiltInStylesheet`; custom themes use `CustomThemeRenderer` with their palette.
     public func attributedString(
         for code: String,
         language: Language,
@@ -180,42 +175,18 @@ public final class HighlightManager {
             return result
         }
 
-        guard let highlightr, selectBuiltInTheme(theme) else {
+        let languageHint = language == .plaintext ? nil : language.hljsName
+        guard let stylesheet = builtInStylesheet(for: theme),
+            let html = engine?.html(for: code, languageName: languageHint)
+        else {
             return plainText(code, theme: theme, font: font)
         }
-        highlightr.theme.codeFont = font
-        let languageHint = language == .plaintext ? nil : language.hljsName
-        let highlighted =
-            highlightr.highlight(code, as: languageHint, fastRender: true)
-            .map { Self.applyingStyledFonts(to: $0, base: font) }
-            ?? plainText(code, theme: theme, font: font)
+        let highlighted = stylesheet.attributedString(html: html, font: font)
         Self.cache(
             highlighted, forKey: key, code: code, representation: .attributedString,
             in: &highlightCache)
         if !shouldCache { lastHighlight.store(highlighted, forKey: key) }
         return highlighted
-    }
-
-    /// Highlightr gives bold and italic tokens the variants it built for its default
-    /// Courier when the theme loaded. Swaps each for the same traits of `base`.
-    static func applyingStyledFonts(
-        to highlighted: NSAttributedString, base: NSFont
-    ) -> NSAttributedString {
-        let result = NSMutableAttributedString(attributedString: highlighted)
-        var variants: [NSFontDescriptor.SymbolicTraits.RawValue: NSFont] = [:]
-        result.enumerateAttribute(
-            .font, in: NSRange(location: 0, length: result.length)
-        ) { value, range, _ in
-            guard let runFont = value as? NSFont, runFont != base else { return }
-            let traits = runFont.fontDescriptor.symbolicTraits.intersection([.bold, .italic])
-            let styled =
-                variants[traits.rawValue]
-                ?? CodeFont.styled(
-                    base, bold: traits.contains(.bold), italic: traits.contains(.italic))
-            variants[traits.rawValue] = styled
-            result.addAttribute(.font, value: styled, range: range)
-        }
-        return result
     }
 
     /// Highlights `code` and returns it as a SwiftUI `AttributedString`, caching the
@@ -404,13 +375,13 @@ public final class HighlightManager {
     /// plain-texted. Aliases (e.g. TOML → `ini`) are resolved by the engine but are
     /// not listed here, so callers compare against the resolving id.
     public func supportedLanguageNames() -> [String]? {
-        highlightr?.supportedLanguages()
+        engine?.supportedLanguages()
     }
 
     /// The Highlight.js stylesheet names bundled with the engine, or `nil` if the
-    /// engine is unavailable. This is the authoritative contract for built-in
-    /// themes: `setTheme(to:)` otherwise fails without replacing the current theme.
+    /// resource bundle is missing. This is the authoritative contract for built-in
+    /// themes: a missing stylesheet otherwise renders as One Dark.
     public func supportedThemeNames() -> [String]? {
-        highlightr?.availableThemes()
+        HighlightJSEngine.stylesheetNames()
     }
 }
