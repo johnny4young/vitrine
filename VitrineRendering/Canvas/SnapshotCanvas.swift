@@ -341,9 +341,17 @@ public struct SnapshotCanvas: View, Equatable {
             RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous)
                 .strokeBorder(Brand.Palette.exportedCardBorder, lineWidth: Brand.Stroke.hairline)
         )
-        // The elevated recipe, applied as a unit; only the radius is overridden
-        // by the per-config "drop shadow" toggle (0 when off).
-        .brandShadow(cardShadow)
+        .background { cardShadowCaster }
+    }
+
+    /// Casts the card's drop shadow from a plain rounded rectangle. Shadowing the whole
+    /// card made RenderBox rasterize, blur and rescale all of it, most of an export's CPU.
+    /// The half-point inset keeps the fill out of the card's anti-aliased edge.
+    private var cardShadowCaster: some View {
+        RoundedRectangle(cornerRadius: config.cornerRadius, style: .continuous)
+            .inset(by: 0.5)
+            .fill(cardBackgroundColor)
+            .brandShadow(cardShadow)
     }
 
     private static let cardHorizontalInset: CGFloat = 26
