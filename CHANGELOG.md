@@ -226,9 +226,18 @@ can never drift.
   of the menu bar app with no window open, the footprint at rest went from 34.6 to 18.3 MB,
   and the first quick capture after launch took 122 ms instead of 90 ms (medians). The Mac
   was busy during the measurement, so the figures are indicative.
+- Draw the code card's drop shadow from a plain rounded rectangle instead of the whole card.
+  Shadowing the card made every export rasterize, blur and rescale all of it. Rendering 120
+  lines with the Release CLI went from 0.62 to 0.40 s, 1.8 to 0.4 s of CPU, and 318 to 137 MB
+  at peak. The shadow keeps its recipe; it no longer shows through a light card around the
+  text.
 
 ### Fixed
 
+- Give every token the same color on every launch. The highlighter merged a theme's rules in
+  an order that changed per process, so classes two rules style, such as a Swift attribute in
+  One Dark, could switch color between runs of the same capture. Built-in themes now apply
+  their stylesheet in source order, and a descendant selector styles a token only inside it.
 - Fall back to the Dock when Control Center hides both of Vitrine's menu bar icons: the
   editor opens with an alert that links to Menu Bar settings, instead of Vitrine staying
   open with no way to reach it.

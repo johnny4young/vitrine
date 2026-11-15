@@ -1,5 +1,4 @@
 import AppKit
-import Highlightr
 import SwiftUI
 import VitrineDomain
 
@@ -71,41 +70,29 @@ extension HighlightManager {
     ///
     /// A custom theme resolves straight to its palette background — no
     /// engine call, so it is deterministic. A built-in theme reads its background
-    /// from the bundled stylesheet, with a documented dark fallback if Highlightr
-    /// cannot supply one.
+    /// from the bundled stylesheet, with a documented dark fallback if the stylesheet
+    /// has none.
     func backgroundNSColor(for theme: VitrineDomain.Theme) -> NSColor {
         if let palette = theme.palette {
             return NSColor(palette.background.color)
         }
-        guard let highlightr, selectBuiltInTheme(theme) else {
-            return NSColor(Color(hex: "#1E1E1E"))
-        }
-        return highlightr.theme.themeBackgroundColor ?? NSColor(Color(hex: "#1E1E1E"))
+        return builtInStylesheet(for: theme)?.background ?? NSColor(Color(hex: "#1E1E1E"))
     }
 
-    /// Selects a bundled stylesheet without allowing Highlightr's mutable engine
-    /// state to leak across renders. Highlightr returns `false` for an unavailable
-    /// stylesheet and otherwise leaves the previously selected theme active. A bad
-    /// catalog entry must therefore move explicitly to One Dark rather than render
-    /// with whichever theme happened to run immediately before it.
-    ///
-    /// Highlightr merges a stylesheet's rules in dictionary order, which differs between
-    /// parses, so a class two rules style can change color from one parse to the next.
-    /// Reusing one parse per stylesheet keeps every render in a session consistent.
-    func selectBuiltInTheme(_ theme: VitrineDomain.Theme) -> Bool {
-        guard let highlightr else { return false }
+    /// The theme's bundled stylesheet, or One Dark's when it is missing, so a bad catalog
+    /// entry renders a known theme instead of whichever one ran before.
+    func builtInStylesheet(for theme: VitrineDomain.Theme) -> BuiltInStylesheet? {
         let requested = theme.hlJsTheme ?? Self.fallbackBuiltInThemeName
         for name in [requested, Self.fallbackBuiltInThemeName] {
-            if let parsed = parsedStylesheets[name] {
-                highlightr.theme = parsed
-                return true
+            if let cached = parsedStylesheets[name] {
+                if let cached { return cached }
+                continue
             }
-            if highlightr.setTheme(to: name) {
-                parsedStylesheets[name] = highlightr.theme
-                return true
-            }
+            let parsed = HighlightJSEngine.stylesheet(named: name).map(BuiltInStylesheet.init)
+            parsedStylesheets[name] = .some(parsed)
+            if let parsed { return parsed }
         }
-        return false
+        return nil
     }
 
     /// Whether `color` is dark enough that light overlays/text read best on it,
