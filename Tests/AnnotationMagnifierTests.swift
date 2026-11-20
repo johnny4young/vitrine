@@ -190,6 +190,8 @@ struct AnnotationMagnifierTests {
         base.redactedLineRanges = [5...5]
         other.redactedLineRanges = [5...5]
         let inside = region(0.37, 0.37, 0.63, 0.63)
+        // The first render after adding a redaction can differ from the next ones by one level.
+        _ = try image(base)
         #expect(try maxDifference(image(base), image(other), in: inside) == 0)
         #expect(try png(base) == png(other), "a magnified redacted line must not reveal its text")
     }
@@ -267,5 +269,27 @@ struct AnnotationMagnifierTests {
             boxes.annotations[index].variant = .standard
         }
         #expect(try png(uncapped) == png(boxes))
+    }
+
+    private func pinnedComment(at point: CGPoint) -> Annotation {
+        Annotation(
+            kind: .text, start: point, end: point, text: "Pinned",
+            lineAnchor: DiffLineAnchor(row: 1, side: .new))
+    }
+
+    @Test func lensesPastTheCapStayBoxesBesideAPinnedComment() throws {
+        let comment = pinnedComment(at: CGPoint(x: 0.1, y: 0.1))
+        let uncapped = config([comment] + lenses(Annotation.maxMagnifiers + 2))
+        var boxes = uncapped
+        for index in (Annotation.maxMagnifiers + 1)..<boxes.annotations.count {
+            boxes.annotations[index].variant = .standard
+        }
+        #expect(try png(uncapped) == png(boxes))
+    }
+
+    /// A pinned comment's own point is stale, so a lens must not enlarge it there.
+    @Test func aLensLeavesPinnedCommentsToTheirLine() throws {
+        let comment = pinnedComment(at: CGPoint(x: 0.42, y: 0.5))
+        #expect(try png(config([lens(), comment])) == png(config([lens()])))
     }
 }

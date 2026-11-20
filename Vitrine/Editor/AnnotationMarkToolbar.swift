@@ -176,6 +176,7 @@ struct AnnotationMarkToolbar: View {
         .overlay(
             Capsule(style: .continuous)
                 .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
+                .allowsHitTesting(false)
         )
         .onKeyPress(
             keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .delete, .deleteForward],

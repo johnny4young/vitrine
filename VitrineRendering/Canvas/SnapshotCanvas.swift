@@ -158,7 +158,8 @@ public struct SnapshotCanvas: View, Equatable {
                         .mask { blurMask }
                 }
             } else {
-                framedCanvas.hidden().overlay { magnifiedCanvas }
+                // Transparent rather than hidden, so the code text stays in the accessibility tree.
+                framedCanvas.opacity(0).overlay { magnifiedCanvas }
             }
             if hasSpotlightAnnotations {
                 spotlightDim
@@ -178,8 +179,10 @@ public struct SnapshotCanvas: View, Equatable {
     private func withAnnotationMarks(_ composite: some View) -> some View {
         if config.hasLineAnchoredAnnotations {
             composite.overlayPreferenceValue(DiffLineFrameKey.self) { anchors in
-                AnchoredAnnotationMarks(annotations: config.annotations, anchors: anchors)
-                    .allowsHitTesting(false)
+                AnchoredAnnotationMarks(
+                    annotations: config.annotations.cappingMagnifiers(), anchors: anchors
+                )
+                .allowsHitTesting(false)
             }
         } else {
             composite.overlay { annotationMarks }
@@ -265,11 +268,16 @@ public struct SnapshotCanvas: View, Equatable {
         .allowsHitTesting(false)
     }
 
-    /// The marks a lens enlarges along with the content: every mark but the lens rings.
+    /// The marks a lens enlarges along with the content: every mark but the lens rings and the
+    /// comments pinned to a line, which only the line's row can place.
     private var lensMarks: some View {
         GeometryReader { proxy in
             ZStack {
-                ForEach(config.annotations.cappingMagnifiers().filter { !$0.isMagnifier }) {
+                ForEach(
+                    config.annotations.cappingMagnifiers().filter {
+                        !$0.isMagnifier && $0.lineAnchor == nil
+                    }
+                ) {
                     annotation in
                     AnnotationMarkView(annotation: annotation, size: proxy.size)
                 }
