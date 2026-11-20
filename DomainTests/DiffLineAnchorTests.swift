@@ -104,6 +104,19 @@ struct DiffLineAnchorTests {
         #expect(rows(DiffLineAnchor.rebasing([decoded!], from: edited, to: Self.text)) == [nil])
     }
 
+    @Test func undoingADeletedLineAttachesItAgain() {
+        let marks = [comment(row: 3), comment(row: 5)]
+        let removed = Self.text.replacingOccurrences(of: "-two\n", with: "")
+        let detached = DiffLineAnchor.rebasing(marks, from: Self.text, to: removed)
+        #expect(rows(detached) == [nil, 4])
+        #expect(rows(DiffLineAnchor.rebasing(detached, from: removed, to: Self.text)) == [3, 5])
+    }
+
+    @Test func aNoteAfterARemovedLineAnchorsToTheOldSide() {
+        let document = DiffDocument(source: "@@ -1 +1 @@\n-old\n\\ No newline at end of file\n+new")
+        #expect(DiffLineAnchor.anchor(row: 3, in: document).side == .old)
+    }
+
     @Test func onlyATextCalloutDecodesAnAnchor() throws {
         var arrow = comment(row: 3)
         arrow.kind = .arrow

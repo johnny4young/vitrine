@@ -31,6 +31,12 @@ extension EditorView {
         editingAnnotationID = comment.id
     }
 
+    func removeDetachedComments() {
+        beginAnnotationEdit()
+        settings.style.annotations.removeAll { $0.lineAnchor?.isDetached == true }
+        endAnnotationEdit()
+    }
+
     /// The caret's line in `window`'s code editor.
     static func caretRow(in window: NSWindow?) -> Int? {
         guard let textView = CodeFormatOperation.editorTextView(in: window) else { return nil }

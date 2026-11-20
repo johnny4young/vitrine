@@ -239,6 +239,16 @@ struct DiffSourceTests {
         #expect(target.diffSource?.isReceived == true)
     }
 
+    @Test func aSavedImageNeverEmbedsTheSource() throws {
+        var shared = try source()
+        shared.sharesInLinks = true
+        let plan = EmbeddedProject.plan(for: diffConfig(shared), format: .png, enabled: true)
+        let link = try #require(plan.link.flatMap(URL.init(string:)))
+        var target = SnapshotConfig()
+        try SnapshotShareLink.snapshot(from: link).apply(to: &target)
+        #expect(target.diffSource == nil)
+    }
+
     @Test func aLinkSourceAppliesOnlyToADiff() throws {
         var shared = try source()
         shared.sharesInLinks = true

@@ -60,7 +60,8 @@ struct DiffCommentInspectorRows: View {
                         .foregroundStyle(VitrineTokens.Text.tertiary)
                         .accessibilityIdentifier("diff-detached-comment-count")
                     Button("Remove") {
-                        settings.style.annotations.removeAll { $0.lineAnchor?.isDetached == true }
+                        NotificationCenter.default.post(
+                            name: .vitrineRemoveDetachedComments, object: window.value)
                     }
                     .controlSize(.small)
                     .accessibilityLabel("Remove detached comments")

@@ -47,11 +47,14 @@ public struct DiffLineAnchor: Hashable, Codable, Sendable {
         if isDetached { try container.encode(true, forKey: .isDetached) }
     }
 
-    /// The anchor for `row` of `document`: a removed line lives on the old side, every other
-    /// row on the new one.
+    /// The anchor for `row` of `document`: a removed line, and a note right after one, lives
+    /// on the old side, as the split layout draws them; every other row on the new one.
     public static func anchor(row: Int, in document: DiffDocument) -> DiffLineAnchor {
-        let kind = document.rowKinds.indices.contains(row - 1) ? document.rowKinds[row - 1] : nil
-        return DiffLineAnchor(row: row, side: kind == .deletion ? .old : .new)
+        func kind(_ row: Int) -> DiffDocument.RowKind? {
+            document.rowKinds.indices.contains(row - 1) ? document.rowKinds[row - 1] : nil
+        }
+        let isOld = kind(row) == .deletion || (kind(row) == .note && kind(row - 1) == .deletion)
+        return DiffLineAnchor(row: row, side: isOld ? .old : .new)
     }
 
     /// `annotations` following the edit from `old` to `new`.
@@ -141,6 +144,14 @@ public struct DiffLineAnchor: Hashable, Codable, Sendable {
 
         private func follow(_ anchor: DiffLineAnchor) -> DiffLineAnchor {
             var anchor = anchor
+            // A deleted line keeps its row, so putting it back (an undo) lands in the new span.
+            if anchor.isDetached, anchor.row > prefix, anchor.row <= afterLines - suffix,
+                let line = anchor.detachedLine, Self.line(anchor.row, of: after) == line
+            {
+                anchor.isDetached = false
+                anchor.detachedLine = nil
+                return anchor
+            }
             if anchor.row > beforeLines - suffix {
                 anchor.row += afterLines - beforeLines
             } else if anchor.row <= prefix {

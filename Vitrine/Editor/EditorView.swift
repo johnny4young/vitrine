@@ -335,6 +335,13 @@ struct EditorView: View {
                 else { return }
                 commentOnSelectedLine()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .vitrineRemoveDetachedComments)) {
+                notification in
+                guard let targetWindow = notification.object as? NSWindow,
+                    targetWindow === editorWindow.value
+                else { return }
+                removeDetachedComments()
+            }
             .task {
                 // Undo snapshots follow each edit, so a restored comment lands on its line.
                 let history = $annotationHistory

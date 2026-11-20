@@ -555,7 +555,7 @@ struct CLIOptions: Equatable {
         if let diffHunks { config.diffHunks = diffHunks }
         if let diffLineNumbers, language == .diff {
             config.diffLineNumbers = diffLineNumbers
-            if diffLineNumbers != .rows { config.showLineNumbers = true }
+            if diffLineNumbers != .rows, showLineNumbers == nil { config.showLineNumbers = true }
         }
         let inferredMetadataFilename: String? =
             if gitDiffSource != nil {

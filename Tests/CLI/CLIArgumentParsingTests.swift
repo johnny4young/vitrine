@@ -548,6 +548,12 @@ struct CLIArgumentParsingTests: CLITestSupport {
         #expect(!rowsConfig.showLineNumbers)
         #expect(rowsConfig.diffLineNumbers == .rows)
 
+        let hidden = try CLIArguments.parse([
+            "render", "changes.diff", "-o", "o.png", "--no-line-numbers",
+            "--diff-line-numbers", "old",
+        ])
+        #expect(!hidden.makeConfig(code: "", language: .diff).showLineNumbers)
+
         let plain = try CLIArguments.parse(["render", "changes.diff", "-o", "o.png"])
         #expect(plain.diffHunks == nil)
         #expect(plain.diffLineNumbers == nil)
