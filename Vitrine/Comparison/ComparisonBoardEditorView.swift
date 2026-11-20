@@ -47,6 +47,7 @@ struct ComparisonBoardEditorView: View {
                 wipe: { draft.wipe },
                 render: { try draft.composePreview(profile: settings.export.colorProfile) })
         }
+        .onDisappear { sceneExport?.cancel() }
     }
 
     private var toolbar: some View {

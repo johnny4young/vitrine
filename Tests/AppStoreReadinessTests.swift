@@ -221,6 +221,16 @@ struct AppStoreReadinessTests {
             "CHANGELOG.md's newest version must match the bundled ReleaseNotes.latest")
     }
 
+    /// The release notes are cut from this file, so a merge leftover would ship in them.
+    @Test func changelogCarriesNoMergeConflictMarkers() throws {
+        let changelog = try Self.text("CHANGELOG.md")
+        let markers = try NSRegularExpression(
+            pattern: #"(?m)^(<{7}|\|{7}|>{7})( |$)|^={7}$"#)
+        let match = markers.firstMatch(
+            in: changelog, range: NSRange(changelog.startIndex..<changelog.endIndex, in: changelog))
+        #expect(match == nil, "CHANGELOG.md must not carry merge-conflict markers")
+    }
+
     @Test func changelogKeepsReleaseNotesAndCompareLinksTraceable() throws {
         let changelog = try Self.text("CHANGELOG.md")
         let fullRange = NSRange(changelog.startIndex..<changelog.endIndex, in: changelog)
