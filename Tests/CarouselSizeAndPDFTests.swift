@@ -275,7 +275,9 @@ struct CarouselSizeAndPDFTests {
     }
 
     @Test func pdfPagesReportProgressAndStopWhenCancelled() async {
-        let configs = [SnapshotConfig(), SnapshotConfig(), SnapshotConfig()]
+        let configs = [SnapshotConfig(), SnapshotConfig(), SnapshotConfig()].map {
+            CarouselPage.slide($0, caption: nil)
+        }
         let pages = Log<Int>()
         let data = await ExportManager.pdfData(
             pages: configs, fixedSize: ExportManager.carouselSlideSize,
@@ -413,9 +415,9 @@ struct CarouselSizeAndPDFTests {
     @Test func theFilmstripWaitsForTheFitAndRendersAtTheChosenSize() async throws {
         let sizes = Log<CarouselSlideSize>()
         let fonts = Log<Double>()
-        let model = CarouselFilmstripModel(quietWindow: .zero, frameGap: .zero) { config, size, _ in
+        let model = CarouselFilmstripModel(quietWindow: .zero, frameGap: .zero) { page, size, _ in
             sizes.items.append(size)
-            fonts.items.append(config.fontSize)
+            if case .slide(let config, _) = page { fonts.items.append(config.fontSize) }
             return nil
         }
         var base = SnapshotConfig()
@@ -434,8 +436,10 @@ struct CarouselSizeAndPDFTests {
 
         let tile = try #require(
             CarouselFilmstripModel.renderTile(
-                CarouselPaginator.slideConfig(
-                    base, slide: slides[0], at: 0, of: 2, cues: .none, fontSize: 33),
+                .slide(
+                    CarouselPaginator.slideConfig(
+                        base, slide: slides[0], at: 0, of: 2, cues: .none, fontSize: 33),
+                    caption: nil),
                 size: .story, profile: .sRGB))
         #expect(abs(CGFloat(tile.height) - 2 * CarouselFilmstripModel.tileSize.height) <= 1)
     }

@@ -986,6 +986,7 @@ Vitrine/
 │   ├── MultiSizeExportView.swift # multi-size export sheet (PRO)
 │   ├── CarouselExportView.swift # multi-slide export sheet
 │   ├── CarouselFilmstrip.swift # slide tiles and the window's split and editor dividers
+│   ├── CarouselCaptions.swift # per-slide captions, cover and closing card pages
 │   ├── ComparisonBoard.swift # path-free validated 2–4 item value
 │   ├── ComparisonBoardComposer.swift # equal-card deterministic composition
 │   └── ComparisonBoardExporter.swift # captured-scale raster/PDF encoding
