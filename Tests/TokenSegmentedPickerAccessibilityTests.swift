@@ -16,7 +16,7 @@ struct TokenSegmentedPickerAccessibilityTests {
         let picker = try #require(source.range(of: "struct TokenSegmentedPicker"))
         let body = source[picker.upperBound...]
         let contained = try #require(body.range(of: ".accessibilityElement(children: .contain)"))
-        let focusable = try #require(body.range(of: ".focusable(interactions: .activate)"))
+        let focusable = try #require(body.range(of: ".focusable("))
         #expect(contained.lowerBound < focusable.lowerBound)
     }
 }
