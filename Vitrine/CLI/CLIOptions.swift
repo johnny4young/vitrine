@@ -267,6 +267,10 @@ struct CLIOptions: Equatable {
     var showDiffStats: Bool?
     var diffContextLines: Int?
     var diffView: DiffViewMode?
+    var diffWordMarks: Bool?
+    var diffHunks: [Int]?
+    /// Applied to diff inputs only, where file numbering also turns the gutter on.
+    var diffLineNumbers: DiffLineNumbers?
     /// For `batch`, walk nested input folders and preserve their relative paths under
     /// the output folder. Off by default so existing batch jobs keep their top-level
     /// behavior unless they opt in.
@@ -547,6 +551,12 @@ struct CLIOptions: Equatable {
         if let showDiffStats { config.showDiffStats = showDiffStats }
         if let diffContextLines { config.diffContextLines = diffContextLines }
         if let diffView { config.diffView = diffView }
+        if let diffWordMarks { config.diffWordMarks = diffWordMarks }
+        if let diffHunks { config.diffHunks = diffHunks }
+        if let diffLineNumbers, language == .diff {
+            config.diffLineNumbers = diffLineNumbers
+            if diffLineNumbers != .rows, showLineNumbers == nil { config.showLineNumbers = true }
+        }
         let inferredMetadataFilename: String? =
             if gitDiffSource != nil {
                 GitDiffInputLoader.defaultFilename(paths: gitDiffPaths)

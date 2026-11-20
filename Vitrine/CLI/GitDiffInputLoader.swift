@@ -98,6 +98,55 @@ enum GitDiffInputLoader {
         }
     }
 
+    /// Describes the diff for the editor's Copy Command, relative to the repository root found
+    /// by walking up to a `.git` entry. `nil` when a pathspec can't be put relative to that
+    /// root. The root's name is left out when it is the home folder (the user's name) or not
+    /// a plain folder name.
+    static func provenance(
+        source: Source, paths: [String], contextLines: Int,
+        currentDirectoryURL: URL = URL(
+            fileURLWithPath: FileManager.default.currentDirectoryPath, isDirectory: true),
+        homeDirectoryURL: URL = FileManager.default.homeDirectoryForCurrentUser,
+        isRepositoryRoot: (URL) -> Bool = {
+            FileManager.default.fileExists(atPath: $0.appendingPathComponent(".git").path)
+        }
+    ) -> DiffSource? {
+        let directory = currentDirectoryURL.standardizedFileURL
+        var candidate = directory
+        while !isRepositoryRoot(candidate) {
+            let parent = candidate.deletingLastPathComponent()
+            guard parent.path != candidate.path else { return nil }
+            candidate = parent
+        }
+        let rootPath = candidate.path
+        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        var relativePaths: [String] = []
+        for path in paths {
+            let resolved = URL(fileURLWithPath: path, relativeTo: directory).standardizedFileURL
+                .path
+            if resolved == rootPath {
+                relativePaths.append(".")
+            } else if resolved.hasPrefix(prefix) {
+                relativePaths.append(String(resolved.dropFirst(prefix.count)))
+            } else {
+                return nil
+            }
+        }
+        let isPrivate = rootPath == "/" || rootPath == homeDirectoryURL.standardizedFileURL.path
+        let name = candidate.lastPathComponent
+        let repository = isPrivate || !DiffSource.isValidRepository(name) ? nil : name
+        let context = contextLines == defaultContextLines ? nil : contextLines
+        return switch source {
+        case .revision(let range):
+            DiffSource(
+                kind: .range, range: range, repository: repository, paths: relativePaths,
+                contextLines: context)
+        case .staged:
+            DiffSource(
+                kind: .staged, repository: repository, paths: relativePaths, contextLines: context)
+        }
+    }
+
     static func defaultFilename(paths: [String]) -> String {
         guard paths.count == 1 else { return "changes.diff" }
         let basename = URL(fileURLWithPath: paths[0]).lastPathComponent

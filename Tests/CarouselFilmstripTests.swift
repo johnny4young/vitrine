@@ -11,6 +11,7 @@ import VitrineRendering
 struct CarouselFilmstripTests {
     private final class RenderLog {
         var configs: [SnapshotConfig] = []
+        var pages: [CarouselPage] = []
     }
 
     private static func pixel() -> CGImage? {
@@ -23,8 +24,9 @@ struct CarouselFilmstripTests {
     private func model(
         _ log: RenderLog, quietWindow: Duration = .zero, frameGap: Duration = .zero
     ) -> CarouselFilmstripModel {
-        CarouselFilmstripModel(quietWindow: quietWindow, frameGap: frameGap) { config, _, _ in
-            log.configs.append(config)
+        CarouselFilmstripModel(quietWindow: quietWindow, frameGap: frameGap) { page, _, _ in
+            if case .slide(let config, _) = page { log.configs.append(config) }
+            log.pages.append(page)
             return Self.pixel()
         }
     }
@@ -153,7 +155,8 @@ struct CarouselFilmstripTests {
             let slide = try #require(CarouselSplit(linesPerSlide: 4).slides(of: base.code).first)
             let config = CarouselPaginator.slideConfig(
                 base, slide: slide, at: 0, of: 1, cues: .none)
-            let image = try #require(CarouselFilmstripModel.renderTile(config, profile: .sRGB))
+            let image = try #require(
+                CarouselFilmstripModel.renderTile(.slide(config, caption: nil), profile: .sRGB))
             let provider = try #require(image.dataProvider?.data)
             return provider as Data
         }
@@ -163,7 +166,8 @@ struct CarouselFilmstripTests {
     @Test func aTileIsTheSlideFrameAtTileScale() throws {
         var config = SnapshotConfig()
         config.code = "let a = 1"
-        let image = try #require(CarouselFilmstripModel.renderTile(config, profile: .sRGB))
+        let image = try #require(
+            CarouselFilmstripModel.renderTile(.slide(config, caption: nil), profile: .sRGB))
         #expect(abs(CGFloat(image.width) - 2 * CarouselFilmstripModel.tileSize.width) <= 1)
         #expect(abs(CGFloat(image.height) - 2 * CarouselFilmstripModel.tileSize.height) <= 1)
     }

@@ -164,12 +164,25 @@ public struct SnapshotCanvas: View, Equatable {
                 spotlightDim
             }
         }
-        .overlay { annotationMarks }
 
         if fixedSize != nil {
-            composite.clipped()
+            withAnnotationMarks(composite).clipped()
         } else {
-            composite.fixedSize()
+            withAnnotationMarks(composite).fixedSize()
+        }
+    }
+
+    /// Pinned comments are placed from the rows the code layout reports; without one the
+    /// marks layer is unchanged.
+    @ViewBuilder
+    private func withAnnotationMarks(_ composite: some View) -> some View {
+        if config.hasLineAnchoredAnnotations {
+            composite.overlayPreferenceValue(DiffLineFrameKey.self) { anchors in
+                AnchoredAnnotationMarks(annotations: config.annotations, anchors: anchors)
+                    .allowsHitTesting(false)
+            }
+        } else {
+            composite.overlay { annotationMarks }
         }
     }
 
@@ -453,11 +466,11 @@ public struct SnapshotCanvas: View, Equatable {
     @ViewBuilder
     private func codeRows(diff: DiffDocument?) -> some View {
         if config.usesLineRows {
-            let displayRows = config.diffContextLines.flatMap {
-                diff?.displayRows(contextLines: $0, keeping: config.highlightedLineRanges)
-            }
+            let displayRows = diff.flatMap(config.diffDisplayRows(of:))
+            let rows = highlightedCodeLines
+            let gutter = unifiedDiffGutter(diff: diff)
             let lines = CodeLinesView(
-                rows: highlightedCodeLines,
+                rows: rows,
                 displayRows: displayRows,
                 showLineNumbers: config.showLineNumbers,
                 firstLineNumber: config.firstLineNumber + terminalCrop.rowOffset,
@@ -471,7 +484,11 @@ public struct SnapshotCanvas: View, Equatable {
                 textColor: HighlightManager.shared.gutterForegroundColor(for: config.theme),
                 highlightColor: HighlightManager.shared.lineHighlightColor(for: config.theme),
                 dimsUnfocused: config.focusHighlightedLines,
-                diffDecorations: config.diffDecorations
+                diffDecorations: config.diffDecorations,
+                wordMarks: wordMarks(rows: rows, diff: diff),
+                gutterLabels: gutter?.labels,
+                gutterColumns: gutter?.columns,
+                commentSlots: config.diffCommentSlots
             )
             // An empty capture's placeholder is not a diff, so it shows once, full width.
             if config.diffUsesSplitView, !config.code.isEmpty, let diff {
@@ -480,7 +497,8 @@ public struct SnapshotCanvas: View, Equatable {
                     rows: diff.splitRows(
                         displayRows ?? diff.rowKinds.indices.map { .line($0 + 1) },
                         firstLineNumber: config.firstLineNumber,
-                        redacting: config.redactedLineRanges)
+                        redacting: config.redactedLineRanges),
+                    numbering: config.diffFileNumbering
                 )
                 .textSelection(.enabled)
             } else {
@@ -504,6 +522,26 @@ public struct SnapshotCanvas: View, Equatable {
                 .accessibilityRepresentation {
                     Text(verbatim: String(code.characters))
                 }
+        }
+    }
+
+    /// File line numbers for a unified diff, when the numbering asks for them.
+    private func unifiedDiffGutter(diff: DiffDocument?) -> (labels: [String], columns: Int)? {
+        guard let numbering = config.diffFileNumbering, !config.diffUsesSplitView,
+            !config.code.isEmpty, diff != nil
+        else { return nil }
+        return DiffLayoutCache.shared.gutterLabels(
+            numbering, code: config.code, firstLineNumber: config.firstLineNumber,
+            redacting: config.redactedLineRanges)
+    }
+
+    /// Computed from the drawn rows, so the offsets match their characters, and cached so
+    /// style-only changes reuse them.
+    private func wordMarks(rows: [AttributedString], diff: DiffDocument?) -> [Int: [Range<Int>]] {
+        guard config.diffUsesWordMarks, !config.code.isEmpty, let diff else { return [:] }
+        return DiffWordMarksCache.shared.marks(for: .init(config: config)) {
+            diff.wordMarks(
+                lines: rows.map { String($0.characters) }, redacting: config.redactedLineRanges)
         }
     }
 

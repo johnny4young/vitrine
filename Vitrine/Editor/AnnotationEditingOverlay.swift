@@ -36,6 +36,9 @@ struct AnnotationEditingOverlay: View {
     /// Closes the edit transaction after the mutation so unchanged interactions do
     /// not create an undo entry or discard redo.
     let onEndEdit: () -> Void
+    /// Where the canvas drew each pinned comment. A pinned comment missing here is not
+    /// drawn, so it gets no handle; one that is drawn keeps its place against moves.
+    var placedComments: [UUID: CGPoint] = [:]
 
     @State private var snapGuides: [SnapGuide] = []
 
@@ -81,6 +84,7 @@ struct AnnotationEditingOverlay: View {
                 let isSelected = selection == annotation.id
                 if editingAnnotationID != annotation.id,
                     activeTool == .select || isSelected,
+                    Self.isDrawn(annotation, placed: placedComments),
                     let binding = binding(for: annotation.id)
                 {
                     AnnotationHandle(
@@ -99,7 +103,8 @@ struct AnnotationEditingOverlay: View {
             }
             // The focused inline field for the text callout being edited.
             if let id = editingAnnotationID, let binding = binding(for: id),
-                binding.wrappedValue.kind == .text
+                binding.wrappedValue.kind == .text,
+                Self.isDrawn(binding.wrappedValue, placed: placedComments)
             {
                 TextAnnotationEditor(
                     annotation: binding, canvasSize: canvasSize, onCommit: endTextEditing)
@@ -124,12 +129,16 @@ struct AnnotationEditingOverlay: View {
         guard settings.style.annotations.contains(where: { $0.id == id }) else { return nil }
         return Binding(
             get: {
-                settings.style.annotations.first(where: { $0.id == id })
-                    ?? Annotation(kind: .text, start: .zero, end: .zero)
+                Self.shown(
+                    settings.style.annotations.first(where: { $0.id == id })
+                        ?? Annotation(kind: .text, start: .zero, end: .zero),
+                    placed: placedComments)
             },
             set: { newValue in
                 if let index = settings.style.annotations.firstIndex(where: { $0.id == id }) {
-                    settings.style.annotations[index] = newValue
+                    settings.style.annotations[index] = Self.stored(
+                        newValue, over: settings.style.annotations[index],
+                        placed: placedComments)
                 }
             })
     }

@@ -39,6 +39,8 @@ enum SettingsCodec {
         static let showDiffStats = "showDiffStats"
         static let diffContextLines = "diffContextLines"
         static let diffView = "diffView"
+        static let diffWordMarks = "diffWordMarks"
+        static let diffLineNumbers = "diffLineNumbers"
         /// Snapshot annotations, stored as a JSON-encoded `[Annotation]`.
         /// Part of the document/style, so it seeds new editor windows.
         static let annotations = "annotations"
@@ -124,7 +126,8 @@ enum SettingsCodec {
             windowTitle,
             showShadow, showLineNumbers, wrapColumns, terminalPalette, terminalCursor,
             highlightedLines, focusHighlightedLines,
-            diffDecorations, showDiffStats, diffContextLines, diffView, annotations, metadata,
+            diffDecorations, showDiffStats, diffContextLines, diffView, diffWordMarks,
+            diffLineNumbers, annotations, metadata,
             gradientPreset,
             backgroundStyle, autoCopy, alsoSaveToFile, closeAfterCopy, showsCopyPreview,
             exportScale, exportFormat,
@@ -232,6 +235,14 @@ enum SettingsCodec {
         if let raw = defaults.string(forKey: Keys.diffView), let view = DiffViewMode(rawValue: raw)
         {
             config.diffView = view
+        }
+        if let value = defaults.object(forKey: Keys.diffWordMarks) as? Bool {
+            config.diffWordMarks = value
+        }
+        if let raw = defaults.string(forKey: Keys.diffLineNumbers),
+            let numbering = DiffLineNumbers(rawValue: raw)
+        {
+            config.diffLineNumbers = numbering
         }
         // Highlighted lines persist as the canonical spec string ("3, 7-9"); a
         // missing or malformed value parses to no highlight rather than trapping.
@@ -363,6 +374,9 @@ enum SettingsCodec {
             defaults.removeObject(forKey: Keys.diffContextLines)
         }
         defaults.set(config.diffView.rawValue, forKey: Keys.diffView)
+        defaults.set(config.diffWordMarks, forKey: Keys.diffWordMarks)
+        // The hunk pick belongs to one patch, so it never seeds the next capture.
+        defaults.set(config.diffLineNumbers.rawValue, forKey: Keys.diffLineNumbers)
         defaults.set(
             LineHighlight.describe(config.highlightedLineRanges), forKey: Keys.highlightedLines)
         // `redactedLineRanges` is deliberately NOT persisted here: redactions hide secrets

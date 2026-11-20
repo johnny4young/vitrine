@@ -202,4 +202,55 @@ struct GitDiffInputLoaderTests {
         }
     }
 
+    // MARK: - Source for the editor's Refresh
+
+    private func provenance(
+        _ source: GitDiffInputLoader.Source, paths: [String] = [], context: Int = 3,
+        cwd: String = "/Users/someone/code/weather-app/Sources",
+        root: String = "/Users/someone/code/weather-app"
+    ) -> DiffSource? {
+        GitDiffInputLoader.provenance(
+            source: source, paths: paths, contextLines: context,
+            currentDirectoryURL: URL(fileURLWithPath: cwd, isDirectory: true),
+            homeDirectoryURL: URL(fileURLWithPath: "/Users/someone", isDirectory: true),
+            isRepositoryRoot: { $0.standardizedFileURL.path == root })
+    }
+
+    @Test func provenanceNamesTheRepositoryFolderAndNeverAnAbsolutePath() throws {
+        let source = try #require(
+            provenance(
+                .revision("main...feature/hourly"),
+                paths: [
+                    "App.swift", "../Tests/", "/Users/someone/code/weather-app/README.md", ".",
+                ],
+                context: 8))
+        #expect(source.kind == .range)
+        #expect(source.range == "main...feature/hourly")
+        #expect(source.repository == "weather-app")
+        #expect(source.paths == ["Sources/App.swift", "Tests", "README.md", "Sources"])
+        #expect(source.contextLines == 8)
+        #expect(!source.refreshArguments.joined().contains("someone"))
+
+        let staged = try #require(provenance(.staged, paths: [".."]))
+        #expect(staged.kind == .staged && staged.range == nil)
+        #expect(staged.paths == ["."])
+        #expect(staged.contextLines == nil)
+    }
+
+    @Test func provenanceGivesUpRatherThanLeakAPath() {
+        #expect(provenance(.staged, root: "/nowhere") == nil)
+        #expect(provenance(.staged, paths: ["/etc/hosts"]) == nil)
+        #expect(provenance(.staged, paths: ["../../other/file"]) == nil)
+        // A range the strict parser refuses still renders through the CLI, just without a source.
+        #expect(provenance(.revision("main;id")) == nil)
+    }
+
+    @Test func provenanceHidesAHomeFolderRepositoryName() {
+        let dotfiles = provenance(.staged, cwd: "/Users/someone/.config", root: "/Users/someone")
+        #expect(dotfiles?.repository == nil)
+        #expect(dotfiles?.kind == .staged)
+        #expect(provenance(.staged, cwd: "/tmp", root: "/")?.repository == nil)
+        let spaced = provenance(.staged, cwd: "/code/My Project", root: "/code/My Project")
+        #expect(spaced?.kind == .staged && spaced?.repository == nil)
+    }
 }

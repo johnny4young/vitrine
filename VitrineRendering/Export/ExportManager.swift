@@ -359,13 +359,13 @@ public enum ExportManager {
         return produced ? data as Data : nil
     }
 
-    /// Renders each config as one page of a single PDF, every page pinned to `fixedSize` and
+    /// Renders carousel pages into one PDF, every page pinned to `fixedSize` and
     /// clipped to it. Pages are vector unless `rasterized`, which draws each as a `profile`
     /// image so text cut off by the frame can't stay in the file. The main actor is released
     /// between pages, and `onPage` follows them. Returns nil for no pages, a page context
     /// that cannot be created, or a cancelled task.
     public static func pdfData(
-        pages configs: [SnapshotConfig], fixedSize: CGSize, rasterized: Bool = false,
+        pages: [CarouselPage], fixedSize: CGSize, rasterized: Bool = false,
         profile: ColorProfile = .sRGB,
         backgroundImageStore: BackgroundImageStore = .container,
         foregroundImageStore: BackgroundImageStore = .foregroundContainer,
@@ -373,46 +373,83 @@ public enum ExportManager {
     ) async -> Data? {
         let data = NSMutableData()
         var mediaBox = CGRect(origin: .zero, size: fixedSize)
-        guard !configs.isEmpty, let consumer = CGDataConsumer(data: data as CFMutableData),
+        guard !pages.isEmpty, let consumer = CGDataConsumer(data: data as CFMutableData),
             let context = CGContext(consumer: consumer, mediaBox: &mediaBox, nil)
         else { return nil }
-        for (index, config) in configs.enumerated() {
+        func draw(_ content: some View, background: VitrineDomain.BackgroundStyle) -> Bool {
+            let renderer = ImageRenderer(
+                content:
+                    content
+                    .environment(\.backgroundImageStore, backgroundImageStore)
+                    .environment(\.foregroundImageStore, foregroundImageStore))
+            renderer.proposedSize = ProposedViewSize(fixedSize)
+            var drawn = false
+            renderer.render { _, renderInContext in
+                context.beginPDFPage(nil)
+                context.clip(to: mediaBox)
+                if case .image = background {
+                    context.setFillColor(CGColor(gray: 0, alpha: 1))
+                    context.fill(mediaBox)
+                }
+                renderInContext(context)
+                context.endPDFPage()
+                drawn = true
+            }
+            return drawn
+        }
+        for (index, page) in pages.enumerated() {
             if index > 0 { await Task.yield() }
             guard !Task.isCancelled else { return nil }
             if rasterized {
                 guard
                     let image = try? renderCGImageChecked(
-                        config, scale: 1, fixedSize: fixedSize, profile: profile,
+                        page, fixedSize: fixedSize, profile: profile,
                         backgroundImageStore: backgroundImageStore,
                         foregroundImageStore: foregroundImageStore)
                 else { return nil }
                 context.beginPDFPage(nil)
                 context.draw(image, in: mediaBox)
                 context.endPDFPage()
+            } else if case .slide(let config, nil) = page {
+                guard
+                    draw(
+                        SnapshotCanvas(config: config, fixedSize: fixedSize),
+                        background: config.background)
+                else { return nil }
             } else {
-                let renderer = ImageRenderer(
-                    content: SnapshotCanvas(config: config, fixedSize: fixedSize)
-                        .environment(\.backgroundImageStore, backgroundImageStore)
-                        .environment(\.foregroundImageStore, foregroundImageStore))
-                renderer.proposedSize = ProposedViewSize(fixedSize)
-                var drawn = false
-                renderer.render { _, renderInContext in
-                    context.beginPDFPage(nil)
-                    context.clip(to: mediaBox)
-                    if case .image = config.background {
-                        context.setFillColor(CGColor(gray: 0, alpha: 1))
-                        context.fill(mediaBox)
-                    }
-                    renderInContext(context)
-                    context.endPDFPage()
-                    drawn = true
-                }
-                guard drawn else { return nil }
+                guard
+                    draw(
+                        CarouselPageCanvas(page: page, size: fixedSize),
+                        background: page.background)
+                else { return nil }
             }
             onPage?(index + 1)
         }
         context.closePDF()
         return data as Data
+    }
+
+    /// One carousel page at its frame. An uncaptioned slide renders exactly as a snapshot.
+    public static func renderCGImageChecked(
+        _ page: CarouselPage, scale: CGFloat = 1, fixedSize: CGSize,
+        profile: ColorProfile = .sRGB,
+        backgroundImageStore: BackgroundImageStore = .container,
+        foregroundImageStore: BackgroundImageStore = .foregroundContainer
+    ) throws(RenderBudgetError) -> CGImage {
+        if case .slide(let config, nil) = page {
+            return try renderCGImageChecked(
+                config, scale: scale, fixedSize: fixedSize, profile: profile,
+                backgroundImageStore: backgroundImageStore,
+                foregroundImageStore: foregroundImageStore)
+        }
+        let image = try renderCGImageChecked(
+            CarouselPageCanvas(page: page, size: fixedSize)
+                .environment(\.backgroundImageStore, backgroundImageStore)
+                .environment(\.foregroundImageStore, foregroundImageStore),
+            proposedSize: fixedSize, scale: scale, profile: profile)
+        guard case .image = page.background else { return image }
+        guard let opaque = compositedOverBlackChecked(image) else { throw .allocationFailed }
+        return opaque
     }
 
     /// Wraps a finished `CGImage` in single-page PDF data — the `CGImage` analogue of the

@@ -119,6 +119,9 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
     /// The look within the kind: an elbow arrow, or a box drawn as a magnifier.
     public var variant: Variant = .standard
     public var stroke: Stroke = .clean
+    /// The source line a text callout is pinned to; the canvas then places it from that
+    /// line's row and ignores `start`.
+    public var lineAnchor: DiffLineAnchor?
 
     public enum Variant: String, Codable, Sendable { case standard, elbow, magnifier }
     public enum Stroke: String, Codable, Sendable { case clean, handDrawn }
@@ -126,7 +129,8 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
     public init(
         id: UUID = UUID(), kind: Kind, start: CGPoint, end: CGPoint,
         text: String = "", color: RGBAColor = Annotation.defaultColor,
-        thickness: Double = Annotation.defaultThickness, number: Int = 0
+        thickness: Double = Annotation.defaultThickness, number: Int = 0,
+        lineAnchor: DiffLineAnchor? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -136,10 +140,11 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
         self.color = color
         self.thickness = thickness
         self.number = number
+        self.lineAnchor = lineAnchor
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, start, end, text, color, thickness, number, variant, stroke
+        case id, kind, start, end, text, color, thickness, number, variant, stroke, lineAnchor
     }
 
     /// Decodes tolerantly: the fields added after the first version (`thickness`,
@@ -158,6 +163,10 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
         number = (try? container.decode(Int.self, forKey: .number)) ?? 0
         variant = (try? container.decode(Variant.self, forKey: .variant)) ?? .standard
         stroke = (try? container.decode(Stroke.self, forKey: .stroke)) ?? .clean
+        // Only a text callout draws from an anchor; on any other kind it would only hide it.
+        lineAnchor =
+            kind == .text
+            ? try? container.decodeIfPresent(DiffLineAnchor.self, forKey: .lineAnchor) : nil
     }
 
     /// Writes the style fields only when set, so existing marks keep their exact encoding.
@@ -173,6 +182,7 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
         try container.encode(number, forKey: .number)
         if variant != .standard { try container.encode(variant, forKey: .variant) }
         if stroke != .clean { try container.encode(stroke, forKey: .stroke) }
+        try container.encodeIfPresent(lineAnchor, forKey: .lineAnchor)
     }
 }
 
@@ -261,6 +271,8 @@ extension Annotation {
     public func duplicated(in canvasSize: CGSize, counterNumber: Int) -> Annotation {
         var copy = self
         copy.id = UUID()
+        // Two comments on one line would draw on top of each other.
+        copy.lineAnchor = nil
         if kind == .counter {
             copy.number = counterNumber
             copy.text = ""
@@ -300,7 +312,11 @@ extension Annotation {
         // Only a styled mark adds fields, so existing fingerprints stay unchanged.
         if variant != .standard { fields.append(variant.rawValue) }
         if stroke != .clean { fields.append(stroke.rawValue) }
-        return fields.joined(separator: "|")
+        return fields.joined(separator: "|") + (lineAnchor.map(Self.fingerprint(of:)) ?? "")
+    }
+
+    private static func fingerprint(of anchor: DiffLineAnchor) -> String {
+        "|L\(anchor.row)\(anchor.side.rawValue)" + (anchor.isDetached ? "-detached" : "")
     }
 
     /// Builds a new annotation for `tool` spanning `start`→`end`, inheriting the

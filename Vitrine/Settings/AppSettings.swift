@@ -29,8 +29,40 @@ final class AppSettings {
         didSet {
             let isEmpty = documentCode.isEmpty
             if documentIsEmpty != isEmpty { documentIsEmpty = isEmpty }
+            // A pick names hunks by position, which a different hunk count no longer means.
+            if renderConfiguration.diffHunks != nil,
+                DiffLayoutCache.shared.hunks(in: oldValue).count
+                    != DiffLayoutCache.shared.hunks(in: documentCode).count
+            {
+                renderConfiguration.diffHunks = nil
+            }
+            guard oldValue != documentCode else { return }
+            // An edited patch no longer matches the range it came from.
+            if renderConfiguration.diffSource != nil {
+                renderConfiguration.diffSource = nil
+            }
+            // Parsed only when a pinned comment, here or in undo, has to follow the edit.
+            var edit: DiffLineAnchor.Edit?
+            func lineEdit() -> DiffLineAnchor.Edit {
+                if let edit { return edit }
+                let parsed = DiffLineAnchor.Edit(from: oldValue, to: documentCode)
+                edit = parsed
+                return parsed
+            }
+            // A `config` write then replaces these with the marks it brings.
+            if DiffLineAnchor.follows(renderConfiguration.annotations) {
+                let annotations = lineEdit().apply(to: renderConfiguration.annotations)
+                if annotations != renderConfiguration.annotations {
+                    renderConfiguration.annotations = annotations
+                }
+            }
+            lineEditObserver?(lineEdit)
         }
     }
+
+    /// Receives each document edit, so the editor's annotation undo keeps its pinned
+    /// comments on the same lines as the live ones.
+    @ObservationIgnored var lineEditObserver: ((() -> DiffLineAnchor.Edit) -> Void)?
 
     /// Bumped whenever new content replaces the document, so editor-only state tied to
     /// the old content (annotation undo, selection) can reset.
@@ -72,11 +104,25 @@ final class AppSettings {
             return resolved
         }
         set {
+            let previousPick = renderConfiguration.diffHunks
+            let previousSource = renderConfiguration.diffSource
             if documentCode != newValue.code {
                 documentCode = newValue.code
             }
             var normalized = newValue
             normalized.code = ""
+            // The new text reset the pick; a write that only carried the old one forward drops it.
+            if previousPick != nil, renderConfiguration.diffHunks == nil,
+                normalized.diffHunks == previousPick
+            {
+                normalized.diffHunks = nil
+            }
+            // A new load brings a new `loadID`; the same one means an edit carried it forward.
+            if let previousSource, renderConfiguration.diffSource == nil,
+                let carried = normalized.diffSource, carried.loadID == previousSource.loadID
+            {
+                normalized.diffSource = nil
+            }
             if renderConfiguration != normalized {
                 renderConfiguration = normalized
             }
@@ -797,12 +843,49 @@ extension AppSettings {
         )
     }
 
+    var diffWordMarksEnabled: Binding<Bool> {
+        Binding(
+            get: { self.style.diffWordMarks },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
+                self.style.diffWordMarks = value
+            }
+        )
+    }
+
     var diffViewSelection: Binding<DiffViewMode> {
         Binding(
             get: { self.style.diffView },
             set: { value in
                 guard !self.style.diffLayoutIsLocked else { return }
                 self.style.diffView = value
+            }
+        )
+    }
+
+    var diffLineNumbersSelection: Binding<DiffLineNumbers> {
+        Binding(
+            get: { self.style.diffLineNumbers },
+            set: { value in
+                guard !self.style.diffLayoutIsLocked else { return }
+                self.style.diffLineNumbers = value
+            }
+        )
+    }
+
+    /// Whether hunk `position` of `count` shows. Checking every hunk again clears the pick.
+    func diffHunkShown(_ position: Int, of count: Int) -> Binding<Bool> {
+        Binding(
+            get: { self.style.diffShownHunks(count: count)?.contains(position) ?? true },
+            set: { shown in
+                guard !self.style.diffLayoutIsLocked, count > 0 else { return }
+                var kept = Set(self.style.diffShownHunks(count: count) ?? Array(1...count))
+                if shown { kept.insert(position) } else { kept.remove(position) }
+                // One hunk always shows, so the card never folds to counts alone.
+                guard !kept.isDisjoint(with: 1...count) else { return }
+                self.style.diffHunks =
+                    Set(1...count).isSubset(of: kept)
+                    ? nil : SettingsDefaults.normalizeDiffHunks(Array(kept))
             }
         )
     }

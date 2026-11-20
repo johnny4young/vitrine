@@ -75,6 +75,10 @@ can never drift.
   recipe that sets `paddingMode`, since they refuse unknown recipe fields; a recipe with
   Balance off writes no `paddingMode` and stays readable. Share links keep schema version 1,
   so an earlier build opens a balanced link with manual padding.
+- Comparison board scenes: zoom and frame part of a board, then Add scene from view to save
+  it with a name and a duration. The board shows each scene as a numbered frame, and the
+  scenes export as a folder of PNGs or a PDF with one page each, cropped from the board's
+  finished pixels.
 - Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
   to see it in up to four themes on a comparison board, each captioned with its theme. The
   board's inspector adds or removes themes without capturing again.
@@ -95,6 +99,29 @@ can never drift.
 - Show a diff split, with the old and new file side by side, from the Layout control in the
   inspector's Lines section or with `--diff-view split` in the CLI. Each side keeps its own
   line numbers and redacted rows stay hidden on both sides. Unified stays the default.
+- Mark the words that changed inside a diff's removed and added lines, in both layouts, with
+  the Word marks switch in the inspector's Lines section or `--diff-word-marks` in the CLI.
+  Lines too unlike to pair stay unmarked, and a redacted line hides its marks and its
+  partner's.
+- Fold diff hunks out of the image from the checkboxes in the inspector's Lines section, or
+  with `--diff-hunks 1,3` in the CLI. A folded hunk draws as one row of added and removed
+  counts. Like the context fold, it changes only the image: copied text, sidecars, alt text,
+  shared links and carousel slides keep every hunk, so use Redact to hide text. With line
+  numbers on, a diff can number its patch rows, its old or new file lines, or both, from the
+  Numbering control or `--diff-line-numbers rows|old|new|both`.
+- Pin a comment to a diff line with Edit › Comment on Selected Line (⇧⌘M) or the shortcut in
+  the inspector's Lines section. The comment is a text callout on the line under the code
+  editor's caret, and it stays on that line in Unified and Split, when hunks fold and when
+  lines wrap. Long comments wrap inside the card and comments on neighboring lines don't
+  overlap. Editing that line detaches it until an undo brings the line back; the inspector
+  counts detached comments and removes them. Comments travel with shared links and restored
+  windows.
+- Show where a diff came from in the inspector's Lines section when the CLI handed it over
+  with `vitrine render --git-diff <range> --edit` or `--git-staged --edit`: the revision range
+  or staged changes, and the repository folder's name, never a full path. Copy Command copies
+  the command that renders it again, to run at the repository root, since the app can't run
+  Git itself. Editing the text drops the source. Images never show it, and share links carry
+  it only when you check Include in share links, which lists what the link would carry.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only
@@ -127,6 +154,15 @@ can never drift.
   smallest size. The export writes a PNG per slide, one `carousel.pdf` with a page per slide
   for a LinkedIn document post, or both. The PDF is drawn locally as vector pages, or as
   images when lines overflow, so no clipped text stays in the file.
+- Carousel slides can carry a one-sentence caption (up to 120 characters) in a band under
+  the capture. Click a tile in the filmstrip to write its caption; a filled dot under a tile
+  means it has its text and a hollow one that it is still empty. Once any slide has a
+  caption, every slide keeps the band, so the code stays in the same place. A caption stays
+  with the line that opens its slide, the sheet counts captions a new split can't show, and
+  another document starts without them. Optional cover and closing slides add a title or a
+  call to action and your Brand Kit handle, drawn like a headline social card in the
+  capture's theme and background, and written first and last in both the PNG set and the
+  PDF. A cover or closing slide left empty isn't written.
 - Warn in the inspector's Theme header when a capture's code text has low measured contrast
   on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
   stock theme only when it measures better, and can be dismissed for a theme until you quit.

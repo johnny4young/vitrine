@@ -10,6 +10,9 @@ final class CarouselSplitModel {
     var showsDividers = false
     var size = CarouselSlideSize.linkedIn
     var output = CarouselOutput.pngSet
+    var extras = CarouselExtras()
+    /// The document the captions were written for; another one starts without them.
+    private(set) var captionGeneration: Int?
     /// The revision moves with every settled split, even an equal one: the text view's copy
     /// has been shifted by edits since, and an edit undone can leave it missing a divider.
     private(set) var dividerLayout = SlideDividerLayout()
@@ -24,6 +27,17 @@ final class CarouselSplitModel {
             EditorView.carouselAccepts(style), thumbnails.stagedGeneration == documentGeneration
         else { return nil }
         return thumbnails.stagedCode
+    }
+
+    func adoptDocument(generation: Int) {
+        guard captionGeneration != generation else { return }
+        extras.captions = [:]
+        captionGeneration = generation
+    }
+
+    /// A refresh of the watched file is the same document, so its captions stay.
+    func carryCaptions(from previous: Int, to generation: Int) {
+        if captionGeneration == previous { captionGeneration = generation }
     }
 
     func refreshDividers(code: String?) async {
@@ -53,10 +67,18 @@ final class CarouselFilmstripModel {
         /// The carousel's fitted type size; no tile renders until it is known.
         var fontSize: Double?
         let profile: ColorProfile
+        var extras = CarouselExtras()
+
+        /// Tiles, an empty cover or closing card included.
+        var tileCount: Int { extras.pageCount(slideCount: slides.count, tiles: true) }
+
+        func tile(at index: Int) -> CarouselExtras.Page {
+            extras.page(at: index, slideCount: slides.count, tiles: true)
+        }
     }
 
     private struct Rendered: Equatable {
-        let config: SnapshotConfig
+        let page: CarouselPage
         let size: CarouselSlideSize
         let profile: ColorProfile
     }
@@ -80,11 +102,11 @@ final class CarouselFilmstripModel {
     @ObservationIgnored private var rendered: [Int: Rendered] = [:]
     private let quietWindow: Duration
     private let frameGap: Duration
-    private let render: (SnapshotConfig, CarouselSlideSize, ColorProfile) -> CGImage?
+    private let render: (CarouselPage, CarouselSlideSize, ColorProfile) -> CGImage?
 
     init(
         quietWindow: Duration = .milliseconds(200), frameGap: Duration = .milliseconds(16),
-        render: @escaping (SnapshotConfig, CarouselSlideSize, ColorProfile) -> CGImage? = {
+        render: @escaping (CarouselPage, CarouselSlideSize, ColorProfile) -> CGImage? = {
             CarouselFilmstripModel.renderTile($0, size: $1, profile: $2)
         }
     ) {
@@ -95,10 +117,10 @@ final class CarouselFilmstripModel {
 
     /// The export's frame, scale aside, so a tile lays out exactly as its slide will.
     static func renderTile(
-        _ config: SnapshotConfig, size: CarouselSlideSize = .linkedIn, profile: ColorProfile
+        _ page: CarouselPage, size: CarouselSlideSize = .linkedIn, profile: ColorProfile
     ) -> CGImage? {
         try? ExportManager.renderCGImageChecked(
-            config, scale: 2 * tileSize.height / size.pixels.height,
+            page, scale: 2 * tileSize.height / size.pixels.height,
             fixedSize: size.pixels, profile: profile)
     }
 
@@ -109,13 +131,14 @@ final class CarouselFilmstripModel {
     func refresh(_ input: Input) async {
         let live =
             input.fontSize == nil
-            ? [] : visible.filter { $0 < input.slides.count }.sorted().prefix(Self.maximumLiveTiles)
+            ? [] : visible.filter { $0 < input.tileCount }.sorted().prefix(Self.maximumLiveTiles)
+        let banded = input.extras.hasCaptions(input.slides)
         var wanted: [Int: Rendered] = [:]
         for index in live {
-            let config = CarouselPaginator.slideConfig(
-                input.base, slide: input.slides[index], at: index, of: input.slides.count,
-                cues: input.cues, fontSize: input.fontSize)
-            wanted[index] = Rendered(config: config, size: input.size, profile: input.profile)
+            let page = CarouselPaginator.page(
+                input.tile(at: index), input.base, slides: input.slides, cues: input.cues,
+                fontSize: input.fontSize, extras: input.extras, banded: banded)
+            wanted[index] = Rendered(page: page, size: input.size, profile: input.profile)
         }
         // A tile that no longer matches leaves now, so it can't show an old split or a row
         // hidden since. Tiles scrolled away go too, which is what bounds the images held.
@@ -128,9 +151,11 @@ final class CarouselFilmstripModel {
         try? await Task.sleep(for: quietWindow)
         for index in live where rendered[index] == nil {
             guard !Task.isCancelled, let tile = wanted[index] else { return }
-            if input.slides[index].canPreview {
-                images[index] = render(tile.config, tile.size, tile.profile)
-            }
+            let canPreview =
+                if case .slide(let slide) = input.tile(at: index) {
+                    input.slides[slide].canPreview
+                } else { true }
+            if canPreview { images[index] = render(tile.page, tile.size, tile.profile) }
             rendered[index] = tile
             try? await Task.sleep(for: frameGap)
         }
@@ -148,19 +173,29 @@ struct CarouselFilmstrip: View {
 
     @FocusState private var isFocused: Bool
 
-    private var count: Int { input.slides.count }
+    /// Tiles, cover and closing card included; arrows and selection move over all of them.
+    private var count: Int { input.tileCount }
 
     var body: some View {
+        let captioned = input.extras.hasCaptions(input.slides)
+        let missing = input.extras.missingTextCount(input.slides)
         ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .top, spacing: 10) {
-                    ForEach(input.slides.indices, id: \.self) { index in
+                    ForEach(0..<count, id: \.self) { index in
+                        let page = input.tile(at: index)
                         CarouselSlideTile(
-                            slide: input.slides[index], index: index, count: count,
+                            page: page, slides: input.slides, index: index, count: count,
                             tileSize: CarouselFilmstripModel.tileSize(for: input.size),
-                            isShort: hasShortTail && index == count - 1,
-                            isCurrent: isFocused && index == model.current, model: model
+                            isShort: hasShortTail && page == .slide(input.slides.count - 1),
+                            lacksText: input.extras.lacksText(page, slides: input.slides),
+                            marksText: captioned || page == .cover || page == .outro,
+                            isCurrent: index == model.current, model: model
                         )
+                        .onTapGesture {
+                            model.current = index
+                            isFocused = true
+                        }
                         .id(index)
                         .onScrollVisibilityChange(threshold: 0.01) { isVisible in
                             if isVisible {
@@ -190,6 +225,7 @@ struct CarouselFilmstrip: View {
         }
         .task(id: RefreshID(input: input, visible: model.visible)) { await model.refresh(input) }
         .accessibilityElement(children: .contain)
+        .accessibilityValue(missing > 0 ? Text("\(missing) without text") : Text(verbatim: ""))
         .accessibilityIdentifier("carousel-filmstrip")
     }
 
@@ -201,13 +237,23 @@ struct CarouselFilmstrip: View {
 
 /// Reads the images itself, so a finished render doesn't re-evaluate the strip.
 private struct CarouselSlideTile: View {
-    let slide: CarouselPaginator.Slide
+    let page: CarouselExtras.Page
+    let slides: [CarouselPaginator.Slide]
     let index: Int
+    /// Tiles in the strip, which a card's position counts against.
     let count: Int
     let tileSize: CGSize
     let isShort: Bool
+    let lacksText: Bool
+    /// Slides show their caption state once captions are in use; cards always do.
+    let marksText: Bool
     let isCurrent: Bool
     let model: CarouselFilmstripModel
+
+    private var slide: (index: Int, slide: CarouselPaginator.Slide)? {
+        guard case .slide(let index) = page else { return nil }
+        return (index, slides[index])
+    }
 
     private let shape = RoundedRectangle(cornerRadius: 7, style: .continuous)
 
@@ -219,14 +265,14 @@ private struct CarouselSlideTile: View {
                 .overlay {
                     if let image = model.images[index] {
                         Image(decorative: image, scale: 2).resizable()
-                    } else if !slide.canPreview {
+                    } else if let slide, !slide.slide.canPreview {
                         Image(systemName: "text.alignleft")
                             .foregroundStyle(VitrineTokens.Text.tertiary)
                             .help(noPreviewNote)
                     }
                 }
                 .overlay(alignment: .bottomTrailing) {
-                    pill(Text(verbatim: "\(index + 1)/\(count)"))
+                    if let slide { pill(Text(verbatim: "\(slide.index + 1)/\(slides.count)")) }
                 }
                 .overlay(alignment: .topLeading) {
                     if isShort { pill(Text("short")) }
@@ -236,22 +282,61 @@ private struct CarouselSlideTile: View {
                     shape.strokeBorder(
                         isCurrent ? VitrineTokens.Accent.system : VitrineTokens.Line.border,
                         lineWidth: isCurrent ? 2 : Brand.Stroke.hairline))
-            Text(verbatim: slide.lineRange)
-                .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
-                .foregroundStyle(VitrineTokens.Text.tertiary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(width: max(tileSize.width, CarouselFilmstripModel.tileSize.width))
+            HStack(spacing: 4) {
+                caption
+                    .font(.system(size: VitrineTokens.FontSize.caption, design: .monospaced))
+                    .foregroundStyle(VitrineTokens.Text.tertiary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                // Filled when the page has its text, hollow while it is empty.
+                if marksText {
+                    Circle()
+                        .fill(lacksText ? Color.clear : VitrineTokens.Accent.system)
+                        .overlay {
+                            Circle().strokeBorder(
+                                lacksText ? VitrineTokens.Text.tertiary : Color.clear,
+                                lineWidth: 1)
+                        }
+                        .frame(width: 6, height: 6)
+                }
+            }
+            .frame(width: max(tileSize.width, CarouselFilmstripModel.tileSize.width))
         }
+        .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(
-            slide.lineCount == 1
-                ? Text("Slide \(index + 1) of \(count), line \(slide.lineRange)")
-                : Text("Slide \(index + 1) of \(count), lines \(slide.lineRange)")
-        )
+        .accessibilityLabel(accessibilityTitle)
         .accessibilityValue(Text(verbatim: accessibilityNotes))
-        .accessibilityAddTraits(isCurrent ? [.isSelected] : [])
-        .accessibilityIdentifier("carousel-slide-tile-\(index)")
+        .accessibilityAddTraits(isCurrent ? [.isSelected, .isButton] : [.isButton])
+        .accessibilityAction { model.current = index }
+        .accessibilityIdentifier(identifier)
+    }
+
+    private var caption: Text {
+        switch page {
+        case .cover: Text("Cover")
+        case .outro: Text("Closing")
+        case .slide(let index): Text(verbatim: slides[index].lineRange)
+        }
+    }
+
+    private var identifier: String {
+        switch page {
+        case .cover: "carousel-cover-tile"
+        case .outro: "carousel-outro-tile"
+        case .slide(let index): "carousel-slide-tile-\(index)"
+        }
+    }
+
+    private var accessibilityTitle: Text {
+        switch page {
+        case .cover: return Text("Cover, page \(index + 1) of \(count)")
+        case .outro: return Text("Closing slide, page \(index + 1) of \(count)")
+        case .slide: break
+        }
+        guard let (index, slide) = slide else { return caption }
+        return slide.lineCount == 1
+            ? Text("Slide \(index + 1) of \(slides.count), line \(slide.lineRange)")
+            : Text("Slide \(index + 1) of \(slides.count), lines \(slide.lineRange)")
     }
 
     private var noPreviewNote: String {
@@ -261,7 +346,8 @@ private struct CarouselSlideTile: View {
     private var accessibilityNotes: String {
         var notes: [String] = []
         if isShort { notes.append(String(localized: "short")) }
-        if !slide.canPreview { notes.append(noPreviewNote) }
+        if marksText, lacksText { notes.append(String(localized: "No text")) }
+        if let slide, !slide.slide.canPreview { notes.append(noPreviewNote) }
         return notes.joined(separator: ", ")
     }
 

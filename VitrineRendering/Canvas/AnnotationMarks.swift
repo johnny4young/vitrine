@@ -216,12 +216,15 @@ struct HighlighterMark: View {
 struct TextMark: View {
     let annotation: Annotation
     let size: CGSize
+    /// The width the text wraps at, for a pinned comment; a free callout never wraps.
+    var textWidth: CGFloat?
 
     var body: some View {
         if !annotation.text.isEmpty {
             Text(annotation.text)
                 .font(.system(size: fontSize, weight: .bold, design: .rounded))
                 .foregroundStyle(annotation.color.color)
+                .wrapping(at: textWidth)
                 .padding(.horizontal, fontSize * 0.5)
                 .padding(.vertical, fontSize * 0.28)
                 .background(
@@ -392,5 +395,16 @@ public nonisolated enum AnnotationMarkBounds {
 
     private static func centered(at point: CGPoint, width: CGFloat, height: CGFloat) -> CGRect {
         CGRect(x: point.x - width / 2, y: point.y - height / 2, width: width, height: height)
+    }
+}
+
+extension View {
+    @ViewBuilder
+    fileprivate func wrapping(at width: CGFloat?) -> some View {
+        if let width {
+            frame(width: width, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+        } else {
+            self
+        }
     }
 }

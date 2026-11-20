@@ -7,6 +7,10 @@ extension Notification.Name {
     /// Runs a selected-mark action (`AnnotationMarkAction`) in the editor window
     /// carried as the notification object.
     static let vitrineAnnotationMarkAction = Notification.Name("vitrine.annotationMarkAction")
+    /// Pins a comment to the caret's diff line in the editor window carried as the object.
+    static let vitrineCommentOnSelectedLine = Notification.Name("vitrine.commentOnSelectedLine")
+    /// Removes the detached diff comments, as one undo step, in the window carried as the object.
+    static let vitrineRemoveDetachedComments = Notification.Name("vitrine.removeDetachedComments")
 }
 
 /// Selected-mark commands the Edit menu owns, so their shortcuts work while the

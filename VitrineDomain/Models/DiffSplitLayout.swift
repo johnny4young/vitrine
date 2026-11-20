@@ -84,7 +84,7 @@ extension DiffDocument {
     /// Each row's line in the old and new file. A hunk whose header is redacted or names no
     /// lines stays unnumbered, so the image never shows the lines a redaction hid, and the
     /// masked header a shared link carries reads the same way.
-    private func sideLineNumbers(
+    func sideLineNumbers(
         firstLineNumber: Int, redacting redactions: [ClosedRange<Int>]
     ) -> [DiffLinePair?] {
         var next: DiffLinePair? = DiffLinePair(old: firstLineNumber, new: firstLineNumber)

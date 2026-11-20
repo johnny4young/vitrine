@@ -35,6 +35,11 @@ public struct SharedSnapshot: Codable, Equatable {
     var diffContextLines: Int?
     /// Absent for unified, so links without a split layout encode as they did before.
     var diffView: DiffViewMode?
+    var diffWordMarks: Bool?
+    var diffHunks: [Int]?
+    var diffLineNumbers: DiffLineNumbers?
+    /// Present only when the sender turned on sharing for it.
+    var diffSource: DiffSource?
     var terminalColumns: Int?
     var terminalCrop: TerminalCrop?
 
@@ -75,6 +80,10 @@ public struct SharedSnapshot: Codable, Equatable {
         self.showDiffStats = config.showDiffStats
         self.diffContextLines = config.diffContextLines.map(SettingsDefaults.clampDiffContextLines)
         self.diffView = config.diffView == .unified ? nil : config.diffView
+        self.diffWordMarks = config.diffWordMarks ? true : nil
+        self.diffHunks = config.diffHunks.flatMap(SettingsDefaults.normalizeDiffHunks)
+        self.diffLineNumbers = config.diffLineNumbers == .rows ? nil : config.diffLineNumbers
+        self.diffSource = config.diffSource?.sharesInLinks == true ? config.diffSource : nil
         self.terminalColumns = config.terminalColumns.map { min(max($0, 1), 1_000) }
     }
 
@@ -97,6 +106,18 @@ public struct SharedSnapshot: Codable, Equatable {
         config.showDiffStats = showDiffStats
         config.diffContextLines = diffContextLines
         config.diffView = diffView ?? .unified
+        config.diffWordMarks = diffWordMarks ?? false
+        config.diffHunks = diffHunks
+        config.diffLineNumbers = diffLineNumbers ?? .rows
+        // Only a diff has a source. The receiver decides again before passing it on.
+        config.diffSource = diffSource.flatMap {
+            guard config.language == .diff else { return nil }
+            var received = $0
+            received.sharesInLinks = false
+            received.isReceived = true
+            received.loadID = UUID()
+            return received
+        }
         config.terminalColumns = terminalColumns
         config.terminalCrop = terminalCrop ?? TerminalCrop()
     }
@@ -105,7 +126,7 @@ public struct SharedSnapshot: Codable, Equatable {
         case version, code, languageID, style, annotations, windowTitle, metadata
         case shadowRadius, highlightedLineRanges, focusHighlightedLines, diffDecorations
         case terminalColumns, altText, terminalCrop, showDiffStats, diffContextLines
-        case diffView
+        case diffView, diffWordMarks, diffHunks, diffLineNumbers, diffSource
     }
 
     public init(from decoder: Decoder) throws {
@@ -138,6 +159,11 @@ public struct SharedSnapshot: Codable, Equatable {
             (try? container.decode(Int.self, forKey: .diffContextLines))
             .map(SettingsDefaults.clampDiffContextLines)
         diffView = try? container.decode(DiffViewMode.self, forKey: .diffView)
+        diffWordMarks = try? container.decode(Bool.self, forKey: .diffWordMarks)
+        diffHunks = (try? container.decode([Int].self, forKey: .diffHunks))
+            .flatMap(SettingsDefaults.normalizeDiffHunks)
+        diffLineNumbers = try? container.decode(DiffLineNumbers.self, forKey: .diffLineNumbers)
+        diffSource = try? container.decodeIfPresent(DiffSource.self, forKey: .diffSource)
         terminalColumns =
             (try? container.decode(Int.self, forKey: .terminalColumns)).map {
                 min(max($0, 1), 1_000)

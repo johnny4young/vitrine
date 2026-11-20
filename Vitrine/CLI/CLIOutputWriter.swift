@@ -210,6 +210,16 @@ enum CLIOutputWriter {
         return notices
     }
 
+    /// A pick past the last hunk names nothing to show, so it fails rather than folding all.
+    static func checkDiffHunks(_ config: SnapshotConfig) throws {
+        guard config.diffOptionsApply, let last = config.diffHunks?.last else { return }
+        let count = DiffLayoutCache.shared.hunks(in: config.code).count
+        guard last > count else { return }
+        let hunks = count == 1 ? "1 hunk" : "\(count) hunks"
+        throw CLIError.incompatibleOptions(
+            "--diff-hunks names hunk \(last), but the diff has \(hunks).")
+    }
+
     static func renderAndWrite(
         _ config: SnapshotConfig, options: CLIOptions,
         backgroundStore: BackgroundImageStore = .container,
@@ -230,6 +240,7 @@ enum CLIOutputWriter {
         guard isEncodable(options.format) else {
             throw CLIError.unsupportedOutputFormat(options.format.displayName)
         }
+        try checkDiffHunks(config)
         for notice in legendNotices(
             config, fixedSize: options.fixedSize, output: url.lastPathComponent)
         {

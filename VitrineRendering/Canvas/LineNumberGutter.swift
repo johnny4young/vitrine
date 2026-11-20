@@ -26,6 +26,11 @@ struct GutterMetrics {
         digitColumns = max(2, String(max(lineCount, 1)).count)
     }
 
+    init(font: NSFont, digitColumns: Int) {
+        digitWidth = CodeFont.advance(of: "0", in: font)
+        self.digitColumns = digitColumns
+    }
+
     /// The number column width: just the reserved digit columns. Right-aligning
     /// the number to exactly this width keeps every line number's units digit in
     /// the same place; the trailing gap before the code is applied separately.
@@ -77,19 +82,35 @@ struct CodeLinesView: View {
     /// Band added (`+`) lines green and removed (`-`) lines red, GitHub-style. When
     /// on, the diff band takes precedence over the plain highlight band.
     var diffDecorations: Bool = false
+    /// Changed character spans inside paired diff lines, keyed by 1-based row and computed
+    /// once per render by `DiffDocument.wordMarks`.
+    var wordMarks: [Int: [Range<Int>]] = [:]
+    /// One gutter label per row in place of its number, and the digit columns they need.
+    var gutterLabels: [String]?
+    var gutterColumns: Int?
+    /// The rows pinned comments are placed against.
+    var commentSlots: Set<DiffLineSlot> = []
 
     var body: some View {
-        let metrics = GutterMetrics(font: font, lineCount: rows.count + firstLineNumber - 1)
+        let metrics =
+            gutterColumns.map { GutterMetrics(font: font, digitColumns: $0) }
+            ?? GutterMetrics(font: font, lineCount: rows.count + firstLineNumber - 1)
         VStack(alignment: .leading, spacing: lineSpacing) {
             let shown = displayRows ?? rows.indices.map { .line($0 + 1) }
             ForEach(Array(shown.enumerated()), id: \.offset) { _, shownRow in
                 switch shownRow {
                 case .line(let number) where rows.indices.contains(number - 1):
-                    row(rows[number - 1], lineNumber: number, metrics: metrics)
+                    row(
+                        rows[number - 1], lineNumber: number, metrics: metrics,
+                        gutterLabel: gutterLabels.flatMap {
+                            $0.indices.contains(number - 1) ? $0[number - 1] : nil
+                        })
                 case .line:
                     EmptyView()
                 case .fold:
                     foldMarker(metrics: metrics)
+                case .hunk(let additions, let deletions):
+                    foldedHunk(additions: additions, deletions: deletions, metrics: metrics)
                 }
             }
         }
@@ -110,19 +131,35 @@ struct CodeLinesView: View {
             .accessibilityHidden(true)
     }
 
+    /// A hunk left out of the image, as its counts only, so none of its text shows.
+    func foldedHunk(additions: Int, deletions: Int, metrics: GutterMetrics) -> some View {
+        HStack(spacing: Brand.Spacing.xs) {
+            Text(verbatim: "⋯").foregroundStyle(textColor.opacity(0.4))
+            Text(verbatim: "+\(additions)").foregroundStyle(DiffColor.added)
+            Text(verbatim: "−\(deletions)").foregroundStyle(DiffColor.removed)
+        }
+        .font(Font(font))
+        .monospacedDigit()
+        .padding(.leading, showLineNumbers ? metrics.numberWidth + GutterMetrics.trailingGap : 0)
+        .padding(.vertical, lineSpacing / 2)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "Added: \(additions), removed: \(deletions)"))
+    }
+
     /// `gutterLabel` replaces the drawn number; the split layout numbers each side itself.
     /// `fillsHeight` stretches the band to a row the other side made taller.
     @ViewBuilder
     func row(
         _ line: AttributedString, lineNumber: Int, metrics: GutterMetrics,
-        gutterLabel: String? = nil, fillsHeight: Bool = false
+        gutterLabel: String? = nil, fillsHeight: Bool = false, showsGutter: Bool = true,
+        sides: [DiffLineAnchor.Side] = [.old, .new]
     )
         -> some View
     {
         let isHighlighted = LineHighlight.contains(highlightedRanges, line: lineNumber)
         let isRedacted = LineHighlight.contains(redactedRanges, line: lineNumber)
         HStack(alignment: .firstTextBaseline, spacing: 0) {
-            if showLineNumbers {
+            if showLineNumbers, showsGutter {
                 // Verbatim: a line number is a locale-neutral numeral, not catalog
                 // copy — and this also keeps Xcode's extractor from emitting a bare
                 // "%@" key into the String Catalog.
@@ -138,7 +175,9 @@ struct CodeLinesView: View {
             // rendered text is a neutral placeholder — not the original source blurred —
             // so accessibility, text selection, and rich clipboard paths cannot recover
             // the secret the image is meant to hide.
-            lineText(line, isRedacted: isRedacted)
+            lineText(
+                isRedacted ? line : Self.marking(line, spans: wordMarks[lineNumber]),
+                isRedacted: isRedacted)
             Spacer(minLength: 0)
         }
         // A full-bleed band so the highlight reads as a selected row across the
@@ -153,6 +192,7 @@ struct CodeLinesView: View {
         // Focus mode: fade the rows outside the highlight so the highlighted ones
         // read as the subject. A no-op when focus is off or this row is highlighted.
         .opacity(dimsUnfocused && !isHighlighted ? 0.34 : 1)
+        .reportingDiffLine(row: lineNumber, sides: sides, wanted: commentSlots)
     }
 
     /// One code line as text, preserving its syntax colors. An empty line still
@@ -198,6 +238,27 @@ struct CodeLinesView: View {
             return diff
         }
         return isHighlighted ? highlightColor : Color.clear
+    }
+
+    /// `line` with a stronger tint behind each changed span. A text attribute, so the tint
+    /// follows the glyphs onto wrapped rows.
+    static func marking(_ line: AttributedString, spans: [Range<Int>]?) -> AttributedString {
+        guard let spans, !spans.isEmpty else { return line }
+        let color: Color
+        switch line.characters.first {
+        case "+": color = DiffColor.added.opacity(0.4)
+        case "-": color = DiffColor.removed.opacity(0.4)
+        default: return line
+        }
+        var marked = line
+        let count = marked.characters.count
+        for span in spans where !span.isEmpty && span.lowerBound >= 0 && span.upperBound <= count {
+            let start = marked.characters.index(marked.startIndex, offsetBy: span.lowerBound)
+            let end = marked.characters.index(start, offsetBy: span.count)
+            marked[start..<end][AttributeScopes.SwiftUIAttributes.BackgroundColorAttribute.self] =
+                color
+        }
+        return marked
     }
 
     /// A green band for an added (`+`) line, red for a removed (`-`) line, `nil`

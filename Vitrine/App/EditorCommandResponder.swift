@@ -64,6 +64,7 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         guard isEditorKey else { return false }
         if command.requiresRenderableContent { return config.hasRenderableContent }
         if command.requiresCode { return !config.code.isEmpty }
+        if command == .commentOnLine { return config.diffOptionsApply && !config.code.isEmpty }
         return true
     }
 
@@ -84,6 +85,12 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
         case #selector(shareRenderedImage(_:)): canPerform(.shareImage)
         case #selector(makeWindowDefault(_:)): canPerform(.makeDefault)
         case #selector(formatCode(_:)): canPerform(.formatCode)
+        case #selector(commentOnSelectedLine(_:)):
+            // A comment on a folded or unpicked row would not draw.
+            canPerform(.commentOnLine)
+                && EditorView.caretRow(in: EditorWindowController.commandTargetWindow).map {
+                    activeSettings.config.showsDiffRow($0)
+                } == true
         case #selector(toggleCanvasMode(_:)):
             validateCanvasMode(menuItem, session: EditorWindowController.shared.keyWindowSession)
         case #selector(selectAnnotationTool(_:)), #selector(performAnnotationMarkAction(_:)):
@@ -179,6 +186,13 @@ final class EditorCommandResponder: NSObject, NSMenuItemValidation {
             name: .vitrineAnnotationMarkAction,
             object: window,
             userInfo: ["action": rawValue])
+    }
+
+    /// Asks the key editor to pin a comment to the line under its caret.
+    @objc func commentOnSelectedLine(_ sender: Any?) {
+        guard canPerform(.commentOnLine), let window = EditorWindowController.commandTargetWindow
+        else { return }
+        NotificationCenter.default.post(name: .vitrineCommentOnSelectedLine, object: window)
     }
 
     /// Tidies the key editor's code in place: JSON is pretty-printed, brace and

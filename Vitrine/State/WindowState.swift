@@ -136,6 +136,10 @@ struct EditorWindowState: Codable, Equatable {
     var showDiffStats: Bool
     var diffContextLines: Int?
     var diffView: DiffViewMode?
+    var diffWordMarks: Bool?
+    var diffHunks: [Int]?
+    var diffLineNumbers: DiffLineNumbers?
+    var diffSource: DiffSource?
     var annotations: [Annotation]
     var codeSteps: [String]
     var activeCodeStep: Int?
@@ -180,6 +184,10 @@ struct EditorWindowState: Codable, Equatable {
         showDiffStats = config.showDiffStats
         diffContextLines = config.diffContextLines
         diffView = config.diffView
+        diffWordMarks = config.diffWordMarks
+        diffHunks = config.diffHunks
+        diffLineNumbers = config.diffLineNumbers == .rows ? nil : config.diffLineNumbers
+        diffSource = config.diffSource
         annotations = config.annotations
         codeSteps = config.codeSteps
         activeCodeStep = config.activeCodeStep
@@ -251,6 +259,10 @@ struct EditorWindowState: Codable, Equatable {
         config.showDiffStats = showDiffStats
         config.diffContextLines = diffContextLines.map(SettingsDefaults.clampDiffContextLines)
         config.diffView = diffView ?? .unified
+        config.diffWordMarks = diffWordMarks ?? false
+        config.diffHunks = diffHunks.flatMap(SettingsDefaults.normalizeDiffHunks)
+        config.diffLineNumbers = diffLineNumbers ?? .rows
+        config.diffSource = diffSource
         config.annotations = annotations
         config.codeSteps = codeSteps
         // Older or damaged archives get the step the text came from, else the last one.
@@ -267,7 +279,8 @@ struct EditorWindowState: Codable, Equatable {
         case foregroundImageFileName, imageFrameID, imageFrameAppearanceID
         case windowTitle, wrapColumns, focusHighlightedLines, diffDecorations, annotations
         case codeSteps, activeCodeStep
-        case showDiffStats, diffContextLines, diffView
+        case showDiffStats, diffContextLines, diffView, diffWordMarks, diffHunks, diffLineNumbers
+        case diffSource
         case terminalPalette, terminalCursor, terminalCrop
         case destinationID, exportScale, exportFormatID, colorProfileID
     }
@@ -334,6 +347,11 @@ struct EditorWindowState: Codable, Equatable {
             (try? container.decode(Bool.self, forKey: .showDiffStats)) ?? fallback.showDiffStats
         diffContextLines = try? container.decodeIfPresent(Int.self, forKey: .diffContextLines)
         diffView = try? container.decodeIfPresent(DiffViewMode.self, forKey: .diffView)
+        diffWordMarks = try? container.decodeIfPresent(Bool.self, forKey: .diffWordMarks)
+        diffHunks = try? container.decodeIfPresent([Int].self, forKey: .diffHunks)
+        diffLineNumbers = try? container.decodeIfPresent(
+            DiffLineNumbers.self, forKey: .diffLineNumbers)
+        diffSource = try? container.decodeIfPresent(DiffSource.self, forKey: .diffSource)
         annotations =
             (try? container.decode([FailableDecodable<Annotation>].self, forKey: .annotations))?
             .compactMap(\.value).cappingMagnifiers() ?? fallback.annotations

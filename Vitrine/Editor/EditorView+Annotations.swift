@@ -118,8 +118,12 @@ extension EditorView {
     /// be reused and placed precisely instead of being redrawn from scratch.
     func duplicateSelection() {
         guard let id = selectedAnnotationID,
-            let original = settings.style.annotations.first(where: { $0.id == id })
+            var original = settings.style.annotations.first(where: { $0.id == id })
         else { return }
+        // A pinned comment's copy starts beside where it is drawn.
+        if let placed = diffCommentPositions[id] {
+            (original.start, original.end) = (placed, placed)
+        }
 
         beginAnnotationEdit()
         let copy = original.duplicated(
@@ -193,7 +197,8 @@ extension EditorView {
     /// ten with Shift. Auto-repeat records only the initial undo snapshot.
     func nudgeSelection(_ key: KeyEquivalent, shift: Bool, isRepeat: Bool) -> Bool {
         guard editingAnnotationID == nil, let id = selectedAnnotationID,
-            let index = settings.style.annotations.firstIndex(where: { $0.id == id })
+            let index = settings.style.annotations.firstIndex(where: { $0.id == id }),
+            settings.style.annotations[index].lineAnchor == nil
         else { return false }
 
         let step = shift ? Annotation.coarseNudgeStep : Annotation.nudgeStep

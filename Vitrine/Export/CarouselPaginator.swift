@@ -258,8 +258,12 @@ enum CarouselPaginator {
         // A diff's stats and context fold describe the whole patch, not one slide.
         config.showDiffStats = false
         config.diffContextLines = nil
+        // A slide may start past its hunk header, which file numbering counts from.
+        config.diffLineNumbers = .rows
         // Slides cut a hunk by source rows, which only the unified layout keeps intact.
         config.diffView = .unified
+        // A slide pairs only its own rows, so it could mark lines the editor leaves plain.
+        config.diffWordMarks = false
 
         switch cues.lineNumbers {
         case nil:

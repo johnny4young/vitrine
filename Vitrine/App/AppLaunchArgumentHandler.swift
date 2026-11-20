@@ -225,12 +225,28 @@ import VitrineRendering
                 demo.diffDecorations = true
                 demo.showDiffStats = true
                 if arguments.contains("--demo-diff-split") { demo.diffView = .split }
+                if arguments.contains("--demo-diff-word-marks") { demo.diffWordMarks = true }
+                if arguments.contains("--demo-diff-hunks") {
+                    demo.code +=
+                        "\n@@ -20,3 +21,3 @@\n struct Greeter {\n-    let name = \"World\"\n+    let name = \"Vitrine\"\n }"
+                }
+                if arguments.contains("--demo-diff-source") {
+                    demo.diffSource = DiffSource(
+                        kind: .range, range: "main...feature/greeting", repository: "greeter")
+                }
                 if arguments.contains("--demo-diff-blur") {
                     demo.annotations = [
                         Annotation(
                             kind: .blur, start: CGPoint(x: 0.2, y: 0.5),
                             end: CGPoint(x: 0.6, y: 0.6))
                     ]
+                }
+                if arguments.contains("--demo-diff-comment") {
+                    demo.annotations.append(
+                        Annotation(
+                            kind: .text, start: CGPoint(x: 0.5, y: 0.5),
+                            end: CGPoint(x: 0.5, y: 0.5), text: "Trim first", thickness: 3.5,
+                            lineAnchor: DiffLineAnchor(row: 4, side: .new)))
                 }
                 demo.showLineNumbers = true
                 demo.cornerRadius = 16

@@ -369,6 +369,9 @@ export const cliOptionGroups: CLIOptionGroup[] = [
       { flags: '--diff-stats, --no-diff-stats', description: both('Show or hide the file path and +/- counts above a diff.', 'Muestra u oculta la ruta del archivo y los conteos +/- sobre un diff.') },
       { flags: '--diff-context', value: '<0...5>', description: both('Fold a diff to this many unchanged lines around each change.', 'Pliega un diff a esta cantidad de líneas sin cambios alrededor de cada cambio.') },
       { flags: '--diff-view', value: '<unified|split>', description: both('Lay a diff out in one column or with old and new side by side.', 'Muestra un diff en una columna o con la versión anterior y la nueva lado a lado.') },
+      { flags: '--diff-word-marks, --no-diff-word-marks', description: both('Mark or unmark the changed words inside paired diff lines.', 'Marca o desmarca las palabras que cambiaron dentro de las líneas de un diff emparejadas.') },
+      { flags: '--diff-hunks', value: '<1,3,...>', description: both('Draw only these diff hunks; the others fold to their +/- counts in the image.', 'Dibuja solo estos bloques del diff; los demás se pliegan a sus conteos +/- en la imagen.') },
+      { flags: '--diff-line-numbers', value: '<rows|old|new|both>', description: both('Number a diff by patch rows, its old or new file lines, or both.', 'Numera un diff por filas del parche, por las líneas del archivo anterior o del nuevo, o por ambas.') },
     ],
   },
   {

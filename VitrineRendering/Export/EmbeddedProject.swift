@@ -48,6 +48,8 @@ public enum EmbeddedProject {
         // A hidden window bar draws no title, so the image must not carry one either.
         if !config.showChrome { embedded.windowTitle = "" }
         embedded.metadata.filename = config.metadata.filename.map(strippingPath)
+        // Sharing the diff source in links is no consent to write it into saved images.
+        embedded.diffSource = nil
         // Unlike the image, a project can't be redacted after the fact, so any finding blocks it.
         guard ExportPreflight(embedded, payload: .transcript).isClean else {
             return .withheld(.secret)
