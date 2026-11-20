@@ -21,12 +21,18 @@ struct CarouselExportView: View {
     }
 
     /// What the fitted type size depends on.
-    private struct FitRequest: Equatable {
+    struct FitRequest: Equatable {
         var base: SnapshotConfig
         var slides: [CarouselPaginator.Slide]
         var cues: CarouselPaginator.Cues
         var size: CarouselSlideSize
         var reservesCaptionBand: Bool
+
+        func fitted() -> CarouselFit {
+            CarouselPaginator.fit(
+                base, slides: slides, cues: cues, size: size,
+                reservesCaptionBand: reservesCaptionBand)
+        }
     }
 
     private struct EstimateRequest: Equatable {
@@ -78,7 +84,7 @@ struct CarouselExportView: View {
     init(
         baseConfig: SnapshotConfig, profile: ColorProfile, feedback: FeedbackDisplay,
         presentation: BatchExportPresentation, splitModel: CarouselSplitModel,
-        documentGeneration: Int, brandHandle: String = BrandKitStore.shared.brandKit.handle
+        documentGeneration: Int, brandHandle: String = BrandKitStore.shared.appliedHandle
     ) {
         self.baseConfig = baseConfig
         self.profile = profile
@@ -470,11 +476,7 @@ struct CarouselExportView: View {
 
     private func refreshFit() {
         let request = fitRequest
-        fit = (
-            request,
-            CarouselPaginator.fit(
-                request.base, slides: request.slides, cues: request.cues, size: request.size)
-        )
+        fit = (request, request.fitted())
     }
 
     private func outputFilenames(slideCount: Int) -> [String] {
@@ -581,6 +583,10 @@ struct CarouselTextField: View {
             let limited = CarouselExtras.limited(edited)
             if limited != edited { draft = limited }
             if text != limited { text = limited }
+        }
+        // A new split can point the same page at another caption.
+        .onChange(of: text) { _, stored in
+            if stored != CarouselExtras.limited(draft) { draft = stored }
         }
     }
 }

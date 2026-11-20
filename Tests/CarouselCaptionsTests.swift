@@ -245,7 +245,28 @@ struct CarouselCaptionsTests {
         #expect(try pageImages(pdf) == snapshotPages)
     }
 
+    // MARK: - Handle
+
+    @Test func theCardsCarryTheHandleOnlyWhileTheBrandKitIsApplied() {
+        let store = BrandKitStore(defaults: testDefaults())
+        store.brandKit = BrandKit(handle: "@jane")
+        #expect(store.appliedHandle.isEmpty)
+        store.isEnabled = true
+        #expect(store.appliedHandle == "@jane")
+    }
+
     // MARK: - Caption band
+
+    @Test func theSheetFitReservesTheCaptionBand() {
+        var base = SnapshotConfig()
+        base.code = code(lines: 12)
+        let slides = CarouselSplit(linesPerSlide: 12).slides(of: base.code)
+        func request(band: Bool) -> CarouselExportView.FitRequest {
+            .init(
+                base: base, slides: slides, cues: .none, size: .linkedIn, reservesCaptionBand: band)
+        }
+        #expect(request(band: true).fitted().fontSize < request(band: false).fitted().fontSize)
+    }
 
     @Test func theCaptionBandFitsUnderTheCardOnEverySize() throws {
         var base = SnapshotConfig()
