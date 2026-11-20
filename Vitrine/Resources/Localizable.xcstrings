@@ -1,6 +1,222 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Revision range" : {
+      "comment" : "Diff source chip: the diff came from a Git revision range",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rango de revisiones"
+          }
+        }
+      }
+    },
+    "Copied. Run it at the repository root." : {
+      "comment" : "HUD after copying the command that renders a diff again",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Ejecútalo en la raíz del repositorio."
+          }
+        }
+      }
+    },
+    "Copied. Run it at the root of %@." : {
+      "comment" : "HUD after copying the diff command; %@ is the repository folder name",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copiado. Ejecútalo en la raíz de %@."
+          }
+        }
+      }
+    },
+    "Shares: %@" : {
+      "comment" : "Diff source: what a share link would carry; %@ is a list of range, folder and paths",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comparte: %@"
+          }
+        }
+      }
+    },
+    "diff.source.label" : {
+      "comment" : "Inspector row label: where a diff came from (a Git range or staged changes).",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Origen"
+          }
+        }
+      }
+    },
+    "Staged" : {
+      "comment" : "Diff source chip: the diff came from staged Git changes",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cambios preparados"
+          }
+        }
+      }
+    },
+    "Copy the command that renders this diff again" : {
+      "comment" : "Help for the diff source Refresh button",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copia el comando que vuelve a generar este diff"
+          }
+        }
+      }
+    },
+    "Include in share links" : {
+      "comment" : "Checkbox: share links carry the diff source",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Incluir en enlaces compartidos"
+          }
+        }
+      }
+    },
+    "Comment on Selected Line" : {
+      "comment" : "Edit menu: pins a text comment to the diff line under the code editor's caret.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentar la línea seleccionada"
+          }
+        }
+      }
+    },
+    "Comment on the selected diff line" : {
+      "comment" : "Accessibility label and help for the command that pins a comment to a diff line.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentar la línea seleccionada del diff"
+          }
+        }
+      }
+    },
+    "Comment on selected line" : {
+      "comment" : "Editor diff inspector: row label next to the shortcut that pins a comment to the caret's line.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentar la línea seleccionada"
+          }
+        }
+      }
+    },
+    "Detached comments" : {
+      "comment" : "Editor diff inspector: count of comments whose diff line was edited or removed, so they no longer show.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comentarios desvinculados"
+          }
+        }
+      }
+    },
+    "Remove detached comments" : {
+      "comment" : "Accessibility label: deletes the comments whose diff line was edited or removed.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitar los comentarios desvinculados"
+          }
+        }
+      }
+    },
+    "Rows" : {
+      "comment" : "Editor lines: diff numbering option, the patch's own row numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filas"
+          }
+        }
+      }
+    },
+    "Numbering" : {
+      "comment" : "Editor lines: picker for which file lines a diff's gutter numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Numeración"
+          }
+        }
+      }
+    },
+    "Old" : {
+      "comment" : "Editor lines: diff numbering option, the old file's line numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anterior"
+          }
+        }
+      }
+    },
+    "New" : {
+      "comment" : "Editor lines: diff numbering option, the new file's line numbers.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nuevo"
+          }
+        }
+      }
+    },
+    "Hunks" : {
+      "comment" : "Editor lines: list of a diff's hunks, each with a checkbox that shows or folds it.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bloques"
+          }
+        }
+      }
+    },
+    "Word marks" : {
+      "comment" : "Editor lines: switch that tints the changed words inside paired diff lines.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Marcas de palabras"
+          }
+        }
+      }
+    },
     "1 caption not shown" : {
       "comment" : "Carousel sheet: one caption was written for a slide that this split no longer opens at the same line.",
       "localizations" : {
@@ -288,7 +504,7 @@
       }
     },
     "Both" : {
-      "comment" : "Carousel output: PNG files and a PDF.",
+      "comment" : "Carousel output: PNG files and a PDF. Also the diff numbering option that shows the old and new file's line numbers.",
       "localizations" : {
         "es" : {
           "stringUnit" : {

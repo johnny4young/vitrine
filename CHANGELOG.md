@@ -93,6 +93,29 @@ can never drift.
 - Show a diff split, with the old and new file side by side, from the Layout control in the
   inspector's Lines section or with `--diff-view split` in the CLI. Each side keeps its own
   line numbers and redacted rows stay hidden on both sides. Unified stays the default.
+- Mark the words that changed inside a diff's removed and added lines, in both layouts, with
+  the Word marks switch in the inspector's Lines section or `--diff-word-marks` in the CLI.
+  Lines too unlike to pair stay unmarked, and a redacted line hides its marks and its
+  partner's.
+- Fold diff hunks out of the image from the checkboxes in the inspector's Lines section, or
+  with `--diff-hunks 1,3` in the CLI. A folded hunk draws as one row of added and removed
+  counts. Like the context fold, it changes only the image: copied text, sidecars, alt text,
+  shared links and carousel slides keep every hunk, so use Redact to hide text. With line
+  numbers on, a diff can number its patch rows, its old or new file lines, or both, from the
+  Numbering control or `--diff-line-numbers rows|old|new|both`.
+- Pin a comment to a diff line with Edit › Comment on Selected Line (⇧⌘M) or the shortcut in
+  the inspector's Lines section. The comment is a text callout on the line under the code
+  editor's caret, and it stays on that line in Unified and Split, when hunks fold and when
+  lines wrap. Long comments wrap inside the card and comments on neighboring lines don't
+  overlap. Editing that line detaches it until an undo brings the line back; the inspector
+  counts detached comments and removes them. Comments travel with shared links and restored
+  windows.
+- Show where a diff came from in the inspector's Lines section when the CLI handed it over
+  with `vitrine render --git-diff <range> --edit` or `--git-staged --edit`: the revision range
+  or staged changes, and the repository folder's name, never a full path. Copy Command copies
+  the command that renders it again, to run at the repository root, since the app can't run
+  Git itself. Editing the text drops the source. Images never show it, and share links carry
+  it only when you check Include in share links, which lists what the link would carry.
 - Crop a terminal capture to some rows and columns of its final screen from the inspector's
   Terminal section, or with `--terminal-crop-rows` and `--terminal-crop-columns`. Line numbers
   and redacted rows keep counting the whole screen, and text exports and share links carry only

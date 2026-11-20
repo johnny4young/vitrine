@@ -184,6 +184,34 @@ struct CLIReproductionCommandTests: CLITestSupport {
         #expect(try !self.line(command(style).outcome()).contains("--diff-view"))
     }
 
+    @Test func aDiffWithWordMarksCarriesTheFlag() throws {
+        var style = SnapshotConfig()
+        style.language = .diff
+        style.diffWordMarks = true
+        #expect(try line(command(style).outcome()).contains("--diff-word-marks"))
+        try expectRoundTrip(command(style))
+        style.diffWordMarks = false
+        #expect(try !self.line(command(style).outcome()).contains("word-marks"))
+    }
+
+    @Test func aDiffCarriesItsPickedHunksAndNumbering() throws {
+        var style = SnapshotConfig()
+        style.language = .diff
+        style.diffHunks = [1, 3]
+        style.showLineNumbers = true
+        style.diffLineNumbers = .both
+        let line = try line(command(style).outcome())
+        #expect(line.contains("--diff-hunks 1,3"))
+        #expect(line.contains("--diff-line-numbers both"))
+        try expectRoundTrip(command(style))
+
+        style.diffHunks = nil
+        style.diffLineNumbers = .rows
+        let plain = try self.line(command(style).outcome())
+        #expect(!plain.contains("--diff-hunks"))
+        #expect(!plain.contains("--diff-line-numbers"))
+    }
+
     @Test func aFoldedDiffCarriesItsStatsAndContext() throws {
         var style = SnapshotConfig()
         style.language = .diff

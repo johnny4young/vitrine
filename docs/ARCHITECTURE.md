@@ -553,9 +553,11 @@ two flags are mutually exclusive so scripts cannot request JSON and suppress it.
 `--wrap-columns`, `--line-numbers`, `--no-chrome`, `--shadow`, `--no-shadow`, `--highlight-lines <spec>`,
 `--redact-lines <spec>`, `--redact-secrets`, `--focus-lines`, `--no-focus-lines`,
 `--diff-bands`, `--no-diff-bands`, `--diff-stats`, `--no-diff-stats`,
-`--diff-context <0...5>`, `--diff-view <unified|split>`), and the header controls
-(`--window-title`, `--filename`, `--title`, `--caption`, `--language-badge`,
-`--no-language-badge`) and an explicit `--recipe <path>` override individual choices.
+`--diff-context <0...5>`, `--diff-view <unified|split>`, `--diff-word-marks`,
+`--no-diff-word-marks`, `--diff-hunks <list>`,
+`--diff-line-numbers <rows|old|new|both>`), and the header controls (`--window-title`,
+`--filename`, `--title`, `--caption`, `--language-badge`, `--no-language-badge`) and
+an explicit `--recipe <path>` override individual choices.
 Line specs are strict 1-based line/range lists such as `3,7-9,12`, so automation fails
 loud instead of silently dropping malformed fragments; `--redact-secrets` reuses the
 same deterministic `SecretScanner` as the editor and merges detected rows with any
@@ -617,6 +619,19 @@ rendering. Literal pathspecs prevent scope expansion, terminal prompts are disab
 and `GIT_NO_LAZY_FETCH=1` prevents partial clones from reaching a promisor remote. The
 loaded source is tagged `.diff`, and diff bands default on unless the caller explicitly
 disables them.
+With `--edit`, the handoff URL also carries a `DiffSource`: the range or staged set, pathspecs
+made relative to the repository root (found by walking up to `.git`), a non-default context,
+and the root folder's name unless it is the home folder or not a plain folder name. The
+sandboxed app cannot run `/usr/bin/git`, so the inspector's Copy Command copies
+`vitrine render --git-diff <range> --edit`, shell-quoted, instead of running anything.
+`DiffSource` validates on every way in (handoff, window restoration, share links): revisions
+allow only ASCII letters, digits and Git's revision punctuation, folder names only ASCII
+letters, digits and `._-` up to 64 bytes, and pathspecs must stay inside the repository;
+limits count UTF-8 bytes. A text edit drops the source: each load stamps a `loadID`, and a
+config write that changes the text while carrying the same one forward is an edit. Settings
+never store it, images never draw it, and share links carry it only after the user opts in
+for that document. A received source applies only to a diff, and its folder name never
+appears in the confirmation.
 Local CLI background images are imported once into an invocation-scoped
 `BackgroundImageStore`; `CLIRenderer` threads that isolated store independently from
 the foreground-image store through `ExportManager`, then removes it after a single
@@ -1389,6 +1404,17 @@ A shared snapshot is already a complete document: its decoder applies its own va
 annotations and style, and `loadIntoPrimary` does not clear them. That window operation
 stops live-file watching and loads exactly the supplied document. It must not become an
 implicit new-content sanitizer.
+
+Annotations sit in normalized canvas coordinates, with one exception: a text callout with a
+`DiffLineAnchor` is a comment pinned to a source row and diff side. The code layout reports
+the frame of each pinned row, and `SnapshotCanvas` places the callout from it (right-aligned,
+wrapped inside the row, moved clear of a neighbor's), so the comment stays on its line through
+Unified and Split, folds and wrapping. Rendered positions stay in the editor, which uses them
+for handles; the model never stores them. A comment whose row is folded or missing is not
+drawn. `AppSettings.documentCode` shifts anchors, including those in annotation undo, when
+lines above or below change, and detaches an anchor whose own line changed. A detached comment
+does not draw; it attaches again only if an edit restores that line's text in place, and the
+line's text is kept in memory only.
 
 | Entry | Free/PRO contract | Channel |
 | --- | --- | --- |

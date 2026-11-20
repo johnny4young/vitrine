@@ -224,6 +224,14 @@ struct CLIReproductionCommand {
                 "--diff-context", style.diffContextLines.map(String.init),
                 base.diffContextLines.map(String.init))
             label("--diff-view", style.diffView.rawValue, base.diffView.rawValue)
+            toggle(
+                "--diff-word-marks", "--no-diff-word-marks", style.diffWordMarks,
+                base.diffWordMarks)
+            let hunks = { (hunks: [Int]?) in hunks?.map(String.init).joined(separator: ",") }
+            label("--diff-hunks", hunks(style.diffHunks), hunks(base.diffHunks))
+            label(
+                "--diff-line-numbers", style.diffFileNumbering?.rawValue,
+                base.diffFileNumbering?.rawValue)
         }
         label("--terminal-width", style.terminalColumns.map(String.init), nil)
         if style.language == .terminal {

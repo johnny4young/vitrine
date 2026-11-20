@@ -704,6 +704,15 @@ struct PerformanceTests {
 
     private func spinRunLoop() { RunLoop.main.run(until: Date().addingTimeInterval(1)) }
 
+    // Typing above pinned comments moves them on every new line; the bare diff is the control.
+    @Test(arguments: [false, true])
+    func typingAtTheTopOfADiffMeetsBudget(pinsComments: Bool) async throws {
+        try await measureTyping(
+            label: pinsComments ? "editor-keystroke-diff-comments" : "editor-keystroke-diff",
+            showsSlideDividers: false, typesAtTheTop: true, diff: true,
+            pinsDiffComments: pinsComments)
+    }
+
     // The worst case for the shifted copy: every divider below the caret, on a long document.
     @Test func typingAtTheTopOfALongDocumentMeetsBudget() async throws {
         try await measureTyping(
@@ -717,7 +726,8 @@ struct PerformanceTests {
     }
 
     private func measureTyping(
-        label: String, showsSlideDividers: Bool, typesAtTheTop: Bool = false
+        label: String, showsSlideDividers: Bool, typesAtTheTop: Bool = false,
+        diff: Bool = false, pinsDiffComments: Bool = false
     ) async throws {
         // A keystroke is not a render: the text view takes the edit, the editor's SwiftUI
         // hierarchy updates, and AppKit runs a layout pass before the next frame. The
@@ -734,6 +744,19 @@ struct PerformanceTests {
             typesAtTheTop
             ? (1...5_000).map { "let value\($0) = compute(input)" }.joined(separator: "\n")
             : Self.largeConfig().code.split(separator: "\n").prefix(60).joined(separator: "\n")
+        if diff {
+            var style = session.settings.style
+            style.language = .diff
+            style.diffDecorations = true
+            style.annotations = (pinsDiffComments ? [40, 400, 4_000] : []).map {
+                Annotation(
+                    kind: .text, start: .zero, end: .zero, text: "Note \($0)",
+                    lineAnchor: DiffLineAnchor(row: $0, side: .new))
+            }
+            session.settings.style = style
+            session.settings.documentCode =
+                "@@ -1,5000 +1,5000 @@\n" + session.settings.documentCode
+        }
         session.carouselSplit.showsDividers = showsSlideDividers
         session.carouselSplit.split.linesPerSlide = typesAtTheTop ? 4 : 12
 

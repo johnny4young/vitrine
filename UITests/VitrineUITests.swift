@@ -616,6 +616,9 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("diff-stats-toggle", in: app), in: app, timeout: 3)
         assertExists(element("diff-context-slider", in: app), in: app)
         XCTAssertFalse(element("diff-view-locked-note", in: app).exists)
+        let wordMarks = element("diff-word-marks-toggle", in: app)
+        assertExists(wordMarks, in: app)
+        XCTAssertTrue(wordMarks.isEnabled)
 
         assertExists(element("diff-view-picker", in: app), in: app)
         let split = element("diff-view-split", in: app)
@@ -644,6 +647,157 @@ final class VitrineUITests: XCTestCase {
         XCTAssertFalse(element("diff-context-slider", in: app).isEnabled)
         XCTAssertFalse(element("diff-stats-toggle", in: app).isEnabled)
         XCTAssertFalse(element("diff-view-split", in: app).isEnabled)
+        XCTAssertFalse(element("diff-word-marks-toggle", in: app).isEnabled)
+        XCTAssertFalse(element("diff-line-numbers-old", in: app).isEnabled)
+    }
+
+    @MainActor
+    func testInspectorPicksDiffHunksAndNumbering() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--demo-showcase", "--demo-diff-hunks"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+        for _ in 0..<5 where !waitForHittableElement("diff-hunk-toggle-2", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+
+        assertExists(element("diff-line-numbers-picker", in: app), in: app)
+        XCTAssertTrue(element("diff-line-numbers-rows", in: app).isSelected)
+        let old = element("diff-line-numbers-old", in: app)
+        assertExists(old, in: app)
+        old.click()
+        XCTAssertTrue(old.wait(for: \.isSelected, toEqual: true, timeout: 3))
+
+        assertExists(element("diff-hunk-picker", in: app), in: app)
+        // A diff with no CLI source shows no Source row.
+        XCTAssertFalse(element("diff-source-chip", in: app).exists)
+        let first = element("diff-hunk-toggle-1", in: app)
+        let second = element("diff-hunk-toggle-2", in: app)
+        assertExists(first, in: app)
+        XCTAssertTrue(first.isEnabled)
+        second.click()
+        // The first hunk is now the only one shown, so it cannot be unchecked.
+        XCTAssertTrue(first.wait(for: \.isEnabled, toEqual: false, timeout: 3))
+    }
+
+    @MainActor
+    func testDiffCommentOpensATextFieldForTheCaretLine() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--demo-showcase"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+        for _ in 0..<5 where !waitForHittableElement("diff-comment-button", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+
+        let comment = element("diff-comment-button", in: app)
+        assertExists(comment, in: app)
+        XCTAssertTrue(comment.isEnabled)
+        XCTAssertFalse(element("diff-detached-comment-count", in: app).exists)
+        comment.click()
+        let field = app.textFields.matching(identifier: "annotation-text-field").firstMatch
+        assertExists(field, in: app, timeout: 3)
+        field.typeText("Trim first")
+        XCTAssertEqual(field.value as? String, "Trim first")
+    }
+
+    /// The stage text for a diff row and for the comment pinned to it.
+    @MainActor
+    private func stageText(_ prefix: String, in app: XCUIApplication) -> XCUIElement {
+        element("editor-preview-stage", in: app).staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", prefix)
+        ).firstMatch
+    }
+
+    @MainActor
+    func testShiftCommandMPinsACommentToTheCaretRow() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(arguments: VitrineLaunchArguments.editor + ["--demo-showcase"])
+        defer { app.terminate() }
+
+        let editor = element("code-editor-text-view", in: app)
+        assertExists(editor, in: app, timeout: 8)
+        editor.click()
+        // Paragraph moves, so wrapped lines in the narrow code column don't count.
+        app.typeKey(.upArrow, modifierFlags: .command)
+        for _ in 0..<4 { app.typeKey(.downArrow, modifierFlags: .option) }
+        app.typeKey("m", modifierFlags: [.command, .shift])
+        let field = app.textFields.matching(identifier: "annotation-text-field").firstMatch
+        assertExists(field, in: app, timeout: 3)
+        field.typeText("Trim first\r")
+
+        let row = stageText("+    let trimmed", in: app)
+        let comment = stageText("Trim first", in: app)
+        assertExists(row, in: app, timeout: 3)
+        assertExists(comment, in: app, timeout: 3)
+        XCTAssertLessThan(abs(comment.frame.midY - row.frame.midY), row.frame.height)
+    }
+
+    @MainActor
+    func testAPinnedCommentStaysOnItsRowInSplit() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + [
+                "--demo-showcase", "--demo-diff-split", "--demo-diff-comment",
+            ])
+        defer { app.terminate() }
+
+        let row = stageText("+    let trimmed", in: app)
+        let comment = stageText("Trim first", in: app)
+        assertExists(row, in: app, timeout: 8)
+        assertExists(comment, in: app, timeout: 3)
+        XCTAssertLessThan(abs(comment.frame.midY - row.frame.midY), row.frame.height)
+        // The added line sits in the new column, so the comment does too.
+        XCTAssertGreaterThanOrEqual(comment.frame.minX, row.frame.minX)
+    }
+
+    @MainActor
+    func testInspectorShowsTheDiffSource() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        let app = launch(
+            arguments: VitrineLaunchArguments.editor + ["--demo-showcase", "--demo-diff-source"])
+        defer { app.terminate() }
+
+        let inspector = element("editor-inspector", in: app)
+        assertExists(inspector, in: app, timeout: 8)
+        for _ in 0..<5
+        where !waitForHittableElement("inspector-disclosure-lines", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+        element("inspector-disclosure-lines", in: app).click()
+        for _ in 0..<5
+        where !waitForHittableElement("diff-source-share-toggle", in: app, timeout: 1) {
+            inspector.swipeUp()
+        }
+
+        assertExists(element("diff-source-chip", in: app), in: app)
+        assertExists(element("diff-source-summary", in: app), in: app)
+        XCTAssertTrue(element("diff-source-copy-command-button", in: app).isEnabled)
+        assertExists(element("diff-source-share-details", in: app), in: app)
+        let share = element("diff-source-share-toggle", in: app)
+        XCTAssertEqual(share.value as? Int, 0)
+        share.click()
+        XCTAssertEqual(share.value as? Int, 1)
     }
 
     @MainActor

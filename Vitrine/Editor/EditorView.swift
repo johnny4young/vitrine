@@ -97,6 +97,13 @@ struct EditorView: View {
     /// drawn; committing keeps non-empty content or drops an empty callout. Editor-only.
     @State var editingAnnotationID: UUID?
 
+    /// Where the canvas last drew each pinned comment, normalized. Editor-only: the model
+    /// never stores a rendered position.
+    @State var diffCommentPositions: [UUID: CGPoint] = [:]
+    /// Each pinned comment's anchor as of the staged preview text, so the preview places
+    /// comments against the rows it shows without reading every keystroke.
+    @State var stagedCommentAnchors: [UUID: DiffLineAnchor] = [:]
+
     /// The active annotation tool. `.select` moves/resizes existing marks;
     /// any other tool puts the preview into draw mode. Editor-only UI state.
     @State var activeTool: AnnotationTool = .select
@@ -320,6 +327,25 @@ struct EditorView: View {
                     let tool = AnnotationTool(rawValue: rawValue)
                 else { return }
                 activeTool = tool
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .vitrineCommentOnSelectedLine)) {
+                notification in
+                guard let targetWindow = notification.object as? NSWindow,
+                    targetWindow === editorWindow.value
+                else { return }
+                commentOnSelectedLine()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .vitrineRemoveDetachedComments)) {
+                notification in
+                guard let targetWindow = notification.object as? NSWindow,
+                    targetWindow === editorWindow.value
+                else { return }
+                removeDetachedComments()
+            }
+            .task {
+                // Undo snapshots follow each edit, so a restored comment lands on its line.
+                let history = $annotationHistory
+                settings.lineEditObserver = { history.wrappedValue.follow($0) }
             }
             .onReceive(NotificationCenter.default.publisher(for: .vitrineAnnotationMarkAction)) {
                 notification in

@@ -103,11 +103,15 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
     public var thickness: Double
     /// The badge number. Only `.counter` uses it.
     public var number: Int
+    /// The source line a text callout is pinned to; the canvas then places it from that
+    /// line's row and ignores `start`.
+    public var lineAnchor: DiffLineAnchor?
 
     public init(
         id: UUID = UUID(), kind: Kind, start: CGPoint, end: CGPoint,
         text: String = "", color: RGBAColor = Annotation.defaultColor,
-        thickness: Double = Annotation.defaultThickness, number: Int = 0
+        thickness: Double = Annotation.defaultThickness, number: Int = 0,
+        lineAnchor: DiffLineAnchor? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -117,10 +121,11 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
         self.color = color
         self.thickness = thickness
         self.number = number
+        self.lineAnchor = lineAnchor
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, kind, start, end, text, color, thickness, number
+        case id, kind, start, end, text, color, thickness, number, lineAnchor
     }
 
     /// Decodes tolerantly: the fields added after the first version (`thickness`,
@@ -137,6 +142,10 @@ public struct Annotation: Identifiable, Equatable, Codable, Sendable {
         thickness =
             (try? container.decode(Double.self, forKey: .thickness)) ?? Annotation.defaultThickness
         number = (try? container.decode(Int.self, forKey: .number)) ?? 0
+        // Only a text callout draws from an anchor; on any other kind it would only hide it.
+        lineAnchor =
+            kind == .text
+            ? try? container.decodeIfPresent(DiffLineAnchor.self, forKey: .lineAnchor) : nil
     }
 }
 
@@ -184,6 +193,8 @@ extension Annotation {
     public func duplicated(in canvasSize: CGSize, counterNumber: Int) -> Annotation {
         var copy = self
         copy.id = UUID()
+        // Two comments on one line would draw on top of each other.
+        copy.lineAnchor = nil
         if kind == .counter {
             copy.number = counterNumber
             copy.text = ""
@@ -219,7 +230,11 @@ extension Annotation {
             String(number),
             String(
                 format: "%.3f,%.3f,%.3f,%.3f", color.red, color.green, color.blue, color.opacity),
-        ].joined(separator: "|")
+        ].joined(separator: "|") + (lineAnchor.map(Self.fingerprint(of:)) ?? "")
+    }
+
+    private static func fingerprint(of anchor: DiffLineAnchor) -> String {
+        "|L\(anchor.row)\(anchor.side.rawValue)" + (anchor.isDetached ? "-detached" : "")
     }
 
     /// Builds a new annotation for `tool` spanning `start`→`end`, inheriting the

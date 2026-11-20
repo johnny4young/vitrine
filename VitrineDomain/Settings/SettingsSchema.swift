@@ -260,6 +260,15 @@ public enum SettingsDefaults {
         min(max(value, diffContextLinesRange.lowerBound), diffContextLinesRange.upperBound)
     }
 
+    /// The hunk positions a diff may pick. Stored lists are untrusted, so they are bounded.
+    public static let diffHunkRange = 1...10_000
+
+    /// A picked-hunk list sorted, deduplicated and in range; `nil` (every hunk) when empty.
+    public static func normalizeDiffHunks(_ hunks: [Int]) -> [Int]? {
+        let kept = Set(hunks.prefix(diffHunkRange.upperBound)).filter(diffHunkRange.contains)
+        return kept.isEmpty ? nil : kept.sorted()
+    }
+
     public static func clampExportScale(_ value: Int) -> Int {
         guard value >= exportScaleRange.lowerBound else { return exportScale }
         return min(value, exportScaleRange.upperBound)
