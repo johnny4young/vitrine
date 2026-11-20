@@ -195,17 +195,6 @@
         }
       }
     },
-    "Both" : {
-      "comment" : "Editor lines: diff numbering option, the old and new file's line numbers.",
-      "localizations" : {
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ambos"
-          }
-        }
-      }
-    },
     "Hunks" : {
       "comment" : "Editor lines: list of a diff's hunks, each with a checkbox that shows or folds it.",
       "localizations" : {
@@ -383,7 +372,7 @@
       }
     },
     "Both" : {
-      "comment" : "Carousel output: PNG files and a PDF.",
+      "comment" : "Carousel output: PNG files and a PDF. Also the diff numbering option that shows the old and new file's line numbers.",
       "localizations" : {
         "es" : {
           "stringUnit" : {
