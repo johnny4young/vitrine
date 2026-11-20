@@ -15,9 +15,12 @@ struct ComparisonBoardEditorView: View {
     let environment: AppEnvironment
     let feedback: FeedbackDisplay
     let presentation: ComparisonBoardPresentation
+    let folders: BatchExportPresentation
 
     @State private var preview = ComparisonBoardPreview()
     @State private var editingCaption: UUID?
+    @State private var sceneExport: Task<Void, Never>?
+    @State private var sceneProgress: (completed: Int, total: Int)?
     @FocusState private var focusedField: Field?
 
     var settings: AppSettings { environment.appSettings }
@@ -44,6 +47,7 @@ struct ComparisonBoardEditorView: View {
                 wipe: { draft.wipe },
                 render: { try draft.composePreview(profile: settings.export.colorProfile) })
         }
+        .onDisappear { sceneExport?.cancel() }
     }
 
     private var toolbar: some View {
@@ -121,6 +125,10 @@ struct ComparisonBoardEditorView: View {
                             if draft.background == .transparent { TransparencyGrid() }
                         }
                         .shadow(color: .black.opacity(0.28), radius: 24, y: 18)
+                        .overlay {
+                            ComparisonBoardSceneFrames(
+                                scenes: draft.scenes, camera: draft.camera)
+                        }
                         .overlay {
                             captionLayer(
                                 scale: scale,
@@ -299,6 +307,8 @@ struct ComparisonBoardEditorView: View {
                         .accessibilityIdentifier("comparison-board-footer-toggle")
                 }
 
+                inspectorSection("Scenes") { scenesEditor }
+
                 inspectorSection("Captures") {
                     ForEach(Array(draft.items.enumerated()), id: \.element.id) { index, item in
                         VStack(spacing: VitrineTokens.Spacing.lg) {
@@ -319,6 +329,56 @@ struct ComparisonBoardEditorView: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Inspector")
         .accessibilityIdentifier("comparison-board-inspector")
+    }
+
+    private var scenesEditor: some View {
+        ComparisonBoardScenesEditor(
+            draft: draft, progress: sceneProgress, exportPNGs: exportScenePNGs,
+            cancelPNGs: { sceneExport?.cancel() }, exportPDF: exportScenePDF)
+    }
+
+    private func exportScenePNGs() {
+        guard sceneExport == nil,
+            let directory = folders.chooseDirectory(
+                message: String(localized: "Choose a folder for the scenes."))
+        else { return }
+        let expected = draft.scenes.count
+        sceneProgress = (0, expected)
+        sceneExport = Task {
+            let result = await ComparisonBoardExporter.exportScenePNGs(
+                for: draft, profile: settings.export.colorProfile, to: directory,
+                onProgress: { completed, total in sceneProgress = (completed, total) })
+            let cancelled = Task.isCancelled
+            sceneExport = nil
+            sceneProgress = nil
+            guard !cancelled else { return }
+            let completion = BatchExportCompletion(
+                written: result.written, failed: result.failed, expected: expected,
+                renderFailure: result.firstRenderFailure)
+            if completion.isComplete {
+                feedback(Notifier.confirmation(String(localized: "Scenes exported")))
+                folders.reveal(directory)
+            } else if let note = completion.failureNote {
+                feedback(Notifier.failure(note))
+            }
+        }
+    }
+
+    private func exportScenePDF() {
+        let data: Data
+        do {
+            data = try ComparisonBoardExporter.scenePDFChecked(
+                for: draft, profile: settings.export.colorProfile)
+        } catch let error {
+            feedback(ExportFeedback.renderFailure(error))
+            return
+        }
+        if let outcome = ExportFeedback.saveOutcome(
+            ExportManager.saveToFile(
+                payload: (data, .pdf, "pdf"), suggestedName: "vitrine-comparison-scenes"))
+        {
+            feedback(outcome)
+        }
     }
 
     private var variantChips: some View {

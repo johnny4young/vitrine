@@ -76,7 +76,9 @@ final class EditorSession {
         self.settings = resolvedSettings
         livingSnapshot = LivingSnapshotSession(settings: resolvedSettings)
         livingSnapshot.onRefresh = { [weak self] previous in
-            self?.carryAppliedRecipe(from: previous)
+            guard let self else { return }
+            carryAppliedRecipe(from: previous)
+            carouselSplit.carryCaptions(from: previous, to: self.settings.documentGeneration)
         }
     }
 

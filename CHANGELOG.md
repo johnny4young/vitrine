@@ -75,6 +75,10 @@ can never drift.
   recipe that sets `paddingMode`, since they refuse unknown recipe fields; a recipe with
   Balance off writes no `paddingMode` and stays readable. Share links keep schema version 1,
   so an earlier build opens a balanced link with manual padding.
+- Comparison board scenes: zoom and frame part of a board, then Add scene from view to save
+  it with a name and a duration. The board shows each scene as a numbered frame, and the
+  scenes export as a folder of PNGs or a PDF with one page each, cropped from the board's
+  finished pixels.
 - Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
   to see it in up to four themes on a comparison board, each captioned with its theme. The
   board's inspector adds or removes themes without capturing again.
@@ -144,6 +148,15 @@ can never drift.
   smallest size. The export writes a PNG per slide, one `carousel.pdf` with a page per slide
   for a LinkedIn document post, or both. The PDF is drawn locally as vector pages, or as
   images when lines overflow, so no clipped text stays in the file.
+- Carousel slides can carry a one-sentence caption (up to 120 characters) in a band under
+  the capture. Click a tile in the filmstrip to write its caption; a filled dot under a tile
+  means it has its text and a hollow one that it is still empty. Once any slide has a
+  caption, every slide keeps the band, so the code stays in the same place. A caption stays
+  with the line that opens its slide, the sheet counts captions a new split can't show, and
+  another document starts without them. Optional cover and closing slides add a title or a
+  call to action and your Brand Kit handle, drawn like a headline social card in the
+  capture's theme and background, and written first and last in both the PNG set and the
+  PDF. A cover or closing slide left empty isn't written.
 - Warn in the inspector's Theme header when a capture's code text has low measured contrast
   on the surface it's drawn on. The warning lists the ratios, offers an undoable switch to a
   stock theme only when it measures better, and can be dismissed for a theme until you quit.

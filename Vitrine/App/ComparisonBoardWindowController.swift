@@ -36,12 +36,15 @@ final class ComparisonBoardWindowController: NSObject, NSWindowDelegate {
             renderScale: CGFloat(environment.appSettings.export.scale))
     }
 
-    func makeRootView(draft: ComparisonBoardDraft) -> ComparisonBoardEditorView {
+    func makeRootView(
+        draft: ComparisonBoardDraft, folders: BatchExportPresentation = .live
+    ) -> ComparisonBoardEditorView {
         ComparisonBoardEditorView(
             draft: draft,
             environment: environment,
             feedback: feedback,
-            presentation: presentation)
+            presentation: presentation,
+            folders: folders)
     }
 
     func makeVariantDraft(of capture: Capture) throws -> ComparisonBoardDraft {

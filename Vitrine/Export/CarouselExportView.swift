@@ -21,11 +21,18 @@ struct CarouselExportView: View {
     }
 
     /// What the fitted type size depends on.
-    private struct FitRequest: Equatable {
+    struct FitRequest: Equatable {
         var base: SnapshotConfig
         var slides: [CarouselPaginator.Slide]
         var cues: CarouselPaginator.Cues
         var size: CarouselSlideSize
+        var reservesCaptionBand: Bool
+
+        func fitted() -> CarouselFit {
+            CarouselPaginator.fit(
+                base, slides: slides, cues: cues, size: size,
+                reservesCaptionBand: reservesCaptionBand)
+        }
     }
 
     private struct EstimateRequest: Equatable {
@@ -39,6 +46,10 @@ struct CarouselExportView: View {
     let profile: ColorProfile
     let feedback: FeedbackDisplay
     let presentation: BatchExportPresentation
+    /// The cover and closing card's handle.
+    let brandHandle: String
+    /// Captions belong to this document; another one starts without them.
+    let documentGeneration: Int
     /// The split lives with the window, because the editor's dividers follow it too.
     @Bindable var splitModel: CarouselSplitModel
 
@@ -72,13 +83,16 @@ struct CarouselExportView: View {
 
     init(
         baseConfig: SnapshotConfig, profile: ColorProfile, feedback: FeedbackDisplay,
-        presentation: BatchExportPresentation, splitModel: CarouselSplitModel
+        presentation: BatchExportPresentation, splitModel: CarouselSplitModel,
+        documentGeneration: Int, brandHandle: String = BrandKitStore.shared.appliedHandle
     ) {
         self.baseConfig = baseConfig
         self.profile = profile
         self.feedback = feedback
         self.presentation = presentation
         self.splitModel = splitModel
+        self.brandHandle = brandHandle
+        self.documentGeneration = documentGeneration
         _cues = State(
             initialValue: CarouselPaginator.Cues(
                 lineNumbers: baseConfig.showLineNumbers ? .continuing : .off,
@@ -100,8 +114,19 @@ struct CarouselExportView: View {
 
     private var pages: [CarouselPaginator.Slide] { outcome?.slides(for: request.code) ?? [] }
 
+    private var extras: CarouselExtras {
+        var extras = splitModel.extras
+        extras.handle = brandHandle
+        return extras
+    }
+
+    /// Every file page, cover and closing card included.
+    private var pageCount: Int { extras.pageCount(slideCount: pages.count) }
+
     private var fitRequest: FitRequest {
-        FitRequest(base: baseConfig, slides: pages, cues: cues, size: splitModel.size)
+        FitRequest(
+            base: baseConfig, slides: pages, cues: cues, size: splitModel.size,
+            reservesCaptionBand: extras.hasCaptions(pages))
     }
 
     /// `nil` while the choices have moved on from the last fit.
@@ -113,12 +138,12 @@ struct CarouselExportView: View {
     private var filmstripInput: CarouselFilmstripModel.Input {
         CarouselFilmstripModel.Input(
             base: baseConfig, slides: pages, cues: cues, size: splitModel.size,
-            fontSize: currentFit?.fontSize, profile: profile)
+            fontSize: currentFit?.fontSize, profile: profile, extras: extras)
     }
 
     private var confirmTitle: LocalizedStringKey {
         guard folder != nil else { return "Export…" }
-        let count = pages.count
+        let count = pageCount
         return count == 1 ? "Export 1 slide" : "Export \(count) slides"
     }
 
@@ -167,6 +192,7 @@ struct CarouselExportView: View {
         // Synchronously, so the sheet doesn't open on an empty strip and a zero count.
         .onAppear {
             outcome = CarouselPaginator.Outcome(split: request.split, code: request.code)
+            splitModel.adoptDocument(generation: documentGeneration)
             refreshFit()
         }
         .task(id: request) { await refreshSplit() }
@@ -181,7 +207,7 @@ struct CarouselExportView: View {
         .task(id: EstimateRequest(input: filmstripInput, output: splitModel.output)) {
             await refreshSizeEstimate()
         }
-        .task(id: OutputPlan(folder: folder, slideCount: pages.count, output: splitModel.output)) {
+        .task(id: OutputPlan(folder: folder, slideCount: pageCount, output: splitModel.output)) {
             refreshPlannedFilenames()
         }
     }
@@ -203,10 +229,26 @@ struct CarouselExportView: View {
                     .foregroundStyle(VitrineTokens.Text.secondary)
                     .monospacedDigit()
                     .accessibilityIdentifier("carousel-slide-count")
+                // Captions wait on a line no slide opens until another split brings it back.
+                let hidden = extras.hiddenCaptionCount(pages)
+                if hidden > 0 {
+                    Group {
+                        if hidden == 1 {
+                            Text("1 caption not shown")
+                        } else {
+                            Text("\(hidden) captions not shown")
+                        }
+                    }
+                    .font(.system(size: VitrineTokens.FontSize.caption, weight: .semibold))
+                    .foregroundStyle(VitrineTokens.Text.secondary)
+                    .monospacedDigit()
+                    .accessibilityIdentifier("carousel-hidden-captions")
+                }
             }
+            let input = filmstripInput
             CarouselFilmstrip(
-                input: filmstripInput, hasShortTail: outcome?.hasShortTail ?? false,
-                model: filmstrip)
+                input: input, hasShortTail: outcome?.hasShortTail ?? false, model: filmstrip)
+            if input.tileCount > 0 { pageTextRow(input) }
             switchRow(
                 "Prefer blank-line breaks", isOn: $splitModel.split.prefersBlankLineBreaks,
                 identifier: "carousel-prefer-blank-lines")
@@ -225,7 +267,52 @@ struct CarouselExportView: View {
             switchRow(
                 "“continues →” cue", isOn: $cues.showsContinuation,
                 identifier: "carousel-continuation-cue")
+            bookendRow
         }
+    }
+
+    /// The selected tile's text: a slide's caption, the cover title or the call to action.
+    private func pageTextRow(_ input: CarouselFilmstripModel.Input) -> some View {
+        let page = input.tile(at: min(filmstrip.current, input.tileCount - 1))
+        let title: LocalizedStringKey =
+            switch page {
+            case .cover: "Cover title"
+            case .outro: "Call to action"
+            case .slide(let index): "Slide \(index + 1) caption"
+            }
+        return CarouselTextField(
+            title: title,
+            text: Binding(
+                get: { splitModel.extras.text(of: page, slides: input.slides) },
+                set: { splitModel.extras.setText($0, of: page, slides: input.slides) })
+        )
+        // A new page starts a new edit, so typing never lands on the page left behind.
+        .id(page)
+    }
+
+    /// Turning a card on selects it, so the text field above names it.
+    private var bookendRow: some View {
+        let cover = Binding(
+            get: { splitModel.extras.showsCover },
+            set: { isOn in
+                splitModel.extras.showsCover = isOn
+                filmstrip.current = isOn ? 0 : max(filmstrip.current - 1, 0)
+            })
+        let outro = Binding(
+            get: { splitModel.extras.showsOutro },
+            set: { isOn in
+                splitModel.extras.showsOutro = isOn
+                if isOn { filmstrip.current = max(filmstripInput.tileCount - 1, 0) }
+            })
+        return HStack(spacing: 12) {
+            Toggle("Cover", isOn: cover)
+                .accessibilityIdentifier("carousel-cover-toggle")
+            Toggle("Closing slide", isOn: outro)
+                .accessibilityIdentifier("carousel-outro-toggle")
+            Spacer(minLength: 0)
+        }
+        .toggleStyle(.checkbox)
+        .frame(minHeight: 22)
     }
 
     private var sizeControls: some View {
@@ -282,7 +369,7 @@ struct CarouselExportView: View {
 
     private var outputControls: some View {
         // Paginated once here: every line below needs only the count.
-        let slideCount = pages.count
+        let slideCount = pageCount
         return VStack(alignment: .leading, spacing: 6) {
             labeledRow("Output") {
                 Picker("Output", selection: $splitModel.output) {
@@ -389,11 +476,7 @@ struct CarouselExportView: View {
 
     private func refreshFit() {
         let request = fitRequest
-        fit = (
-            request,
-            CarouselPaginator.fit(
-                request.base, slides: request.slides, cues: request.cues, size: request.size)
-        )
+        fit = (request, request.fitted())
     }
 
     private func outputFilenames(slideCount: Int) -> [String] {
@@ -411,14 +494,14 @@ struct CarouselExportView: View {
         guard !Task.isCancelled else { return }
         let estimate = await ExportManager.estimatedCarouselBytes(
             baseConfig, slides: pages, cues: cues, size: splitModel.size, fit: fit,
-            output: splitModel.output, profile: profile)
+            output: splitModel.output, extras: extras, profile: profile)
         guard !Task.isCancelled else { return }
         estimatedBytes = estimate
     }
 
     private func refreshPlannedFilenames() {
         plannedFilenames = CarouselPaginator.plannedFilenames(
-            slideCount: pages.count, output: splitModel.output, in: folder)
+            slideCount: pageCount, output: splitModel.output, in: folder)
     }
 
     private func chooseFolder() {
@@ -439,18 +522,19 @@ struct CarouselExportView: View {
         guard let directory = folder ?? presentation.chooseDirectory(message: folderPrompt)
         else { return }
 
-        let (size, output) = (splitModel.size, splitModel.output)
+        let (size, output, extras) = (splitModel.size, splitModel.output, extras)
+        let pageCount = extras.pageCount(slideCount: pages.count)
         let fileCount = CarouselPaginator.requestedFilenames(
-            slideCount: pages.count, output: output
+            slideCount: pageCount, output: output
         ).count
         // The settled fit holds only for the split it was measured on.
         let fit = currentFit.flatMap { pages == fitRequest.slides ? $0 : nil }
         failureNote = nil
-        progress = (0, ExportManager.carouselProgressUnits(slideCount: pages.count, output: output))
+        progress = (0, ExportManager.carouselProgressUnits(slideCount: pageCount, output: output))
         Task {
             let result = await ExportManager.exportCarousel(
                 baseConfig, slides: pages, cues: cues, size: size, fit: fit, output: output,
-                to: directory, profile: profile,
+                extras: extras, to: directory, profile: profile,
                 onProgress: { completed, total in progress = (completed, total) })
             progress = nil
             let completion = BatchExportCompletion(
@@ -466,6 +550,43 @@ struct CarouselExportView: View {
                 failureNote = completion.failureNote
                 refreshPlannedFilenames()
             }
+        }
+    }
+}
+
+/// Edits a draft and writes it back clamped. Storing the clamp into an unchanged value
+/// wouldn't redraw the field, so the draft itself is set back and the field follows it.
+struct CarouselTextField: View {
+    let title: LocalizedStringKey
+    @Binding var text: String
+    @State private var draft: String
+
+    init(title: LocalizedStringKey, text: Binding<String>) {
+        self.title = title
+        _text = text
+        _draft = State(initialValue: text.wrappedValue)
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            TextField(title, text: $draft)
+                .textFieldStyle(.roundedBorder)
+                .controlSize(.small)
+                .accessibilityIdentifier("carousel-caption-field")
+            Text(verbatim: "\(draft.count)/\(CarouselExtras.textLimit)")
+                .font(.system(size: VitrineTokens.FontSize.caption))
+                .foregroundStyle(VitrineTokens.Text.tertiary)
+                .monospacedDigit()
+                .accessibilityIdentifier("carousel-caption-count")
+        }
+        .onChange(of: draft) { _, edited in
+            let limited = CarouselExtras.limited(edited)
+            if limited != edited { draft = limited }
+            if text != limited { text = limited }
+        }
+        // A new split can point the same page at another caption.
+        .onChange(of: text) { _, stored in
+            if stored != CarouselExtras.limited(draft) { draft = stored }
         }
     }
 }

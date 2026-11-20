@@ -178,6 +178,9 @@ final class BrandKitStore {
         refreshQRCache(previousLink: nil)
     }
 
+    /// The handle for carousel cover and closing cards: empty unless the kit is applied.
+    var appliedHandle: String { isEnabled ? brandKit.handle : "" }
+
     /// The render-ready watermark, or `nil` when the kit is disabled, PRO is locked,
     /// or there is nothing to draw. This is the only path that turns a brand
     /// kit into a rendered mark, so a free or empty build never watermarks an export.

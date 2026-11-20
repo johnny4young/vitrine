@@ -1529,9 +1529,14 @@ final class VitrineUITests: XCTestCase {
             "carousel-continuation-cue", "carousel-folder-path", "carousel-folder-change",
             "carousel-output-summary", "carousel-filmstrip", "carousel-slide-tile-0",
             "carousel-show-dividers", "carousel-slide-size", "carousel-output-format",
+            "carousel-caption-field", "carousel-caption-count", "carousel-cover-toggle",
+            "carousel-outro-toggle",
         ] {
             assertExists(element(identifier, in: app), in: app, timeout: 3)
         }
+        XCTAssertFalse(element("carousel-cover-tile", in: app).exists)
+        element("carousel-cover-toggle", in: app).click()
+        assertExists(element("carousel-cover-tile", in: app), in: app, timeout: 3)
         let summary = element("carousel-output-summary", in: app)
         XCTAssertTrue(
             (summary.value as? String ?? summary.label).hasPrefix("carousel-01.png"),
@@ -2224,6 +2229,31 @@ final class VitrineUITests: XCTestCase {
         let board = try XCTUnwrap(copied, "Comparison board did not copy a PNG")
         XCTAssertGreaterThan(board.pixelsWide, 1_000)
         XCTAssertGreaterThan(board.pixelsHigh, 500)
+
+        // Scenes save the current view, list with a name and a duration, and can be removed.
+        for control in [
+            "comparison-board-view-zoom-slider", "comparison-board-view-x-slider",
+            "comparison-board-view-y-slider", "comparison-board-export-scenes-png",
+        ] {
+            assertExists(element(control, in: app), in: app)
+        }
+        let scenePDF = element("comparison-board-export-scenes-pdf", in: app)
+        XCTAssertFalse(scenePDF.isEnabled, "Nothing to export before a scene exists")
+        hittableElement("comparison-board-add-scene-button", in: app).click()
+        hittableElement("comparison-board-add-scene-button", in: app).click()
+        let secondScene = element("comparison-board-scene-name-1", in: app)
+        assertExists(secondScene, in: app, timeout: 3)
+        for control in [
+            "comparison-board-scene-name-0", "comparison-board-scene-duration-0",
+            "comparison-board-scene-down-0", "comparison-board-scene-up-1",
+        ] {
+            assertExists(element(control, in: app), in: app)
+        }
+        XCTAssertTrue(
+            scenePDF.wait(for: \.isEnabled, toEqual: true, timeout: 3),
+            "A saved scene can be exported")
+        hittableElement("comparison-board-scene-remove-1", in: app).click()
+        XCTAssertTrue(secondScene.waitForNonExistence(timeout: 3))
 
         // Two captures offer the slider: its divider has a real value and captions still open.
         element("comparison-board-layout-slider", in: app).click()

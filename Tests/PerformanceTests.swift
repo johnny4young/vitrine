@@ -636,7 +636,9 @@ struct PerformanceTests {
             let config = CarouselPaginator.slideConfig(
                 SnapshotConfig(), slide: slide, at: 0, of: 2, cues: .none)
             return ContinuousClock().measure {
-                #expect(CarouselFilmstripModel.renderTile(config, profile: .sRGB) != nil)
+                #expect(
+                    CarouselFilmstripModel.renderTile(.slide(config, caption: nil), profile: .sRGB)
+                        != nil)
             }
         }
         _ = sample(-1)
