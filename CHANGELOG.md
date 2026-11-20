@@ -75,6 +75,10 @@ can never drift.
   recipe that sets `paddingMode`, since they refuse unknown recipe fields; a recipe with
   Balance off writes no `paddingMode` and stays readable. Share links keep schema version 1,
   so an earlier build opens a balanced link with manual padding.
+- Comparison board scenes: zoom and frame part of a board, then Add scene from view to save
+  it with a name and a duration. The board shows each scene as a numbered frame, and the
+  scenes export as a folder of PNGs or a PDF with one page each, cropped from the board's
+  finished pixels.
 - Theme variants: in Recents, choose Compare, select one capture and choose Theme Variants
   to see it in up to four themes on a comparison board, each captioned with its theme. The
   board's inspector adds or removes themes without capturing again.

@@ -75,6 +75,24 @@ point. The value lasts as long as the board.
   has it, as in every other layout.
 - **Gap** does not apply, because the board has one card, so **Divider** takes its row.
 
+## Scenes
+
+**Scenes** in the inspector saves views of the board to export one at a time. Set **Zoom**,
+then **Horizontal** and **Vertical**, to frame part of the board; a solid outline marks that
+view on the board. **Add scene from view** saves it with a name and a duration in seconds,
+and the board shows each saved scene as a dashed, numbered frame. Move a scene up or down
+the list, or remove it. A board holds up to 20 scenes.
+
+- **Carousel** writes `scene-01.png`, `scene-02.png`, and on into a chosen folder, with a
+  numeric suffix rather than replacing a file already there.
+- **PDF** saves one page per scene, sized in points like the board's own PDF.
+
+Both crop the board's export image at its export scale. Nothing is rendered again from a
+capture, so a scene shows only pixels the board export has, with its redactions and blurs.
+Zoom goes up to 4×, the frame keeps the board's aspect, and it cannot leave the board. A
+scene is a fixed frame on the board, not tied to a capture, so a layout or size change moves
+what it frames. The duration is for presenting and is not part of either export.
+
 ## Session and privacy boundary
 
 Comparison mode is explicit and temporary:
@@ -84,8 +102,8 @@ Comparison mode is explicit and temporary:
 - selection identifiers exist only in that open Recents view;
 - creating the board renders each selected capture once, or, for theme variants, the one
   selected capture once per theme;
-- the editor draft retains only those finished pixels, visible captions, and the
-  layout options above;
+- the editor draft retains only those finished pixels, visible captions, the
+  layout options above, and each scene's frame, name, and duration;
 - it stores no source path, security-scoped bookmark, source text, or durable Recents
   reference;
 - closing the board discards the draft, and nothing is restored on the next launch;
