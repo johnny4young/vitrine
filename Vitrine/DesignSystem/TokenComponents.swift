@@ -144,6 +144,8 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
     /// Optional stable identifiers, one per option in order, so UI tests can
     /// address individual segments independently of their localized titles.
     var optionIdentifiers: [String]? = nil
+    /// `false` leaves the keyboard with the surrounding view, as in the selected mark's toolbar.
+    var isFocusable = true
     @FocusState private var isFocused: Bool
     @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -160,7 +162,7 @@ struct TokenSegmentedPicker<Value: Hashable>: View {
             .accessibilityElement(children: .contain)
             // One key-view stop that follows the system keyboard-navigation setting, so a
             // mouse click never takes focus from the editor, like a native segmented control.
-            .focusable(interactions: .activate)
+            .focusable(isFocusable, interactions: .activate)
             .focusEffectDisabled()
             .focused($isFocused)
             .onKeyPress(.leftArrow) {
