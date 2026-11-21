@@ -57,9 +57,14 @@ extension EditorView {
             set: { value in
                 guard let index = settings.style.annotations.firstIndex(where: { $0.id == id })
                 else { return }
-                beginAnnotationEdit()
-                write(&settings.style.annotations[index], value)
-                endAnnotationEdit()
+                // Unanimated: a lens appearing or leaving must not crossfade past a blur box.
+                var transaction = Transaction()
+                transaction.disablesAnimations = true
+                withTransaction(transaction) {
+                    beginAnnotationEdit()
+                    write(&settings.style.annotations[index], value)
+                    endAnnotationEdit()
+                }
             })
     }
 

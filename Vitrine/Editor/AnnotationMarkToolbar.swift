@@ -194,8 +194,7 @@ struct AnnotationMarkToolbar: View {
     ) -> some View {
         TokenSegmentedPicker(
             options: options.map { (value: $0.0, label: $0.1) }, selection: selection,
-            optionIdentifiers: options.map { "annotation-mark-toolbar-\($0.2)" },
-            isFocusable: false
+            optionIdentifiers: options.map { "annotation-mark-toolbar-\($0.2)" }
         )
         .accessibilityLabel(label)
         .accessibilityIdentifier("annotation-mark-toolbar-\(id)")
