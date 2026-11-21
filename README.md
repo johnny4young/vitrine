@@ -16,7 +16,7 @@ pasted HTML, entirely on your Mac.
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%2026%2B-black?logo=apple)](#requirements)
 [![Swift 6](https://img.shields.io/badge/Swift-6-orange.svg?logo=swift)](https://swift.org)
-[![Version](https://img.shields.io/badge/version-v1.3.0-blue.svg)](#status)
+[![Version](https://img.shields.io/badge/version-v2.0.0-blue.svg)](#status)
 
 | `vgrab htop` | `vgrab lazygit` | `vgrab nvim` |
 | --- | --- | --- |
@@ -232,7 +232,8 @@ want to explain them. Vitrine renders each selection once into a temporary board
 you can edit labels and details, reorder or remove items, and choose automatic, row,
 column, grid, or (for two captures) slider layout before copying, saving, or sharing the
 finished image. Select one capture and choose **Theme Variants** instead to see it in up
-to four themes on one board. The board
+to four themes on one board. Zoom into part of a board and save it as a **scene** to
+export a folder of PNGs or a PDF with one page per scene. The board
 is session-only and path-free: it stores neither source-file locations nor references
 back into Recents. See [Comparison boards](docs/COMPARISON-BOARDS.md).
 
@@ -254,13 +255,30 @@ Text modes, developer fonts, and solid / gradient / image backgrounds. **Focus m
 everything but the lines that matter; **diff coloring** bands `+`/`−` lines
 GitHub-style; window chrome, padding, corner radius, and shadow are all yours to tune.
 
+### Diffs for review
+
+Show a diff unified or **side by side**, mark the **words that changed** inside paired lines,
+fold hunks out of the image, number lines by patch row or by the old or new file, and add a
+stats header. **Pin a comment** to a diff line with ⇧⌘M: it follows the line through edits
+and travels with share links. A diff handed over by `vitrine render --git-diff … --edit`
+remembers its range so **Copy Command** can render it again.
+
+### Editor
+
+**Code steps** store versions of the code and animate the preview between them: shared
+tokens glide, removed ones fade out, new ones fade in. **Canvas mode** (⇧⌘F) hides the code
+and inspector columns, and clicking any part of the preview opens the controls that style it.
+
 ### Annotate
 
-A CleanShot-style palette in the title bar — arrows (straight and **curved**), lines,
+A CleanShot-style palette in the title bar — arrows (straight, **curved**, and **elbow**), lines,
 rectangles, text callouts, a highlighter, blur boxes (visual only), numbered counters,
 **emoji stickers**, a **spotlight** that dims everything but the regions you draw, and a
 **measure** ruler that labels the pixel span between two points. Draw them on the live
 preview, move and resize with handles, undo with ⌘Z; they are baked into the export.
+A selected mark gets a small toolbar beside it for its color, size, shape, a **hand-drawn**
+stroke, and a **magnifier** that turns a box into a lens over the code. Marks snap to code
+rows, tokens, and the card while you draw; hold ⌘ to place freely.
 **Redact secrets** goes one better: one click scans the capture for API keys, tokens,
 and passwords and blurs those lines for you — image *and* copyable text.
 
@@ -274,8 +292,10 @@ or a self-contained Markdown block with the rendered image and redaction-safe so
 The share sheet gains **Post to X / LinkedIn / Bluesky** compose targets — the image is
 staged on the clipboard and the compose page opens, one paste from posting.
 Destination presets cover **OpenGraph** (1200×630), an **Instagram Story**, and a
-**GitHub banner**. [PRO](#vitrine-pro) adds **multi-size one-pass export**, **carousel
-export** (a long snippet split into numbered slides, as PNGs or a PDF), and the bundled
+**GitHub banner**. [PRO](#vitrine-pro) adds **multi-size one-pass export** (a preview of
+every size at once, with a focal point that keeps the important part in view), **carousel
+export** (a long snippet split into numbered slides in four sizes, with optional captions
+and cover and closing slides, as PNGs or a PDF), and the bundled
 **`vitrine` CLI** that renders the same pixels from your terminal.
 
 ### Social card templates
@@ -316,7 +336,7 @@ Shortcuts and App Intents.
 | **Capture** | Menu-bar app, global hotkey, clipboard detection (code · terminal · URL), Quick and editor modes, explicit session-only live files; pasted HTML uses Web Snapshot |
 | **Beautify** | Drop/paste any image → frame it (macOS window · browser · MacBook · iPhone) with auto-matched chrome |
 | **Style** | 13 themes + custom, 33 syntax languages plus Terminal and Plain Text modes, fonts, gradient & image backgrounds, focus mode, diff coloring |
-| **Annotate** | Arrows (straight · curved), lines, boxes, text, highlighter, blur, counters, spotlight, measure, stickers — with undo/redo |
+| **Annotate** | Arrows (straight · curved · elbow), magnifier lenses, hand-drawn strokes, lines, boxes, text, highlighter, blur, counters, spotlight, measure, stickers — with undo/redo |
 | **Redact** | One-click secret scan — blurs API keys / tokens / passwords in the image *and* the copyable text |
 | **Export** | Retina PNG/PDF/HEIC, AVIF where ImageIO supports it, Markdown/data-URI/rich-text copy, file · Share Sheet, post-to compose targets, OpenGraph · Story · GitHub-banner presets, 2–4 capture comparison boards |
 | **Platform** | One design system (light & dark), English + Spanish, Sparkle updates, recents |
@@ -333,7 +353,7 @@ Shortcuts and App Intents.
 - 🧹 **Tidy indentation on paste** — pasted code is re-indented by structure (braces, JSX tags, JSON), with a Settings toggle, undo with ⌘Z, and ⌥⌘F to format on demand.
 - 🔄 **Living snapshots** — explicitly open one source file from the editor and its clean content refreshes after saves. Local edits are never overwritten: a changed disk version waits for **Reload** or **Keep**. The watcher is scoped to that window and is not restored or persisted. → [`docs/LIVING-SNAPSHOTS.md`](docs/LIVING-SNAPSHOTS.md).
 - 🎨 **13 built-in themes** (One Dark, Dracula, Nord, Tokyo Night, Gruvbox, Monokai, Solarized, GitHub / GitHub Dark, Xcode Dark, Night Owl, and light variants) plus your own custom themes, gradients, window chrome, padding, fonts.
-- ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight and curved), lines, rectangles, text callouts, a highlighter, blur boxes (visual only — use **Redact secrets** to remove source text), numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
+- ✏️ **Annotate the snapshot** — a CleanShot-style tool palette in the title bar: arrows (straight, curved, and elbow), magnifier lenses, lines, rectangles, text callouts, a highlighter, blur boxes (visual only — use **Redact secrets** to remove source text), numbered counters, emoji stickers, a **spotlight** that dims everything outside the regions you draw, and a **measure** ruler that labels the pixel span between two points. Draw them on the live preview, move/resize with handles, restyle color and thickness, and undo/redo with ⌘Z.
 - 🔒 **Redact secrets in one click** — scan the capture for likely API keys, tokens, passwords, and private keys (AWS, GitHub, Slack, Google, Stripe, OpenAI, JWTs, `name = value` assignments) and blur the matching lines before you share. The copyable text rider (clipboard / `--text-sidecar`) is sanitized too, so the secret can't leak through the text the image hides; terminal captures are scanned on the resolved screen.
 - 🎯 **Focus & diff** — dim the lines outside your highlight, and color `+`/`−` diff lines GitHub-style (automatic for the Diff language). Plus an optional window title and tunable corner radius and shadow.
 - 🖼️ **Retina PNG export** (`ImageRenderer` @2x/@3x) → clipboard or file, plus the macOS Share Sheet, with **PDF** as the scalable vector format, **HEIC** as a compact option for docs sites and wikis, and **AVIF** when the active ImageIO stack can encode it (Tahoe and newer). Shared preview/export budgets reject unsafe dimensions, pixel counts, or estimated working memory before bitmap allocation and return actionable errors. Exports are **sRGB by default** (Display P3 is an explicit advanced option) and transparent backgrounds keep real alpha.
@@ -780,7 +800,7 @@ in [`docs/`](docs/):
 ## Status
 
 **Feature descriptions in this README cover current source, including Unreleased changes.**
-**v1.3.0 (build 39) remains the version identifier in source.** Public artifacts are published only
+**v2.0.0 (build 40) remains the version identifier in source.** Public artifacts are published only
 through the vetted release workflow; the [Releases page](https://github.com/johnny4young/vitrine/releases)
 is the source of truth for the newest downloadable version. Everything under
 [Features](#features) is driven by one design-token system
@@ -798,7 +818,7 @@ qualified candidate bytes. The website validates every change on main but deploy
 production only from a published stable tag, so its source-feature descriptions are not
 proof of availability in a downloadable binary.
 Anything added under **Unreleased** in the changelog belongs to a future build and is
-not part of the v1.3.0 release line.
+not part of the v2.0.0 release line.
 
 Two explicit product boundaries — no arbitrary screen/window capture and no dependency
 on a hosted web-render service — are documented in
