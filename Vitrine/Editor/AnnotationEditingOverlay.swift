@@ -364,12 +364,25 @@ private struct AnnotationHandle: View {
     // MARK: Grab / move
 
     @ViewBuilder
+    private var hitShape: some View {
+        if let path = geometry.bentHitPath {
+            let box = path.boundingRect
+            Color.clear
+                .frame(width: box.width, height: box.height)
+                .contentShape(path.offsetBy(dx: -box.minX, dy: -box.minY))
+                .position(x: box.midX, y: box.midY)
+        } else {
+            Color.clear
+                .frame(width: geometry.hitSize.width, height: geometry.hitSize.height)
+                .contentShape(Rectangle())
+                .rotationEffect(geometry.isLineLike ? .radians(geometry.shaftAngle) : .zero)
+                .position(geometry.hitCenter)
+        }
+    }
+
+    @ViewBuilder
     private var bodyHitArea: some View {
-        let base = Color.clear
-            .frame(width: geometry.hitSize.width, height: geometry.hitSize.height)
-            .contentShape(Rectangle())
-            .rotationEffect(geometry.isLineLike ? .radians(geometry.shaftAngle) : .zero)
-            .position(geometry.hitCenter)
+        let base = hitShape
         if let onEdit {
             // Same exclusivity for text callouts; the single click yields to the double
             // click that re-opens the field.

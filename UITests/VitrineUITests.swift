@@ -1200,6 +1200,14 @@ final class VitrineUITests: XCTestCase {
 
         center.click()
         assertExists(toolbar, in: app, timeout: 3)
+        // A box has a stroke style but no arrow shape.
+        XCTAssertFalse(element("annotation-mark-toolbar-arrow-style", in: app).exists)
+        let handDrawn = element("annotation-mark-toolbar-hand-drawn", in: app)
+        handDrawn.click()
+        XCTAssertTrue(handDrawn.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        let magnifier = element("annotation-mark-toolbar-magnifier", in: app)
+        magnifier.click()
+        XCTAssertTrue(magnifier.wait(for: \.isSelected, toEqual: true, timeout: 3))
         app.typeKey(XCUIKeyboardKey.escape.rawValue, modifierFlags: [])
         XCTAssertTrue(toolbar.waitForNonExistence(timeout: 3), "Escape drops the selection")
 
@@ -1217,6 +1225,27 @@ final class VitrineUITests: XCTestCase {
         assertExists(element("annotation-mark-toolbar-duplicate", in: app), in: app)
         XCTAssertFalse(element("annotation-mark-toolbar-color", in: app).exists)
         XCTAssertFalse(element("annotation-mark-toolbar-size", in: app).exists)
+        XCTAssertFalse(element("annotation-mark-toolbar-stroke", in: app).exists)
+        XCTAssertFalse(element("annotation-mark-toolbar-box-style", in: app).exists)
+
+        // An arrow switches between its shapes and keeps its selection.
+        revealToolbarAction(
+            "annotation-tool-arrow", from: "annotation-tool-picker", in: app
+        ).click()
+        center.withOffset(CGVector(dx: -90, dy: -55)).press(
+            forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 90, dy: -45)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.15)
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+        assertExists(element("annotation-mark-toolbar-arrow-style", in: app), in: app, timeout: 3)
+        XCTAssertTrue(element("annotation-mark-toolbar-straight", in: app).isSelected)
+        for shape in ["elbow", "curved"] {
+            let segment = element("annotation-mark-toolbar-\(shape)", in: app)
+            segment.click()
+            XCTAssertTrue(segment.wait(for: \.isSelected, toEqual: true, timeout: 3), shape)
+            XCTAssertTrue(toolbar.exists, "Changing the shape keeps the arrow selected")
+        }
     }
 
     /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.

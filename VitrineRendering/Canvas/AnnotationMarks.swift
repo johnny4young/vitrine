@@ -15,6 +15,14 @@ public struct AnnotationMarkView: View {
     }
 
     public var body: some View {
+        if let path = AnnotationMarkBounds.styledPath(annotation, in: size) {
+            StyledStroke(annotation: annotation, path: path)
+        } else {
+            plainMark
+        }
+    }
+
+    @ViewBuilder private var plainMark: some View {
         switch annotation.kind {
         case .arrow: ArrowMark(annotation: annotation, size: size)
         case .curvedArrow: CurvedArrowMark(annotation: annotation, size: size)
@@ -126,17 +134,7 @@ nonisolated struct CurvedArrowShape: Shape {
         // Chevron head tangent to the curve at its end (the control→to direction is
         // the quadratic's exact end tangent), sized like the straight arrow's head.
         let tangentAngle = atan2(to.y - control.y, to.x - control.x)
-        let head = min(max(length * 0.22, weight * 2.4), max(length * 0.6, 14))
-        let spread = CGFloat.pi / 7
-        let left = CGPoint(
-            x: to.x - head * cos(tangentAngle - spread),
-            y: to.y - head * sin(tangentAngle - spread))
-        let right = CGPoint(
-            x: to.x - head * cos(tangentAngle + spread),
-            y: to.y - head * sin(tangentAngle + spread))
-        path.move(to: left)
-        path.addLine(to: to)
-        path.addLine(to: right)
+        ArrowHead.add(to: &path, tip: to, angle: tangentAngle, span: length, weight: weight)
         return path
     }
 }
@@ -156,19 +154,7 @@ nonisolated struct ArrowShape: Shape {
         let dx = to.x - from.x
         let dy = to.y - from.y
         let length = max(hypot(dx, dy), 0.001)
-        let angle = atan2(dy, dx)
-        // The head scales with both the shaft length and the stroke weight, bounded
-        // so a tiny arrow still has a visible head and a thick one is not all head.
-        let head = min(max(length * 0.22, weight * 2.4), max(length * 0.6, 14))
-        let spread = CGFloat.pi / 7  // ~26° each side
-
-        let left = CGPoint(
-            x: to.x - head * cos(angle - spread), y: to.y - head * sin(angle - spread))
-        let right = CGPoint(
-            x: to.x - head * cos(angle + spread), y: to.y - head * sin(angle + spread))
-        path.move(to: left)
-        path.addLine(to: to)
-        path.addLine(to: right)
+        ArrowHead.add(to: &path, tip: to, angle: atan2(dy, dx), span: length, weight: weight)
         return path
     }
 }
@@ -361,6 +347,10 @@ public nonisolated enum AnnotationMarkBounds {
         let ends = CGRect(
             x: min(from.x, to.x), y: min(from.y, to.y),
             width: abs(to.x - from.x), height: abs(to.y - from.y))
+        if let styled = styledPath(annotation, in: size) {
+            let outset = weight / 2 + HandDrawnStroke.amplitude(weight: weight)
+            return styled.boundingRect.insetBy(dx: -outset, dy: -outset)
+        }
         switch annotation.kind {
         case .arrow:
             return ArrowShape(from: from, to: to, weight: weight).path(in: .zero).boundingRect

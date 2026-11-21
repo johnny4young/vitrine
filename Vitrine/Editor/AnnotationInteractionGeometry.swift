@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import SwiftUI
 import VitrineDomain
 import VitrineRendering
 
@@ -48,6 +49,11 @@ struct AnnotationInteractionGeometry {
     }
 
     var shaftAngle: Double { atan2(end.y - start.y, end.x - start.x) }
+
+    /// A curved or elbow arrow's hit area follows its stroke, not the tail-to-head band.
+    var bentHitPath: Path? {
+        AnnotationMarkBounds.hitOutline(annotation, in: canvasSize, width: hitSize.height)
+    }
 
     var selectionRect: CGRect {
         if isBoxLike { return rect }

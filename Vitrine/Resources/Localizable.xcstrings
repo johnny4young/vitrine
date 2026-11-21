@@ -1325,6 +1325,116 @@
         }
       }
     },
+    "Box style" : {
+      "comment" : "Accessibility label for the selected box's style picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo del recuadro"
+          }
+        }
+      }
+    },
+    "Box" : {
+      "comment" : "Selected-mark toolbar: a box outline.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recuadro"
+          }
+        }
+      }
+    },
+    "Magnifier" : {
+      "comment" : "Selected-mark toolbar: a lens that enlarges the content under it.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lupa"
+          }
+        }
+      }
+    },
+    "Arrow shape" : {
+      "comment" : "Accessibility label for the selected arrow's shape picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forma de la flecha"
+          }
+        }
+      }
+    },
+    "Straight" : {
+      "comment" : "Selected-mark toolbar: a straight arrow.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recta"
+          }
+        }
+      }
+    },
+    "Curved" : {
+      "comment" : "Selected-mark toolbar: a curved arrow.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Curva"
+          }
+        }
+      }
+    },
+    "Elbow" : {
+      "comment" : "Selected-mark toolbar: an elbow arrow with right-angle legs.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codo"
+          }
+        }
+      }
+    },
+    "Stroke style" : {
+      "comment" : "Accessibility label for the selected mark's stroke picker.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estilo del trazo"
+          }
+        }
+      }
+    },
+    "Clean" : {
+      "comment" : "Selected-mark toolbar: a clean, straight stroke.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Limpio"
+          }
+        }
+      }
+    },
+    "Hand-drawn" : {
+      "comment" : "Selected-mark toolbar: a stroke that looks drawn by hand.",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A mano"
+          }
+        }
+      }
+    },
     "%lld changes" : {
       "comment" : "Editor recipe bar: how many style fields differ from the applied recipe.",
       "localizations" : {
