@@ -1254,7 +1254,8 @@ final class VitrineUITests: XCTestCase {
     func testMarkStylePickersAreReachableFromTheKeyboard() throws {
         continueAfterFailure = false
         try skipUnlessADisplayFitsTheEditor()
-        let app = launch(arguments: VitrineLaunchArguments.editor + ["-AppleKeyboardUIMode", "3"])
+        try skipUnlessKeyboardNavigationIsOn()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
         defer { app.terminate() }
         assertExists(element("editor-window", in: app), in: app, timeout: 8)
         let stageGroup = element("editor-preview-stage", in: app)

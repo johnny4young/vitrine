@@ -40,6 +40,16 @@ extension XCTestCase {
                 + "(visible frames: \(visible)); hittability cannot be asserted here.")
     }
 
+    /// SwiftUI's focus loop follows the system keyboard-navigation setting, which a launch
+    /// argument cannot override; hosted runners leave it off.
+    func skipUnlessKeyboardNavigationIsOn() throws {
+        let mode =
+            UserDefaults.standard.persistentDomain(forName: UserDefaults.globalDomain)?[
+                "AppleKeyboardUIMode"] as? Int
+        try XCTSkipUnless(
+            (mode ?? 0) & 2 != 0, "Keyboard navigation is off in System Settings ▸ Keyboard.")
+    }
+
     /// The first AX element carrying `identifier`, of any type — the shared
     /// lookup every smoke and tour assertion goes through.
     @MainActor
