@@ -12,6 +12,12 @@ can never drift.
 
 ## [Unreleased]
 
+### Fixed
+
+- Reach the style pickers in a selected mark's toolbar from the keyboard when macOS keyboard
+  navigation is on: Tab moves to them and the left and right arrows pick a segment, while the
+  up and down arrows and Delete still move or delete the mark.
+
 ## [2.0.0] - 2026-11-20
 
 ### Added
