@@ -1248,6 +1248,50 @@ final class VitrineUITests: XCTestCase {
         }
     }
 
+    /// With keyboard navigation on, Tab reaches a selected mark's style pickers and the
+    /// arrow keys pick a segment, without moving the mark.
+    @MainActor
+    func testMarkStylePickersAreReachableFromTheKeyboard() throws {
+        continueAfterFailure = false
+        try skipUnlessADisplayFitsTheEditor()
+        try skipUnlessKeyboardNavigationIsOn()
+        let app = launch(arguments: VitrineLaunchArguments.editor)
+        defer { app.terminate() }
+        assertExists(element("editor-window", in: app), in: app, timeout: 8)
+        let stageGroup = element("editor-preview-stage", in: app)
+        let code = stageGroup.staticTexts.matching(
+            NSPredicate(format: "value BEGINSWITH %@", "import SwiftUI")
+        ).firstMatch
+        assertExists(code, in: app, timeout: 3)
+        let center = code.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+
+        revealToolbarAction(
+            "annotation-tool-rectangle", from: "annotation-tool-picker", in: app
+        ).click()
+        center.withOffset(CGVector(dx: -60, dy: -25)).press(
+            forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 60, dy: 25)),
+            withVelocity: XCUIGestureVelocity(rawValue: 40), thenHoldForDuration: 0.15)
+        revealToolbarAction(
+            "annotation-tool-select", from: "annotation-tool-picker", in: app
+        ).click()
+        let stroke = element("annotation-mark-toolbar-stroke", in: app)
+        assertExists(stroke, in: app, timeout: 3)
+        let mark = stageGroup.buttons.matching(NSPredicate(format: "label == %@", "Rectangle"))
+            .firstMatch
+        let markFrame = mark.frame
+
+        var reached = false
+        for _ in 0..<8 where !reached {
+            app.typeKey(XCUIKeyboardKey.tab.rawValue, modifierFlags: [])
+            reached = (stroke.value(forKey: "hasKeyboardFocus") as? Bool) == true
+        }
+        XCTAssertTrue(reached, "Tab reaches the stroke style picker")
+        app.typeKey(XCUIKeyboardKey.rightArrow.rawValue, modifierFlags: [])
+        let handDrawn = element("annotation-mark-toolbar-hand-drawn", in: app)
+        XCTAssertTrue(handDrawn.wait(for: \.isSelected, toEqual: true, timeout: 3))
+        XCTAssertEqual(mark.frame, markFrame, "The arrow key picks a segment, not a nudge")
+    }
+
     /// A capture that is mostly dim text gets the contrast warning, whose fix switches theme.
     @MainActor
     func testLegibilityBadgeWarnsAndItsFixSwitchesTheTheme() throws {

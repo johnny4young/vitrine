@@ -120,7 +120,8 @@ struct AnnotationMarkToolbar: View {
     let onStyleEditEnded: () -> Void
     let onSizeDragging: (Bool) -> Void
     let onDuplicate: () -> Void
-    /// Arrows and Delete still reach the mark while a toolbar button has the keyboard.
+    /// Arrows and Delete still reach the mark while a toolbar control has the keyboard; on a
+    /// style picker, left and right pick a segment instead.
     let onMarkKey: (KeyPress) -> KeyPress.Result
     /// Escape hands the keyboard back to the mark.
     let onExit: () -> Void
@@ -158,8 +159,7 @@ struct AnnotationMarkToolbar: View {
                 .allowsHitTesting(false)
         )
         .onKeyPress(
-            keys: [.leftArrow, .rightArrow, .upArrow, .downArrow, .delete, .deleteForward],
-            action: onMarkKey
+            keys: [.upArrow, .downArrow, .delete, .deleteForward], action: onMarkKey
         )
         .onExitCommand(perform: onExit)
         .accessibilityElement(children: .contain)
@@ -174,11 +174,14 @@ struct AnnotationMarkToolbar: View {
                 arrowEdge: popoverEdge, onEditEnded: onStyleEditEnded
             )
             .focused(focus)
+            .onKeyPress(keys: [.leftArrow, .rightArrow], action: onMarkKey)
         }
         if showsThickness {
             AnnotationSizeSlider(
                 thickness: $thickness, identifier: "annotation-mark-toolbar-size",
-                onEditEnded: onStyleEditEnded, onDragging: onSizeDragging)
+                onEditEnded: onStyleEditEnded, onDragging: onSizeDragging
+            )
+            .onKeyPress(keys: [.leftArrow, .rightArrow], action: onMarkKey)
         }
     }
 
@@ -213,8 +216,7 @@ struct AnnotationMarkToolbar: View {
     ) -> some View {
         TokenSegmentedPicker(
             options: options.map { (value: $0.0, label: $0.1) }, selection: selection,
-            optionIdentifiers: options.map { "annotation-mark-toolbar-\($0.2)" },
-            isFocusable: false
+            optionIdentifiers: options.map { "annotation-mark-toolbar-\($0.2)" }
         )
         .accessibilityLabel(label)
         .accessibilityIdentifier("annotation-mark-toolbar-\(id)")
@@ -229,6 +231,7 @@ struct AnnotationMarkToolbar: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onKeyPress(keys: [.leftArrow, .rightArrow], action: onMarkKey)
         .help("Duplicate")
         .accessibilityLabel("Duplicate")
         .accessibilityIdentifier("annotation-mark-toolbar-duplicate")
