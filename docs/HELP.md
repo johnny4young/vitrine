@@ -72,24 +72,24 @@ the first-run quick-start owns that — and is skippable. See
 [`docs/RELEASING.md`](RELEASING.md) for how release notes are authored as part of
 the release checklist.
 
-### Version 1.3.0
+### Version 2.0.0
 
-The current source bundle's newest note is **Private by default, safer to automate**:
+The current source bundle's newest note is **Made for code review and storytelling**:
 
-- capture history omits redacted lines, asks before retaining text that looks like a secret,
-  and can be turned off without deleting saved captures;
-- new installations start without a global capture shortcut, and existing assignments are kept;
-- Export for Documentation saves a PNG with Markdown, HTML, plain text, and alt text that also
-  travels with share links and CLI sidecars;
-- the CLI refuses outputs that would replace a source, a recipe, or another output, including
-  through symbolic links or letter-case aliases, and `render --edit` is free;
-- the Services command that renders selected code is registered at launch;
-- terminal captures keep wide CJK and emoji glyphs whole, erase with the active background,
-  and keep the final screen of apps such as lazygit;
-- Settings, errors, and What's New are localized in Spanish, and controls respect Reduce Motion
-  and keyboard navigation; and
-- the supported floor remains macOS 15 Sequoia, with Tahoe qualification and universal
-  direct downloads.
+- diffs show side by side, mark the words that changed, fold hunks out of the image, and carry
+  comments pinned to lines (⇧⌘M);
+- a box can become a magnifier, arrows switch between straight, curved and elbow, and marks
+  can take a hand-drawn stroke from the toolbar beside them;
+- code steps store versions of the code and animate the preview between them;
+- carousels preview their real slides, come in four sizes, and take captions plus cover and
+  closing slides;
+- comparison boards gain a Slider layout, theme variants, and scenes exported as PNGs or a PDF;
+- Export Sizes renders every selected platform size at once, with a focal point;
+- canvas mode (⇧⌘F) hides the code and inspector columns, and clicking a part of the preview
+  opens the controls that style it;
+- likely secrets are checked before copying, saving, sharing, or exporting; and
+- the supported floor is macOS 26 Tahoe on Apple silicon; version 1.3.0 remains the release for
+  macOS 15 Sequoia and Intel Macs.
 
 The Releases page remains the authority for what is publicly downloadable; preparing these
-bundled notes in source does not publish or deploy version 1.3.0.
+bundled notes in source does not publish or deploy version 2.0.0.

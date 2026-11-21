@@ -57,6 +57,38 @@ enum ReleaseNotes {
     /// "What's New" list both assume index `0` is newest.
     static let all: [ReleaseNote] = [
         ReleaseNote(
+            version: "2.0.0",
+            headline: "Made for code review and storytelling",
+            ledHighlights: [
+                "Diffs made for review.":
+                    "Show a diff side by side, mark the words that changed, fold hunks out of the "
+                    + "image, and pin comments to lines with Shift-Command-M.",
+                "Magnify and sketch.":
+                    "Turn a box into a magnifier, switch an arrow between straight, curved and "
+                    + "elbow, and give marks a hand-drawn stroke from the toolbar beside them.",
+                "Code that moves.":
+                    "Save the code as steps and switch between them: shared tokens glide, removed "
+                    + "ones fade out and new ones fade in.",
+                "Carousels that tell stories.":
+                    "Preview the real slides before export, pick a LinkedIn, Instagram, X or Story "
+                    + "size, and add captions plus cover and closing slides.",
+                "Boards with scenes.":
+                    "Comparison boards gain a Slider layout, theme variants and scenes you can "
+                    + "export as PNGs or a PDF.",
+                "Every size at once.":
+                    "Export Sizes renders the capture at every selected platform size, with a "
+                    + "focal point that keeps the important part in view.",
+                "Canvas mode.":
+                    "Shift-Command-F hides the code and inspector columns, and clicking a part of "
+                    + "the preview opens the controls that style it.",
+                "Secrets caught first.":
+                    "Vitrine checks for likely secrets before you copy, save, share or export, and "
+                    + "offers to redact the flagged lines.",
+                "Now requires macOS 26.":
+                    "Vitrine 2.0 requires macOS 26 Tahoe on Apple silicon. Vitrine 1.3.0 remains "
+                    + "the release for macOS 15 Sequoia and Intel Macs.",
+            ]),
+        ReleaseNote(
             version: "1.3.0",
             headline: "Private by default, safer to automate",
             ledHighlights: [

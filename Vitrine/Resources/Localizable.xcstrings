@@ -5945,6 +5945,234 @@
         }
       }
     },
+    "Made for code review and storytelling" : {
+      "comment" : "What's New headline for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pensado para revisar código y contar historias"
+          }
+        }
+      }
+    },
+    "Diffs made for review." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diffs listos para revisar."
+          }
+        }
+      }
+    },
+    "Show a diff side by side, mark the words that changed, fold hunks out of the image, and pin comments to lines with Shift-Command-M." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muestra un diff lado a lado, marca las palabras que cambiaron, oculta bloques de la imagen y fija comentarios en las líneas con Mayúsculas-Comando-M."
+          }
+        }
+      }
+    },
+    "Magnify and sketch." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Amplía y dibuja."
+          }
+        }
+      }
+    },
+    "Turn a box into a magnifier, switch an arrow between straight, curved and elbow, and give marks a hand-drawn stroke from the toolbar beside them." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Convierte un recuadro en una lupa, cambia una flecha entre recta, curva y en codo, y da a las marcas un trazo a mano desde la barra que aparece junto a ellas."
+          }
+        }
+      }
+    },
+    "Code that moves." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código en movimiento."
+          }
+        }
+      }
+    },
+    "Save the code as steps and switch between them: shared tokens glide, removed ones fade out and new ones fade in." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guarda el código como pasos y cambia entre ellos: los tokens compartidos se deslizan, los eliminados se desvanecen y los nuevos aparecen."
+          }
+        }
+      }
+    },
+    "Carousels that tell stories." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carruseles que cuentan historias."
+          }
+        }
+      }
+    },
+    "Preview the real slides before export, pick a LinkedIn, Instagram, X or Story size, and add captions plus cover and closing slides." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Revisa las diapositivas reales antes de exportar, elige un tamaño para LinkedIn, Instagram, X o historias, y agrega leyendas y diapositivas de portada y cierre."
+          }
+        }
+      }
+    },
+    "Boards with scenes." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tableros con escenas."
+          }
+        }
+      }
+    },
+    "Comparison boards gain a Slider layout, theme variants and scenes you can export as PNGs or a PDF." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los tableros de comparación suman un diseño con deslizador, variantes de tema y escenas que puedes exportar como PNG o PDF."
+          }
+        }
+      }
+    },
+    "Every size at once." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todos los tamaños juntos."
+          }
+        }
+      }
+    },
+    "Export Sizes renders the capture at every selected platform size, with a focal point that keeps the important part in view." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exportar tamaños muestra la captura en cada tamaño de plataforma elegido, con un punto focal que mantiene a la vista lo importante."
+          }
+        }
+      }
+    },
+    "Canvas mode." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modo lienzo."
+          }
+        }
+      }
+    },
+    "Shift-Command-F hides the code and inspector columns, and clicking a part of the preview opens the controls that style it." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mayúsculas-Comando-F oculta las columnas de código e inspector, y al hacer clic en una parte de la vista previa se abren los controles que le dan estilo."
+          }
+        }
+      }
+    },
+    "Secrets caught first." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Secretos detectados antes."
+          }
+        }
+      }
+    },
+    "Vitrine checks for likely secrets before you copy, save, share or export, and offers to redact the flagged lines." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine busca posibles secretos antes de copiar, guardar, compartir o exportar, y ofrece ocultar las líneas señaladas."
+          }
+        }
+      }
+    },
+    "Now requires macOS 26." : {
+      "comment" : "What's New: the bold phrase leading a highlight.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ahora requiere macOS 26."
+          }
+        }
+      }
+    },
+    "Vitrine 2.0 requires macOS 26 Tahoe on Apple silicon. Vitrine 1.3.0 remains the release for macOS 15 Sequoia and Intel Macs." : {
+      "comment" : "What's New highlight for version 2.0.0.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitrine 2.0 requiere macOS 26 Tahoe en Apple silicon. Vitrine 1.3.0 sigue siendo la versión para macOS 15 Sequoia y Mac con Intel."
+          }
+        }
+      }
+    },
     "Private by default, safer to automate" : {
       "comment" : "What's New headline for version 1.3.0.",
       "extractionState" : "manual",

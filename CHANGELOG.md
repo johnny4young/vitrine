@@ -12,6 +12,8 @@ can never drift.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-20
+
 ### Added
 
 - The Export Sizes sheet shows the capture rendered at every selected platform size at once.
@@ -1904,7 +1906,8 @@ accumulated since 0.6.0.
 - Private by design: fully local rendering, with no account, no network, and no
   screen-recording or Accessibility permission.
 
-[Unreleased]: https://github.com/johnny4young/vitrine/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/johnny4young/vitrine/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/johnny4young/vitrine/compare/v1.3.0...v2.0.0
 [1.3.0]: https://github.com/johnny4young/vitrine/compare/v1.2.3...v1.3.0
 [1.2.3]: https://github.com/johnny4young/vitrine/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/johnny4young/vitrine/compare/v1.2.1...v1.2.2
