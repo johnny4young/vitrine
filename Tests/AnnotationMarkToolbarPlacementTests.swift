@@ -1,4 +1,6 @@
+import AppKit
 import CoreGraphics
+import SwiftUI
 import Testing
 import VitrineDomain
 import VitrineRendering
@@ -187,5 +189,39 @@ struct AnnotationMarkToolbarPlacementTests {
 extension CGPoint {
     fileprivate func square(radius: CGFloat) -> CGRect {
         CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)
+    }
+}
+
+/// A toolbar wider than a narrow stage would slide under the inspector and lose its clicks.
+@Suite("Annotation mark toolbar width")
+@MainActor
+struct AnnotationMarkToolbarWidthTests {
+    private final class Measured { var width: CGFloat = 0 }
+
+    private struct Host: View {
+        let measured: Measured
+        @FocusState private var focused: Bool
+
+        var body: some View {
+            MarkToolbarLayout(mark: CGRect(x: 120, y: 200, width: 60, height: 30), avoiding: []) {
+                AnnotationMarkToolbar(
+                    color: .constant(.red), thickness: .constant(5), showsColor: true,
+                    showsThickness: true, popoverEdge: .top, focus: $focused,
+                    onStyleEditEnded: {}, onSizeDragging: { _ in }, onDuplicate: {},
+                    onMarkKey: { _ in .ignored }, onExit: {},
+                    magnifier: .constant(false), stroke: .constant(.clean)
+                )
+                .onGeometryChange(for: CGFloat.self, of: \.size.width) { measured.width = $0 }
+            }
+        }
+    }
+
+    @Test func theToolbarFitsInsideANarrowStage() {
+        let measured = Measured()
+        let view = NSHostingView(rootView: Host(measured: measured))
+        view.frame = CGRect(x: 0, y: 0, width: 300, height: 400)
+        view.layoutSubtreeIfNeeded()
+        #expect(measured.width > 0)
+        #expect(measured.width <= 300 - 2 * AnnotationMarkToolbarPlacement.margin)
     }
 }

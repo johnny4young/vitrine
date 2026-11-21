@@ -72,7 +72,8 @@ struct MarkToolbarLayout: Layout {
         in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()
     ) {
         guard let toolbar = subviews.first else { return }
-        let size = toolbar.sizeThatFits(.unspecified)
+        let width = max(bounds.width - 2 * AnnotationMarkToolbarPlacement.margin, 0)
+        let size = toolbar.sizeThatFits(ProposedViewSize(width: width, height: nil))
         let origin = AnnotationMarkToolbarPlacement.place(
             size, beside: mark, avoiding: avoiding, in: CGRect(origin: .zero, size: bounds.size)
         ).origin
@@ -129,52 +130,30 @@ struct AnnotationMarkToolbar: View {
     var stroke: Binding<Annotation.Stroke>?
 
     var body: some View {
-        HStack(spacing: 8) {
-            if showsColor {
-                ColorSwatchButton(
-                    color: $color, identifier: "annotation-mark-toolbar-color",
-                    arrowEdge: popoverEdge, onEditEnded: onStyleEditEnded
-                )
-                .focused(focus)
+        // One row when the stage is wide enough, otherwise the style pickers move to a second.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                baseControls
+                stylePickers
+                duplicateButton
             }
-            if showsThickness {
-                AnnotationSizeSlider(
-                    thickness: $thickness, identifier: "annotation-mark-toolbar-size",
-                    onEditEnded: onStyleEditEnded, onDragging: onSizeDragging)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    baseControls
+                    duplicateButton
+                }
+                HStack(spacing: 8) { stylePickers }
             }
-            if let arrowStyle {
-                variantPicker(
-                    "Arrow shape", id: "arrow-style", selection: arrowStyle,
-                    options: [
-                        (.straight, Text("Straight"), "straight"),
-                        (.curved, Text("Curved"), "curved"),
-                        (.elbow, Text("Elbow"), "elbow"),
-                    ])
-            }
-            if let magnifier {
-                variantPicker(
-                    "Box style", id: "box-style", selection: magnifier,
-                    options: [(false, Text("Box"), "box"), (true, Text("Magnifier"), "magnifier")])
-            }
-            if let stroke {
-                variantPicker(
-                    "Stroke style", id: "stroke", selection: stroke,
-                    options: [
-                        (.clean, Text("Clean"), "clean"),
-                        (.handDrawn, Text("Hand-drawn"), "hand-drawn"),
-                    ])
-            }
-            duplicateButton
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 6)
         .background(
-            Capsule(style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(VitrineTokens.Surface.card)
                 .shadow(color: .black.opacity(0.18), radius: 6, y: 2)
         )
         .overlay(
-            Capsule(style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .strokeBorder(VitrineTokens.Line.border, lineWidth: Brand.Stroke.hairline)
                 .allowsHitTesting(false)
         )
@@ -186,6 +165,46 @@ struct AnnotationMarkToolbar: View {
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Selected mark")
         .accessibilityIdentifier("annotation-mark-toolbar")
+    }
+
+    @ViewBuilder private var baseControls: some View {
+        if showsColor {
+            ColorSwatchButton(
+                color: $color, identifier: "annotation-mark-toolbar-color",
+                arrowEdge: popoverEdge, onEditEnded: onStyleEditEnded
+            )
+            .focused(focus)
+        }
+        if showsThickness {
+            AnnotationSizeSlider(
+                thickness: $thickness, identifier: "annotation-mark-toolbar-size",
+                onEditEnded: onStyleEditEnded, onDragging: onSizeDragging)
+        }
+    }
+
+    @ViewBuilder private var stylePickers: some View {
+        if let arrowStyle {
+            variantPicker(
+                "Arrow shape", id: "arrow-style", selection: arrowStyle,
+                options: [
+                    (.straight, Text("Straight"), "straight"),
+                    (.curved, Text("Curved"), "curved"),
+                    (.elbow, Text("Elbow"), "elbow"),
+                ])
+        }
+        if let magnifier {
+            variantPicker(
+                "Box style", id: "box-style", selection: magnifier,
+                options: [(false, Text("Box"), "box"), (true, Text("Magnifier"), "magnifier")])
+        }
+        if let stroke {
+            variantPicker(
+                "Stroke style", id: "stroke", selection: stroke,
+                options: [
+                    (.clean, Text("Clean"), "clean"),
+                    (.handDrawn, Text("Hand-drawn"), "hand-drawn"),
+                ])
+        }
     }
 
     private func variantPicker<Value: Hashable>(
